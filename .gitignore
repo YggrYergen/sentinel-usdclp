@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# MT5 installers and binaries
+*.exe
+MT5_Portable/
+
+# Data files (generated)
+data/*.csv
+
+# Scratch/temp files
+scratch_*.py
+test_mt5_connect.py
