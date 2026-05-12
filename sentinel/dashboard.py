@@ -85,6 +85,9 @@ result = core.calculate_composite()
 score = result["composite_score"]
 direction = result["direction"]
 price_info = feed.get_current_price(SYMBOLS["target"])
+levels = result.get("levels", {})
+combined = levels.get("combined", {})
+curr_price = levels.get("current_price", 0)
 
 dir_emoji = {"LONG": "📈", "SHORT": "📉", "NEUTRAL": "➡️"}
 dir_color = {"LONG": "#52b788", "SHORT": "#ef476f", "NEUTRAL": "#ffd166"}
@@ -96,26 +99,73 @@ elif score >= SCORE_ALERT_THRESHOLD:
 else:
     css = "score-red"
 
-col_s, col_d, col_p = st.columns([1.5, 1, 2])
-with col_s:
-    st.markdown(f'<div class="score-box {css}">{score}</div>', unsafe_allow_html=True)
-    st.markdown(f"<p style='text-align:center;color:#888;font-size:12px;'>Score Compuesto</p>", unsafe_allow_html=True)
-with col_d:
-    d = direction
-    st.markdown(f"<div style='text-align:center;padding:10px;'>"
-                f"<span style='font-size:36px;'>{dir_emoji[d]}</span><br>"
-                f"<span style='color:{dir_color[d]};font-size:22px;font-weight:bold;'>{d}</span><br>"
-                f"<span style='font-size:14px;'>{result['signal']}</span></div>",
+# Layout: [Score + Dir + Precio] | [Niveles compactos]
+col_main, col_levels = st.columns([2.5, 1])
+
+with col_main:
+    mc1, mc2, mc3 = st.columns([1.2, 0.8, 1.5])
+    with mc1:
+        st.markdown(f'<div class="score-box {css}">{score}</div>', unsafe_allow_html=True)
+        st.markdown(f"<p style='text-align:center;color:#888;font-size:11px;'>Score Compuesto</p>", unsafe_allow_html=True)
+    with mc2:
+        d = direction
+        st.markdown(f"<div style='text-align:center;padding:8px;'>"
+                    f"<span style='font-size:32px;'>{dir_emoji[d]}</span><br>"
+                    f"<span style='color:{dir_color[d]};font-size:20px;font-weight:bold;'>{d}</span><br>"
+                    f"<span style='font-size:13px;'>{result['signal']}</span></div>",
+                    unsafe_allow_html=True)
+    with mc3:
+        if price_info["bid"] > 0:
+            st.metric("💲 USDCLP", f"{price_info['bid']:.2f}",
+                      delta=f"Spread: {price_info['spread']:.2f}")
+        st.caption(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
+
+with col_levels:
+    st.markdown("<div style='font-size:13px;font-weight:bold;color:#aaa;margin-bottom:4px;'>📍 Niveles</div>",
                 unsafe_allow_html=True)
-with col_p:
-    if price_info["bid"] > 0:
-        st.metric("💲 USDCLP", f"{price_info['bid']:.2f}",
-                  delta=f"Spread: {price_info['spread']:.2f}")
-    st.caption(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
+    if combined and curr_price > 0:
+        above = combined.get("above", [])
+        below = combined.get("below", [])
+        
+        # R3, R2, R1 (de lejos a cerca)
+        for i, lv in enumerate(reversed(above)):
+            label = f"R{len(above) - i}"
+            st.markdown(f"<div style='display:flex;justify-content:space-between;padding:2px 6px;"
+                        f"font-family:monospace;font-size:13px;background:rgba(239,71,111,0.08);"
+                        f"border-left:2px solid #ef476f;border-radius:3px;margin:1px 0;'>"
+                        f"<span style='color:#ef476f;'>{label}</span>"
+                        f"<span style='font-weight:bold;'>{lv['price']:.2f}</span>"
+                        f"<span style='color:#ef476f;font-size:11px;'>+{lv['pct']:.2f}%</span></div>",
+                        unsafe_allow_html=True)
+        
+        # Precio actual
+        st.markdown(f"<div style='text-align:center;padding:3px;font-size:12px;font-weight:bold;"
+                    f"background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;border-radius:4px;"
+                    f"margin:2px 0;color:#4cc9f0;'>▸ {curr_price:.2f}</div>",
+                    unsafe_allow_html=True)
+        
+        # S1, S2, S3 (de cerca a lejos)
+        for i, lv in enumerate(below):
+            label = f"S{i + 1}"
+            st.markdown(f"<div style='display:flex;justify-content:space-between;padding:2px 6px;"
+                        f"font-family:monospace;font-size:13px;background:rgba(82,183,136,0.08);"
+                        f"border-left:2px solid #52b788;border-radius:3px;margin:1px 0;'>"
+                        f"<span style='color:#52b788;'>{label}</span>"
+                        f"<span style='font-weight:bold;'>{lv['price']:.2f}</span>"
+                        f"<span style='color:#52b788;font-size:11px;'>{lv['pct']:.2f}%</span></div>",
+                        unsafe_allow_html=True)
+        
+        # Interpretación compacta
+        position = levels.get("position", "")
+        if position:
+            st.markdown(f"<div style='font-size:10px;color:#888;margin-top:4px;'>{position}</div>",
+                        unsafe_allow_html=True)
+    else:
+        st.caption("Sin datos")
 
 st.markdown('<div class="hint">ℹ️ Score = Técnico (40%) + Correlación (60%). '
             '≥75 🟢 Fuerte | ≥65 🟡 Alerta | <65 🔴 Esperar. '
-            'Dirección = voto ponderado de todos los componentes.</div>', unsafe_allow_html=True)
+            'R1-R3 resistencias, S1-S3 soportes (Camarilla + Swing).</div>', unsafe_allow_html=True)
 
 # Alertas (si hay)
 if result["alerts"]:
@@ -166,55 +216,8 @@ if rsi_divs:
         else:
             st.info(rd["description"])
 
-# ══════════════════════════════════════════════════════════
-# SECCIÓN 2: NIVELES PRICE-ACTION
-# ══════════════════════════════════════════════════════════
-st.markdown("---")
-st.markdown("### 📍 Niveles Price-Action")
-st.markdown('<div class="hint">ℹ️ R1-R3 = resistencias (Camarilla del día anterior + Swing Highs históricos). '
-            'S1-S3 = soportes. R3/S3 son niveles fuertes de reversión. '
-            'Si rompe R3 → breakout alcista. Si rompe S3 → breakout bajista.</div>',
-            unsafe_allow_html=True)
 
-levels = result.get("levels", {})
-combined = levels.get("combined", {})
-curr_price = levels.get("current_price", 0)
 
-if combined and curr_price > 0:
-    # Niveles arriba (resistencias) — de mayor a menor
-    above = combined.get("above", [])
-    for lv in reversed(above):
-        st.markdown(f'<div class="level-row level-above">'
-                    f'<span>🔴 {lv["label"]}</span>'
-                    f'<span style="font-weight:bold;">{lv["price"]:.2f}</span>'
-                    f'<span style="color:#ef476f;">+{lv["pct"]:.2f}%</span></div>',
-                    unsafe_allow_html=True)
-    
-    # Precio actual
-    st.markdown(f'<div class="level-current">'
-                f'── 💲 Precio Actual: {curr_price:.2f} ──</div>',
-                unsafe_allow_html=True)
-    
-    # Niveles abajo (soportes) — de mayor a menor
-    below = combined.get("below", [])
-    for lv in below:
-        st.markdown(f'<div class="level-row level-below">'
-                    f'<span>🟢 {lv["label"]}</span>'
-                    f'<span style="font-weight:bold;">{lv["price"]:.2f}</span>'
-                    f'<span style="color:#52b788;">{lv["pct"]:.2f}%</span></div>',
-                    unsafe_allow_html=True)
-    
-    # Pivot Point central
-    pp = combined.get("pp")
-    if pp:
-        st.caption(f"Pivot Point (PP): {pp:.2f} | Rango ayer: {levels['pivot'].get('range', 0):.2f}")
-    
-    # Interpretación
-    position = levels.get("position", "")
-    if position:
-        st.info(f"📌 {position}")
-else:
-    st.caption("Sin datos diarios para calcular niveles")
 
 # ══════════════════════════════════════════════════════════
 # SECCIÓN 3: CORRELACIONES CROSS-ASSET
