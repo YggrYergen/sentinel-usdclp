@@ -195,27 +195,42 @@ if tf_scores:
             tf_r = tf_scores[tf_name]
             sc = tf_r.get("score", 50)
             dr = tf_r.get("direction", "NEUTRAL")
+            rsi = tf_r.get("signals", {}).get("rsi", 0)
             color = "#52b788" if sc >= 65 else ("#ffd166" if sc >= 50 else "#ef476f")
             emoji = "🟢" if sc >= 65 else ("🟡" if sc >= 50 else "🔴")
+            # RSI color
+            if rsi >= 70:
+                rsi_c = "#ef476f"
+                rsi_tag = "OB"
+            elif rsi <= 30:
+                rsi_c = "#52b788"
+                rsi_tag = "OS"
+            else:
+                rsi_c = "#aaa"
+                rsi_tag = ""
             with tf_cols[i]:
-                st.markdown(f"<div style='text-align:center;background:#1a1d23;padding:12px;border-radius:8px;'>"
+                st.markdown(f"<div style='text-align:center;background:#1a1d23;padding:10px;border-radius:8px;'>"
                             f"<div style='font-size:12px;color:#888;'>{tf_name} ({tf_weights.get(tf_name,'')})</div>"
                             f"<div style='font-size:28px;color:{color};font-weight:bold;'>{emoji} {sc}</div>"
-                            f"<div style='font-size:12px;color:{color};'>{dr}</div></div>",
+                            f"<div style='font-size:12px;color:{color};'>{dr}</div>"
+                            f"<div style='font-size:13px;color:{rsi_c};margin-top:4px;border-top:1px solid #333;padding-top:4px;'>"
+                            f"RSI: <b>{rsi:.0f}</b> {rsi_tag}</div></div>",
                             unsafe_allow_html=True)
 
-# RSI Divergences
+# RSI Divergences — siempre mostrar estado
 rsi_divs = tech_details.get("rsi_divergences", [])
 if rsi_divs:
-    st.markdown("#### 📊 Divergencias RSI")
     for rd in rsi_divs:
         mag = rd["mag_score"]
         if mag >= 3:
-            st.error(rd["description"])
+            st.error(f"📊 {rd['description']}")
         elif mag >= 2:
-            st.warning(rd["description"])
+            st.warning(f"📊 {rd['description']}")
         else:
-            st.info(rd["description"])
+            st.info(f"📊 {rd['description']}")
+else:
+    st.markdown("<div class='hint'>📊 RSI alineado entre timeframes — sin divergencias (Δ < 10 pts)</div>",
+                unsafe_allow_html=True)
 
 
 
