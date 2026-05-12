@@ -121,7 +121,7 @@ with col_main:
         st.caption(f"🕐 {datetime.now().strftime('%H:%M:%S')}")
 
 with col_levels:
-    st.markdown("<div style='font-size:13px;font-weight:bold;color:#aaa;margin-bottom:4px;'>📍 Niveles</div>",
+    st.markdown("<div style='font-size:13px;font-weight:bold;color:#aaa;margin-bottom:2px;'>📍 Niveles</div>",
                 unsafe_allow_html=True)
     if combined and curr_price > 0:
         above = combined.get("above", [])
@@ -130,35 +130,35 @@ with col_levels:
         # R3, R2, R1 (de lejos a cerca)
         for i, lv in enumerate(reversed(above)):
             label = f"R{len(above) - i}"
-            st.markdown(f"<div style='display:flex;justify-content:space-between;padding:2px 6px;"
-                        f"font-family:monospace;font-size:13px;background:rgba(239,71,111,0.08);"
-                        f"border-left:2px solid #ef476f;border-radius:3px;margin:1px 0;'>"
-                        f"<span style='color:#ef476f;'>{label}</span>"
-                        f"<span style='font-weight:bold;'>{lv['price']:.2f}</span>"
-                        f"<span style='color:#ef476f;font-size:11px;'>+{lv['pct']:.2f}%</span></div>",
+            st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;padding:1px 4px;"
+                        f"font-family:monospace;font-size:16px;background:rgba(239,71,111,0.08);"
+                        f"border-left:2px solid #ef476f;border-radius:3px;margin:0;line-height:1.3;'>"
+                        f"<span style='color:#ef476f;min-width:24px;'>{label}</span>"
+                        f"<span style='font-weight:bold;font-size:19px;'>{lv['price']:.2f}</span>"
+                        f"<span style='color:#ef476f;font-size:13px;'>+{lv['pct']:.2f}%</span></div>",
                         unsafe_allow_html=True)
         
         # Precio actual
-        st.markdown(f"<div style='text-align:center;padding:3px;font-size:12px;font-weight:bold;"
-                    f"background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;border-radius:4px;"
-                    f"margin:2px 0;color:#4cc9f0;'>▸ {curr_price:.2f}</div>",
+        st.markdown(f"<div style='text-align:center;padding:2px;font-size:16px;font-weight:bold;"
+                    f"background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;border-radius:3px;"
+                    f"margin:1px 0;color:#4cc9f0;line-height:1.3;'>▸ {curr_price:.2f}</div>",
                     unsafe_allow_html=True)
         
         # S1, S2, S3 (de cerca a lejos)
         for i, lv in enumerate(below):
             label = f"S{i + 1}"
-            st.markdown(f"<div style='display:flex;justify-content:space-between;padding:2px 6px;"
-                        f"font-family:monospace;font-size:13px;background:rgba(82,183,136,0.08);"
-                        f"border-left:2px solid #52b788;border-radius:3px;margin:1px 0;'>"
-                        f"<span style='color:#52b788;'>{label}</span>"
-                        f"<span style='font-weight:bold;'>{lv['price']:.2f}</span>"
-                        f"<span style='color:#52b788;font-size:11px;'>{lv['pct']:.2f}%</span></div>",
+            st.markdown(f"<div style='display:flex;justify-content:space-between;align-items:center;padding:1px 4px;"
+                        f"font-family:monospace;font-size:16px;background:rgba(82,183,136,0.08);"
+                        f"border-left:2px solid #52b788;border-radius:3px;margin:0;line-height:1.3;'>"
+                        f"<span style='color:#52b788;min-width:24px;'>{label}</span>"
+                        f"<span style='font-weight:bold;font-size:19px;'>{lv['price']:.2f}</span>"
+                        f"<span style='color:#52b788;font-size:13px;'>{lv['pct']:.2f}%</span></div>",
                         unsafe_allow_html=True)
         
         # Interpretación compacta
         position = levels.get("position", "")
         if position:
-            st.markdown(f"<div style='font-size:10px;color:#888;margin-top:4px;'>{position}</div>",
+            st.markdown(f"<div style='font-size:10px;color:#888;margin-top:2px;'>{position}</div>",
                         unsafe_allow_html=True)
     else:
         st.caption("Sin datos")
@@ -167,9 +167,10 @@ st.markdown('<div class="hint">ℹ️ Score = Técnico (40%) + Correlación (60%
             '≥75 🟢 Fuerte | ≥65 🟡 Alerta | <65 🔴 Esperar. '
             'R1-R3 resistencias, S1-S3 soportes (Camarilla + Swing).</div>', unsafe_allow_html=True)
 
-# Alertas (si hay)
-if result["alerts"]:
-    for alert in result["alerts"][:3]:
+# Alertas (si hay) — filtrar la de score redundante
+filtered_alerts = [a for a in result["alerts"] if not a.startswith("📊 Score")]
+if filtered_alerts:
+    for alert in filtered_alerts[:3]:
         st.warning(alert)
 
 # ══════════════════════════════════════════════════════════
