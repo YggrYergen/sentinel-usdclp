@@ -18,6 +18,8 @@ MIN_PY = (3, 11)
 MAX_PY = (3, 13)
 PORTABLE_PY_VER = "3.12.8"
 PORTABLE_DIR_NAME = "_python"
+MINGIT_VER = "2.47.1"
+MINGIT_DIR_NAME = "_git"
 
 
 class Launcher:
@@ -26,6 +28,7 @@ class Launcher:
         self.sentinel = Path(__file__).parent
         self.logfile = self.root / "sentinel_log.txt"
         self.portable_dir = self.root / PORTABLE_DIR_NAME
+        self.git_dir = self.root / MINGIT_DIR_NAME
         self._setup_log()
 
     def _setup_log(self):
@@ -237,31 +240,98 @@ class Launcher:
         )
         sys.exit(result.returncode)
 
-    # ── Step 3: Updates ──
-    def check_updates(self):
-        self.log("[3/7] Checking for updates...")
+    # ── Step 3: Git ──
+    def check_git(self):
+        self.log("[3/8] Checking Git...")
+        git_cmd = self._find_git()
+        if git_cmd:
+            self.log(f"  [OK] Git found: {git_cmd}")
+            self._git_cmd = git_cmd
+            return True
+
+        # Install portable MinGit
+        self.log("  Git not found - installing portable MinGit (sandboxed)...")
+        git_cmd = self.safe("install_git", self._install_portable_git)
+        if git_cmd:
+            self._git_cmd = git_cmd
+            return True
+        self._git_cmd = None
+        self.log("  [WARN] Git unavailable - will use ZIP updates", "warning")
+        return True  # Non-blocking
+
+    def _find_git(self):
+        """Find git on system or in portable dir"""
+        # Check portable git first
+        portable = self.git_dir / "cmd" / "git.exe"
+        if portable.exists():
+            code, out, _ = self.cmd(f'"{portable}" --version', show=False)
+            if code == 0:
+                self.log(f"  Portable MinGit: {out}")
+                return str(portable)
+
+        # Check system git
         code, out, _ = self.cmd("git --version", show=False)
         if code == 0:
-            self.log(f"  {out}")
-            return self.safe("git_update", self._update_git)
-        self.log("  Git not installed - using GitHub ZIP method")
+            self.log(f"  System git: {out}")
+            return "git"
+        return None
+
+    def _install_portable_git(self):
+        """Download MinGit portable - zero system changes"""
+        arch = "64" if platform.architecture()[0] == "64bit" else "32"
+        ver = MINGIT_VER
+        zip_name = f"MinGit-{ver}-{arch}-bit.zip"
+        zip_url = f"https://github.com/git-for-windows/git/releases/download/v{ver}.windows.1/{zip_name}"
+        zip_path = self.root / zip_name
+
+        try:
+            self.download(zip_url, zip_path)
+            self.log(f"  Extracting to {self.git_dir}...")
+            if self.git_dir.exists():
+                shutil.rmtree(str(self.git_dir))
+            self.git_dir.mkdir(parents=True)
+            with zipfile.ZipFile(str(zip_path), 'r') as z:
+                z.extractall(str(self.git_dir))
+            zip_path.unlink(missing_ok=True)
+
+            git_exe = self.git_dir / "cmd" / "git.exe"
+            if git_exe.exists():
+                code, out, _ = self.cmd(f'"{git_exe}" --version', show=False)
+                self.log(f"  [OK] MinGit installed: {out}")
+                return str(git_exe)
+            else:
+                self.log("  [ERROR] git.exe not found after extraction", "error")
+                return None
+        except Exception:
+            self.log_exc("install_portable_git")
+            zip_path.unlink(missing_ok=True)
+            return None
+
+    # ── Step 4: Updates ──
+    def check_updates(self):
+        self.log("[4/8] Checking for updates...")
+        git_cmd = getattr(self, '_git_cmd', None)
+        if git_cmd:
+            return self.safe("git_update", lambda: self._update_git(git_cmd))
+        self.log("  No git available - using ZIP method")
         return self.safe("zip_update", self._update_zip)
 
-    def _update_git(self):
-        code, _, _ = self.cmd(f"git fetch origin {BRANCH}", show=False)
+    def _update_git(self, git_cmd):
+        g = f'"{git_cmd}"' if ' ' in git_cmd else git_cmd
+        code, _, _ = self.cmd(f"{g} fetch origin {BRANCH}", show=False)
         if code != 0:
-            self.log("  [SKIP] Cannot reach GitHub")
-            return True
-        _, local, _ = self.cmd("git rev-parse HEAD", show=False)
-        _, remote, _ = self.cmd(f"git rev-parse origin/{BRANCH}", show=False)
+            self.log("  [SKIP] Cannot reach GitHub - trying ZIP")
+            return self.safe("zip_fallback", self._update_zip)
+        _, local, _ = self.cmd(f"{g} rev-parse HEAD", show=False)
+        _, remote, _ = self.cmd(f"{g} rev-parse origin/{BRANCH}", show=False)
         if local == remote:
             self.log(f"  [OK] Up to date ({local[:8]})")
         else:
             self.log(f"  [UPDATE] {local[:8]} -> {remote[:8]}")
-            self.cmd("git stash")
-            self.cmd(f"git checkout {BRANCH}")
-            self.cmd(f"git pull origin {BRANCH}")
-            self.cmd("git stash pop")
+            self.cmd(f"{g} stash")
+            self.cmd(f"{g} checkout {BRANCH}")
+            self.cmd(f"{g} pull origin {BRANCH}")
+            self.cmd(f"{g} stash pop")
             self.log("  [OK] Updated via Git")
         return True
 
@@ -298,9 +368,9 @@ class Launcher:
         self.log(f"  [OK] Updated {updated} files from GitHub")
         return True
 
-    # ── Step 4: Dependencies ──
+    # ── Step 5: Dependencies ──
     def check_deps(self):
-        self.log("[4/7] Checking dependencies...")
+        self.log("[5/8] Checking dependencies...")
         req = self.sentinel / "requirements.txt"
         self.log(f"  requirements.txt exists: {req.exists()}")
         if not req.exists():
@@ -323,9 +393,9 @@ class Launcher:
             self.log("  [OK] Dependencies present")
         return True
 
-    # ── Step 5: Verify imports ──
+    # ── Step 6: Verify imports ──
     def verify_imports(self):
-        self.log("[5/7] Verifying imports...")
+        self.log("[6/8] Verifying imports...")
         modules = {
             "streamlit": "Dashboard UI",
             "MetaTrader5": "Market data",
@@ -351,9 +421,9 @@ class Launcher:
             self.log("[ERROR] Import failures detected", "error")
         return ok
 
-    # ── Step 6: Verify dashboard loads ──
+    # ── Step 7: Verify dashboard loads ──
     def verify_dashboard(self):
-        self.log("[6/7] Verifying dashboard.py loads without errors...")
+        self.log("[7/8] Verifying dashboard.py loads without errors...")
         dashboard = self.sentinel / "dashboard.py"
         self.log(f"  File: {dashboard}")
         self.log(f"  Exists: {dashboard.exists()}")
@@ -370,9 +440,9 @@ class Launcher:
         self.log(f"  Pre-check: {'PASS' if code == 0 else 'may have issues (non-blocking)'}")
         return True  # Don't block on this — streamlit has its own error handling
 
-    # ── Step 7: Launch ──
+    # ── Step 8: Launch ──
     def launch(self):
-        self.log("[7/7] Launching SENTINEL dashboard...")
+        self.log("[8/8] Launching SENTINEL dashboard...")
         dashboard = self.sentinel / "dashboard.py"
         cmd = [
             sys.executable, "-m", "streamlit", "run", str(dashboard),
@@ -430,11 +500,28 @@ class Launcher:
         self.log("=" * 52)
         self.log("")
 
-        if self.safe("check_running", self.check_running):
-            return True
+        # Step 1: Check Python first (may relaunch with portable)
         if not self.safe("check_python", self.check_python):
             return False
+
+        # Step 2: Ensure Git is available (install MinGit if needed)
+        self.safe("check_git", self.check_git)
+
+        # Step 3: Check for updates ALWAYS (even if already running)
         self.safe("check_updates", self.check_updates)
+
+        # Step 4: Now check if already running (after updates)
+        self.log("[1/8] Checking if SENTINEL is already running...")
+        try:
+            urllib.request.urlopen(URL, timeout=2)
+            self.log(f"  [OK] Already running and up to date")
+            self.log(f"  Opening browser -> {URL}")
+            webbrowser.open(URL)
+            return True
+        except Exception:
+            self.log("  Not running - starting fresh")
+
+        # Steps 5-8: Full startup
         if not self.safe("check_deps", self.check_deps):
             return False
         if not self.safe("verify_imports", self.verify_imports):

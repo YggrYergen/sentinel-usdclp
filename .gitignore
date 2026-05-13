@@ -29,8 +29,9 @@ MT5_Portable/
 data/*.csv
 sentinel_log.txt
 
-# Portable Python (auto-downloaded, sandboxed)
+# Portable Python & Git (auto-downloaded, sandboxed)
 _python/
+_git/
 _update.zip
 _update_tmp/
 _get_pip.py
