@@ -328,9 +328,14 @@ class Launcher:
     def check_updates(self):
         self.log("[4/8] Checking for updates...")
         git_cmd = getattr(self, '_git_cmd', None)
-        if git_cmd:
+        git_dir = self.root / ".git"
+        if git_cmd and git_dir.exists():
+            self.log(f"  .git directory found - using git")
             return self.safe("git_update", lambda: self._update_git(git_cmd))
-        self.log("  No git available - using ZIP method")
+        if git_cmd and not git_dir.exists():
+            self.log(f"  .git directory NOT found (ZIP download) - using ZIP updates")
+        elif not git_cmd:
+            self.log("  No git available - using ZIP method")
         return self.safe("zip_update", self._update_zip)
 
     def _update_git(self, git_cmd):
@@ -394,26 +399,52 @@ class Launcher:
             self.log(f"  [ERROR] requirements.txt not found!", "error")
             return False
 
-        for line in req.read_text().strip().split('\n'):
+        req_content = req.read_text().strip()
+        for line in req_content.split('\n'):
             self.log(f"    {line}")
 
-        # Check if streamlit importable
-        code, out, _ = self.cmd(f'"{sys.executable}" -c "import streamlit; print(streamlit.__version__)"')
+        # Check marker file — skip install if deps already verified
+        import hashlib
+        req_hash = hashlib.md5(req_content.encode()).hexdigest()[:12]
+        marker = self.portable_dir / f"_deps_ok_{req_hash}"
+        if marker.exists():
+            self.log(f"  [OK] Dependencies verified (marker: {marker.name})")
+            return True
+
+        # Full check: try importing all key packages
+        self.log("  Verifying installed packages...")
+        check_script = 'import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print("ALL_OK")'
+        code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
+        if code == 0 and 'ALL_OK' in out:
+            self.log("  [OK] All packages importable")
+            marker.write_text(f"verified {datetime.now().isoformat()}")
+            return True
+
+        # Install needed
+        self.log("  Dependencies missing - installing...")
+
+        # Clear corrupted pip cache from Python version mismatch
+        self.log("  Clearing pip cache (avoid version conflicts)...")
+        self.cmd(f'"{sys.executable}" -m pip cache purge', show=False)
+
+        # Embeddable Python needs setuptools+wheel for building packages
+        self.log("  Ensuring build tools (setuptools, wheel)...")
+        self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --no-cache-dir --upgrade pip setuptools wheel')
+
+        self.log("  Installing project dependencies...")
+        code, _, err = self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --no-cache-dir -r "{req}"')
         if code != 0:
-            self.log("  Dependencies missing - installing...")
+            self.log(f"[ERROR] pip install failed!", "error")
+            return False
 
-            # Embeddable Python needs setuptools+wheel for building packages
-            self.log("  Ensuring build tools (setuptools, wheel)...")
-            self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --upgrade pip setuptools wheel')
-
-            self.log("  Installing project dependencies...")
-            code, _, err = self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location -r "{req}"')
-            if code != 0:
-                self.log(f"[ERROR] pip install failed!", "error")
-                return False
-            self.log("  [OK] Dependencies installed")
+        # Verify after install
+        code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
+        if code == 0 and 'ALL_OK' in out:
+            self.log("  [OK] All dependencies verified")
+            marker.write_text(f"verified {datetime.now().isoformat()}")
         else:
-            self.log("  [OK] Dependencies present")
+            self.log("  [WARN] Some packages may have issues", "warning")
+
         return True
 
     # ── Step 6: Verify imports ──
