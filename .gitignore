@@ -9,7 +9,7 @@ build/
 
 # Virtual environments
 venv/
-.env/
+.env
 
 # IDE
 .vscode/
@@ -28,6 +28,12 @@ MT5_Portable/
 # Data files (generated)
 data/*.csv
 
-# Scratch/temp files
+# Scratch/temp/dev files
 scratch_*.py
-test_mt5_connect.py
+test_*.py
+deep_reserach_one.md
+
+# Legacy scripts (replaced by SENTINEL.bat)
+INICIAR_SENTINEL.bat
+ACTUALIZAR_SENTINEL.bat
+INSTALAR_SENTINEL.bat
