@@ -66,11 +66,17 @@ feed, core = init_system()
 # SIDEBAR MÍNIMO
 # ══════════════════════════════════════════════════════════
 with st.sidebar:
-    st.title("🛡️ SENTINEL v3.1")
+    st.title("🛡️ SENTINEL v3.2")
     st.caption("USD/CLP Trading System")
     st.divider()
     status = feed.get_status()
-    st.info(f"📡 {status['mode'].upper()} | Cache: {status['cache_size']}")
+    if status['mt5_connected']:
+        st.success(f"📡 MT5 REAL-TIME")
+        st.caption(f"Login: {status.get('login', '?')}")
+        st.caption(f"Server: {status.get('server', '?')}")
+    else:
+        st.warning(f"📡 Yahoo Finance (delay ~15 min)")
+    st.caption(f"Cache: {status['cache_size']} items")
     auto_refresh = st.checkbox("🔄 Auto-refresh", value=True)
     st.caption(f"Refresh: {DASHBOARD_REFRESH_SECONDS}s")
 
@@ -265,7 +271,7 @@ if corr_data:
             "": status,
         })
     if corr_table:
-        st.dataframe(pd.DataFrame(corr_table), use_container_width=True, hide_index=True)
+        st.dataframe(pd.DataFrame(corr_table), width='stretch', hide_index=True)
 
     # Score y dirección de correlación
     cs = comp["correlation"]["score"]
@@ -319,14 +325,14 @@ if not target_data.empty:
         margin=dict(l=20, r=20, t=10, b=20),
         paper_bgcolor='#0e1117', plot_bgcolor='#0e1117',
     )
-    st.plotly_chart(fig, use_container_width=True)
+    st.plotly_chart(fig, width='stretch')
 
 # ══════════════════════════════════════════════════════════
 # FOOTER
 # ══════════════════════════════════════════════════════════
 st.markdown("---")
 st.caption(f"Última actualización: {datetime.now().strftime('%H:%M:%S')} | "
-           f"Modo: {feed.get_status()['mode'].upper()} | "
+           f"Fuente: {'🟢 MT5 Real-Time' if feed.mt5_connected else '🟡 Yahoo Finance (delay)'} | "
            f"Score: Técnico {WEIGHTS.technical*100:.0f}% + Correlación {WEIGHTS.correlation*100:.0f}%")
 
 if auto_refresh:

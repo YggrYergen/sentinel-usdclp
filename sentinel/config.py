@@ -18,31 +18,31 @@ DATA_MODE = "mt5"  # Cambiar a "api" si MT5 no está disponible
 # INSTRUMENTOS MONITOREADOS
 # ══════════════════════════════════════════════════════════════
 # IMPORTANTE: Estos nombres deben coincidir EXACTAMENTE con los
-# símbolos de Capitaria en MT5. Si no coinciden, cambiarlos aquí.
+# símbolos de Capitaria en MT5. Verificados el 2026-05-13.
 
 SYMBOLS = {
-    "target":       "USDCLP",       # Par principal
-    "dxy":          "USDX",         # Dollar Index
-    "copper":       "COPPER",       # Cobre
-    "wti":          "WTI",          # Petróleo
-    "usdmxn":       "USDMXN",       # Peso mexicano
-    "usdbrl":       "USDBRL",       # Real brasileño
-    "audusd":       "AUDUSD",       # Dólar australiano
-    "usdcnh":       "USDCNH",       # Yuan offshore
-    "sp500":        "US500",        # S&P 500
+    "target":       "USDCLP",         # Par principal
+    "dxy":          "USDX_Jun26",     # Dollar Index (futuro)
+    "copper":       "Cobre_Jul26",    # Cobre (futuro)
+    "wti":          "WTI",            # Petróleo
+    "usdmxn":       "USDMXN",         # Peso mexicano
+    "usdbrl":       "USDBRL",         # Real brasileño
+    "audusd":       "AUDUSD",         # Dólar australiano
+    "usdcnh":       "USDCNH",         # Yuan offshore
+    "sp500":        "SP",             # S&P 500 (CFD)
 }
 
-# Símbolos para Alpha Vantage (fallback)
-SYMBOLS_API = {
-    "target":       "USD/CLP",
-    "dxy":          "DX-Y.NYB",     # No disponible directamente, usar proxy
-    "copper":       "HG=F",
-    "wti":          "CL=F",
-    "usdmxn":       "USD/MXN",
-    "usdbrl":       "USD/BRL",
-    "audusd":       "AUD/USD",
-    "usdcnh":       "USD/CNH",
-    "sp500":        "SPY",
+# Símbolos para Yahoo Finance (fallback cuando MT5 no está disponible)
+SYMBOLS_YAHOO = {
+    "USDCLP":       "CLP=X",
+    "USDX_Jun26":   "DX-Y.NYB",
+    "Cobre_Jul26":  "HG=F",
+    "WTI":          "CL=F",
+    "USDMXN":       "MXN=X",
+    "USDBRL":       "BRL=X",
+    "AUDUSD":       "AUDUSD=X",
+    "USDCNH":       "CNH=X",
+    "SP":           "^GSPC",
 }
 
 # ══════════════════════════════════════════════════════════════
