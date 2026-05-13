@@ -115,14 +115,23 @@ class Launcher:
 
         self.log(f"  [WARN] Python {v.major}.{v.minor} is NOT compatible (need {MIN_PY[0]}.{MIN_PY[1]}-{MAX_PY[0]}.{MAX_PY[1]})", "warning")
 
-        # Try to find compatible Python already on system via py launcher
+        # Check if portable Python already exists and is compatible
+        portable_exe = self.portable_dir / "python.exe"
+        if portable_exe.exists():
+            self.log(f"  Checking existing portable Python at {portable_exe}...")
+            code, out, _ = self.cmd(f'"{portable_exe}" --version', show=False)
+            if code == 0:
+                self.log(f"  [OK] Portable Python already installed: {out}")
+                self._relaunch(str(portable_exe))
+                return False
+
+        # Try to find compatible Python on system via py launcher
         self.log("  Looking for compatible Python on this system...")
         py_exe = self._find_compatible_python()
         if py_exe:
             self.log(f"  [OK] Found compatible Python: {py_exe}")
-            self.log(f"  Re-launching with compatible Python...")
             self._relaunch(py_exe)
-            return False  # Won't reach here if relaunch works
+            return False
 
         # No compatible Python found — install portable version
         self.log("  No compatible Python found on system")
@@ -173,10 +182,18 @@ class Launcher:
         py_dir = self.portable_dir
 
         try:
+            # Check if portable Python already exists with correct version
+            existing_exe = py_dir / "python.exe"
+            if existing_exe.exists():
+                code, out, _ = self.cmd(f'"{existing_exe}" --version', show=False)
+                if code == 0 and PORTABLE_PY_VER in out:
+                    self.log(f"  [OK] Portable Python {PORTABLE_PY_VER} already exists — reusing")
+                    return str(existing_exe)
+
             # Download embeddable Python
             self.download(zip_url, zip_path)
 
-            # Extract
+            # Extract (fresh install)
             self.log(f"  Extracting to {py_dir}...")
             if py_dir.exists():
                 shutil.rmtree(str(py_dir))
