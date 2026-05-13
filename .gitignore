@@ -27,6 +27,7 @@ MT5_Portable/
 
 # Data files (generated)
 data/*.csv
+sentinel_log.txt
 
 # Scratch/temp/dev files
 scratch_*.py
