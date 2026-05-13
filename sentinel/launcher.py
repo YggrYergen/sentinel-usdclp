@@ -384,6 +384,12 @@ class Launcher:
         code, out, _ = self.cmd(f'"{sys.executable}" -c "import streamlit; print(streamlit.__version__)"')
         if code != 0:
             self.log("  Dependencies missing - installing...")
+
+            # Embeddable Python needs setuptools+wheel for building packages
+            self.log("  Ensuring build tools (setuptools, wheel)...")
+            self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --upgrade pip setuptools wheel')
+
+            self.log("  Installing project dependencies...")
             code, _, err = self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location -r "{req}"')
             if code != 0:
                 self.log(f"[ERROR] pip install failed!", "error")
