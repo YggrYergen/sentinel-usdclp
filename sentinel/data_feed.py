@@ -80,6 +80,7 @@ class DataFeed:
                 global MT5_TIMEFRAMES
                 MT5_TIMEFRAMES = {
                     1:    mt5.TIMEFRAME_M1,
+                    2:    mt5.TIMEFRAME_M2,
                     5:    mt5.TIMEFRAME_M5,
                     15:   mt5.TIMEFRAME_M15,
                     30:   mt5.TIMEFRAME_M30,

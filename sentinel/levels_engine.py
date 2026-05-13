@@ -149,59 +149,70 @@ def _combine_levels(pivot: dict, swings: dict, current_price: float) -> dict:
     """
     Combina Camarilla + Swing levels, ordena y devuelve
     los 3 más cercanos arriba y 3 más cercanos abajo.
+    
+    Siempre incluye Camarilla R/S independiente de la posición del precio.
     """
-    above = []
-    below = []
+    all_levels = []
     
-    # Agregar Camarilla
-    for key in ["R1", "R2", "R3"]:
+    # Agregar todos los Camarilla (R1-R3, S1-S3) sin filtrar por lado
+    for key in ["R1", "R2", "R3", "S1", "S2", "S3"]:
         if key in pivot:
             level = pivot[key]
-            if level > current_price:
-                above.append({
-                    "price": level,
-                    "label": f"{key} (Camarilla)",
-                    "type": "camarilla",
-                    "pct": round((level - current_price) / current_price * 100, 3),
-                })
-    
-    for key in ["S1", "S2", "S3"]:
-        if key in pivot:
-            level = pivot[key]
-            if level < current_price:
-                below.append({
-                    "price": level,
-                    "label": f"{key} (Camarilla)",
-                    "type": "camarilla",
-                    "pct": round((level - current_price) / current_price * 100, 3),
-                })
+            all_levels.append({
+                "price": level,
+                "label": f"{key} (Camarilla)",
+                "type": "camarilla",
+            })
     
     # Agregar Swing levels
     for r in swings.get("resistances", []):
-        # Evitar duplicados muy cercanos a Camarilla
-        if not any(abs(r - a["price"]) < current_price * 0.001 for a in above):
-            above.append({
-                "price": r,
-                "label": "Swing High",
-                "type": "swing",
-                "pct": round((r - current_price) / current_price * 100, 3),
-            })
+        if not any(abs(r - lv["price"]) < current_price * 0.001 for lv in all_levels):
+            all_levels.append({"price": r, "label": "Swing High", "type": "swing"})
     
     for s in swings.get("supports", []):
-        if not any(abs(s - b["price"]) < current_price * 0.001 for b in below):
-            below.append({
-                "price": s,
-                "label": "Swing Low",
-                "type": "swing",
-                "pct": round((s - current_price) / current_price * 100, 3),
-            })
+        if not any(abs(s - lv["price"]) < current_price * 0.001 for lv in all_levels):
+            all_levels.append({"price": s, "label": "Swing Low", "type": "swing"})
     
-    # Agregar PP (Pivot Point central)
+    # Separar en above/below del precio actual y calcular %
+    above = []
+    below = []
+    for lv in all_levels:
+        lv["pct"] = round((lv["price"] - current_price) / current_price * 100, 3)
+        if lv["price"] > current_price:
+            above.append(lv)
+        elif lv["price"] < current_price:
+            below.append(lv)
+    
+    # Agregar PP
     pp_level = pivot.get("PP")
     
     # Ordenar: above por más cercano, below por más cercano
     above.sort(key=lambda x: x["price"])
     below.sort(key=lambda x: x["price"], reverse=True)
+    
+    # Garantizar mínimo 3 niveles por lado (extrapolar si faltan)
+    pivot_range = pivot.get("range", current_price * 0.005)  # fallback 0.5%
+    step = pivot_range * 1.1 / 4  # ~Camarilla S3/R3 distance
+    
+    while len(above) < 3:
+        last = above[-1]["price"] if above else current_price
+        synth_price = round(last + step, 2)
+        above.append({
+            "price": synth_price,
+            "label": f"Ext. R{len(above)+1}",
+            "type": "synthetic",
+            "pct": round((synth_price - current_price) / current_price * 100, 3),
+        })
+    
+    while len(below) < 3:
+        last = below[-1]["price"] if below else current_price
+        synth_price = round(last - step, 2)
+        below.append({
+            "price": synth_price,
+            "label": f"Ext. S{len(below)+1}",
+            "type": "synthetic",
+            "pct": round((synth_price - current_price) / current_price * 100, 3),
+        })
     
     return {
         "above": above[:3],

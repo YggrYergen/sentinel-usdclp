@@ -30,7 +30,7 @@ def calculate_technical_score(df: pd.DataFrame) -> dict:
 def calculate_multi_tf_score(data_feed, symbol: str) -> dict:
     from sentinel.config import TIMEFRAMES, BARS_TO_FETCH
     tf_scores = {}
-    tf_w = {"M15": 0.50, "M5": 0.35, "M1": 0.15}
+    tf_w = {"M15": 0.10, "M5": 0.20, "M2": 0.30, "M1": 0.40}
     for tf_name, tf_min in TIMEFRAMES.items():
         df = data_feed.get_data(symbol, tf_min, BARS_TO_FETCH)
         tf_scores[tf_name] = calculate_technical_score(df)

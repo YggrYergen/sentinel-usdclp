@@ -64,7 +64,8 @@ EXPECTED_CORRELATIONS = {
 # TIMEFRAMES
 # ══════════════════════════════════════════════════════════════
 TIMEFRAMES = {
-    "M1":   1,       # Ejecución inmediata
+    "M1":   1,       # Micro-momentum
+    "M2":   2,       # Transición corta
     "M5":   5,       # Ejecución
     "M15":  15,      # Táctico / tendencia corta
 }
@@ -92,8 +93,8 @@ RISK = RiskConfig()
 # ══════════════════════════════════════════════════════════════
 @dataclass
 class ScoreWeights:
-    technical: float = 0.40      # 40% — Indicadores técnicos
-    correlation: float = 0.60    # 60% — Motor de correlaciones
+    technical: float = 0.75      # 75% — Indicadores técnicos (driver principal)
+    correlation: float = 0.25    # 25% — Correlaciones cross-asset (filtro contexto)
 
 WEIGHTS = ScoreWeights()
 
@@ -140,7 +141,7 @@ NEWS_BUFFER_MINUTES = 30              # No operar 30 min antes/después de notic
 # ══════════════════════════════════════════════════════════════
 # DASHBOARD
 # ══════════════════════════════════════════════════════════════
-DASHBOARD_REFRESH_SECONDS = 10   # Cada cuántos segundos actualizar
+DASHBOARD_REFRESH_SECONDS = 5    # Cada cuántos segundos actualizar
 DASHBOARD_LANGUAGE = "es"        # Español
 
 # ══════════════════════════════════════════════════════════════
