@@ -1,18 +1,18 @@
 @echo off
-chcp 65001 >nul 2>&1
-title SENTINEL — USD/CLP Trading Intelligence
+setlocal EnableDelayedExpansion
+title SENTINEL - USD/CLP Trading Intelligence
 color 0A
 
 echo.
-echo   ╔══════════════════════════════════════════╗
-echo   ║   🛡️  SENTINEL — Scalper Pro v3.4       ║
-echo   ║   USD/CLP Trading Intelligence          ║
-echo   ╚══════════════════════════════════════════╝
+echo   ============================================
+echo     SENTINEL v3.4 - Scalper Pro
+echo     USD/CLP Trading Intelligence
+echo   ============================================
 echo.
 
-:: ═══════════════════════════════════════════
-:: CONFIGURACIÓN
-:: ═══════════════════════════════════════════
+:: ===========================================
+:: CONFIG
+:: ===========================================
 set "BRANCH=release"
 set "PORT=8501"
 set "URL=http://localhost:%PORT%"
@@ -20,148 +20,145 @@ set "SCRIPT_DIR=%~dp0"
 
 cd /d "%SCRIPT_DIR%"
 
-:: ═══════════════════════════════════════════
-:: 1. ¿Ya está corriendo?
-:: ═══════════════════════════════════════════
-set "ALREADY_RUNNING=0"
-echo   [1/5] Verificando si SENTINEL ya esta activo...
+:: ===========================================
+:: STEP 1: Already running?
+:: ===========================================
+echo   [1/5] Checking if SENTINEL is active...
 powershell -Command "try { $r = Invoke-WebRequest -Uri '%URL%' -TimeoutSec 2 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
-    set "ALREADY_RUNNING=1"
-    echo   ✅ SENTINEL esta corriendo — verificando actualizaciones...
+    echo   [OK] SENTINEL is running - checking for updates...
 
-    :: Check for updates even if running
     git --version >nul 2>&1
-    if %ERRORLEVEL% NEQ 0 goto :ALREADY_NO_UPDATE
+    if !ERRORLEVEL! NEQ 0 goto :ALREADY_NO_UPDATE
     git fetch origin %BRANCH% >nul 2>&1
-    if %ERRORLEVEL% NEQ 0 goto :ALREADY_NO_UPDATE
+    if !ERRORLEVEL! NEQ 0 goto :ALREADY_NO_UPDATE
 
     for /f %%h in ('git rev-parse HEAD 2^>nul') do set "LOCAL_CHK=%%h"
     for /f %%h in ('git rev-parse origin/%BRANCH% 2^>nul') do set "REMOTE_CHK=%%h"
 
-    if "%LOCAL_CHK%"=="%REMOTE_CHK%" goto :ALREADY_NO_UPDATE
+    if "!LOCAL_CHK!"=="!REMOTE_CHK!" goto :ALREADY_NO_UPDATE
 
     echo.
-    echo   📦 Nueva version detectada! Reiniciando SENTINEL...
-    echo   ⏳ Deteniendo version anterior...
+    echo   [UPDATE] New version found - restarting SENTINEL...
+    echo   Stopping old version...
 
-    :: Kill the running Streamlit process
     powershell -Command "Get-Process -Name 'streamlit' -ErrorAction SilentlyContinue | Stop-Process -Force" >nul 2>&1
     powershell -Command "Get-NetTCPConnection -LocalPort %PORT% -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }" >nul 2>&1
     timeout /t 3 /nobreak >nul
 
-    echo   ✅ Detenido. Actualizando y relanzando...
+    echo   [OK] Stopped. Updating and relaunching...
     echo.
     goto :CHECK_PYTHON
 )
 goto :CHECK_PYTHON
 
 :ALREADY_NO_UPDATE
-echo   ✅ Sin actualizaciones pendientes
-echo   📂 Abriendo en el navegador...
+echo   [OK] No pending updates
+echo   Opening browser...
 start "" "%URL%"
 echo.
-echo   Listo. Puedes cerrar esta ventana.
+echo   Done. You can close this window.
 timeout /t 5 >nul
 exit /b 0
 
+:: ===========================================
+:: STEP 2: Python
+:: ===========================================
 :CHECK_PYTHON
-
-:: ═══════════════════════════════════════════
-:: 2. Verificar Python
-:: ═══════════════════════════════════════════
-echo   [2/5] Verificando Python...
+echo   [2/5] Checking Python...
 python --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
     echo.
-    echo   ❌ ERROR: Python no encontrado.
+    echo   [ERROR] Python not found.
     echo.
-    echo   Instala Python 3.11+ desde:
+    echo   Install Python 3.11+ from:
     echo   https://www.python.org/downloads/
     echo.
-    echo   IMPORTANTE: Marca "Add Python to PATH" al instalar.
+    echo   IMPORTANT: Check "Add Python to PATH" during install.
     echo.
     pause
     exit /b 1
 )
-for /f "tokens=2" %%v in ('python --version 2^>^&1') do echo   ✅ Python %%v encontrado
+for /f "tokens=*" %%v in ('python --version 2^>^&1') do echo   [OK] %%v
 
-:: ═══════════════════════════════════════════
-:: 3. Verificar Git y Auto-update
-:: ═══════════════════════════════════════════
-echo   [3/5] Buscando actualizaciones...
+:: ===========================================
+:: STEP 3: Git + Auto-update
+:: ===========================================
+echo   [3/5] Checking for updates...
 git --version >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   ⚠️  Git no encontrado — saltando actualizaciones
+    echo   [WARN] Git not found - skipping updates
     goto :DEPS
 )
 
-:: Fetch remote sin modificar nada
 git fetch origin %BRANCH% >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   ⚠️  No se pudo conectar al servidor — usando versión actual
+    echo   [WARN] Cannot reach server - using current version
     goto :DEPS
 )
 
-:: Comparar versiones
 for /f %%h in ('git rev-parse HEAD 2^>nul') do set "LOCAL=%%h"
 for /f %%h in ('git rev-parse origin/%BRANCH% 2^>nul') do set "REMOTE=%%h"
 
 if "%LOCAL%"=="%REMOTE%" (
-    echo   ✅ Ya tienes la última versión
+    echo   [OK] Already on latest version
 ) else (
     echo.
-    echo   📦 Nueva versión disponible — actualizando...
+    echo   [UPDATE] New version available - downloading...
     git stash >nul 2>&1
     git checkout %BRANCH% >nul 2>&1
     git pull origin %BRANCH%
-    if %ERRORLEVEL% NEQ 0 (
-        echo   ⚠️  Error al actualizar — usando versión actual
+    if !ERRORLEVEL! NEQ 0 (
+        echo   [WARN] Update failed - using current version
         git stash pop >nul 2>&1
     ) else (
-        echo   ✅ Actualizado correctamente
+        echo   [OK] Updated successfully
         git stash pop >nul 2>&1
     )
 )
 
-:: ═══════════════════════════════════════════
-:: 4. Verificar dependencias
-:: ═══════════════════════════════════════════
+:: ===========================================
+:: STEP 4: Dependencies
+:: ===========================================
 :DEPS
-echo   [4/5] Verificando dependencias...
+echo   [4/5] Checking dependencies...
 python -c "import streamlit; import MetaTrader5" >nul 2>&1
 if %ERRORLEVEL% NEQ 0 (
-    echo   📦 Instalando dependencias (primera vez, puede tardar)...
+    echo   Installing dependencies (first time, may take a few minutes)...
     pip install -r sentinel\requirements.txt --quiet
-    if %ERRORLEVEL% NEQ 0 (
+    if !ERRORLEVEL! NEQ 0 (
         echo.
-        echo   ❌ ERROR al instalar dependencias.
-        echo   Ejecuta manualmente:
-        echo   pip install -r sentinel\requirements.txt
+        echo   [ERROR] Failed to install dependencies.
+        echo   Run manually: pip install -r sentinel\requirements.txt
         echo.
         pause
         exit /b 1
     )
-    echo   ✅ Dependencias instaladas
+    echo   [OK] Dependencies installed
 ) else (
-    echo   ✅ Dependencias OK
+    echo   [OK] Dependencies OK
 )
 
-:: ═══════════════════════════════════════════
-:: 5. Iniciar SENTINEL
-:: ═══════════════════════════════════════════
-echo   [5/5] Iniciando SENTINEL...
+:: ===========================================
+:: STEP 5: Launch
+:: ===========================================
+echo   [5/5] Starting SENTINEL...
 echo.
-echo   ╔══════════════════════════════════════════╗
-echo   ║   🟢 SENTINEL iniciando en %URL%    ║
-echo   ║   El navegador se abrirá en 5 segundos  ║
-echo   ║                                          ║
-echo   ║   Para detener: cierra esta ventana      ║
-echo   ╚══════════════════════════════════════════╝
+echo   ============================================
+echo     SENTINEL starting at %URL%
+echo     Browser will open in 5 seconds
+echo.
+echo     To stop: close this window
+echo   ============================================
 echo.
 
-:: Abrir navegador después de 5 segundos (en paralelo)
+:: Open browser after 5 seconds (parallel)
 start /b cmd /c "timeout /t 5 /nobreak >nul & start "" %URL%"
 
-:: Iniciar Streamlit (bloquea esta ventana)
+:: Start Streamlit (blocks this window)
 streamlit run sentinel\dashboard.py --server.headless true --server.port %PORT% --browser.gatherUsageStats false --server.address 0.0.0.0
+
+:: If we get here, streamlit exited
+echo.
+echo   SENTINEL has stopped.
+pause
