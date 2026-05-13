@@ -23,18 +23,49 @@ cd /d "%SCRIPT_DIR%"
 :: ═══════════════════════════════════════════
 :: 1. ¿Ya está corriendo?
 :: ═══════════════════════════════════════════
-echo   [1/5] Verificando si SENTINEL ya está activo...
+set "ALREADY_RUNNING=0"
+echo   [1/5] Verificando si SENTINEL ya esta activo...
 powershell -Command "try { $r = Invoke-WebRequest -Uri '%URL%' -TimeoutSec 2 -UseBasicParsing; exit 0 } catch { exit 1 }" >nul 2>&1
 if %ERRORLEVEL% EQU 0 (
+    set "ALREADY_RUNNING=1"
+    echo   ✅ SENTINEL esta corriendo — verificando actualizaciones...
+
+    :: Check for updates even if running
+    git --version >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 goto :ALREADY_NO_UPDATE
+    git fetch origin %BRANCH% >nul 2>&1
+    if %ERRORLEVEL% NEQ 0 goto :ALREADY_NO_UPDATE
+
+    for /f %%h in ('git rev-parse HEAD 2^>nul') do set "LOCAL_CHK=%%h"
+    for /f %%h in ('git rev-parse origin/%BRANCH% 2^>nul') do set "REMOTE_CHK=%%h"
+
+    if "%LOCAL_CHK%"=="%REMOTE_CHK%" goto :ALREADY_NO_UPDATE
+
     echo.
-    echo   ✅ SENTINEL ya está corriendo!
-    echo   📂 Abriendo en el navegador...
-    start "" "%URL%"
+    echo   📦 Nueva version detectada! Reiniciando SENTINEL...
+    echo   ⏳ Deteniendo version anterior...
+
+    :: Kill the running Streamlit process
+    powershell -Command "Get-Process -Name 'streamlit' -ErrorAction SilentlyContinue | Stop-Process -Force" >nul 2>&1
+    powershell -Command "Get-NetTCPConnection -LocalPort %PORT% -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force }" >nul 2>&1
+    timeout /t 3 /nobreak >nul
+
+    echo   ✅ Detenido. Actualizando y relanzando...
     echo.
-    echo   Listo. Puedes cerrar esta ventana.
-    timeout /t 5 >nul
-    exit /b 0
+    goto :CHECK_PYTHON
 )
+goto :CHECK_PYTHON
+
+:ALREADY_NO_UPDATE
+echo   ✅ Sin actualizaciones pendientes
+echo   📂 Abriendo en el navegador...
+start "" "%URL%"
+echo.
+echo   Listo. Puedes cerrar esta ventana.
+timeout /t 5 >nul
+exit /b 0
+
+:CHECK_PYTHON
 
 :: ═══════════════════════════════════════════
 :: 2. Verificar Python
