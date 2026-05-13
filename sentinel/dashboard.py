@@ -1,6 +1,7 @@
 """
-SENTINEL v3.2 — Dashboard Streamlit
+SENTINEL v3.4 — Dashboard Streamlit
 Layout: [Score+Dir+Price | Niveles | Timeframes | Correlaciones] en 1 fila
+Includes: Signal panels, backtesting, AI chat assistant
 """
 import sys, os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -8,15 +9,20 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 import streamlit as st
 import pandas as pd
 import numpy as np
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("sentinel.dashboard")
 
 from sentinel.config import (SYMBOLS, WEIGHTS, SCORE_ALERT_THRESHOLD,
     SCORE_STRONG_THRESHOLD, DASHBOARD_REFRESH_SECONDS, EXPECTED_CORRELATIONS)
 from sentinel.data_feed import DataFeed
 from sentinel.sentinel_core import SentinelCore
+from sentinel.version import VERSION, CODENAME
 
-st.set_page_config(page_title="SENTINEL v3.2 — USD/CLP", page_icon="🛡️",
+st.set_page_config(page_title=f"SENTINEL v{VERSION} — USD/CLP", page_icon="🛡️",
                    layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -734,10 +740,262 @@ with sig2_col:
 
 
 # ══════════════════════════════════════════════════════════
+# BACKTESTING
+# ══════════════════════════════════════════════════════════
+st.markdown("---")
+
+with st.expander("📊 **Backtesting** — Validar sistema contra historial", expanded=False):
+    st.markdown("""
+    <div style='background:rgba(76,201,240,0.08);border:1px solid #4cc9f033;border-radius:8px;
+    padding:10px 14px;margin-bottom:12px;font-size:13px;color:#aaa;'>
+    Reproduce el scoring SENTINEL sobre datos históricos y compara con trades reales del operador.
+    Útil para calibrar pesos y validar señales.
+    </div>""", unsafe_allow_html=True)
+
+    bt_c1, bt_c2, bt_c3, bt_c4 = st.columns([1, 1, 1, 1])
+    with bt_c1:
+        bt_bars = st.selectbox("📏 Período (velas M1)", [100, 250, 500, 1000, 2000],
+                               index=2, help="Más velas = más tiempo de cálculo")
+    with bt_c2:
+        bt_trade_days = st.selectbox("📅 Historial trades (días)", [7, 14, 30, 60, 90, 180, 365],
+                                     index=3, help="Días hacia atrás para buscar trades reales")
+    with bt_c3:
+        bt_threshold = st.slider("🎯 Umbral score", 50, 80, 65,
+                                 help="Score mínimo para considerar 'señal activa'")
+    with bt_c4:
+        st.write("")  # spacer
+        bt_run = st.button("▶️ Ejecutar Backtest", use_container_width=True, type="primary")
+
+    if bt_run:
+        try:
+            from sentinel.backtester import replay_scoring, fetch_historical_trades, compare_with_trades
+            import plotly.graph_objects as go
+            from plotly.subplots import make_subplots
+
+            progress_bar = st.progress(0, text="⏳ Calculando scores históricos...")
+            def update_progress(pct):
+                progress_bar.progress(min(pct, 1.0), text=f"🔄 Replay: {pct*100:.0f}%")
+
+            replay_df = replay_scoring(bars_back=bt_bars, progress_callback=update_progress)
+            progress_bar.progress(1.0, text="✅ Replay completado")
+
+            if not replay_df.empty:
+                # ── Gráfico principal ──
+                fig = make_subplots(rows=2, cols=1, shared_xaxes=True,
+                                  vertical_spacing=0.06,
+                                  row_heights=[0.55, 0.45],
+                                  subplot_titles=("", ""))
+
+                fig.add_trace(go.Scatter(
+                    x=replay_df['timestamp'], y=replay_df['price'],
+                    name='Precio', line=dict(color='#4cc9f0', width=1.5),
+                    fill='tozeroy', fillcolor='rgba(76,201,240,0.05)'),
+                    row=1, col=1)
+
+                # Score colored by zones
+                fig.add_trace(go.Scatter(
+                    x=replay_df['timestamp'], y=replay_df['score'],
+                    name='Score', line=dict(color='#ffd166', width=2)),
+                    row=2, col=1)
+
+                # Zone fills
+                fig.add_hrect(y0=bt_threshold, y1=100, fillcolor="#52b788", opacity=0.06,
+                             line_width=0, row=2, col=1)
+                fig.add_hrect(y0=0, y1=100-bt_threshold, fillcolor="#ef476f", opacity=0.06,
+                             line_width=0, row=2, col=1)
+                fig.add_hline(y=bt_threshold, line_dash='dash', line_color='#52b788',
+                             opacity=0.4, row=2, col=1,
+                             annotation_text=f"LONG ≥{bt_threshold}", annotation_position="right")
+                fig.add_hline(y=100-bt_threshold, line_dash='dash', line_color='#ef476f',
+                             opacity=0.4, row=2, col=1,
+                             annotation_text=f"SHORT ≤{100-bt_threshold}", annotation_position="right")
+                fig.add_hline(y=50, line_dash='dot', line_color='#555', opacity=0.3, row=2, col=1)
+
+                fig.update_layout(
+                    height=380, template='plotly_dark',
+                    margin=dict(l=40, r=10, t=10, b=10),
+                    showlegend=False,
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    yaxis=dict(title="USDCLP", gridcolor='#1a1d23'),
+                    yaxis2=dict(title="Score", gridcolor='#1a1d23', range=[0, 100]),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+                # ── Métricas ──
+                avg_score = replay_df['score'].mean()
+                long_pct = (replay_df['direction'] == 'LONG').mean() * 100
+                short_pct = (replay_df['direction'] == 'SHORT').mean() * 100
+                neutral_pct = 100 - long_pct - short_pct
+                active_pct = (replay_df['score'].apply(
+                    lambda s: s >= bt_threshold or s <= (100 - bt_threshold))).mean() * 100
+
+                mc1, mc2, mc3, mc4, mc5 = st.columns(5)
+                mc1.metric("📊 Puntos", f"{len(replay_df):,}")
+                mc2.metric("📈 Score Prom.", f"{avg_score:.1f}")
+                mc3.metric("🟢 LONG", f"{long_pct:.0f}%")
+                mc4.metric("🔴 SHORT", f"{short_pct:.0f}%")
+                mc5.metric("🎯 Señal Activa", f"{active_pct:.0f}%")
+
+                # ── Comparación con trades ──
+                st.markdown("---")
+                st.markdown("**Comparación con Trades Reales**")
+                trades_df = fetch_historical_trades(days_back=bt_trade_days)
+                if not trades_df.empty:
+                    comparison = compare_with_trades(replay_df, trades_df)
+                    tc1, tc2, tc3, tc4 = st.columns(4)
+
+                    tc1.markdown(f"""<div style='background:#1a1d23;border-radius:8px;padding:12px;text-align:center;'>
+                        <div style='color:#888;font-size:11px;'>Trades Analizados</div>
+                        <div style='font-size:28px;font-weight:bold;color:#4cc9f0;'>{comparison['total_trades']}</div>
+                        </div>""", unsafe_allow_html=True)
+                    tc2.markdown(f"""<div style='background:#1a1d23;border-radius:8px;padding:12px;text-align:center;'>
+                        <div style='color:#888;font-size:11px;'>SENTINEL Acertó</div>
+                        <div style='font-size:28px;font-weight:bold;color:#52b788;'>{comparison['accuracy_pct']}%</div>
+                        </div>""", unsafe_allow_html=True)
+                    tc3.markdown(f"""<div style='background:#1a1d23;border-radius:8px;padding:12px;text-align:center;'>
+                        <div style='color:#888;font-size:11px;'>Pérdidas Filtrables</div>
+                        <div style='font-size:28px;font-weight:bold;color:#ef476f;'>{comparison['filter_rate_pct']}%</div>
+                        </div>""", unsafe_allow_html=True)
+                    tc4.markdown(f"""<div style='background:#1a1d23;border-radius:8px;padding:12px;text-align:center;'>
+                        <div style='color:#888;font-size:11px;'>Total Perdedores</div>
+                        <div style='font-size:28px;font-weight:bold;color:#ffd166;'>{comparison['total_losing']}</div>
+                        </div>""", unsafe_allow_html=True)
+
+                    if comparison['trade_details']:
+                        st.dataframe(
+                            pd.DataFrame(comparison['trade_details']),
+                            use_container_width=True, hide_index=True,
+                            column_config={
+                                "profit": st.column_config.NumberColumn("Profit", format="%.2f"),
+                                "sentinel_score": st.column_config.NumberColumn("Score", format="%.1f"),
+                            })
+                else:
+                    st.info("💡 No se encontraron trades de USDCLP en MT5. "
+                           "Conecta con la cuenta del operador para comparar.")
+            else:
+                st.warning("⚠️ Datos históricos insuficientes.")
+        except Exception as e:
+            logger.error(f"Error en backtest: {e}")
+            st.error(f"❌ Error en backtest: {e}")
+
+# ══════════════════════════════════════════════════════════
+# CHAT IA
+# ══════════════════════════════════════════════════════════
+st.markdown("---")
+
+with st.expander("🤖 **Asistente IA** — Análisis asistido por Claude", expanded=False):
+    # Initialize AI state
+    if "ai_messages" not in st.session_state:
+        st.session_state.ai_messages = []
+    if "ai_client" not in st.session_state:
+        from sentinel.ai_chat import SentinelAI
+        st.session_state.ai_client = SentinelAI()
+
+    ai = st.session_state.ai_client
+    from sentinel.ai_chat import MODELS
+
+    # Header row: model + status + clear
+    ai_h1, ai_h2, ai_h3 = st.columns([1.2, 2.5, 0.8])
+    with ai_h1:
+        ai_model = st.selectbox("Modelo", list(MODELS.keys()),
+                               format_func=lambda k: MODELS[k].name, label_visibility="collapsed")
+    with ai_h2:
+        if not ai.is_available:
+            ai_key_input = st.text_input("🔑 API Key", type="password",
+                                         placeholder="sk-ant-... (obtener en console.anthropic.com)",
+                                         label_visibility="collapsed")
+            if ai_key_input:
+                ai.set_api_key(ai_key_input)
+                st.rerun()
+        else:
+            st.markdown(f"""<div style='background:rgba(82,183,136,0.1);border:1px solid #52b78844;
+            border-radius:6px;padding:6px 12px;font-size:12px;color:#52b788;'>
+            ✅ Conectado — {ai.tracker.get_summary()}</div>""", unsafe_allow_html=True)
+    with ai_h3:
+        if st.button("🗑️ Limpiar", use_container_width=True):
+            st.session_state.ai_messages = []
+            st.rerun()
+
+    # Model description
+    sel_model = MODELS[ai_model]
+    st.markdown(f"""<div style='background:#1a1d23;border-radius:6px;padding:6px 10px;
+    font-size:11px;color:#888;margin-bottom:8px;'>
+    {sel_model.icon} <b>{sel_model.id}</b> — {sel_model.description}
+    &nbsp;|&nbsp; 💰 ${sel_model.input_cost_per_mtok}/M in, ${sel_model.output_cost_per_mtok}/M out
+    </div>""", unsafe_allow_html=True)
+
+    # Chat messages container (scrollable)
+    chat_container = st.container(height=350)
+    with chat_container:
+        if not st.session_state.ai_messages:
+            st.markdown("""<div style='text-align:center;padding:60px 20px;color:#555;'>
+            <div style='font-size:40px;'>🤖</div>
+            <div style='font-size:14px;margin-top:8px;'>Pregunta sobre el mercado actual</div>
+            <div style='font-size:11px;color:#444;margin-top:4px;'>
+            La IA recibe todos los datos del dashboard en tiempo real:<br>
+            scores, derivadas, correlaciones, niveles y alertas.
+            </div></div>""", unsafe_allow_html=True)
+        else:
+            for msg in st.session_state.ai_messages:
+                is_user = msg["role"] == "user"
+                align = "flex-end" if is_user else "flex-start"
+                bg = "rgba(76,201,240,0.12)" if is_user else "rgba(255,255,255,0.04)"
+                border = "#4cc9f044" if is_user else "#33333366"
+                icon = "🧑‍💻" if is_user else "🤖"
+
+                meta_html = ""
+                if msg.get("meta") and msg["meta"].get("duration_s"):
+                    m = msg["meta"]
+                    meta_html = (f"<div style='font-size:10px;color:#555;margin-top:4px;'>"
+                                f"⏱️ {m.get('duration_s',0)}s · "
+                                f"📊 {m.get('input_tokens',0):,}→{m.get('output_tokens',0):,} · "
+                                f"💰 ${m.get('cost_usd',0):.4f}</div>")
+
+                st.markdown(f"""<div style='display:flex;justify-content:{align};margin:4px 0;'>
+                <div style='background:{bg};border:1px solid {border};border-radius:10px;
+                padding:8px 12px;max-width:85%;font-size:13px;'>
+                <span style='font-size:11px;'>{icon}</span> {msg['content']}
+                {meta_html}
+                </div></div>""", unsafe_allow_html=True)
+
+    # Input area (contained, not pinned to bottom)
+    ai_input_col, ai_send_col = st.columns([5, 1])
+    with ai_input_col:
+        ai_prompt = st.text_input("Mensaje", placeholder="Ej: ¿Debería preocuparme por el RSI de M1?",
+                                  label_visibility="collapsed", key="ai_input")
+    with ai_send_col:
+        ai_send = st.button(f"{sel_model.icon} Enviar", use_container_width=True, type="primary")
+
+    if ai_send and ai_prompt:
+        st.session_state.ai_messages.append({"role": "user", "content": ai_prompt})
+
+        from sentinel.ai_chat import build_market_context
+        deriv_data = {
+            "velocity": vel_short if 'vel_short' in dir() else 0,
+            "acceleration": acceleration if 'acceleration' in dir() else 0,
+            "momentum_text": mom_txt if 'mom_txt' in dir() else "N/A",
+            "n_ticks": n_ticks if 'n_ticks' in dir() else 0,
+        }
+        system_ctx = build_market_context(result, price_info, deriv_data)
+        api_msgs = [{"role": m["role"], "content": m["content"]}
+                    for m in st.session_state.ai_messages[:-1]]
+
+        with st.spinner(f"{'🧠 Pensando profundamente' if ai_model == 'opus' else '⚡ Analizando'}..."):
+            response = ai.chat(ai_prompt, ai_model, system_ctx, api_msgs)
+
+        st.session_state.ai_messages.append({
+            "role": "assistant",
+            "content": response["content"],
+            "meta": response
+        })
+        st.rerun()
+
+# ══════════════════════════════════════════════════════════
 # FOOTER
 # ══════════════════════════════════════════════════════════
 st.markdown("---")
-st.caption(f"Última actualización: {datetime.now().strftime('%H:%M:%S')} | "
+st.caption(f"SENTINEL v{VERSION} \"{CODENAME}\" | "
+           f"Última actualización: {datetime.now().strftime('%H:%M:%S')} | "
            f"Fuente: {'🟢 MT5 Real-Time' if feed.mt5_connected else '🟡 Yahoo Finance (delay)'} | "
            f"Score: Técnico {WEIGHTS.technical*100:.0f}% + Correlación {WEIGHTS.correlation*100:.0f}%")
 
