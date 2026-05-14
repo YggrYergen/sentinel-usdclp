@@ -294,15 +294,6 @@ with col_score:
         "🧭 Dirección", f"{dr}<br><br>Téc: <b>{tech_dir}</b> (x2) | Corr: <b>{corr_dir}</b> (x3)",
         "down"), unsafe_allow_html=True)
 
-    if price_info["bid"] > 0:
-        st.markdown(tt(
-            f"<div style='background:#1a1d23;padding:6px 10px;border-radius:6px;text-align:center;'>"
-            f"<span style='color:#888;font-size:11px;'>USDCLP</span> "
-            f"<span style='font-size:22px;font-weight:bold;color:#fff;'>{price_info['bid']:.2f}</span>"
-            f" <span style='color:#52b788;font-size:11px;'>±{price_info['spread']:.2f}</span></div>",
-            "💲 Precio", f"Bid: {price_info['bid']:.2f} | Ask: {price_info['ask']:.2f} | Spread: {price_info['spread']:.2f}<br>"
-            f"Fuente: <b>{'MT5' if price_info.get('source')=='mt5' else 'Yahoo'}</b>",
-            "down"), unsafe_allow_html=True)
 
 # ── COL 2: Niveles ──
 def _level_tooltip(lb, lv, curr_price, is_resistance):
@@ -345,10 +336,19 @@ with col_levels:
             tip = _level_tooltip(lb, lv, curr_price, True)
             st.markdown(tt(rh, f"🔴 {lb} — Resistencia ({lv['price']:.2f})", tip, "down"), unsafe_allow_html=True)
 
-        st.markdown(f"<div style='text-align:center;padding:2px;font-size:18px;font-weight:bold;"
-                    f"background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;border-radius:3px;"
-                    f"margin:1px 0;color:#4cc9f0;line-height:1.3;'>▸ {curr_price:.2f}</div>",
-                    unsafe_allow_html=True)
+        _sprd = price_info.get('spread', 0) if price_info else 0
+        _src = 'MT5' if price_info.get('source')=='mt5' else 'Yahoo'
+        st.markdown(tt(
+            f"<div style='display:flex;justify-content:space-between;align-items:center;padding:3px 6px;"
+            f"font-family:monospace;background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;"
+            f"border-radius:3px;margin:1px 0;line-height:1.3;'>"
+            f"<span style='color:#4cc9f0;font-size:11px;font-weight:bold;'>USDCLP</span>"
+            f"<span style='font-size:18px;font-weight:bold;color:#4cc9f0;'>{curr_price:.2f}</span>"
+            f"<span style='color:#52b788;font-size:11px;'>±{_sprd:.1f}</span></div>",
+            "💲 Precio en Vivo",
+            f"Bid: {price_info['bid']:.2f} | Ask: {price_info['ask']:.2f} | Spread: {_sprd:.2f}<br>"
+            f"Fuente: <b>{_src}</b>",
+            "down"), unsafe_allow_html=True)
         for i, lv in enumerate(below):
             lb = f"S{i+1}"
             rh = (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:2px 4px;"
