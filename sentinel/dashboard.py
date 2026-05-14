@@ -145,14 +145,23 @@ from sentinel.correlation_engine import RealtimeCorrelationTracker
 if '_corr_tracker' not in st.session_state:
     st.session_state._corr_tracker = RealtimeCorrelationTracker(lambda_var=0.85, lambda_cov=0.97)
 
-# Track USDCLP tick return for correlation tracker
-_target_bid = price_info.get("bid", 0) if price_info else 0
-if '_target_last_bid' not in st.session_state:
-    st.session_state._target_last_bid = _target_bid
-_target_ret = 0.0
-if _target_bid > 0 and st.session_state._target_last_bid > 0:
-    _target_ret = (_target_bid - st.session_state._target_last_bid) / st.session_state._target_last_bid * 10000
-st.session_state._target_last_bid = _target_bid
+# Fetch USDCLP M1 data for real-time correlation (20 bars = 20 min window)
+_target_m1_closes = None
+_target_m1_ret = None
+try:
+    _target_m1_raw = feed.get_data(SYMBOLS["target"], timeframe_minutes=1, bars=22)
+    if _target_m1_raw is not None and len(_target_m1_raw) >= 10:
+        _target_m1_closes = _target_m1_raw['close'].values
+        _target_m1_ret = np.diff(np.log(_target_m1_closes))  # log returns
+except Exception:
+    pass
+
+# Track M1 candle for tracker updates (avoid feeding same candle twice)
+if '_last_m1_candle_idx' not in st.session_state:
+    st.session_state._last_m1_candle_idx = {}
+
+# Per-asset M1 rolling Pearson correlation
+_cross_m1_corr = {}
 
 for _cak in _cross_asset_keys:
     _ca_symbol = SYMBOLS.get(_cak, "")
@@ -170,7 +179,7 @@ for _cak in _cross_asset_keys:
         except Exception:
             _cross_tech[_cak] = {"score": 50, "fast_score": 50, "direction": "NEUTRAL"}
         try:
-            _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=10)
+            _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=22)
             if _ca_m1_data is not None and len(_ca_m1_data) >= 6:
                 _cls = _ca_m1_data['close'].values
                 # 2min: last close vs close 2 bars ago
@@ -181,6 +190,33 @@ for _cak in _cross_asset_keys:
                     "m2": _m2_bps, "m5": _m5_bps,
                     "spark": list(_cls[-6:]),  # last 5 bars for sparkline
                 }
+
+                # ── M1 Rolling Pearson Correlation ──
+                # Compare M1 log returns of USDCLP vs this asset
+                if _target_m1_ret is not None and len(_cls) >= 10:
+                    _asset_ret = np.diff(np.log(_cls))
+                    # Align to same length (shorter of the two)
+                    _min_len = min(len(_target_m1_ret), len(_asset_ret))
+                    if _min_len >= 8:
+                        _t_r = _target_m1_ret[-_min_len:]
+                        _a_r = _asset_ret[-_min_len:]
+                        # Pearson correlation
+                        _t_std = np.std(_t_r)
+                        _a_std = np.std(_a_r)
+                        if _t_std > 1e-10 and _a_std > 1e-10:
+                            _pcorr = np.corrcoef(_t_r, _a_r)[0, 1]
+                            if np.isfinite(_pcorr):
+                                _cross_m1_corr[_cak] = round(_pcorr, 3)
+
+                # ── Feed tracker with M1 return (once per new candle) ──
+                if len(_cls) >= 2:
+                    _m1_candle_key = f"{_cak}_{len(_ca_m1_data)}"
+                    if _m1_candle_key != st.session_state._last_m1_candle_idx.get(_cak):
+                        _ret_t = (_target_m1_closes[-1] / _target_m1_closes[-2] - 1) * 10000 if _target_m1_closes is not None and len(_target_m1_closes) >= 2 else 0
+                        _ret_a = (_cls[-1] / _cls[-2] - 1) * 10000
+                        _exp_sign = 1.0 if EXPECTED_CORRELATIONS.get(_cak, 0) > 0 else -1.0
+                        st.session_state._corr_tracker.update(_cak, _ret_t, _ret_a, _exp_sign)
+                        st.session_state._last_m1_candle_idx[_cak] = _m1_candle_key
         except Exception:
             pass
         # Tick delta: current price vs last refresh price (fastest possible)
@@ -192,9 +228,6 @@ for _cak in _cross_asset_keys:
                 _tick_bps = (_curr_bid - _prev_bid) / _prev_bid * 10000
                 _cross_m1.setdefault(_cak, {})["tick"] = _tick_bps
                 st.session_state._cross_last_prices[_cak] = _curr_bid
-                # Feed correlation confidence tracker
-                _exp_sign = 1.0 if EXPECTED_CORRELATIONS.get(_cak, 0) > 0 else -1.0
-                st.session_state._corr_tracker.update(_cak, _target_ret, _tick_bps, _exp_sign)
         except Exception:
             pass
 
@@ -344,7 +377,7 @@ with col_levels:
             f"border-radius:3px;margin:1px 0;line-height:1.3;'>"
             f"<span style='color:#4cc9f0;font-size:11px;font-weight:bold;'>USDCLP</span>"
             f"<span style='font-size:18px;font-weight:bold;color:#4cc9f0;'>{curr_price:.2f}</span>"
-            f"<span style='color:#52b788;font-size:11px;'>±{_sprd:.1f}</span></div>",
+            f"<span style='color:#4cc9f0;font-size:11px;'>±{_sprd:.1f}</span></div>",
             "💲 Precio en Vivo",
             f"Bid: {price_info['bid']:.2f} | Ask: {price_info['ask']:.2f} | Spread: {_sprd:.2f}<br>"
             f"Fuente: <b>{_src}</b>",
@@ -636,16 +669,23 @@ with col_corr:
                     f"</div>"
                 )
 
-            # Correlation Confidence ("HOY") column
+
+            # "HOY" column: M1 rolling Pearson correlation (live)
+            _m1c = _cross_m1_corr.get(_ek)
             _cc = st.session_state._corr_tracker.get_confidence(_ek)
-            _ccv = _cc["confidence"]
-            if _cc["warmup"]:
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>⏳</td>"
-            elif _cc["breakdown"]:
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#ef476f;font-size:10px;font-weight:bold;'>⚠️</td>"
+            if _m1c is not None:
+                # Color: green if matches expected direction, red if opposite
+                _exp = EXPECTED_CORRELATIONS.get(_ek, 0)
+                _matches = (_m1c > 0.05 and _exp > 0) or (_m1c < -0.05 and _exp < 0)
+                _opposes = (_m1c > 0.05 and _exp < 0) or (_m1c < -0.05 and _exp > 0)
+                _hoy_clr = "#52b788" if _matches else ("#ef476f" if _opposes else "#666")
+                _hoy_fw = "bold" if abs(_m1c) > 0.3 else "normal"
+                _cc_html = (f"<td style='padding:1px 3px;text-align:center;color:{_hoy_clr};"
+                            f"font-size:11px;font-weight:{_hoy_fw};'>{_m1c:+.2f}</td>")
+            elif _cc["warmup"]:
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>--</td>"
             else:
-                _ccclr = "#52b788" if _ccv >= 0.65 else ("#ffd166" if _ccv >= 0.45 else "#ef476f")
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:{_ccclr};font-size:11px;font-weight:bold;'>{_ccv:.0%}</td>"
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>--</td>"
             _hdr_rows += (
                 f"<tr>"
                 f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
