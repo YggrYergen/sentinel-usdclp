@@ -45,3 +45,7 @@ deep_reserach_one.md
 INICIAR_SENTINEL.bat
 ACTUALIZAR_SENTINEL.bat
 INSTALAR_SENTINEL.bat
+
+# MT5 personal launchers (local paths)
+MT5_PAPA_SOLO_LECTURA.bat
+MT5_DEMO_TRADING.bat

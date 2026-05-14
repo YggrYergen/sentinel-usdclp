@@ -14,19 +14,19 @@ class SentinelCore:
         self.alerts = []
 
     def calculate_composite(self) -> dict:
-        """Calcula el score compuesto SENTINEL (Técnico 40% + Correlación 60%)."""
+        """Calcula el score compuesto SENTINEL (Técnico 75% + Correlación 25%)."""
         from sentinel.technical_scorer import calculate_multi_tf_score
         from sentinel.correlation_engine import calculate_target_correlations, detect_divergence
         from sentinel.levels_engine import calculate_levels
 
         target = SYMBOLS["target"]
         
-        # 1. Score técnico multi-TF (40%)
+        # 1. Score técnico multi-TF (75%)
         tech = calculate_multi_tf_score(self.feed, target)
         tech_score = tech["composite_score"]
         tech_dir = tech["h4_direction"]
 
-        # 2. Score de correlación (60%)
+        # 2. Score de correlación (25%)
         all_data = self.feed.get_all_data(timeframe_minutes=60, bars=200)
         corr = calculate_target_correlations(all_data)
         corr_score = corr["score"]

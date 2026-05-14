@@ -82,7 +82,7 @@ def init_system():
 feed, core = init_system()
 
 with st.sidebar:
-    st.title("🛡️ SENTINEL v3.2")
+    st.title(f"🛡️ SENTINEL v{VERSION}")
     st.caption("USD/CLP Trading System")
     st.divider()
     status = feed.get_status()
@@ -117,6 +117,43 @@ tech_sc = comp["technical"]["score"]
 corr_sc = comp["correlation"]["score"]
 tech_dir = comp["technical"]["direction"]
 corr_dir = comp["correlation"]["direction"]
+
+# ── Cross-asset technical scores + M1 price data (for enhanced corr table) ──
+from sentinel.technical_scorer import calculate_multi_tf_score
+
+_cross_asset_keys = ["dxy", "copper", "wti", "usdmxn", "usdbrl", "audusd", "usdcnh", "sp500"]
+_cross_tech = {}
+_cross_m1 = {}
+for _cak in _cross_asset_keys:
+    _ca_symbol = SYMBOLS.get(_cak, "")
+    if _ca_symbol:
+        try:
+            _ca_result = calculate_multi_tf_score(feed, _ca_symbol)
+            _cross_tech[_cak] = {
+                "score": _ca_result.get("composite_score", 50),
+                "direction": _ca_result.get("h4_direction", "NEUTRAL"),
+            }
+        except Exception:
+            _cross_tech[_cak] = {"score": 50, "direction": "NEUTRAL"}
+        try:
+            _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=10)
+            if _ca_m1_data is not None and len(_ca_m1_data) >= 6:
+                _cls = _ca_m1_data['close'].values
+                _ops = _ca_m1_data['open'].values
+                _cross_m1[_cak] = {
+                    "imm": (_cls[-1] - _ops[-1]) / _cls[-1] * 10000,
+                    "m1": (_cls[-1] - _cls[-2]) / _cls[-2] * 10000,
+                    "m5": (_cls[-1] - _cls[-6]) / _cls[-6] * 10000,
+                }
+        except Exception:
+            pass
+
+def _bps_to_arrow(bps, sensitivity=9):
+    angle = max(0, min(180, 90 - bps * sensitivity))
+    if bps > 2: clr = "#52b788"
+    elif bps < -2: clr = "#ef476f"
+    else: clr = "#555"
+    return angle, clr
 
 # ══════════════════════════════════════════════════════════
 # HEADER — 4 columnas en 1 fila
@@ -167,7 +204,7 @@ with col_score:
     else:
         sr = f"🔴 <b>ESPERAR ({score})</b><br>Téc={tech_sc:.0f}, Corr={corr_sc:.0f}. Sin consenso."
     st.markdown(tt(f'<div class="score-box {css}">{score}</div>', "📊 Score Compuesto",
-        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.4 + {corr_sc:.0f}×0.6 = <b>{score}</b>",
+        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.75 + {corr_sc:.0f}×0.25 = <b>{score}</b>",
         "down"), unsafe_allow_html=True)
 
     d = direction
@@ -444,7 +481,7 @@ with col_tf:
 with col_corr:
     corr_data = comp["correlation"].get("details", {}).get("correlations", {})
     if corr_data:
-        # Full names and interpretation logic
+        # Full names and interpretation logic (kept for tooltips)
         CORR_FULL = {
             "dxy": ("DXY (Dólar global)", +0.75, "directa", "DXY sube → USDCLP sube"),
             "copper": ("Cobre", -0.70, "inversa", "Cobre sube → CLP fuerte → USDCLP baja"),
@@ -455,51 +492,34 @@ with col_corr:
             "usdcnh": ("USD/CNH", +0.45, "directa", "Yuan débil → menos demanda China → Cobre baja"),
             "sp500": ("S&P 500", -0.30, "inversa", "Risk-on → EM se fortalecen → USDCLP baja"),
         }
-        rows = ""
-        reliable = []
-        ignore_list = []
-        caution = []
-        inst_details = []
 
+        # Build tooltip details (from old code)
+        reliable = []; ignore_list = []; caution = []; inst_details = []
         for k, act in corr_data.items():
             if act is None or (isinstance(act, float) and np.isnan(act)): continue
             exp = EXPECTED_CORRELATIONS.get(k, 0)
             df = act - exp
-            ic = "✅" if abs(df) < 0.2 else ("⚠️" if abs(df) < 0.4 else "🔴")
-            rows += (f"<tr><td style='padding:1px 3px;color:#aaa;'>{CN.get(k,k)}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;'>{act:.2f}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;color:#555;'>{exp}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;'>{df:+.2f}</td>"
-                     f"<td style='padding:1px 2px;'>{ic}</td></tr>")
-
             name, ex, rel_type, why = CORR_FULL.get(k, (k, 0, "?", ""))
             abs_diff = abs(df)
-
             if abs_diff < 0.2:
-                status = "✅ Confiable"
-                reliable.append(CN.get(k, k))
+                status = "✅ Confiable"; reliable.append(CN.get(k, k))
                 detail = f"Correlación {rel_type} funcionando normal. <b>Usar como confirmador.</b>"
             elif abs_diff < 0.4:
-                status = "⚠️ Atención"
-                caution.append(CN.get(k, k))
+                status = "⚠️ Atención"; caution.append(CN.get(k, k))
                 detail = f"Desalineado (Δ={df:+.2f}). Usar con <b>precaución</b>."
             else:
-                status = "🔴 Desconectado"
-                ignore_list.append(CN.get(k, k))
+                status = "🔴 Desconectado"; ignore_list.append(CN.get(k, k))
                 detail = f"<b>Quiebre</b> (Δ={df:+.2f}). <b>No usar</b> como referencia hoy."
-
             inst_details.append(
                 f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
                 f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
                 f"<b>{name}</b> — {status}<br>"
-                f"<span style='color:#888;'>{why}</span><br>"
-                f"{detail}</div>")
+                f"<span style='color:#888;'>{why}</span><br>{detail}</div>")
 
         cs = comp["correlation"]["score"]
         cd = comp["correlation"]["direction"]
         cc = "#52b788" if cs >= 65 else ("#ffd166" if cs >= 50 else "#ef476f")
 
-        # Summary recommendation
         corr_rec = ""
         if reliable:
             corr_rec += f"✅ <b>Confirmadores activos:</b> {', '.join(reliable)}<br>Estos se mueven como se espera — <b>pesar sus señales</b>.<br><br>"
@@ -507,19 +527,57 @@ with col_corr:
             corr_rec += f"🔴 <b>Ignorar hoy:</b> {', '.join(ignore_list)}<br>Correlación rota — <b>no usar</b> para decidir.<br><br>"
         if caution:
             corr_rec += f"⚠️ <b>Con precaución:</b> {', '.join(caution)}<br>Parcialmente desalineados.<br><br>"
-
         if cd == "LONG":
             corr_rec += f"📈 Consenso: <b>LONG</b> — mayoría de confirmadores apuntan al alza."
         elif cd == "SHORT":
             corr_rec += f"📉 Consenso: <b>SHORT</b> — mayoría de confirmadores apuntan a la baja."
         else:
             corr_rec += f"➡️ Sin consenso — instrumentos divididos."
-
         corr_rec += "<br><br>" + "".join(inst_details)
+
+        # ── Enhanced correlation table with tech scores + multi-TF arrows ──
+        _hdr_rows = ""
+        for _ek in _cross_asset_keys:
+            _e_act = corr_data.get(_ek)
+            if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)): continue
+            _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
+            _e_df = _e_act - _e_exp
+            _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
+            _e_opacity = max(0.30, 1.0 - abs(_e_df) * 2.2)
+
+            _e_tech = _cross_tech.get(_ek, {"score": 50, "direction": "NEUTRAL"})
+            _e_tsc = _e_tech["score"]
+            _e_tclr = "#52b788" if _e_tsc >= 65 else ("#ffd166" if _e_tsc >= 50 else "#ef476f")
+            _e_angle = (100 - _e_tsc) / 100 * 180
+
+            _pm = _cross_m1.get(_ek, {"imm": 0, "m1": 0, "m5": 0})
+            _a5, _c5 = _bps_to_arrow(_pm["m5"], sensitivity=3)
+            _a1, _c1 = _bps_to_arrow(_pm["m1"], sensitivity=9)
+            _ai, _ci = _bps_to_arrow(_pm["imm"], sensitivity=18)
+
+            _hdr_rows += (
+                f"<tr style='opacity:{_e_opacity:.2f};'>"
+                f"<td style='padding:1px 3px;color:#aaa;'>{CN.get(_ek,_ek)}</td>"
+                f"<td style='padding:1px 3px;text-align:right;'>{_e_act:.2f}</td>"
+                f"<td style='padding:1px 3px;text-align:right;color:#555;'>{_e_exp}</td>"
+                f"<td style='padding:1px 3px;text-align:right;'>{_e_df:+.2f}</td>"
+                f"<td style='padding:1px 2px;'>{_e_ic}</td>"
+                f"<td style='padding:1px 2px;'>"
+                f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
+                f"<span style='display:inline-block;font-size:22px;color:{_ci};line-height:1;"
+                f"transform:rotate({_ai:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
+                f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:14px;color:{_c1};line-height:1;"
+                f"transform:rotate({_a1:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
+                f"transform:rotate({_a5:.0f}deg);'>▲</span></div></td>"
+                f"</tr>"
+            )
 
         tbl = (f"<table style='width:100%;font-size:12px;font-family:monospace;"
                f"border-collapse:collapse;line-height:1.5;'>"
-               f"{rows}</table>"
+               f"{_hdr_rows}</table>"
                f"<div style='text-align:center;margin-top:3px;padding:2px;"
                f"border-top:1px solid #333;font-size:13px;'>"
                f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
@@ -556,10 +614,10 @@ if not rsi_divs and not filtered_alerts and not divs:
     st.caption("✅ Sin alertas activas")
 
 # ══════════════════════════════════════════════════════════
-# SEÑALES v2 — EXPERIMENTAL (con derivadas)
+# EXPERIMENTAL
 # ══════════════════════════════════════════════════════════
 st.markdown("---")
-st.markdown("### 🧪 Señales v2 (derivadas)")
+st.markdown("### 🧪 Experimental")
 
 # Price buffer in session_state
 if "price_buffer" not in st.session_state:
@@ -737,6 +795,223 @@ with sig2_col:
         f"Buffer: {n_ticks} ticks (~{n_ticks*5}s)",
         "down"), unsafe_allow_html=True)
     st.markdown(deriv_info, unsafe_allow_html=True)
+
+# ── Experimental: Direction Engine A vs B + Confirmation Score ──
+exp_col_deriv, exp_col_dir, exp_col_conf = st.columns([0.55, 1.0, 1.0])
+
+# The deriv column is already rendered above in sig2_col — leave exp_col_deriv empty
+# to maintain alignment. The new widgets go in the next two columns.
+
+# ── DATA for experimental widgets ──
+# Direction Engine A: weights aligned with 75/25 (tech×3, corr×1)
+dir_a_votes = {"LONG": 0, "SHORT": 0, "NEUTRAL": 0}
+for _d, _w in [(tech_dir, 3), (corr_dir, 1)]:
+    if _d in dir_a_votes:
+        dir_a_votes[_d] += _w
+dir_a = max(dir_a_votes, key=dir_a_votes.get)
+dir_a_conf = dir_a_votes[dir_a] / 4 * 100  # confidence 0-100%
+dir_a_agree = tech_dir == corr_dir and tech_dir != "NEUTRAL"
+
+# Direction Engine B: current weights (tech×2, corr×3) + conflict detection
+dir_b_votes = {"LONG": 0, "SHORT": 0, "NEUTRAL": 0}
+for _d, _w in [(tech_dir, 2), (corr_dir, 3)]:
+    if _d in dir_b_votes:
+        dir_b_votes[_d] += _w
+dir_b = max(dir_b_votes, key=dir_b_votes.get)
+dir_b_conf = dir_b_votes[dir_b] / 5 * 100
+dir_b_conflict = (tech_dir != corr_dir and tech_dir != "NEUTRAL" and corr_dir != "NEUTRAL")
+
+# Confirmation Score: measures how much correlations confirm the technical direction
+corr_details_exp = comp.get("correlation", {}).get("details", {}).get("correlations", {})
+_conf_confirming = 0
+_conf_opposing = 0
+_conf_total_w = 0
+for _ck, _cv in corr_details_exp.items():
+    if _cv is None or (isinstance(_cv, float) and np.isnan(_cv)): continue
+    _exp_corr = EXPECTED_CORRELATIONS.get(_ck, 0)
+    _w_conf = abs(_exp_corr)  # weight by expected correlation strength
+    _conf_total_w += _w_conf
+    # Determine what this asset "votes" for USDCLP direction
+    # If actual corr matches sign of expected → asset is behaving normally
+    # Then check if asset's recent move implies USDCLP should go up or down
+    if abs(_cv - _exp_corr) < 0.3:  # only use reliable correlations
+        if tech_dir == "LONG":
+            _conf_confirming += _w_conf if _cv * _exp_corr > 0 else 0
+            _conf_opposing += _w_conf if _cv * _exp_corr < 0 else 0
+        elif tech_dir == "SHORT":
+            _conf_confirming += _w_conf if _cv * _exp_corr > 0 else 0
+            _conf_opposing += _w_conf if _cv * _exp_corr < 0 else 0
+if _conf_total_w > 0:
+    _conf_ratio = (_conf_confirming - _conf_opposing) / _conf_total_w
+    confirmation_score = round(50 + _conf_ratio * 50, 1)
+else:
+    confirmation_score = 50.0
+
+# Current correlation score (consensus-based, direction-blind)
+current_corr_score = corr_sc
+
+# Composite with confirmation score
+composite_confirmed = round(tech_sc * WEIGHTS.technical + confirmation_score * WEIGHTS.correlation, 1)
+
+with exp_col_dir:
+    # ── Direction Engine Comparison ──
+    # Engine A
+    _da_clr = "#52b788" if dir_a == "LONG" else ("#ef476f" if dir_a == "SHORT" else "#ffd166")
+    _da_em = "📈" if dir_a == "LONG" else ("📉" if dir_a == "SHORT" else "➡️")
+    _da_bg = f"rgba({82 if dir_a=='LONG' else (239 if dir_a=='SHORT' else 255)}," \
+             f"{183 if dir_a=='LONG' else (71 if dir_a=='SHORT' else 209)}," \
+             f"{136 if dir_a=='LONG' else (111 if dir_a=='SHORT' else 102)},0.10)"
+    # Engine B
+    _db_clr = "#52b788" if dir_b == "LONG" else ("#ef476f" if dir_b == "SHORT" else "#ffd166")
+    _db_em = "📈" if dir_b == "LONG" else ("📉" if dir_b == "SHORT" else "➡️")
+    if dir_b_conflict:
+        _db_clr = "#ff6b6b"; _db_em = "⚠️"
+    _db_bg = f"rgba(255,{100 if dir_b_conflict else (209 if dir_b=='NEUTRAL' else 183)}," \
+             f"{100 if dir_b_conflict else (102 if dir_b=='NEUTRAL' else 136)},0.10)"
+
+    dir_html = (
+        f"<div style='background:#1a1d23;border-radius:8px;padding:6px 8px;'>"
+        f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:4px;'>"
+        f"🔬 Motor de Dirección A vs B</div>"
+        f"<table style='width:100%;border-collapse:collapse;'><tr>"
+        # Engine A
+        f"<td style='width:50%;background:{_da_bg};padding:5px 6px;text-align:center;"
+        f"border-right:1px solid #333;border-radius:6px 0 0 6px;'>"
+        f"<div style='font-size:9px;color:#888;'>A: Téc×3 Corr×1</div>"
+        f"<div style='font-size:16px;color:{_da_clr};font-weight:900;'>{_da_em} {dir_a}</div>"
+        f"<div style='font-size:11px;color:{_da_clr};'>{dir_a_conf:.0f}%</div>"
+        f"<div style='font-size:8px;color:#555;'>{'✅ Consenso' if dir_a_agree else 'Solo técnico'}</div></td>"
+        # Engine B
+        f"<td style='width:50%;background:{_db_bg};padding:5px 6px;text-align:center;"
+        f"border-radius:0 6px 6px 0;'>"
+        f"<div style='font-size:9px;color:#888;'>B: Téc×2 Corr×3</div>"
+        f"<div style='font-size:16px;color:{_db_clr};font-weight:900;'>{_db_em} {dir_b}</div>"
+        f"<div style='font-size:11px;color:{_db_clr};'>{dir_b_conf:.0f}%</div>"
+        f"<div style='font-size:8px;color:#555;'>{'⚠️ CONFLICTO' if dir_b_conflict else ('✅ Consenso' if dir_a_agree else 'Solo corr')}</div></td>"
+        f"</tr></table>"
+    )
+
+    # ── Sub-score breakdown (below direction) ──
+    _t_clr = "#52b788" if tech_dir == "LONG" else ("#ef476f" if tech_dir == "SHORT" else "#ffd166")
+    _t_em = "📈" if tech_dir == "LONG" else ("📉" if tech_dir == "SHORT" else "➡️")
+    _c_clr = "#52b788" if corr_dir == "LONG" else ("#ef476f" if corr_dir == "SHORT" else "#ffd166")
+    _c_em = "📈" if corr_dir == "LONG" else ("📉" if corr_dir == "SHORT" else "➡️")
+    _t_pct = tech_sc  # 0-100 directional
+    _c_pct = corr_sc  # 0-100 consensus
+    _t_bar_w = min(100, abs(_t_pct - 50) * 2)
+    _c_bar_w = min(100, abs(_c_pct - 50) * 2)
+
+    dir_html += (
+        f"<div style='margin-top:5px;padding-top:5px;border-top:1px solid #333;'>"
+        f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:3px;'>Desglose Compuesto</div>"
+        # Technical sub-score
+        f"<div style='display:flex;align-items:center;gap:4px;margin:2px 0;'>"
+        f"<span style='font-size:9px;color:#888;width:30px;'>TÉC</span>"
+        f"<span style='font-size:12px;color:{_t_clr};font-weight:bold;width:35px;'>{_t_em}{tech_sc:.0f}</span>"
+        f"<div style='flex:1;background:#111;border-radius:2px;height:6px;overflow:hidden;'>"
+        f"<div style='width:{_t_bar_w:.0f}%;height:100%;background:{_t_clr};border-radius:2px;'></div></div>"
+        f"<span style='font-size:9px;color:#555;'>75%</span></div>"
+        # Correlation sub-score
+        f"<div style='display:flex;align-items:center;gap:4px;margin:2px 0;'>"
+        f"<span style='font-size:9px;color:#888;width:30px;'>CORR</span>"
+        f"<span style='font-size:12px;color:{_c_clr};font-weight:bold;width:35px;'>{_c_em}{corr_sc:.0f}</span>"
+        f"<div style='flex:1;background:#111;border-radius:2px;height:6px;overflow:hidden;'>"
+        f"<div style='width:{_c_bar_w:.0f}%;height:100%;background:{_c_clr};border-radius:2px;'></div></div>"
+        f"<span style='font-size:9px;color:#555;'>25%</span></div>"
+        f"</div></div>"
+    )
+
+    # Tooltip for direction engines
+    dir_tip = (
+        f"<b>Motor A (Propuesto):</b> Téc×3 + Corr×1 → {dir_a} ({dir_a_conf:.0f}%)<br>"
+        f"Alinea pesos de dirección con el score (75/25).<br><br>"
+        f"<b>Motor B (Actual):</b> Téc×2 + Corr×3 → {dir_b} ({dir_b_conf:.0f}%)<br>"
+        f"Pesos actuales — correlación domina dirección."
+    )
+    if dir_a != dir_b:
+        dir_tip += f"<br><br>⚠️ <b>Los motores DISCREPAN:</b> A dice {dir_a}, B dice {dir_b}. "
+        dir_tip += f"Esto significa que el peso de la correlación cambia la recomendación."
+    if dir_b_conflict:
+        dir_tip += f"<br><br>🔴 <b>CONFLICTO:</b> Téc dice {tech_dir}, Corr dice {corr_dir}. Ambos con convicción."
+
+    st.markdown(tt(dir_html, "🔬 Comparativa Motores de Dirección", dir_tip, "down"),
+                unsafe_allow_html=True)
+
+with exp_col_conf:
+    # ── Confirmation Score Comparison ──
+    _cs_curr_clr = "#52b788" if current_corr_score >= 65 else ("#ffd166" if current_corr_score >= 50 else "#ef476f")
+    _cs_conf_clr = "#52b788" if confirmation_score >= 55 else ("#ef476f" if confirmation_score < 45 else "#ffd166")
+    _cs_conf_em = "✅" if confirmation_score >= 55 else ("❌" if confirmation_score < 45 else "➡️")
+    _cs_conf_txt = "Confirma" if confirmation_score >= 55 else ("Contra" if confirmation_score < 45 else "Neutral")
+
+    # Composite comparison
+    _comp_curr = score  # current composite
+    _comp_new = composite_confirmed
+    _comp_diff = _comp_new - _comp_curr
+    _comp_diff_clr = "#52b788" if _comp_diff >= 0 else "#ef476f"
+
+    conf_html = (
+        f"<div style='background:#1a1d23;border-radius:8px;padding:6px 8px;'>"
+        f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:4px;'>"
+        f"🔗 Score Correlación: Actual vs Confirmación</div>"
+        f"<table style='width:100%;border-collapse:collapse;'><tr>"
+        # Current (consensus)
+        f"<td style='width:50%;background:rgba(255,209,102,0.08);padding:5px 6px;text-align:center;"
+        f"border-right:1px solid #333;border-radius:6px 0 0 6px;'>"
+        f"<div style='font-size:9px;color:#888;'>Actual (Consenso)</div>"
+        f"<div style='font-size:20px;color:{_cs_curr_clr};font-weight:900;'>{current_corr_score:.0f}</div>"
+        f"<div style='font-size:9px;color:#888;'>No distingue dirección</div></td>"
+        # New (confirmation)
+        f"<td style='width:50%;background:rgba({82 if confirmation_score>=55 else 239},"
+        f"{183 if confirmation_score>=55 else 71},{136 if confirmation_score>=55 else 111},0.08);"
+        f"padding:5px 6px;text-align:center;border-radius:0 6px 6px 0;'>"
+        f"<div style='font-size:9px;color:#888;'>Propuesto (Confirma Téc)</div>"
+        f"<div style='font-size:20px;color:{_cs_conf_clr};font-weight:900;'>"
+        f"{_cs_conf_em} {confirmation_score:.0f}</div>"
+        f"<div style='font-size:9px;color:{_cs_conf_clr};'>{_cs_conf_txt} al técnico</div></td>"
+        f"</tr></table>"
+    )
+
+    # Composite impact
+    _css_curr = "score-green" if _comp_curr >= 75 else ("score-yellow" if _comp_curr >= 65 else "score-red")
+    _css_new = "score-green" if _comp_new >= 75 else ("score-yellow" if _comp_new >= 65 else "score-red")
+    conf_html += (
+        f"<div style='margin-top:5px;padding-top:5px;border-top:1px solid #333;'>"
+        f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:3px;'>Impacto en Compuesto</div>"
+        f"<div style='display:flex;justify-content:center;align-items:center;gap:8px;'>"
+        f"<div style='text-align:center;'>"
+        f"<div style='font-size:9px;color:#888;'>Actual</div>"
+        f"<div style='font-size:18px;font-weight:bold;color:#fff;'>{_comp_curr}</div></div>"
+        f"<div style='font-size:14px;color:#555;'>→</div>"
+        f"<div style='text-align:center;'>"
+        f"<div style='font-size:9px;color:#888;'>Propuesto</div>"
+        f"<div style='font-size:18px;font-weight:bold;color:#fff;'>{_comp_new}</div></div>"
+        f"<div style='font-size:11px;color:{_comp_diff_clr};font-weight:bold;'>"
+        f"({_comp_diff:+.1f})</div>"
+        f"</div></div></div>"
+    )
+
+    # Tooltip
+    conf_tip = (
+        f"<b>Score Actual (Consenso):</b> {current_corr_score:.1f}<br>"
+        f"Mide cuántos assets concuerdan entre sí. <b>No importa si confirman o contradicen</b> al técnico.<br><br>"
+        f"<b>Score Propuesto (Confirmación):</b> {confirmation_score:.1f}<br>"
+        f"Mide cuánto las correlaciones <b>confirman la dirección técnica</b>.<br>"
+        f"&gt;50 = confirman | &lt;50 = contradicen | 50 = neutral<br><br>"
+        f"<b>Impacto:</b> Compuesto pasa de {_comp_curr} a {_comp_new} ({_comp_diff:+.1f})<br>"
+    )
+    if _comp_diff < -5:
+        conf_tip += f"⚠️ <b>El score propuesto BAJA</b> porque las correlaciones no confirman al técnico. "
+        conf_tip += f"El score actual escondía este desacuerdo."
+    elif _comp_diff > 5:
+        conf_tip += f"✅ <b>El score propuesto SUBE</b> porque las correlaciones confirman al técnico."
+
+    st.markdown(tt(conf_html, "🔗 Comparativa Score de Correlación", conf_tip, "down"),
+                unsafe_allow_html=True)
+
+# ── [COMMENTED OUT] Enhanced Correlation Table moved to header col_corr ──
+# Data calc and rendering now in header. Kept here for rollback.
+# See col_corr section above for the active version.
 
 
 # ══════════════════════════════════════════════════════════

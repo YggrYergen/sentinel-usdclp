@@ -76,7 +76,7 @@ def detect_rsi_divergences(tf_scores: dict) -> list:
         return divergences
     
     # Ordenar timeframes de menor a mayor
-    tf_order = ["M1", "M5", "M15"]
+    tf_order = ["M1", "M2", "M5", "M15"]
     ordered = [(tf, rsi_values[tf]) for tf in tf_order if tf in rsi_values]
     
     # Comparar cada par adyacente de timeframes
