@@ -278,10 +278,6 @@ with col_score:
         sr = f"🟡 <b>ALERTA ({score})</b><br>Téc={tech_sc:.0f}, Corr={corr_sc:.0f}. Buscar confirmación."
     else:
         sr = f"🔴 <b>ESPERAR ({score})</b><br>Téc={tech_sc:.0f}, Corr={corr_sc:.0f}. Sin consenso."
-    st.markdown(tt(f'<div class="score-box {css}">{score}</div>', "📊 Score Compuesto",
-        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.75 + {corr_sc:.0f}×0.25 = <b>{score}</b>",
-        "down"), unsafe_allow_html=True)
-
     d = direction
     if tech_dir == corr_dir and tech_dir != "NEUTRAL":
         dr = f"✅ Consenso → {tech_dir}."
@@ -294,11 +290,15 @@ with col_score:
     else:
         dr = "Ambos neutrales — fuera."
     st.markdown(tt(
-        f"<div style='text-align:center;padding:4px 0;'>"
-        f"<span style='font-size:22px;'>{dir_emoji[d]}</span> "
+        f"<div style='display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0;'>"
+        f"<span style='background:{dir_color[d]}22;border:1px solid {dir_color[d]};border-radius:4px;"
+        f"padding:1px 6px;font-size:16px;font-weight:900;color:{dir_color[d]};line-height:1.3;'>{score}</span>"
+        f"<span style='font-size:22px;'>{dir_emoji[d]}</span>"
         f"<span style='color:{dir_color[d]};font-size:18px;font-weight:bold;'>{d}</span>"
-        f" <span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
-        "🧭 Dirección", f"{dr}<br><br>Téc: <b>{tech_dir}</b> (x2) | Corr: <b>{corr_dir}</b> (x3)",
+        f"<span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
+        "📊 Score + Dirección",
+        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.75 + {corr_sc:.0f}×0.25 = <b>{score}</b>"
+        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (x2) | Corr: <b>{corr_dir}</b> (x3)",
         "down"), unsafe_allow_html=True)
 
 
