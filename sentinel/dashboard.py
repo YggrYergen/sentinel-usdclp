@@ -535,49 +535,22 @@ with col_corr:
             corr_rec += f"➡️ Sin consenso — instrumentos divididos."
         corr_rec += "<br><br>" + "".join(inst_details)
 
-        # ── Enhanced correlation table with tech scores + multi-TF arrows ──
-        _hdr_rows = ""
-        for _ek in _cross_asset_keys:
-            _e_act = corr_data.get(_ek)
-            if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)): continue
-            _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
-            _e_df = _e_act - _e_exp
-            _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
-            _e_opacity = max(0.30, 1.0 - abs(_e_df) * 2.2)
-
-            _e_tech = _cross_tech.get(_ek, {"score": 50, "direction": "NEUTRAL"})
-            _e_tsc = _e_tech["score"]
-            _e_tclr = "#52b788" if _e_tsc >= 65 else ("#ffd166" if _e_tsc >= 50 else "#ef476f")
-            _e_angle = (100 - _e_tsc) / 100 * 180
-
-            _pm = _cross_m1.get(_ek, {"imm": 0, "m1": 0, "m5": 0})
-            _a5, _c5 = _bps_to_arrow(_pm["m5"], sensitivity=3)
-            _a1, _c1 = _bps_to_arrow(_pm["m1"], sensitivity=9)
-            _ai, _ci = _bps_to_arrow(_pm["imm"], sensitivity=18)
-
-            _hdr_rows += (
-                f"<tr style='opacity:{_e_opacity:.2f};'>"
-                f"<td style='padding:1px 3px;color:#aaa;'>{CN.get(_ek,_ek)}</td>"
-                f"<td style='padding:1px 3px;text-align:right;'>{_e_act:.2f}</td>"
-                f"<td style='padding:1px 3px;text-align:right;color:#555;'>{_e_exp}</td>"
-                f"<td style='padding:1px 3px;text-align:right;'>{_e_df:+.2f}</td>"
-                f"<td style='padding:1px 2px;'>{_e_ic}</td>"
-                f"<td style='padding:1px 2px;'>"
-                f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
-                f"<span style='display:inline-block;font-size:22px;color:{_ci};line-height:1;"
-                f"transform:rotate({_ai:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
-                f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:14px;color:{_c1};line-height:1;"
-                f"transform:rotate({_a1:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
-                f"transform:rotate({_a5:.0f}deg);'>▲</span></div></td>"
-                f"</tr>"
-            )
+        # ── Original simple correlation table ──
+        rows = ""
+        for k, act in corr_data.items():
+            if act is None or (isinstance(act, float) and np.isnan(act)): continue
+            exp = EXPECTED_CORRELATIONS.get(k, 0)
+            df = act - exp
+            ic = "✅" if abs(df) < 0.2 else ("⚠️" if abs(df) < 0.4 else "🔴")
+            rows += (f"<tr><td style='padding:1px 3px;color:#aaa;'>{CN.get(k,k)}</td>"
+                     f"<td style='padding:1px 3px;text-align:right;'>{act:.2f}</td>"
+                     f"<td style='padding:1px 3px;text-align:right;color:#555;'>{exp}</td>"
+                     f"<td style='padding:1px 3px;text-align:right;'>{df:+.2f}</td>"
+                     f"<td style='padding:1px 2px;'>{ic}</td></tr>")
 
         tbl = (f"<table style='width:100%;font-size:12px;font-family:monospace;"
                f"border-collapse:collapse;line-height:1.5;'>"
-               f"{_hdr_rows}</table>"
+               f"{rows}</table>"
                f"<div style='text-align:center;margin-top:3px;padding:2px;"
                f"border-top:1px solid #333;font-size:13px;'>"
                f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
@@ -1009,9 +982,68 @@ with exp_col_conf:
     st.markdown(tt(conf_html, "🔗 Comparativa Score de Correlación", conf_tip, "down"),
                 unsafe_allow_html=True)
 
-# ── [COMMENTED OUT] Enhanced Correlation Table moved to header col_corr ──
-# Data calc and rendering now in header. Kept here for rollback.
-# See col_corr section above for the active version.
+# ── Experimental: Enhanced Correlation Table with Technical Scores ──
+st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+
+_corr_data_exp = comp.get("correlation", {}).get("details", {}).get("correlations", {})
+_enh_rows = ""
+for _ek in _cross_asset_keys:
+    _e_act = _corr_data_exp.get(_ek)
+    if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)):
+        continue
+    _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
+    _e_df = _e_act - _e_exp
+    _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
+    _e_opacity = max(0.30, 1.0 - abs(_e_df) * 2.2)
+
+    _e_tech = _cross_tech.get(_ek, {"score": 50, "direction": "NEUTRAL"})
+    _e_tsc = _e_tech["score"]
+    _e_tdr = _e_tech["direction"]
+    _e_tclr = "#52b788" if _e_tsc >= 65 else ("#ffd166" if _e_tsc >= 50 else "#ef476f")
+    _e_angle = (100 - _e_tsc) / 100 * 180
+
+    _pm = _cross_m1.get(_ek, {"imm": 0, "m1": 0, "m5": 0})
+    _a5, _c5 = _bps_to_arrow(_pm["m5"], sensitivity=3)
+    _a1, _c1 = _bps_to_arrow(_pm["m1"], sensitivity=9)
+    _ai, _ci = _bps_to_arrow(_pm["imm"], sensitivity=18)
+
+    _enh_rows += (
+        f"<tr style='opacity:{_e_opacity:.2f};'>"
+        f"<td style='padding:1px 3px;color:#aaa;'>{CN.get(_ek,_ek)}</td>"
+        f"<td style='padding:1px 3px;text-align:right;'>{_e_act:.2f}</td>"
+        f"<td style='padding:1px 3px;text-align:right;color:#555;'>{_e_exp}</td>"
+        f"<td style='padding:1px 3px;text-align:right;'>{_e_df:+.2f}</td>"
+        f"<td style='padding:1px 2px;'>{_e_ic}</td>"
+        f"<td style='padding:1px 2px;'>"
+        f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
+        f"<span style='display:inline-block;font-size:22px;color:{_ci};line-height:1;"
+        f"transform:rotate({_ai:.0f}deg);'>▲</span>"
+        f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
+        f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
+        f"<span style='display:inline-block;font-size:14px;color:{_c1};line-height:1;"
+        f"transform:rotate({_a1:.0f}deg);'>▲</span>"
+        f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
+        f"transform:rotate({_a5:.0f}deg);'>▲</span></div></td>"
+        f"</tr>"
+    )
+
+_enh_table = (
+    f"<div style='padding:2px 4px;'>"
+    f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:2px;'>"
+    f"🔗 Correlaciones + Técnico Cross-Asset</div>"
+    f"<table style='width:100%;border-collapse:collapse;font-family:monospace;'>"
+    f"{_enh_rows}"
+    f"</table></div>"
+)
+
+_enh_tip = (
+    f"<b>Correlaciones + Técnico Cross-Asset</b><br><br>"
+    f"Flechas (grande→chica): Inmediato → Compuesto → 1min → 5min<br>"
+    f"Opacidad: más nítido = más confiable (menor delta correlación)"
+)
+
+st.markdown(tt(_enh_table, "🔗 Correlaciones + Técnico Cross-Asset", _enh_tip, "down"),
+            unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════
