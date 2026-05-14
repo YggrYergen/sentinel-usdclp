@@ -188,6 +188,24 @@ def _bps_to_arrow(bps, sensitivity=9, threshold=2):
     else: clr = "#555"
     return angle, clr
 
+def _slider_bar(label, weight_pct, score, msg):
+    """Generate an HTML bar slider for an indicator score."""
+    if score >= 65: bar_clr = "#52b788"
+    elif score >= 45: bar_clr = "#ffd166"
+    else: bar_clr = "#ef476f"
+    pct = max(0, min(100, score))
+    return (
+        f"<div style='margin:3px 0;'>"
+        f"<div style='display:flex;justify-content:space-between;font-size:10px;margin-bottom:1px;'>"
+        f"<span style='color:#aaa;'><b>{label}</b> ({weight_pct}%)</span>"
+        f"<span style='color:{bar_clr};font-weight:bold;'>{score:.0f}</span></div>"
+        f"<div style='background:#2a2d35;border-radius:3px;height:6px;width:100%;overflow:hidden;'>"
+        f"<div style='background:{bar_clr};height:100%;width:{pct}%;border-radius:3px;"
+        f"transition:width 0.3s;'></div></div>"
+        f"<div style='font-size:11px;color:#777;margin-top:1px;'>{msg}</div>"
+        f"</div>"
+    )
+
 # ══════════════════════════════════════════════════════════
 # HEADER — 4 columnas en 1 fila
 # ══════════════════════════════════════════════════════════
@@ -395,112 +413,88 @@ with col_tf:
                               f"border-radius:5px;padding:4px 7px;margin:4px 0;'>"
                               f"<b>🔗 Contexto Cross-Asset</b><br>"
                               f"<span style='color:{ca_clr};'>{ca_txt}</span></div>")
-            # Section 2: Live indicators with dynamic interpretation
+            # Section 2: Live indicators with visual sliders
             rp.append(f"<br><div style='border-top:1px solid #444;padding-top:4px;margin-top:4px;'>"
                       f"<b>📋 Indicadores {tf}:</b></div>")
 
-            # ── EMA ──
-            ema_d = dets.get("ema", {}); ema_sc = ema_d.get("score", 50); ema_v = ema_d.get("vote", 0)
+            # ── EMA slider ──
+            ema_d = dets.get("ema", {}); ema_sc = ema_d.get("score", 50)
             price = sigs.get("price", 0)
             e9 = sigs.get("ema_9", 0); e21 = sigs.get("ema_21", 0); e50 = sigs.get("ema_50", 0)
             ema_cross = sigs.get("ema_cross", 0)
             if e9 > e21 > e50 > 0:
-                ema_txt = "📈 <b>Tendencia LONG establecida</b> — EMAs alineadas al alza (9&gt;21&gt;50). Precio sostenido."
+                ema_msg = "Tendencia LONG establecida — EMAs alineadas al alza (9>21>50)"
             elif e9 < e21 < e50 and e50 > 0:
-                ema_txt = "📉 <b>Tendencia SHORT establecida</b> — EMAs alineadas a la baja (9&lt;21&lt;50)."
+                ema_msg = "Tendencia SHORT establecida — EMAs alineadas a la baja (9<21<50)"
             elif e9 > e21 and e21 < e50 and e50 > 0:
-                ema_txt = "🔄 <b>Posible giro alcista incipiente</b> — EMA 9 cruzó sobre 21, pero 21 aún bajo 50. Confirmación pendiente."
+                ema_msg = "Posible giro alcista — EMA 9 cruzó sobre 21, confirmación pendiente"
             elif e9 < e21 and e21 > e50 and e50 > 0:
-                ema_txt = "🔄 <b>Posible giro bajista incipiente</b> — EMA 9 cruzó bajo 21, pero 21 aún sobre 50. Precaución."
-            elif price > 0 and e50 > 0 and price > e50:
-                ema_txt = "🟢 Precio sobre EMA 50 — sesgo alcista de fondo, pero sin alineación completa."
-            elif price > 0 and e50 > 0 and price < e50:
-                ema_txt = "🔴 Precio bajo EMA 50 — sesgo bajista de fondo."
+                ema_msg = "Posible giro bajista — EMA 9 cruzó bajo 21, precaución"
             else:
-                ema_txt = "⚪ EMAs entrelazadas — sin tendencia clara. Mercado lateral."
+                ema_msg = "EMAs entrelazadas — sin tendencia clara, mercado lateral"
             if ema_cross == 1:
-                ema_txt += "<br>⚡ <b>¡Cruce alcista reciente!</b> EMA 9 cruzó sobre 21 → señal de compra."
+                ema_msg += " — ¡Cruce alcista!"
             elif ema_cross == -1:
-                ema_txt += "<br>⚡ <b>¡Cruce bajista reciente!</b> EMA 9 cruzó bajo 21 → señal de venta."
-            rp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:6px;padding:6px 8px;margin:4px 0;'>"
-                      f"<b>EMA</b> (30%) — {ema_sc:.0f}pts<br>{ema_txt}"
-                      f"<br><span style='color:#555;'>9={e9:.1f} | 21={e21:.1f} | 50={e50:.1f}</span></div>")
+                ema_msg += " — ¡Cruce bajista!"
+            rp.append(_slider_bar("EMA", 30, ema_sc, ema_msg))
 
-            # ── RSI ──
+            # ── RSI slider ──
             rsi_d = dets.get("rsi", {}); rsi_sc2 = rsi_d.get("score", 50)
-            if rsi >= 80:
-                rsi_txt = "🔴 <b>Sobrecompra extrema</b> — agotamiento casi seguro. Corrección inminente. NO entrar LONG."
-            elif rsi >= 70:
-                rsi_txt = "🟠 <b>Sobrecompra</b> — la subida pierde fuerza. Longs riesgosos. Buscar señal SHORT si retrocede."
-            elif rsi >= 60:
-                rsi_txt = "🟢 Momentum alcista saludable — tendencia al alza activa. LONG viable."
+            if rsi >= 70:
+                rsi_msg = f"Sobrecompra ({rsi:.0f}) — agotamiento probable, NO entrar LONG"
             elif rsi >= 55:
-                rsi_txt = "🟢 Ligeramente alcista — incipiente presión compradora. Observar si se sostiene >60."
+                rsi_msg = f"Momentum alcista ({rsi:.0f}) — presión compradora activa"
             elif rsi >= 45:
-                rsi_txt = "⚪ Zona neutral — sin presión dominante. Esperar definición."
-            elif rsi >= 40:
-                rsi_txt = "🔴 Ligeramente bajista — incipiente presión vendedora. Observar si cae <40."
+                rsi_msg = f"Zona neutral ({rsi:.0f}) — sin presión dominante, esperar"
             elif rsi >= 30:
-                rsi_txt = "🔴 Momentum bajista — tendencia a la baja activa. SHORT viable."
-            elif rsi >= 20:
-                rsi_txt = "🟠 <b>Sobreventa</b> — la caída pierde fuerza. Shorts riesgosos. Buscar rebote LONG."
+                rsi_msg = f"Momentum bajista ({rsi:.0f}) — presión vendedora activa"
             else:
-                rsi_txt = "🟢 <b>Sobreventa extrema</b> — rebote técnico muy probable. Buscar entrada LONG con confirmación."
-            rp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:6px;padding:6px 8px;margin:4px 0;'>"
-                      f"<b>RSI</b> (20%) — {rsi_sc2:.0f}pts | RSI={rsi:.0f}<br>{rsi_txt}</div>")
+                rsi_msg = f"Sobreventa ({rsi:.0f}) — rebote probable, buscar LONG"
+            rp.append(_slider_bar("RSI", 20, rsi_sc2, rsi_msg))
 
-            # ── MACD ──
-            macd_d = dets.get("macd", {}); macd_sc = macd_d.get("score", 50); macd_v = macd_d.get("vote", 0)
+            # ── MACD slider ──
+            macd_d = dets.get("macd", {}); macd_sc = macd_d.get("score", 50)
             macd_h = sigs.get("macd_histogram", 0)
             if macd_h > 0.005:
-                macd_txt = "📈 <b>Momentum alcista fuerte</b> — histograma positivo y creciente. Impulso comprador claro."
+                macd_msg = f"Impulso alcista fuerte (H:{macd_h:+.4f}) — compradores dominan"
             elif macd_h > 0.001:
-                macd_txt = "🟢 Momentum alcista moderado — histograma positivo pero débil. Tendencia al alza presente."
-            elif macd_h > 0:
-                macd_txt = "🔄 <b>Momentum alcista incipiente</b> — histograma apenas positivo. Posible inicio de giro al alza."
+                macd_msg = f"Alcista moderado (H:{macd_h:+.4f}) — tendencia al alza presente"
             elif macd_h > -0.001:
-                macd_txt = "🔄 <b>Momentum bajista incipiente</b> — histograma apenas negativo. Posible inicio de giro a la baja."
+                macd_msg = f"Transición (H:{macd_h:+.4f}) — posible cambio de dirección"
             elif macd_h > -0.005:
-                macd_txt = "🔴 Momentum bajista moderado — histograma negativo. Presión vendedora activa."
+                macd_msg = f"Bajista moderado (H:{macd_h:+.4f}) — presión vendedora activa"
             else:
-                macd_txt = "📉 <b>Momentum bajista fuerte</b> — histograma muy negativo. Impulso vendedor dominante."
-            rp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:6px;padding:6px 8px;margin:4px 0;'>"
-                      f"<b>MACD</b> (25%) — {macd_sc:.0f}pts | H:{macd_h:+.4f}<br>{macd_txt}</div>")
+                macd_msg = f"Impulso bajista fuerte (H:{macd_h:+.4f}) — vendedores dominan"
+            rp.append(_slider_bar("MACD", 25, macd_sc, macd_msg))
 
-            # ── Bollinger Bands ──
+            # ── BB slider ──
             bb_d = dets.get("bb", {}); bb_sc = bb_d.get("score", 50)
             bb_pct = sigs.get("bb_pct", 0.5)
             if bb_pct > 0.95:
-                bb_txt = "🔴 <b>Tocando banda superior</b> — precio en el extremo alto de volatilidad. Probable retroceso a la media."
-            elif bb_pct > 0.80:
-                bb_txt = "🟠 Cerca de banda superior — presión alcista pero acercándose a zona de reversión."
-            elif bb_pct > 0.60:
-                bb_txt = "🟢 Mitad superior — sesgo alcista dentro del rango normal de volatilidad."
-            elif bb_pct > 0.40:
-                bb_txt = "⚪ Centro de las bandas — precio en equilibrio. Sin presión extrema."
-            elif bb_pct > 0.20:
-                bb_txt = "🔴 Mitad inferior — sesgo bajista dentro del rango de volatilidad."
+                bb_msg = f"Banda superior ({bb_pct:.0%}) — extremo alto, retroceso probable"
+            elif bb_pct > 0.65:
+                bb_msg = f"Mitad superior ({bb_pct:.0%}) — sesgo alcista, zona de precaución"
+            elif bb_pct > 0.35:
+                bb_msg = f"Centro ({bb_pct:.0%}) — precio en equilibrio, sin presión extrema"
             elif bb_pct > 0.05:
-                bb_txt = "🟠 Cerca de banda inferior — presión bajista pero acercándose a zona de rebote."
+                bb_msg = f"Mitad inferior ({bb_pct:.0%}) — sesgo bajista, posible rebote"
             else:
-                bb_txt = "🟢 <b>Tocando banda inferior</b> — precio en el extremo bajo. Probable rebote al alza."
-            rp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:6px;padding:6px 8px;margin:4px 0;'>"
-                      f"<b>BB</b> (15%) — {bb_sc:.0f}pts | Pos: {bb_pct:.0%}<br>{bb_txt}</div>")
+                bb_msg = f"Banda inferior ({bb_pct:.0%}) — extremo bajo, rebote probable"
+            rp.append(_slider_bar("BB", 15, bb_sc, bb_msg))
 
-            # ── Price Action ──
-            pa_d = dets.get("pa", {}); pa_sc = pa_d.get("score", 50); pa_det = pa_d.get("detail", "")
+            # ── PA slider ──
+            pa_d = dets.get("pa", {}); pa_sc = pa_d.get("score", 50)
             if pa_sc >= 70:
-                pa_txt = f"📈 <b>Vela alcista fuerte</b> — cuerpo grande, compradores dominan. Confirma momentum LONG."
+                pa_msg = "Vela alcista fuerte — cuerpo grande, compradores dominan"
             elif pa_sc >= 55:
-                pa_txt = f"🟢 Vela alcista moderada — cuerpo pequeño al alza. Compra tímida, sin convicción total."
+                pa_msg = "Vela alcista moderada — compra presente pero sin convicción total"
             elif pa_sc >= 45:
-                pa_txt = f"⚪ Vela indecisa (doji/mecha) — mercado sin definición. Esperar próxima vela."
+                pa_msg = "Vela indecisa (doji/mecha) — mercado sin definición"
             elif pa_sc >= 30:
-                pa_txt = f"🔴 Vela bajista moderada — cuerpo pequeño a la baja. Venta tímida."
+                pa_msg = "Vela bajista moderada — venta presente pero sin fuerza"
             else:
-                pa_txt = f"📉 <b>Vela bajista fuerte</b> — cuerpo grande, vendedores dominan. Confirma momentum SHORT."
-            rp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;border-radius:6px;padding:6px 8px;margin:4px 0;'>"
-                      f"<b>PA</b> (10%) — {pa_sc:.0f}pts<br>{pa_txt}</div>")
+                pa_msg = "Vela bajista fuerte — cuerpo grande, vendedores dominan"
+            rp.append(_slider_bar("PA", 10, pa_sc, pa_msg))
             card = (f"<div style='text-align:center;background:#1a1d23;padding:6px 3px;border-radius:8px;'>"
                     f"<div style='font-size:10px;color:#888;'>{tf} ({tf_w.get(tf,'')})</div>"
                     f"<div style='font-size:22px;color:{clr};font-weight:bold;'>{em} {sc}</div>"
@@ -1078,6 +1072,147 @@ with exp_col_conf:
 
 # ── [COMMENTED OUT] Enhanced Correlation Table — now active in header col_corr ──
 # Full code preserved for rollback. See col_corr section above.
+
+# ── Experimental: TF Cards with Visual Slider Tooltips ──
+st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
+
+_exp_tf_scores = tech_details.get("tf_scores", {})
+_exp_tf_order = [t for t in ["M1", "M2", "M5", "M15"] if t in _exp_tf_scores]
+if _exp_tf_scores:
+    _exp_cards = ""
+    for tf in _exp_tf_order:
+        r = _exp_tf_scores[tf]
+        sc = r.get("score", 50)
+        dr3 = r.get("direction", "NEUTRAL")
+        sigs = r.get("signals", {})
+        dets = r.get("details", {})
+        rsi = sigs.get("rsi", 50)
+        clr = "#52b788" if sc >= 65 else ("#ffd166" if sc >= 50 else "#ef476f")
+        em = "🟢" if sc >= 65 else ("🟡" if sc >= 50 else "🔴")
+        tf_w = {"M1": "40%", "M2": "30%", "M5": "20%", "M15": "10%"}
+
+        # Build indicator sliders
+        sliders = ""
+
+        # EMA — 5 interpretations
+        ema_d = dets.get("ema", {}); ema_sc = ema_d.get("score", 50)
+        e9 = sigs.get("ema_9", 0); e21 = sigs.get("ema_21", 0); e50 = sigs.get("ema_50", 0)
+        ema_cross = sigs.get("ema_cross", 0)
+        if e9 > e21 > e50 > 0:
+            ema_msg = "Tendencia LONG establecida — EMAs alineadas al alza (9>21>50)"
+        elif e9 < e21 < e50 and e50 > 0:
+            ema_msg = "Tendencia SHORT establecida — EMAs alineadas a la baja (9<21<50)"
+        elif e9 > e21 and e21 < e50 and e50 > 0:
+            ema_msg = "Posible giro alcista — EMA 9 cruzó sobre 21, confirmación pendiente"
+        elif e9 < e21 and e21 > e50 and e50 > 0:
+            ema_msg = "Posible giro bajista — EMA 9 cruzó bajo 21, precaución"
+        else:
+            ema_msg = "EMAs entrelazadas — sin tendencia clara, mercado lateral"
+        if ema_cross == 1:
+            ema_msg += " — ¡Cruce alcista!"
+        elif ema_cross == -1:
+            ema_msg += " — ¡Cruce bajista!"
+        sliders += _slider_bar("EMA", 30, ema_sc, ema_msg)
+
+        # RSI — 5 interpretations
+        rsi_d = dets.get("rsi", {}); rsi_sc2 = rsi_d.get("score", 50)
+        if rsi >= 70:
+            rsi_msg = f"Sobrecompra ({rsi:.0f}) — agotamiento probable, NO entrar LONG"
+        elif rsi >= 55:
+            rsi_msg = f"Momentum alcista ({rsi:.0f}) — presión compradora activa"
+        elif rsi >= 45:
+            rsi_msg = f"Zona neutral ({rsi:.0f}) — sin presión dominante, esperar"
+        elif rsi >= 30:
+            rsi_msg = f"Momentum bajista ({rsi:.0f}) — presión vendedora activa"
+        else:
+            rsi_msg = f"Sobreventa ({rsi:.0f}) — rebote probable, buscar LONG"
+        sliders += _slider_bar("RSI", 20, rsi_sc2, rsi_msg)
+
+        # MACD — 5 interpretations
+        macd_d = dets.get("macd", {}); macd_sc = macd_d.get("score", 50)
+        macd_h = sigs.get("macd_histogram", 0)
+        if macd_h > 0.005:
+            macd_msg = f"Impulso alcista fuerte (H:{macd_h:+.4f}) — compradores dominan"
+        elif macd_h > 0.001:
+            macd_msg = f"Alcista moderado (H:{macd_h:+.4f}) — tendencia al alza presente"
+        elif macd_h > -0.001:
+            macd_msg = f"Transición (H:{macd_h:+.4f}) — posible cambio de dirección"
+        elif macd_h > -0.005:
+            macd_msg = f"Bajista moderado (H:{macd_h:+.4f}) — presión vendedora activa"
+        else:
+            macd_msg = f"Impulso bajista fuerte (H:{macd_h:+.4f}) — vendedores dominan"
+        sliders += _slider_bar("MACD", 25, macd_sc, macd_msg)
+
+        # BB — 5 interpretations
+        bb_d = dets.get("bb", {}); bb_sc = bb_d.get("score", 50)
+        bb_pct = sigs.get("bb_pct", 0.5)
+        if bb_pct > 0.95:
+            bb_msg = f"Banda superior ({bb_pct:.0%}) — extremo alto, retroceso probable"
+        elif bb_pct > 0.65:
+            bb_msg = f"Mitad superior ({bb_pct:.0%}) — sesgo alcista, zona de precaución"
+        elif bb_pct > 0.35:
+            bb_msg = f"Centro ({bb_pct:.0%}) — precio en equilibrio, sin presión extrema"
+        elif bb_pct > 0.05:
+            bb_msg = f"Mitad inferior ({bb_pct:.0%}) — sesgo bajista, posible rebote"
+        else:
+            bb_msg = f"Banda inferior ({bb_pct:.0%}) — extremo bajo, rebote probable"
+        sliders += _slider_bar("BB", 15, bb_sc, bb_msg)
+
+        # PA — 5 interpretations
+        pa_d = dets.get("pa", {}); pa_sc = pa_d.get("score", 50)
+        if pa_sc >= 70:
+            pa_msg = "Vela alcista fuerte — cuerpo grande, compradores dominan"
+        elif pa_sc >= 55:
+            pa_msg = "Vela alcista moderada — compra presente pero sin convicción total"
+        elif pa_sc >= 45:
+            pa_msg = "Vela indecisa (doji/mecha) — mercado sin definición"
+        elif pa_sc >= 30:
+            pa_msg = "Vela bajista moderada — venta presente pero sin fuerza"
+        else:
+            pa_msg = "Vela bajista fuerte — cuerpo grande, vendedores dominan"
+        sliders += _slider_bar("PA", 10, pa_sc, pa_msg)
+
+        # Direction summary
+        if sc >= 65 and dr3 == "LONG":
+            dir_txt = f"<span style='color:#52b788;'>▲ LONG {sc}</span>"
+        elif sc >= 65 and dr3 == "SHORT":
+            dir_txt = f"<span style='color:#ef476f;'>▼ SHORT {sc}</span>"
+        elif sc >= 50:
+            dir_txt = f"<span style='color:#ffd166;'>◆ ESPERAR {sc}</span>"
+        else:
+            dir_txt = f"<span style='color:#ef476f;'>● FUERA {sc}</span>"
+
+        # Card
+        card = (
+            f"<div style='text-align:center;background:#1a1d23;padding:6px 3px;border-radius:8px;'>"
+            f"<div style='font-size:10px;color:#888;'>{tf} ({tf_w.get(tf,'')})</div>"
+            f"<div style='font-size:22px;color:{clr};font-weight:bold;'>{em} {sc}</div>"
+            f"<div style='font-size:11px;color:{clr};font-weight:bold;'>{dr3}</div>"
+            f"<div style='font-size:11px;color:{'#ef476f' if rsi >= 70 else ('#52b788' if rsi <= 30 else '#aaa')}'>"
+            f"RSI: <b>{rsi:.0f}</b></div></div>"
+        )
+
+        # Tooltip with sliders
+        tip = (
+            f"<div style='min-width:200px;'>"
+            f"<div style='text-align:center;margin-bottom:4px;'>{dir_txt}</div>"
+            f"{sliders}</div>"
+        )
+
+        _exp_cards += (
+            f"<td style='padding:2px;width:25%;vertical-align:top;'>"
+            f"<div class='tt-wrap tt-down'>{card}"
+            f"<div class='tt-pop'><div class='tt-title'>📊 {tf} ({tf_w.get(tf,'')})</div>{tip}</div>"
+            f"</div></td>"
+        )
+
+    _exp_table = (
+        f"<div style='margin-top:4px;'>"
+        f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:2px;'>"
+        f"📊 TF Scores (experimental — tooltips con sliders)</div>"
+        f"<table style='width:100%;border-collapse:collapse;'><tr>{_exp_cards}</tr></table></div>"
+    )
+    st.markdown(_exp_table, unsafe_allow_html=True)
 
 
 # ══════════════════════════════════════════════════════════

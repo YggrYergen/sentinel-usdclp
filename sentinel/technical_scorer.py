@@ -7,7 +7,7 @@ import numpy as np
 from sentinel.indicators import calculate_all, get_latest_signals
 from sentinel.config import INDICATORS as IND
 
-def calculate_technical_score(df: pd.DataFrame) -> dict:
+def calculate_technical_score(df: pd.DataFrame, normalize_macd: bool = False) -> dict:
     if df.empty or len(df) < 50:
         return {"score": 50, "direction": "NEUTRAL", "details": {}, "signals": {}}
     df_ind = calculate_all(df)
@@ -17,7 +17,9 @@ def calculate_technical_score(df: pd.DataFrame) -> dict:
     details = {}
     details["ema"] = _score_ema(signals)
     details["rsi"] = _score_rsi(signals)
-    details["macd"] = _score_macd(signals)
+    # M1/M2: normalize MACD histogram by ATR to avoid saturation on high-price instruments
+    atr = signals.get("atr", None) if normalize_macd else None
+    details["macd"] = _score_macd(signals, atr=atr)
     details["bb"] = _score_bb(signals)
     details["pa"] = _score_pa(df_ind)
     w = {"ema": 0.30, "rsi": 0.20, "macd": 0.25, "bb": 0.15, "pa": 0.10}
@@ -33,7 +35,9 @@ def calculate_multi_tf_score(data_feed, symbol: str) -> dict:
     tf_w = {"M15": 0.10, "M5": 0.20, "M2": 0.30, "M1": 0.40}
     for tf_name, tf_min in TIMEFRAMES.items():
         df = data_feed.get_data(symbol, tf_min, BARS_TO_FETCH)
-        tf_scores[tf_name] = calculate_technical_score(df)
+        # ATR-normalize MACD only for fast TFs (M1/M2) to avoid saturation
+        norm = tf_name in ("M1", "M2")
+        tf_scores[tf_name] = calculate_technical_score(df, normalize_macd=norm)
     wscore = sum(tf_scores.get(t, {}).get("score", 50) * tw for t, tw in tf_w.items())
     anchor_dir = tf_scores.get("M15", {}).get("direction", "NEUTRAL")
     dirs = [tf_scores[t]["direction"] for t in tf_scores]
@@ -157,8 +161,15 @@ def _score_rsi(s):
     elif rsi > 50: return {"score": round(55 + (rsi-50)*0.5, 1), "vote": 1, "detail": f"RSI={rsi:.1f}"}
     else: return {"score": round(45 - (50-rsi)*0.5, 1), "vote": -1, "detail": f"RSI={rsi:.1f}"}
 
-def _score_macd(s):
+def _score_macd(s, atr=None):
     h = s.get("macd_histogram", 0)
+    if atr and atr > 0:
+        # ATR-normalized: h/ATR gives ~-1 to +1 range, × 40 maps to ±40 around 50
+        h_norm = h / atr
+        sc = round(min(100, max(0, 50 + h_norm * 40)), 1)
+        v = 1 if h > 0 else (-1 if h < 0 else 0)
+        return {"score": sc, "vote": v, "detail": f"MACD {'+'if h>0 else ''}{h:.4f} (h/ATR={h_norm:+.2f})"}
+    # Original behavior (M5/M15 — untouched)
     if h > 0: return {"score": round(min(100, 60 + abs(h)*1000), 1), "vote": 1, "detail": f"MACD+ {h:.4f}"}
     elif h < 0: return {"score": round(max(0, 40 - abs(h)*1000), 1), "vote": -1, "detail": f"MACD- {h:.4f}"}
     return {"score": 50, "vote": 0, "detail": "MACD neutral"}
