@@ -331,7 +331,6 @@ with col_score:
         else: _r,_g,_b = 255,209,102; _ar="◆"; _ac="ESPERAR"; _ep2=0
         _op2 = 0.10+(_cv2/100)*0.45
         _tc2 = f"rgb({_r},{_g},{_b})"; _bg2 = f"rgba({_r},{_g},{_b},{_op2:.2f})"
-        _ept2 = f"<div style='font-size:9px;color:#666;'>{_ep2:.1f}</div>" if _ep2 > 0 else ""
         if _acc > 0.002: acc_icon = "⏫"
         elif _acc > 0: acc_icon = "🔼"
         elif _acc > -0.002: acc_icon = "🔽"
@@ -342,7 +341,7 @@ with col_score:
                      f"<div style='font-size:15px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
                      f"<div style='font-size:9px;color:{_tc2};font-weight:bold;line-height:1.1;'>{_ac}</div>"
                      f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv2:.0f}%</div>"
-                     f"{_ept2}</td>")
+                     f"</td>")
         v_dir = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
         a_dir = "acelerando" if _acc > 0.001 else ("frenando" if _acc < -0.001 else "estable")
         v2_ttp.append(
