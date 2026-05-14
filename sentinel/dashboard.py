@@ -255,12 +255,12 @@ with col_score:
         _op = 0.10+(_cv/100)*0.45
         _tc = f"rgb({_r},{_g},{_b})"; _bg = f"rgba({_r},{_g},{_b},{_op:.2f})"
         _ept = f"<div style='font-size:9px;color:#666;'>{_ep:.1f}</div>" if _ep>0 else ""
-        _cells += (f"<td style='background:{_bg};padding:4px 6px;text-align:center;"
+        _cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
                    f"border-right:1px solid #333;width:33%;'>"
-                   f"<div style='font-size:9px;color:#888;'>{_ic} {_sp}</div>"
-                   f"<div style='font-size:18px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
-                   f"<div style='font-size:10px;color:{_tc};font-weight:bold;'>{_ac}</div>"
-                   f"<div style='font-size:14px;color:#fff;font-weight:bold;'>{_cv:.0f}%</div>"
+                   f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp}</div>"
+                   f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
+                   f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
+                   f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
                    f"{_ept}</td>")
         _det = " + ".join(f"{t}({_sc_map.get(t,50):.0f})" for t in _wt)
         _ttp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
@@ -336,12 +336,12 @@ with col_score:
         elif _acc > 0: acc_icon = "🔼"
         elif _acc > -0.002: acc_icon = "🔽"
         else: acc_icon = "⏬"
-        v2_cells += (f"<td style='background:{_bg2};padding:4px 6px;text-align:center;"
+        v2_cells += (f"<td style='background:{_bg2};padding:2px 4px;text-align:center;"
                      f"border-right:1px solid #333;width:33%;'>"
-                     f"<div style='font-size:9px;color:#888;'>{_ic} {_sp} {acc_icon}</div>"
-                     f"<div style='font-size:18px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
-                     f"<div style='font-size:10px;color:{_tc2};font-weight:bold;'>{_ac}</div>"
-                     f"<div style='font-size:14px;color:#fff;font-weight:bold;'>{_cv2:.0f}%</div>"
+                     f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {acc_icon}</div>"
+                     f"<div style='font-size:15px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
+                     f"<div style='font-size:9px;color:{_tc2};font-weight:bold;line-height:1.1;'>{_ac}</div>"
+                     f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv2:.0f}%</div>"
                      f"{_ept2}</td>")
         v_dir = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
         a_dir = "acelerando" if _acc > 0.001 else ("frenando" if _acc < -0.001 else "estable")
