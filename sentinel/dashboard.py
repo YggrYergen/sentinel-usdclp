@@ -140,19 +140,15 @@ _cross_m1 = {}
 if '_cross_last_prices' not in st.session_state:
     st.session_state._cross_last_prices = {}
 
-# Session state: RealtimeCorrelationTracker (persistent across refreshes)
-from sentinel.correlation_engine import RealtimeCorrelationTracker
-if '_corr_tracker' not in st.session_state:
-    st.session_state._corr_tracker = RealtimeCorrelationTracker(lambda_var=0.85, lambda_cov=0.97)
-
-# Track USDCLP tick return for correlation tracker
-_target_bid = price_info.get("bid", 0) if price_info else 0
-if '_target_last_bid' not in st.session_state:
-    st.session_state._target_last_bid = _target_bid
-_target_ret = 0.0
-if _target_bid > 0 and st.session_state._target_last_bid > 0:
-    _target_ret = (_target_bid - st.session_state._target_last_bid) / st.session_state._target_last_bid * 10000
-st.session_state._target_last_bid = _target_bid
+# Fetch USDCLP M1 data for rolling correlation (30 bars = 30 min)
+_target_m1_closes = None
+try:
+    _target_m1 = feed.get_data(SYMBOLS["target"], timeframe_minutes=1, bars=30)
+    if _target_m1 is not None and len(_target_m1) >= 10:
+        _target_m1_closes = _target_m1['close'].values
+except Exception:
+    pass
+_cross_corr_hoy = {}  # key -> confidence 0-100
 
 for _cak in _cross_asset_keys:
     _ca_symbol = SYMBOLS.get(_cak, "")
@@ -170,7 +166,7 @@ for _cak in _cross_asset_keys:
         except Exception:
             _cross_tech[_cak] = {"score": 50, "fast_score": 50, "direction": "NEUTRAL"}
         try:
-            _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=10)
+            _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=30)
             if _ca_m1_data is not None and len(_ca_m1_data) >= 6:
                 _cls = _ca_m1_data['close'].values
                 # 2min: last close vs close 2 bars ago
@@ -181,6 +177,20 @@ for _cak in _cross_asset_keys:
                     "m2": _m2_bps, "m5": _m5_bps,
                     "spark": list(_cls[-6:]),  # last 5 bars for sparkline
                 }
+                # Rolling M1 correlation for HOY column
+                if _target_m1_closes is not None:
+                    _min_len = min(len(_target_m1_closes), len(_cls))
+                    if _min_len >= 10:
+                        _t_ret = np.diff(np.log(_target_m1_closes[-_min_len:]))
+                        _a_ret = np.diff(np.log(_cls[-_min_len:]))
+                        _rcorr = np.corrcoef(_t_ret, _a_ret)[0, 1]
+                        if np.isfinite(_rcorr):
+                            _exp_s = np.sign(EXPECTED_CORRELATIONS.get(_cak, 0))
+                            # directed_corr: positive = behaving as expected
+                            _dir_c = _rcorr * _exp_s
+                            # Scale to 0-100%: [-0.5,+0.5] -> [0%,100%]
+                            _hoy_pct = min(100, max(0, (_dir_c + 0.5) * 100))
+                            _cross_corr_hoy[_cak] = round(_hoy_pct)
         except Exception:
             pass
         # Tick delta: current price vs last refresh price (fastest possible)
@@ -192,9 +202,6 @@ for _cak in _cross_asset_keys:
                 _tick_bps = (_curr_bid - _prev_bid) / _prev_bid * 10000
                 _cross_m1.setdefault(_cak, {})["tick"] = _tick_bps
                 st.session_state._cross_last_prices[_cak] = _curr_bid
-                # Feed correlation confidence tracker
-                _exp_sign = 1.0 if EXPECTED_CORRELATIONS.get(_cak, 0) > 0 else -1.0
-                st.session_state._corr_tracker.update(_cak, _target_ret, _tick_bps, _exp_sign)
         except Exception:
             pass
 
@@ -636,16 +643,13 @@ with col_corr:
                     f"</div>"
                 )
 
-            # Correlation Confidence ("HOY") column
-            _cc = st.session_state._corr_tracker.get_confidence(_ek)
-            _ccv = _cc["confidence"]
-            if _cc["warmup"]:
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>⏳</td>"
-            elif _cc["breakdown"]:
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#ef476f;font-size:10px;font-weight:bold;'>⚠️</td>"
+            # HOY column: M1 rolling correlation confidence %
+            _hoy_v = _cross_corr_hoy.get(_ek, -1)
+            if _hoy_v < 0:
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>--</td>"
             else:
-                _ccclr = "#52b788" if _ccv >= 0.65 else ("#ffd166" if _ccv >= 0.45 else "#ef476f")
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:{_ccclr};font-size:11px;font-weight:bold;'>{_ccv:.0%}</td>"
+                _ccclr = "#52b788" if _hoy_v >= 65 else ("#ffd166" if _hoy_v >= 40 else "#ef476f")
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:{_ccclr};font-size:11px;font-weight:bold;'>{_hoy_v}%</td>"
             _hdr_rows += (
                 f"<tr>"
                 f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
