@@ -73,7 +73,7 @@ st.markdown("""
     }
     /* Reduce default Streamlit vertical gaps in signal column */
     section.main div[data-testid="stColumn"]:first-child div[data-testid="stMarkdownContainer"] {
-        margin-bottom: -8px;
+        margin-bottom: -12px;
     }
     section.main div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] > div {
         height: 100%; display: flex; flex-direction: column; justify-content: flex-start;
@@ -354,7 +354,7 @@ with col_score:
             f"<b>{_ic} {_sp}</b> — <span style='color:{_tc2};'><b>{_ac} {_cv2:.0f}%</b></span><br>"
             f"Base: {_base:.1f} + Vel({v_boost:+.1f}×{_vw}) + Acc({a_boost:+.1f}×{_aw}) = <b>{enhanced:.1f}</b><br>"
             f"<span style='color:#888;'>Velocidad: {_vel:+.4f}/s {v_dir} | {a_dir}</span></div>")
-    v2_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
+    v2_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;'>"
                f"<table style='width:100%;border-collapse:collapse;'><tr>{v2_cells}</tr></table></div>")
     # Momentum bar
     if vel_short > 0.01 and acceleration > 0.001:
