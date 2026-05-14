@@ -57,6 +57,17 @@ st.markdown("""
     .tt-down .tt-pop { bottom: auto; top: 105%; }
     .tt-down .tt-pop::after { top: auto; bottom: 100%;
         border-color: transparent transparent #3a3f55 transparent; }
+    /* Sparkline hover popup for cross-asset arrows */
+    .spark-wrap { position: relative; cursor: crosshair; }
+    .spark-wrap .spark-pop {
+        visibility: hidden; opacity: 0; position: absolute;
+        top: 110%; left: 50%; transform: translateX(-50%);
+        z-index: 1000; background: #1a1d23; border: 1px solid #3a3f55;
+        border-radius: 8px; padding: 6px 8px;
+        box-shadow: 0 6px 24px rgba(0,0,0,0.6);
+        transition: opacity 0.15s; pointer-events: none; white-space: nowrap;
+    }
+    .spark-wrap:hover .spark-pop { visibility: visible; opacity: 1; }
     section.main div[data-testid="stHorizontalBlock"]:first-of-type {
         align-items: stretch !important;
     }
@@ -124,34 +135,56 @@ from sentinel.technical_scorer import calculate_multi_tf_score
 _cross_asset_keys = ["dxy", "copper", "wti", "usdmxn", "usdbrl", "audusd", "usdcnh", "sp500"]
 _cross_tech = {}
 _cross_m1 = {}
+
+# Session state: track tick prices between refreshes for instant arrow
+if '_cross_last_prices' not in st.session_state:
+    st.session_state._cross_last_prices = {}
+
 for _cak in _cross_asset_keys:
     _ca_symbol = SYMBOLS.get(_cak, "")
     if _ca_symbol:
         try:
             _ca_result = calculate_multi_tf_score(feed, _ca_symbol)
+            _tfs = _ca_result.get("tf_scores", {})
+            # Fast score for arrow 2: 2/3 M1 + 1/3 M2 (reactive technicals)
+            _fast = _tfs.get("M1", {}).get("score", 50) * 2/3 + _tfs.get("M2", {}).get("score", 50) * 1/3
             _cross_tech[_cak] = {
                 "score": _ca_result.get("composite_score", 50),
+                "fast_score": _fast,
                 "direction": _ca_result.get("h4_direction", "NEUTRAL"),
             }
         except Exception:
-            _cross_tech[_cak] = {"score": 50, "direction": "NEUTRAL"}
+            _cross_tech[_cak] = {"score": 50, "fast_score": 50, "direction": "NEUTRAL"}
         try:
             _ca_m1_data = feed.get_data(_ca_symbol, timeframe_minutes=1, bars=10)
             if _ca_m1_data is not None and len(_ca_m1_data) >= 6:
                 _cls = _ca_m1_data['close'].values
-                _ops = _ca_m1_data['open'].values
+                # 2min: last close vs close 2 bars ago
+                _m2_bps = (_cls[-1] - _cls[-3]) / _cls[-3] * 10000
+                # 5min: last close vs close 5 bars ago
+                _m5_bps = (_cls[-1] - _cls[-6]) / _cls[-6] * 10000
                 _cross_m1[_cak] = {
-                    "imm": (_cls[-1] - _ops[-1]) / _cls[-1] * 10000,
-                    "m1": (_cls[-1] - _cls[-2]) / _cls[-2] * 10000,
-                    "m5": (_cls[-1] - _cls[-6]) / _cls[-6] * 10000,
+                    "m2": _m2_bps, "m5": _m5_bps,
+                    "spark": list(_cls[-6:]),  # last 5 bars for sparkline
                 }
         except Exception:
             pass
+        # Tick delta: current price vs last refresh price (fastest possible)
+        try:
+            _ca_tick = feed.get_current_price(_ca_symbol)
+            _curr_bid = _ca_tick.get("bid", 0) if _ca_tick else 0
+            if _curr_bid > 0:
+                _prev_bid = st.session_state._cross_last_prices.get(_cak, _curr_bid)
+                _tick_bps = (_curr_bid - _prev_bid) / _prev_bid * 10000
+                _cross_m1.setdefault(_cak, {})["tick"] = _tick_bps
+                st.session_state._cross_last_prices[_cak] = _curr_bid
+        except Exception:
+            pass
 
-def _bps_to_arrow(bps, sensitivity=9):
+def _bps_to_arrow(bps, sensitivity=9, threshold=2):
     angle = max(0, min(180, 90 - bps * sensitivity))
-    if bps > 2: clr = "#52b788"
-    elif bps < -2: clr = "#ef476f"
+    if bps > threshold: clr = "#52b788"
+    elif bps < -threshold: clr = "#ef476f"
     else: clr = "#555"
     return angle, clr
 
@@ -535,22 +568,83 @@ with col_corr:
             corr_rec += f"➡️ Sin consenso — instrumentos divididos."
         corr_rec += "<br><br>" + "".join(inst_details)
 
-        # ── Original simple correlation table ──
-        rows = ""
-        for k, act in corr_data.items():
-            if act is None or (isinstance(act, float) and np.isnan(act)): continue
-            exp = EXPECTED_CORRELATIONS.get(k, 0)
-            df = act - exp
-            ic = "✅" if abs(df) < 0.2 else ("⚠️" if abs(df) < 0.4 else "🔴")
-            rows += (f"<tr><td style='padding:1px 3px;color:#aaa;'>{CN.get(k,k)}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;'>{act:.2f}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;color:#555;'>{exp}</td>"
-                     f"<td style='padding:1px 3px;text-align:right;'>{df:+.2f}</td>"
-                     f"<td style='padding:1px 2px;'>{ic}</td></tr>")
+        # ── Enhanced correlation table (arrows + sparklines) ──
+        _hdr_rows = ""
+        for _ek in _cross_asset_keys:
+            _e_act = corr_data.get(_ek)
+            if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)): continue
+            _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
+            _e_df = _e_act - _e_exp
+            _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
+
+            _e_fs = 12 + max(0, (0.4 - abs(_e_df)) / 0.4) * 2
+            _e_fw = "700" if abs(_e_df) < 0.15 else ("500" if abs(_e_df) < 0.25 else "400")
+            _rs = f"font-size:{_e_fs:.1f}px;font-weight:{_e_fw};"
+
+            _e_tech = _cross_tech.get(_ek, {"score": 50, "fast_score": 50, "direction": "NEUTRAL"})
+            _e_fsc = _e_tech["fast_score"]
+            _e_tclr = "#52b788" if _e_fsc >= 60 else ("#ffd166" if _e_fsc >= 45 else "#ef476f")
+            _e_angle = (100 - _e_fsc) / 100 * 180
+
+            _pm = _cross_m1.get(_ek, {"tick": 0, "m2": 0, "m5": 0})
+            _a5, _c5 = _bps_to_arrow(_pm["m5"], sensitivity=3, threshold=2)
+            _a2, _c2 = _bps_to_arrow(_pm["m2"], sensitivity=6, threshold=1)
+            _at, _ct = _bps_to_arrow(_pm["tick"], sensitivity=25, threshold=0.3)
+
+            # Sparkline SVG
+            _spark_svg = ""
+            _spark_pts = _pm.get("spark", [])
+            if len(_spark_pts) >= 3:
+                _sw, _sh = 160, 44
+                _smin, _smax = min(_spark_pts), max(_spark_pts)
+                _srng = _smax - _smin if _smax > _smin else 0.01
+                _coords = []
+                for _si, _sp in enumerate(_spark_pts):
+                    _sx = _si / (len(_spark_pts) - 1) * _sw
+                    _sy = _sh - 2 - (_sp - _smin) / _srng * (_sh - 6)
+                    _coords.append(f"{_sx:.1f},{_sy:.1f}")
+                _spoly = " ".join(_coords)
+                _sclr = "#52b788" if _spark_pts[-1] >= _spark_pts[0] else "#ef476f"
+                _sdelta = (_spark_pts[-1] - _spark_pts[0]) / _spark_pts[0] * 100
+                _spark_svg = (
+                    f"<div class='spark-pop'>"
+                    f"<div style='font-size:11px;color:#aaa;margin-bottom:3px;'>"
+                    f"<b style='color:#fff;'>{CN.get(_ek,_ek)}</b> "
+                    f"<span style='color:{_sclr};'>{_spark_pts[-1]:.2f} ({_sdelta:+.3f}%)</span></div>"
+                    f"<svg width='{_sw}' height='{_sh}'>"
+                    f"<polyline points='{_spoly}' fill='none' stroke='{_sclr}' stroke-width='2' "
+                    f"stroke-linecap='round' stroke-linejoin='round'/>"
+                    f"<circle cx='{_sw}' cy='{_coords[-1].split(',')[1]}' r='3' fill='{_sclr}'/>"
+                    f"</svg>"
+                    f"<div style='font-size:9px;color:#555;text-align:center;'>últimos 5 min (M1)</div>"
+                    f"</div>"
+                )
+
+            _hdr_rows += (
+                f"<tr>"
+                f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
+                f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_act:.2f}</td>"
+                f"<td style='padding:1px 3px;text-align:right;color:#555;{_rs}'>{_e_exp}</td>"
+                f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_df:+.2f}</td>"
+                f"<td style='padding:1px 2px;{_rs}'>{_e_ic}</td>"
+                f"<td style='padding:1px 2px;'>"
+                f"<div class='spark-wrap'>"
+                f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
+                f"<span style='display:inline-block;font-size:22px;color:{_ct};line-height:1;"
+                f"transform:rotate({_at:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
+                f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:14px;color:{_c2};line-height:1;"
+                f"transform:rotate({_a2:.0f}deg);'>▲</span>"
+                f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
+                f"transform:rotate({_a5:.0f}deg);'>▲</span></div>"
+                f"{_spark_svg}</div></td>"
+                f"</tr>"
+            )
 
         tbl = (f"<table style='width:100%;font-size:12px;font-family:monospace;"
                f"border-collapse:collapse;line-height:1.5;'>"
-               f"{rows}</table>"
+               f"{_hdr_rows}</table>"
                f"<div style='text-align:center;margin-top:3px;padding:2px;"
                f"border-top:1px solid #333;font-size:13px;'>"
                f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
@@ -982,68 +1076,8 @@ with exp_col_conf:
     st.markdown(tt(conf_html, "🔗 Comparativa Score de Correlación", conf_tip, "down"),
                 unsafe_allow_html=True)
 
-# ── Experimental: Enhanced Correlation Table with Technical Scores ──
-st.markdown("<div style='margin-top:10px;'></div>", unsafe_allow_html=True)
-
-_corr_data_exp = comp.get("correlation", {}).get("details", {}).get("correlations", {})
-_enh_rows = ""
-for _ek in _cross_asset_keys:
-    _e_act = _corr_data_exp.get(_ek)
-    if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)):
-        continue
-    _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
-    _e_df = _e_act - _e_exp
-    _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
-    _e_opacity = max(0.30, 1.0 - abs(_e_df) * 2.2)
-
-    _e_tech = _cross_tech.get(_ek, {"score": 50, "direction": "NEUTRAL"})
-    _e_tsc = _e_tech["score"]
-    _e_tdr = _e_tech["direction"]
-    _e_tclr = "#52b788" if _e_tsc >= 65 else ("#ffd166" if _e_tsc >= 50 else "#ef476f")
-    _e_angle = (100 - _e_tsc) / 100 * 180
-
-    _pm = _cross_m1.get(_ek, {"imm": 0, "m1": 0, "m5": 0})
-    _a5, _c5 = _bps_to_arrow(_pm["m5"], sensitivity=3)
-    _a1, _c1 = _bps_to_arrow(_pm["m1"], sensitivity=9)
-    _ai, _ci = _bps_to_arrow(_pm["imm"], sensitivity=18)
-
-    _enh_rows += (
-        f"<tr style='opacity:{_e_opacity:.2f};'>"
-        f"<td style='padding:1px 3px;color:#aaa;'>{CN.get(_ek,_ek)}</td>"
-        f"<td style='padding:1px 3px;text-align:right;'>{_e_act:.2f}</td>"
-        f"<td style='padding:1px 3px;text-align:right;color:#555;'>{_e_exp}</td>"
-        f"<td style='padding:1px 3px;text-align:right;'>{_e_df:+.2f}</td>"
-        f"<td style='padding:1px 2px;'>{_e_ic}</td>"
-        f"<td style='padding:1px 2px;'>"
-        f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
-        f"<span style='display:inline-block;font-size:22px;color:{_ci};line-height:1;"
-        f"transform:rotate({_ai:.0f}deg);'>▲</span>"
-        f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
-        f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
-        f"<span style='display:inline-block;font-size:14px;color:{_c1};line-height:1;"
-        f"transform:rotate({_a1:.0f}deg);'>▲</span>"
-        f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
-        f"transform:rotate({_a5:.0f}deg);'>▲</span></div></td>"
-        f"</tr>"
-    )
-
-_enh_table = (
-    f"<div style='padding:2px 4px;'>"
-    f"<div style='font-size:10px;color:#888;text-align:center;margin-bottom:2px;'>"
-    f"🔗 Correlaciones + Técnico Cross-Asset</div>"
-    f"<table style='width:100%;border-collapse:collapse;font-family:monospace;'>"
-    f"{_enh_rows}"
-    f"</table></div>"
-)
-
-_enh_tip = (
-    f"<b>Correlaciones + Técnico Cross-Asset</b><br><br>"
-    f"Flechas (grande→chica): Inmediato → Compuesto → 1min → 5min<br>"
-    f"Opacidad: más nítido = más confiable (menor delta correlación)"
-)
-
-st.markdown(tt(_enh_table, "🔗 Correlaciones + Técnico Cross-Asset", _enh_tip, "down"),
-            unsafe_allow_html=True)
+# ── [COMMENTED OUT] Enhanced Correlation Table — now active in header col_corr ──
+# Full code preserved for rollback. See col_corr section above.
 
 
 # ══════════════════════════════════════════════════════════
