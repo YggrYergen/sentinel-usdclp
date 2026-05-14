@@ -563,10 +563,15 @@ with col_corr:
         corr_rec += "<br><br>" + "".join(inst_details)
 
         # ── Enhanced correlation table (arrows + sparklines) ──
+        # Sort by abs(correlation) descending — most active/reliable on top
+        _sorted_keys = sorted(
+            [k for k in _cross_asset_keys if corr_data.get(k) is not None
+             and not (isinstance(corr_data.get(k), float) and np.isnan(corr_data.get(k)))],
+            key=lambda k: abs(corr_data.get(k, 0)), reverse=True
+        )
         _hdr_rows = ""
-        for _ek in _cross_asset_keys:
-            _e_act = corr_data.get(_ek)
-            if _e_act is None or (isinstance(_e_act, float) and np.isnan(_e_act)): continue
+        for _ek in _sorted_keys:
+            _e_act = corr_data[_ek]
             _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
             _e_df = _e_act - _e_exp
             _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
