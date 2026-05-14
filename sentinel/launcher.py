@@ -378,6 +378,9 @@ class Launcher:
                     shutil.copy2(str(f), str(self.sentinel / f.name))
                     self.log(f"    Updated: sentinel/{f.name}")
                     updated += 1
+                # Preserve local data directories (chat_history, etc.)
+                elif f.is_dir() and f.name in ("chat_history",):
+                    self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
         for name in ["SENTINEL.bat", ".env.example", "README.md"]:
             sf = inner / name
             if sf.exists():

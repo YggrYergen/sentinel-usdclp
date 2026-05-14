@@ -984,16 +984,22 @@ with st.expander("🤖 **Asistente IA** — Análisis asistido por Claude", expa
     if "ai_client" not in st.session_state:
         from sentinel.ai_chat import SentinelAI
         st.session_state.ai_client = SentinelAI()
+    if "ai_web_search" not in st.session_state:
+        st.session_state.ai_web_search = False
 
     ai = st.session_state.ai_client
-    from sentinel.ai_chat import MODELS
+    from sentinel.ai_chat import MODELS, THINKING_EFFORTS, save_conversation
 
-    # Header row: model + status + clear
-    ai_h1, ai_h2, ai_h3 = st.columns([1.2, 2.5, 0.8])
+    # Header row: model + options + status + clear
+    ai_h1, ai_h2, ai_h3, ai_h4 = st.columns([1.2, 0.8, 2.0, 0.5])
     with ai_h1:
         ai_model = st.selectbox("Modelo", list(MODELS.keys()),
                                format_func=lambda k: MODELS[k].name, label_visibility="collapsed")
     with ai_h2:
+        _ai_ws = st.checkbox("🔍 Web", value=st.session_state.ai_web_search,
+                             help="Buscar noticias en Reuters, Bloomberg, Investing.com, etc.")
+        st.session_state.ai_web_search = _ai_ws
+    with ai_h3:
         if not ai.is_available:
             ai_key_input = st.text_input("🔑 API Key", type="password",
                                          placeholder="sk-ant-... (obtener en console.anthropic.com)",
@@ -1005,29 +1011,43 @@ with st.expander("🤖 **Asistente IA** — Análisis asistido por Claude", expa
             st.markdown(f"""<div style='background:rgba(82,183,136,0.1);border:1px solid #52b78844;
             border-radius:6px;padding:6px 12px;font-size:12px;color:#52b788;'>
             ✅ Conectado — {ai.tracker.get_summary()}</div>""", unsafe_allow_html=True)
-    with ai_h3:
-        if st.button("🗑️ Limpiar", use_container_width=True):
+    with ai_h4:
+        if st.button("🗑️", use_container_width=True, help="Limpiar conversación"):
             st.session_state.ai_messages = []
             st.rerun()
 
-    # Model description
+    # Model description + thinking effort selector
     sel_model = MODELS[ai_model]
-    st.markdown(f"""<div style='background:#1a1d23;border-radius:6px;padding:6px 10px;
-    font-size:11px;color:#888;margin-bottom:8px;'>
-    {sel_model.icon} <b>{sel_model.id}</b> — {sel_model.description}
-    &nbsp;|&nbsp; 💰 ${sel_model.input_cost_per_mtok}/M in, ${sel_model.output_cost_per_mtok}/M out
-    </div>""", unsafe_allow_html=True)
+    _ai_opt1, _ai_opt2 = st.columns([3, 1])
+    with _ai_opt1:
+        _ws_note = " · <span style='color:#ffd166;'>🔍 Web ON → sin thinking</span>" if _ai_ws else ""
+        st.markdown(f"""<div style='background:#1a1d23;border-radius:6px;padding:6px 10px;
+        font-size:11px;color:#888;margin-bottom:8px;'>
+        {sel_model.icon} <b>{sel_model.id}</b> — {sel_model.description}
+        &nbsp;|&nbsp; 💰 ${sel_model.input_cost_per_mtok}/M in, ${sel_model.output_cost_per_mtok}/M out
+        {_ws_note}
+        </div>""", unsafe_allow_html=True)
+    with _ai_opt2:
+        _ai_effort = None
+        if sel_model.supports_thinking and not _ai_ws:
+            _ai_effort = st.selectbox("Thinking", THINKING_EFFORTS,
+                                      index=THINKING_EFFORTS.index(sel_model.thinking_effort)
+                                      if sel_model.thinking_effort in THINKING_EFFORTS else 0,
+                                      label_visibility="collapsed",
+                                      help="Nivel de razonamiento extendido")
 
     # Chat messages container (scrollable)
     chat_container = st.container(height=350)
     with chat_container:
         if not st.session_state.ai_messages:
-            st.markdown("""<div style='text-align:center;padding:60px 20px;color:#555;'>
+            st.markdown("""<div style='text-align:center;padding:50px 20px;color:#555;'>
             <div style='font-size:40px;'>🤖</div>
             <div style='font-size:14px;margin-top:8px;'>Pregunta sobre el mercado actual</div>
             <div style='font-size:11px;color:#444;margin-top:4px;'>
-            La IA recibe todos los datos del dashboard en tiempo real:<br>
-            scores, derivadas, correlaciones, niveles y alertas.
+            La IA recibe un <b>snapshot completo</b> del dashboard: scores por TF,
+            sub-scores (EMA/RSI/MACD/BB/PA), derivadas, correlaciones HOY,
+            movimiento cross-asset, niveles S/R, divergencias y alertas.<br>
+            <span style='color:#ffd166;'>🔍 Activa Web para buscar noticias financieras.</span>
             </div></div>""", unsafe_allow_html=True)
         else:
             for msg in st.session_state.ai_messages:
@@ -1040,48 +1060,107 @@ with st.expander("🤖 **Asistente IA** — Análisis asistido por Claude", expa
                 meta_html = ""
                 if msg.get("meta") and msg["meta"].get("duration_s"):
                     m = msg["meta"]
+                    ws_txt = f" · 🔍 {m.get('web_searches',0)}" if m.get("web_searches",0) > 0 else ""
                     meta_html = (f"<div style='font-size:10px;color:#555;margin-top:4px;'>"
                                 f"⏱️ {m.get('duration_s',0)}s · "
                                 f"📊 {m.get('input_tokens',0):,}→{m.get('output_tokens',0):,} · "
-                                f"💰 ${m.get('cost_usd',0):.4f}</div>")
+                                f"💰 ${m.get('cost_usd',0):.4f}{ws_txt}</div>")
+
+                # Render citations
+                cite_html = ""
+                if msg.get("meta") and msg["meta"].get("citations"):
+                    cites = msg["meta"]["citations"]
+                    if cites:
+                        cite_items = "".join(
+                            f"<li><a href='{c['url']}' target='_blank' "
+                            f"style='color:#4cc9f0;text-decoration:none;'>"
+                            f"{c.get('title','') or c['url']}</a>"
+                            f"<span style='color:#555;'> — {c.get('cited_text','')[:80]}</span></li>"
+                            for c in cites[:5]
+                        )
+                        cite_html = (f"<div style='margin-top:6px;padding-top:4px;"
+                                    f"border-top:1px solid #333;font-size:10px;'>"
+                                    f"<b style='color:#aaa;'>📎 Fuentes:</b>"
+                                    f"<ul style='margin:2px 0;padding-left:16px;'>"
+                                    f"{cite_items}</ul></div>")
 
                 st.markdown(f"""<div style='display:flex;justify-content:{align};margin:4px 0;'>
                 <div style='background:{bg};border:1px solid {border};border-radius:10px;
                 padding:8px 12px;max-width:85%;font-size:13px;'>
                 <span style='font-size:11px;'>{icon}</span> {msg['content']}
+                {cite_html}
                 {meta_html}
                 </div></div>""", unsafe_allow_html=True)
 
-    # Input area (contained, not pinned to bottom)
+    # Input area
     ai_input_col, ai_send_col = st.columns([5, 1])
     with ai_input_col:
-        ai_prompt = st.text_input("Mensaje", placeholder="Ej: ¿Debería preocuparme por el RSI de M1?",
+        _ph = ("Ej: ¿Qué noticias afectan USDCLP hoy?" if _ai_ws
+               else "Ej: ¿Debería preocuparme por el RSI de M1?")
+        ai_prompt = st.text_input("Mensaje", placeholder=_ph,
                                   label_visibility="collapsed", key="ai_input")
     with ai_send_col:
-        ai_send = st.button(f"{sel_model.icon} Enviar", use_container_width=True, type="primary")
+        _send_label = f"🔍 Buscar" if _ai_ws else f"{sel_model.icon} Enviar"
+        ai_send = st.button(_send_label, use_container_width=True, type="primary")
 
     if ai_send and ai_prompt:
         st.session_state.ai_messages.append({"role": "user", "content": ai_prompt})
 
         from sentinel.ai_chat import build_market_context
+
+        # Build complete derivative data
         deriv_data = {
             "velocity": vel_short if 'vel_short' in dir() else 0,
             "acceleration": acceleration if 'acceleration' in dir() else 0,
             "momentum_text": mom_txt if 'mom_txt' in dir() else "N/A",
             "n_ticks": n_ticks if 'n_ticks' in dir() else 0,
         }
-        system_ctx = build_market_context(result, price_info, deriv_data)
+
+        # Build cross-asset movement data for context
+        _ca_data = {}
+        for _cak2 in _cross_asset_keys:
+            _ct2 = _cross_tech.get(_cak2, {})
+            _cm2 = _cross_m1.get(_cak2, {})
+            _ca_data[_cak2] = {
+                "fast_score": _ct2.get("fast_score", 50),
+                "direction": _ct2.get("direction", "NEUTRAL"),
+                "m2_bps": _cm2.get("m2", 0),
+                "m5_bps": _cm2.get("m5", 0),
+            }
+
+        system_ctx = build_market_context(
+            result, price_info, deriv_data,
+            cross_asset_data=_ca_data,
+            cross_corr_hoy=_cross_corr_hoy,
+            web_search_enabled=_ai_ws,
+        )
         api_msgs = [{"role": m["role"], "content": m["content"]}
                     for m in st.session_state.ai_messages[:-1]]
 
-        with st.spinner(f"{'🧠 Pensando profundamente' if ai_model == 'opus' else '⚡ Analizando'}..."):
-            response = ai.chat(ai_prompt, ai_model, system_ctx, api_msgs)
+        _spinner_txt = ("🔍 Buscando noticias y analizando..." if _ai_ws
+                        else ('🧠 Pensando profundamente...' if ai_model == 'opus'
+                              else '⚡ Analizando...'))
+        with st.spinner(_spinner_txt):
+            response = ai.chat(
+                ai_prompt, ai_model, system_ctx, api_msgs,
+                web_search_enabled=_ai_ws,
+                thinking_effort_override=_ai_effort,
+            )
 
         st.session_state.ai_messages.append({
             "role": "assistant",
             "content": response["content"],
-            "meta": response
+            "meta": response,
         })
+
+        # Auto-save conversation locally
+        _session_id = st.session_state.get("_ai_session_id", "")
+        if not _session_id:
+            import uuid
+            _session_id = datetime.now().strftime("%Y%m%d_%H%M%S") + "_" + uuid.uuid4().hex[:6]
+            st.session_state._ai_session_id = _session_id
+        save_conversation(st.session_state.ai_messages, _session_id)
+
         st.rerun()
 
 # ══════════════════════════════════════════════════════════

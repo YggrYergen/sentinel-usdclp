@@ -404,21 +404,68 @@ Reproduce el motor de scoring sobre datos históricos y compara con trades reale
 
 ---
 
-## 🤖 Asistente IA
+## 🤖 Asistente IA — Análisis de Mercado con Claude
 
-Chat integrado con modelos de Anthropic. La IA recibe **todos los datos del dashboard** como contexto: scores, derivadas, correlaciones, niveles y alertas.
+Chat integrado con modelos de Anthropic. La IA recibe un **snapshot completo** de todo el dashboard al momento de cada pregunta: scores por TF, sub-scores de cada indicador, derivadas, correlaciones HOY, movimiento cross-asset, niveles S/R, divergencias y alertas activas.
 
-| Modo | Modelo | Tiempo | Costo/consulta |
-|---|---|---|---|
-| 🧠 Profundo | Claude Opus 4.7 | 3-5 min | ~$0.07 |
-| ⚡ Rápido | Claude Sonnet 4.6 | 15-45s | ~$0.024 |
+### Modelos Disponibles
 
-Tracking de costos en vivo: tokens, USD por consulta, total de sesión.
+| Modo | Modelo | Thinking | Tiempo | Costo aprox. |
+|---|---|---|---|---|
+| 🧠 Profundo | Claude Opus 4.7 | xhigh | 3-5 min | ~$0.07/consulta |
+| ⚡ Rápido | Claude Sonnet 4.6 | high | 15-45s | ~$0.024/consulta |
+| 💨 Veloz | Claude Haiku 4.5 | — | 5-10s | ~$0.005/consulta |
+
+**Thinking Effort configurable** (solo Opus/Sonnet): `xhigh`, `high`, `medium`, `low` — controla la profundidad de razonamiento.
+
+### Búsqueda Web (🔍)
+
+Cuando se activa el toggle **🔍 Web**, la IA busca noticias y datos actualizados en fuentes financieras oficiales:
+
+| Fuentes permitidas |
+|---|
+| Reuters, Bloomberg, CNBC, MarketWatch |
+| Investing.com, DailyFX, FXStreet, ForexFactory |
+| TradingView, Kitco |
+| BancoCentral.cl, DF.cl, Economía y Negocios |
+
+- Costo: **$0.01 por búsqueda** (adicional a tokens)
+- Máximo 5 búsquedas por consulta
+- Resultados geolocalizados a Santiago, Chile
+- Cada respuesta incluye **📎 Fuentes** con links clickeables
+
+> ⚠️ **Web search y thinking no funcionan simultáneamente** (limitación de la API). Cuando Web está ON, se deshabilita thinking automáticamente.
+
+### Datos que recibe la IA (snapshot completo)
+
+| Dato | Ejemplo |
+|---|---|
+| Precio bid/ask/spread | `938.15 / 938.40 / 0.25` |
+| Score compuesto + señal | `72.3 LONG 🟡 ALERTA` |
+| Score técnico + correlación | `Tech: 74.2 (LONG) / Corr: 65.8 (LONG)` |
+| Scores por TF (M1/M2/M5/M15) | `M1: 78 LONG, M2: 71 LONG, M5: 65 NEUTRAL...` |
+| Sub-scores por indicador | `EMA=85, RSI=55, MACD=72, BB=50, PA=70` |
+| Valores de indicadores | `ema9=938.20, rsi=62.3, macd_h=+0.00123, bb_pct=0.72` |
+| Señales v1 (5s/30s/1m) | `Pulso: 78, Corto: 75, Medio: 71` |
+| Derivadas (vel/acc/momentum) | `+0.0023/s, +0.00005/s², ⏫ Subiendo acelerando` |
+| Correlaciones por asset + HOY | `DXY: +0.68 (exp +0.75) HOY=72%` |
+| Movimiento cross-asset (bps) | `DXY: 2min=+3.2bps 5min=+8.1bps` |
+| Niveles S/R + posición | `R: 940.20 (+0.22%) ... S: 936.80 (-0.14%)` |
+| Divergencias RSI y cross-asset | `RSI M1=75 vs M15=45 — probable retroceso` |
+| Alertas activas | `⚠️ QUIEBRE: copper correlación actual=-0.12` |
+
+### Historial de Conversaciones
+
+Las conversaciones se guardan **automáticamente** en `sentinel/chat_history/` como archivos JSON locales. Esta carpeta:
+- **NO se sube a GitHub** (excluida por `.gitignore`)
+- **NO se borra durante actualizaciones** (protegida por el launcher)
+- Persiste entre sesiones del dashboard
 
 ### Configurar API Key
 1. Crear cuenta en [console.anthropic.com](https://console.anthropic.com)
 2. Generar una API key
-3. Ingresar directamente en el dashboard **o** como variable de entorno:
+3. Habilitar **Web Search** en Settings > Privacy (si se quiere usar 🔍)
+4. Ingresar directamente en el dashboard **o** como variable de entorno:
    ```bash
    set ANTHROPIC_API_KEY=sk-ant-xxxxx
    ```

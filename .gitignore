@@ -29,6 +29,9 @@ MT5_Portable/
 data/*.csv
 sentinel_log.txt
 
+# Chat history (local per-operator, never committed)
+sentinel/chat_history/
+
 # Portable Python & Git (auto-downloaded, sandboxed)
 _python/
 _git/
