@@ -272,6 +272,125 @@ with col_score:
     st.markdown(tt(_sig_html, "🎯 Panel de Señales",
         f"{''.join(_ttp)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5",
         "down"), unsafe_allow_html=True)
+
+    # ── Derivative-enhanced signals (v2) ──
+    # Price buffer in session_state
+    if "price_buffer" not in st.session_state:
+        st.session_state.price_buffer = []
+        st.session_state.price_timestamps = []
+    curr_bid = price_info.get("bid", 0)
+    now_ts = time.time()
+    if curr_bid > 0:
+        st.session_state.price_buffer.append(curr_bid)
+        st.session_state.price_timestamps.append(now_ts)
+        if len(st.session_state.price_buffer) > 24:
+            st.session_state.price_buffer = st.session_state.price_buffer[-24:]
+            st.session_state.price_timestamps = st.session_state.price_timestamps[-24:]
+    buf = st.session_state.price_buffer
+    ts_buf = st.session_state.price_timestamps
+    n_ticks = len(buf)
+    velocity = 0.0; acceleration = 0.0; vel_short = 0.0; vel_medium = 0.0; vel_long = 0.0
+    if n_ticks >= 2:
+        dt = ts_buf[-1] - ts_buf[-2]
+        if dt > 0: vel_short = (buf[-1] - buf[-2]) / dt
+    if n_ticks >= 3:
+        dt1 = ts_buf[-1] - ts_buf[-2]; dt2 = ts_buf[-2] - ts_buf[-3]
+        v1 = (buf[-1] - buf[-2]) / dt1 if dt1 > 0 else 0
+        v2 = (buf[-2] - buf[-3]) / dt2 if dt2 > 0 else 0
+        dt_avg = (dt1 + dt2) / 2
+        acceleration = (v1 - v2) / dt_avg if dt_avg > 0 else 0
+    if n_ticks >= 6:
+        dt_m = ts_buf[-1] - ts_buf[-6]
+        if dt_m > 0: vel_medium = (buf[-1] - buf[-6]) / dt_m
+    if n_ticks >= 12:
+        dt_l = ts_buf[-1] - ts_buf[-12]
+        if dt_l > 0: vel_long = (buf[-1] - buf[-12]) / dt_l
+
+    def vel_to_boost(v, scale=0.05):
+        return max(-25, min(25, (v / scale) * 25))
+    def accel_to_boost(a, scale=0.01):
+        return max(-10, min(10, (a / scale) * 10))
+
+    _tf_sc2 = tech_details.get("tf_scores", {})
+    _m1_sc2 = _tf_sc2.get("M1", {}).get("score", 50)
+    _m2_sc2 = _tf_sc2.get("M2", {}).get("score", 50)
+    _m5_sc2 = _tf_sc2.get("M5", {}).get("score", 50)
+    v2_defs = [
+        ("⚡", "5s", _m1_sc2, vel_short, acceleration, 0.50, 0.30),
+        ("🔄", "30s", _m1_sc2 * 0.6 + _m2_sc2 * 0.4, vel_medium, acceleration, 0.30, 0.15),
+        ("📊", "1m", _m1_sc2 * 0.4 + _m2_sc2 * 0.3 + _m5_sc2 * 0.3, vel_long, acceleration, 0.15, 0.05),
+    ]
+    v2_cells = ""; v2_ttp = []
+    for _ic, _sp, _base, _vel, _acc, _vw, _aw in v2_defs:
+        v_boost = vel_to_boost(_vel); a_boost = accel_to_boost(_acc)
+        enhanced = max(0, min(100, _base + (v_boost * _vw * 2) + (a_boost * _aw * 2)))
+        _sd2 = "LONG" if enhanced >= 55 else ("SHORT" if enhanced <= 45 else "NEUTRAL")
+        _cv2 = min(100, abs(enhanced - 50) * 2)
+        if _sd2 == "LONG": _r,_g,_b = 82,183,136; _ar="▲"; _ac="COMPRAR"; _ep2=price_info.get("ask",0)
+        elif _sd2 == "SHORT": _r,_g,_b = 239,71,111; _ar="▼"; _ac="VENDER"; _ep2=price_info.get("bid",0)
+        else: _r,_g,_b = 255,209,102; _ar="◆"; _ac="ESPERAR"; _ep2=0
+        _op2 = 0.10+(_cv2/100)*0.45
+        _tc2 = f"rgb({_r},{_g},{_b})"; _bg2 = f"rgba({_r},{_g},{_b},{_op2:.2f})"
+        _ept2 = f"<div style='font-size:9px;color:#666;'>{_ep2:.1f}</div>" if _ep2 > 0 else ""
+        if _acc > 0.002: acc_icon = "⏫"
+        elif _acc > 0: acc_icon = "🔼"
+        elif _acc > -0.002: acc_icon = "🔽"
+        else: acc_icon = "⏬"
+        v2_cells += (f"<td style='background:{_bg2};padding:4px 6px;text-align:center;"
+                     f"border-right:1px solid #333;width:33%;'>"
+                     f"<div style='font-size:9px;color:#888;'>{_ic} {_sp} {acc_icon}</div>"
+                     f"<div style='font-size:18px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
+                     f"<div style='font-size:10px;color:{_tc2};font-weight:bold;'>{_ac}</div>"
+                     f"<div style='font-size:14px;color:#fff;font-weight:bold;'>{_cv2:.0f}%</div>"
+                     f"{_ept2}</td>")
+        v_dir = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
+        a_dir = "acelerando" if _acc > 0.001 else ("frenando" if _acc < -0.001 else "estable")
+        v2_ttp.append(
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
+            f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
+            f"<b>{_ic} {_sp}</b> — <span style='color:{_tc2};'><b>{_ac} {_cv2:.0f}%</b></span><br>"
+            f"Base: {_base:.1f} + Vel({v_boost:+.1f}×{_vw}) + Acc({a_boost:+.1f}×{_aw}) = <b>{enhanced:.1f}</b><br>"
+            f"<span style='color:#888;'>Velocidad: {_vel:+.4f}/s {v_dir} | {a_dir}</span></div>")
+    v2_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
+               f"<table style='width:100%;border-collapse:collapse;'><tr>{v2_cells}</tr></table></div>")
+    # Momentum bar
+    if vel_short > 0.01 and acceleration > 0.001:
+        mom_txt = "📈 Subiendo y acelerando"; mom_clr = "#52b788"; mom_ic = "⏫"
+    elif vel_short > 0.01 and acceleration < -0.001:
+        mom_txt = "📈 Subiendo pero frenando"; mom_clr = "#a8d5a2"; mom_ic = "🔼"
+    elif vel_short > 0:
+        mom_txt = "↗️ Subiendo suave"; mom_clr = "#888"; mom_ic = "🔼"
+    elif vel_short < -0.01 and acceleration < -0.001:
+        mom_txt = "📉 Bajando y acelerando"; mom_clr = "#ef476f"; mom_ic = "⏬"
+    elif vel_short < -0.01 and acceleration > 0.001:
+        mom_txt = "📉 Bajando pero frenando"; mom_clr = "#f4a0b0"; mom_ic = "🔽"
+    elif vel_short < 0:
+        mom_txt = "↘️ Bajando suave"; mom_clr = "#888"; mom_ic = "🔽"
+    else:
+        mom_txt = "➡️ Sin movimiento"; mom_clr = "#555"; mom_ic = "⏸️"
+    mom_pct = min(100, abs(vel_short) / 0.05 * 100)
+    bar_clr = "#52b788" if vel_short > 0 else "#ef476f"
+    fill_dir = "right" if vel_short > 0 else "left"
+    deriv_info = (
+        f"<div style='background:#1a1d23;border-radius:8px;padding:3px 8px;margin-top:2px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;font-size:11px;'>"
+        f"<span style='color:{mom_clr};font-weight:bold;'>{mom_ic} {mom_txt}</span>"
+        f"<span style='color:#555;font-size:9px;'>{n_ticks} ticks</span></div>"
+        f"<div style='background:#111;border-radius:3px;height:4px;margin-top:2px;overflow:hidden;'>"
+        f"<div style='width:{mom_pct:.0f}%;height:100%;background:{bar_clr};"
+        f"border-radius:3px;float:{fill_dir};'></div></div></div>")
+    st.markdown(tt(v2_html, "🧪 Señales v2 (derivadas)",
+        f"{''.join(v2_ttp)}<br>"
+        f"<b>Momentum:</b> {mom_txt}<br><br>"
+        f"<b>Interpretación:</b><br>"
+        f"⏫ Precio sube cada vez más rápido → impulso comprador fuerte<br>"
+        f"🔼 Precio sube pero pierde fuerza → posible techo pronto<br>"
+        f"⏬ Precio baja cada vez más rápido → impulso vendedor fuerte<br>"
+        f"🔽 Precio baja pero pierde fuerza → posible piso pronto<br><br>"
+        f"Buffer: {n_ticks} ticks (~{n_ticks*5}s)",
+        "down"), unsafe_allow_html=True)
+    st.markdown(deriv_info, unsafe_allow_html=True)
+
     if score >= 75:
         sr = f"🟢 <b>FUERTE ({score})</b><br>Téc({tech_sc:.0f})+Corr({corr_sc:.0f}) confluyen → {direction}."
     elif score >= 65:
@@ -711,188 +830,7 @@ if divs:
 if not rsi_divs and not filtered_alerts and not divs:
     st.caption("✅ Sin alertas activas")
 
-# ══════════════════════════════════════════════════════════
-# EXPERIMENTAL
-# ══════════════════════════════════════════════════════════
-st.markdown("---")
-st.markdown("### 🧪 Experimental")
 
-# Price buffer in session_state
-if "price_buffer" not in st.session_state:
-    st.session_state.price_buffer = []
-    st.session_state.price_timestamps = []
-
-curr_bid = price_info.get("bid", 0)
-now_ts = time.time()
-if curr_bid > 0:
-    st.session_state.price_buffer.append(curr_bid)
-    st.session_state.price_timestamps.append(now_ts)
-    # Keep last 24 ticks (~2 min at 5s refresh)
-    if len(st.session_state.price_buffer) > 24:
-        st.session_state.price_buffer = st.session_state.price_buffer[-24:]
-        st.session_state.price_timestamps = st.session_state.price_timestamps[-24:]
-
-buf = st.session_state.price_buffer
-ts_buf = st.session_state.price_timestamps
-n_ticks = len(buf)
-
-# Calculate derivatives
-velocity = 0.0      # 1st derivative: price change per second (pips/s)
-acceleration = 0.0  # 2nd derivative: change in velocity
-vel_short = 0.0     # velocity over last 2 ticks (~10s)
-vel_medium = 0.0    # velocity over last 6 ticks (~30s)
-vel_long = 0.0      # velocity over last 12 ticks (~60s)
-
-if n_ticks >= 2:
-    dt = ts_buf[-1] - ts_buf[-2]
-    if dt > 0:
-        vel_short = (buf[-1] - buf[-2]) / dt
-if n_ticks >= 3:
-    dt1 = ts_buf[-1] - ts_buf[-2]
-    dt2 = ts_buf[-2] - ts_buf[-3]
-    v1 = (buf[-1] - buf[-2]) / dt1 if dt1 > 0 else 0
-    v2 = (buf[-2] - buf[-3]) / dt2 if dt2 > 0 else 0
-    dt_avg = (dt1 + dt2) / 2
-    acceleration = (v1 - v2) / dt_avg if dt_avg > 0 else 0
-if n_ticks >= 6:
-    dt_m = ts_buf[-1] - ts_buf[-6]
-    if dt_m > 0:
-        vel_medium = (buf[-1] - buf[-6]) / dt_m
-if n_ticks >= 12:
-    dt_l = ts_buf[-1] - ts_buf[-12]
-    if dt_l > 0:
-        vel_long = (buf[-1] - buf[-12]) / dt_l
-
-# Derivative-enhanced scores for 3 speeds
-_tf_sc2 = tech_details.get("tf_scores", {})
-_m1_sc2 = _tf_sc2.get("M1", {}).get("score", 50)
-_m2_sc2 = _tf_sc2.get("M2", {}).get("score", 50)
-_m5_sc2 = _tf_sc2.get("M5", {}).get("score", 50)
-
-# Normalize velocity to a -25 to +25 score boost
-# Typical USDCLP velocity: ±0.1 per second = ±0.5 pips/5s
-def vel_to_boost(v, scale=0.05):
-    """Convert velocity to score boost, capped at ±25"""
-    return max(-25, min(25, (v / scale) * 25))
-
-def accel_to_boost(a, scale=0.01):
-    """Convert acceleration to score boost, capped at ±10"""
-    return max(-10, min(10, (a / scale) * 10))
-
-# Build 3 v2 signals
-v2_defs = [
-    ("⚡", "5s", _m1_sc2, vel_short, acceleration, 0.50, 0.30),
-    ("🔄", "30s", _m1_sc2 * 0.6 + _m2_sc2 * 0.4, vel_medium, acceleration, 0.30, 0.15),
-    ("📊", "1m", _m1_sc2 * 0.4 + _m2_sc2 * 0.3 + _m5_sc2 * 0.3, vel_long, acceleration, 0.15, 0.05),
-]
-# weights: (icon, speed, base_score, velocity, accel, vel_weight, accel_weight)
-
-v2_cells = ""
-v2_ttp = []
-for _ic, _sp, _base, _vel, _acc, _vw, _aw in v2_defs:
-    # Blend: base score + velocity boost + acceleration boost
-    v_boost = vel_to_boost(_vel)
-    a_boost = accel_to_boost(_acc)
-    enhanced = _base + (v_boost * _vw * 2) + (a_boost * _aw * 2)
-    enhanced = max(0, min(100, enhanced))
-
-    # Direction from enhanced score
-    if enhanced >= 55:
-        _sd2 = "LONG"
-    elif enhanced <= 45:
-        _sd2 = "SHORT"
-    else:
-        _sd2 = "NEUTRAL"
-
-    _cv2 = min(100, abs(enhanced - 50) * 2)
-
-    if _sd2 == "LONG":
-        _r, _g, _b = 82, 183, 136; _ar = "▲"; _ac = "COMPRAR"
-        _ep2 = price_info.get("ask", 0)
-    elif _sd2 == "SHORT":
-        _r, _g, _b = 239, 71, 111; _ar = "▼"; _ac = "VENDER"
-        _ep2 = price_info.get("bid", 0)
-    else:
-        _r, _g, _b = 255, 209, 102; _ar = "◆"; _ac = "ESPERAR"
-        _ep2 = 0
-
-    _op2 = 0.10 + (_cv2 / 100) * 0.45
-    _tc2 = f"rgb({_r},{_g},{_b})"; _bg2 = f"rgba({_r},{_g},{_b},{_op2:.2f})"
-    _ept2 = f"<div style='font-size:9px;color:#666;'>{_ep2:.1f}</div>" if _ep2 > 0 else ""
-
-    # Acceleration arrow indicator
-    if _acc > 0.002:
-        acc_icon = "⏫"  # accelerating up
-    elif _acc > 0:
-        acc_icon = "🔼"  # gently accelerating up
-    elif _acc > -0.002:
-        acc_icon = "🔽"  # gently decelerating
-    else:
-        acc_icon = "⏬"  # accelerating down
-
-    v2_cells += (f"<td style='background:{_bg2};padding:4px 6px;text-align:center;"
-                 f"border-right:1px solid #333;width:33%;'>"
-                 f"<div style='font-size:9px;color:#888;'>{_ic} {_sp} {acc_icon}</div>"
-                 f"<div style='font-size:18px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
-                 f"<div style='font-size:10px;color:{_tc2};font-weight:bold;'>{_ac}</div>"
-                 f"<div style='font-size:14px;color:#fff;font-weight:bold;'>{_cv2:.0f}%</div>"
-                 f"{_ept2}</td>")
-
-    # Tooltip detail
-    v_dir = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
-    a_dir = "acelerando" if _acc > 0.001 else ("frenando" if _acc < -0.001 else "estable")
-    v2_ttp.append(
-        f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
-        f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
-        f"<b>{_ic} {_sp}</b> — <span style='color:{_tc2};'><b>{_ac} {_cv2:.0f}%</b></span><br>"
-        f"Base: {_base:.1f} + Vel({v_boost:+.1f}×{_vw}) + Acc({a_boost:+.1f}×{_aw}) = <b>{enhanced:.1f}</b><br>"
-        f"<span style='color:#888;'>Velocidad: {_vel:+.4f}/s {v_dir} | {a_dir}</span></div>")
-
-v2_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
-           f"<table style='width:100%;border-collapse:collapse;'><tr>{v2_cells}</tr></table></div>")
-
-# Momentum summary bar (human readable, no raw numbers)
-if vel_short > 0.01 and acceleration > 0.001:
-    mom_txt = "📈 Subiendo y acelerando"; mom_clr = "#52b788"; mom_ic = "⏫"
-elif vel_short > 0.01 and acceleration < -0.001:
-    mom_txt = "📈 Subiendo pero frenando"; mom_clr = "#a8d5a2"; mom_ic = "🔼"
-elif vel_short > 0:
-    mom_txt = "↗️ Subiendo suave"; mom_clr = "#888"; mom_ic = "🔼"
-elif vel_short < -0.01 and acceleration < -0.001:
-    mom_txt = "📉 Bajando y acelerando"; mom_clr = "#ef476f"; mom_ic = "⏬"
-elif vel_short < -0.01 and acceleration > 0.001:
-    mom_txt = "📉 Bajando pero frenando"; mom_clr = "#f4a0b0"; mom_ic = "🔽"
-elif vel_short < 0:
-    mom_txt = "↘️ Bajando suave"; mom_clr = "#888"; mom_ic = "🔽"
-else:
-    mom_txt = "➡️ Sin movimiento"; mom_clr = "#555"; mom_ic = "⏸️"
-
-# Momentum bar with visual fill
-mom_pct = min(100, abs(vel_short) / 0.05 * 100)  # normalize to 0-100%
-bar_clr = "#52b788" if vel_short > 0 else "#ef476f"
-fill_dir = "right" if vel_short > 0 else "left"
-deriv_info = (
-    f"<div style='background:#1a1d23;border-radius:8px;padding:5px 8px;margin-top:4px;'>"
-    f"<div style='display:flex;justify-content:space-between;align-items:center;font-size:11px;'>"
-    f"<span style='color:{mom_clr};font-weight:bold;'>{mom_ic} {mom_txt}</span>"
-    f"<span style='color:#555;font-size:9px;'>{n_ticks} ticks</span></div>"
-    f"<div style='background:#111;border-radius:3px;height:4px;margin-top:3px;overflow:hidden;'>"
-    f"<div style='width:{mom_pct:.0f}%;height:100%;background:{bar_clr};"
-    f"border-radius:3px;float:{fill_dir};'></div></div></div>")
-
-sig2_col, _ = st.columns([0.55, 3.45])
-with sig2_col:
-    st.markdown(tt(v2_html, "🧪 Señales v2 (derivadas)",
-        f"{''.join(v2_ttp)}<br>"
-        f"<b>Momentum:</b> {mom_txt}<br><br>"
-        f"<b>Interpretación:</b><br>"
-        f"⏫ Precio sube cada vez más rápido → impulso comprador fuerte<br>"
-        f"🔼 Precio sube pero pierde fuerza → posible techo pronto<br>"
-        f"⏬ Precio baja cada vez más rápido → impulso vendedor fuerte<br>"
-        f"🔽 Precio baja pero pierde fuerza → posible piso pronto<br><br>"
-        f"Buffer: {n_ticks} ticks (~{n_ticks*5}s)",
-        "down"), unsafe_allow_html=True)
-    st.markdown(deriv_info, unsafe_allow_html=True)
 
 # ── Experimental: Direction Engine A vs B + Confirmation Score ──
 exp_col_deriv, exp_col_dir, exp_col_conf = st.columns([0.55, 1.0, 1.0])
