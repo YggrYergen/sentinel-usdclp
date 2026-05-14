@@ -140,6 +140,20 @@ _cross_m1 = {}
 if '_cross_last_prices' not in st.session_state:
     st.session_state._cross_last_prices = {}
 
+# Session state: RealtimeCorrelationTracker (persistent across refreshes)
+from sentinel.correlation_engine import RealtimeCorrelationTracker
+if '_corr_tracker' not in st.session_state:
+    st.session_state._corr_tracker = RealtimeCorrelationTracker(lambda_ewma=0.15)
+
+# Track USDCLP tick return for correlation tracker
+_target_bid = price_info.get("bid", 0) if price_info else 0
+if '_target_last_bid' not in st.session_state:
+    st.session_state._target_last_bid = _target_bid
+_target_ret = 0.0
+if _target_bid > 0 and st.session_state._target_last_bid > 0:
+    _target_ret = (_target_bid - st.session_state._target_last_bid) / st.session_state._target_last_bid * 10000
+st.session_state._target_last_bid = _target_bid
+
 for _cak in _cross_asset_keys:
     _ca_symbol = SYMBOLS.get(_cak, "")
     if _ca_symbol:
@@ -178,6 +192,9 @@ for _cak in _cross_asset_keys:
                 _tick_bps = (_curr_bid - _prev_bid) / _prev_bid * 10000
                 _cross_m1.setdefault(_cak, {})["tick"] = _tick_bps
                 st.session_state._cross_last_prices[_cak] = _curr_bid
+                # Feed correlation confidence tracker
+                _exp_sign = 1.0 if EXPECTED_CORRELATIONS.get(_cak, 0) > 0 else -1.0
+                st.session_state._corr_tracker.update(_cak, _target_ret, _tick_bps, _exp_sign)
         except Exception:
             pass
 
@@ -619,6 +636,16 @@ with col_corr:
                     f"</div>"
                 )
 
+            # Correlation Confidence ("HOY") column
+            _cc = st.session_state._corr_tracker.get_confidence(_ek)
+            _ccv = _cc["confidence"]
+            if _cc["warmup"]:
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>⏳</td>"
+            elif _cc["breakdown"]:
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#ef476f;font-size:10px;font-weight:bold;'>⚠️</td>"
+            else:
+                _ccclr = "#52b788" if _ccv >= 0.65 else ("#ffd166" if _ccv >= 0.45 else "#ef476f")
+                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:{_ccclr};font-size:11px;font-weight:bold;'>{_ccv:.0%}</td>"
             _hdr_rows += (
                 f"<tr>"
                 f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
@@ -638,6 +665,7 @@ with col_corr:
                 f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
                 f"transform:rotate({_a5:.0f}deg);'>▲</span></div>"
                 f"{_spark_svg}</div></td>"
+                f"{_cc_html}"
                 f"</tr>"
             )
 
