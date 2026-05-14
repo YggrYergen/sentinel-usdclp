@@ -302,40 +302,51 @@ def detect_divergence(all_data: dict, target_key: str = "target") -> list:
 class RealtimeCorrelationTracker:
     """
     Tracks real-time correlation confidence per cross-asset using 3 layers:
-      1. EWMA Correlation — exponentially weighted, reactive to recent data
+      1. EWMA Correlation — dual-lambda: fast variance, slow covariance
       2. Sign Concordance — direction agreement ratio over rolling window
       3. Z-Score Breakdown — detects when relationship has shifted regime
 
-    Designed for 2.5s refresh scalping (USDCLP vs DXY, copper, WTI, etc).
-    Call update() each refresh cycle, then get_confidence() per asset.
+    Calibrated for 2.5s refresh scalping (USDCLP vs DXY, copper, WTI, etc).
+    Uses dual-lambda EWMA to combat the Epps effect (correlations → 0 at
+    high frequency due to asynchronous trading and microstructure noise).
+
+    References:
+      - Epps effect: https://en.wikipedia.org/wiki/Epps_effect
+      - Dual lambda: robotwealth.com, NYU Stern financial risk forecasting
+      - Sign concordance: Stanford HFT research
     """
 
-    def __init__(self, lambda_ewma: float = 0.15, concordance_window: int = 20,
-                 zscore_window: int = 30, breakdown_z: float = 2.0):
-        self.lam = lambda_ewma
-        self.conc_win = concordance_window
+    def __init__(self, lambda_var: float = 0.85, lambda_cov: float = 0.97,
+                 concordance_window: int = 60,
+                 zscore_window: int = 50, breakdown_z: float = 2.0):
+        # Dual lambda: fast for variance (react to vol spikes), slow for
+        # covariance (stable correlation estimate despite tick noise)
+        self.lam_var = lambda_var    # Fast: ~7 tick effective memory
+        self.lam_cov = lambda_cov    # Slow: ~33 tick effective memory
+        self.conc_win = concordance_window  # 60 ticks × 2.5s = 2.5 min
         self.z_win = zscore_window
         self.z_thresh = breakdown_z
 
         # Per-asset state
-        self._ewma_var_t = {}   # variance of target returns
-        self._ewma_var_a = {}   # variance of asset returns
-        self._ewma_cov = {}     # covariance
+        self._ewma_var_t = {}   # EWMA variance of target returns
+        self._ewma_var_a = {}   # EWMA variance of asset returns
+        self._ewma_cov = {}     # EWMA covariance (slow lambda)
         self._ewma_corr = {}    # latest EWMA correlation
-        self._sign_history = {} # deque of (sign_target, sign_asset) tuples
-        self._spread_history = {} # deque of spread values for z-score
+        self._sign_history = {} # list of agreement flags
+        self._spread_history = {} # list of spread values for z-score
         self._update_count = {}  # warmup counter
+        self._expected_sign = {} # +1 or -1 per asset
 
     # ── Public API ───────────────────────────────────────
 
     def update(self, asset_key: str, ret_target: float, ret_asset: float,
                expected_sign: float = 1.0):
         """
-        Feed one refresh cycle of returns.
+        Feed one refresh cycle of returns (bps or pct_change).
 
         Args:
             asset_key: e.g. "dxy", "copper"
-            ret_target: USDCLP return this tick (pct_change or bps)
+            ret_target: USDCLP return this tick
             ret_asset: cross-asset return this tick
             expected_sign: +1 if direct correlation, -1 if inverse
         """
@@ -345,45 +356,48 @@ class RealtimeCorrelationTracker:
 
         # Initialize on first call
         if asset_key not in self._ewma_var_t:
-            self._ewma_var_t[asset_key] = ret_target ** 2 + 1e-12
-            self._ewma_var_a[asset_key] = ret_asset ** 2 + 1e-12
+            self._ewma_var_t[asset_key] = ret_target ** 2 + 1e-10
+            self._ewma_var_a[asset_key] = ret_asset ** 2 + 1e-10
             self._ewma_cov[asset_key] = ret_target * ret_asset
             self._ewma_corr[asset_key] = 0.0
             self._sign_history[asset_key] = []
             self._spread_history[asset_key] = []
             self._update_count[asset_key] = 1
+            self._expected_sign[asset_key] = expected_sign
             return
 
         self._update_count[asset_key] += 1
-        lam = self.lam
 
-        # ── Layer 1: EWMA Correlation ──
-        self._ewma_var_t[asset_key] = lam * self._ewma_var_t[asset_key] + (1 - lam) * (ret_target ** 2)
-        self._ewma_var_a[asset_key] = lam * self._ewma_var_a[asset_key] + (1 - lam) * (ret_asset ** 2)
-        self._ewma_cov[asset_key] = lam * self._ewma_cov[asset_key] + (1 - lam) * (ret_target * ret_asset)
+        # ── Layer 1: Dual-Lambda EWMA Correlation ──
+        # Fast lambda for variance (track volatility changes quickly)
+        lv = self.lam_var
+        self._ewma_var_t[asset_key] = lv * self._ewma_var_t[asset_key] + (1 - lv) * (ret_target ** 2)
+        self._ewma_var_a[asset_key] = lv * self._ewma_var_a[asset_key] + (1 - lv) * (ret_asset ** 2)
 
+        # Slow lambda for covariance (stable correlation estimate)
+        lc = self.lam_cov
+        self._ewma_cov[asset_key] = lc * self._ewma_cov[asset_key] + (1 - lc) * (ret_target * ret_asset)
+
+        # Correlation from separate variance/covariance estimates
         denom = np.sqrt(self._ewma_var_t[asset_key] * self._ewma_var_a[asset_key])
-        if denom > 1e-15:
-            self._ewma_corr[asset_key] = self._ewma_cov[asset_key] / denom
+        if denom > 1e-12:
+            self._ewma_corr[asset_key] = np.clip(self._ewma_cov[asset_key] / denom, -1.0, 1.0)
         else:
             self._ewma_corr[asset_key] = 0.0
 
         # ── Layer 2: Sign Concordance ──
         st = np.sign(ret_target) if abs(ret_target) > 1e-10 else 0
         sa = np.sign(ret_asset) if abs(ret_asset) > 1e-10 else 0
-        # expected_sign flips the comparison for inverse correlations
         if st != 0 and sa != 0:
             if expected_sign > 0:
                 agree = 1 if st == sa else 0
             else:
                 agree = 1 if st != sa else 0  # inverse: disagree = good
             self._sign_history[asset_key].append(agree)
-        # Keep window size
         if len(self._sign_history[asset_key]) > self.conc_win:
             self._sign_history[asset_key] = self._sign_history[asset_key][-self.conc_win:]
 
         # ── Layer 3: Z-Score Spread ──
-        # Spread = normalized target return - expected_sign * normalized asset return
         spread = ret_target - expected_sign * ret_asset
         self._spread_history[asset_key].append(spread)
         if len(self._spread_history[asset_key]) > self.z_win * 2:
@@ -403,14 +417,14 @@ class RealtimeCorrelationTracker:
           - updates: int number of updates received
         """
         n = self._update_count.get(asset_key, 0)
-        warmup = n < 20
+        warmup = n < 30  # ~75 seconds at 2.5s refresh
 
         # EWMA correlation
         ewma_c = self._ewma_corr.get(asset_key, 0.0)
 
         # Sign concordance
         sh = self._sign_history.get(asset_key, [])
-        concordance = sum(sh) / len(sh) if len(sh) >= 5 else 0.5
+        concordance = sum(sh) / len(sh) if len(sh) >= 8 else 0.5
 
         # Z-Score breakdown
         sp = self._spread_history.get(asset_key, [])
@@ -424,20 +438,26 @@ class RealtimeCorrelationTracker:
                 z_score = (sp[-1] - mu) / std
                 breakdown = abs(z_score) > self.z_thresh
 
-        # Composite confidence
-        # EWMA agreement: how close is the EWMA corr to expected direction?
-        # For direct corr (expected > 0): want ewma_corr > 0
-        # We just check magnitude — higher abs(ewma_corr) = more confident
-        ewma_agreement = min(1.0, max(0.0, abs(ewma_c)))
+        # ── Composite confidence ──
+
+        # Layer 1: Directional EWMA agreement with amplification.
+        # For DIRECT corr (DXY, expected_sign=+1): positive ewma_corr = good
+        # For INVERSE corr (copper, expected_sign=-1): negative ewma_corr = good
+        # We multiply ewma_corr by expected_sign so that "agreement" is
+        # always positive when the asset is behaving as expected.
+        # Amplify ×2.5 to map tick-level [-0.3, +0.3] into [0, 1].
+        exp_s = self._expected_sign.get(asset_key, 1.0)
+        directed_corr = ewma_c * exp_s  # positive = behaving as expected
+        ewma_agreement = min(1.0, max(0.0, directed_corr * 2.5 + 0.5))
 
         breakdown_penalty = 0.0 if breakdown else 1.0
 
         if warmup:
-            confidence = 0.0  # Not enough data
+            confidence = 0.0
         else:
             confidence = (
-                0.40 * ewma_agreement +
-                0.40 * concordance +
+                0.35 * ewma_agreement +
+                0.45 * concordance +
                 0.20 * breakdown_penalty
             )
             confidence = min(1.0, max(0.0, confidence))

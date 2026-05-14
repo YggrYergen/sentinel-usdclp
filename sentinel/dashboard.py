@@ -143,7 +143,7 @@ if '_cross_last_prices' not in st.session_state:
 # Session state: RealtimeCorrelationTracker (persistent across refreshes)
 from sentinel.correlation_engine import RealtimeCorrelationTracker
 if '_corr_tracker' not in st.session_state:
-    st.session_state._corr_tracker = RealtimeCorrelationTracker(lambda_ewma=0.15)
+    st.session_state._corr_tracker = RealtimeCorrelationTracker(lambda_var=0.85, lambda_cov=0.97)
 
 # Track USDCLP tick return for correlation tracker
 _target_bid = price_info.get("bid", 0) if price_info else 0
