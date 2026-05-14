@@ -71,6 +71,10 @@ st.markdown("""
     section.main div[data-testid="stHorizontalBlock"]:first-of-type {
         align-items: stretch !important;
     }
+    /* Reduce default Streamlit vertical gaps in signal column */
+    section.main div[data-testid="stColumn"]:first-child div[data-testid="stMarkdownContainer"] {
+        margin-bottom: -8px;
+    }
     section.main div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] > div {
         height: 100%; display: flex; flex-direction: column; justify-content: flex-start;
     }
