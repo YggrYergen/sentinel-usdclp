@@ -988,50 +988,74 @@ st.markdown(tt(_exp_sig_html_v1, "🎯 Señales Base (exp)",
     f"{''.join(_exp_ttp_v1)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 🕐=M1+M2+M5+M15",
     "down"), unsafe_allow_html=True)
 
-# V2: Derivative-enhanced signals (velocity + acceleration) — per-card tooltips
+# V2: Tech + Derivatives + Macro-fused signals — per-card tooltips
 _exp_m1v2 = _exp_sc.get("M1", 50)
 _exp_m2v2 = _exp_sc.get("M2", 50)
 _exp_m5v2 = _exp_sc.get("M5", 50)
 _exp_m15v2 = _exp_sc.get("M15", 50)
 
+# Calculate macro at each window (cached per refresh since data doesn't change within a cycle)
+_macro_5s = _ms.calculate_score_at_window(feed, lookback_bars=1)
+_macro_30s = _ms.calculate_score_at_window(feed, lookback_bars=3)
+_macro_1m = _ms.calculate_score_at_window(feed, lookback_bars=5)
+_macro_5m = _ms.calculate_score_at_window(feed, lookback_bars=15)
+
+# (icon, label, role, tech_base, tf_blend, vel, accel, vel_weight, accel_weight,
+#  macro_result, macro_weight, tech_weight, description)
 _exp_v2_defs = [
     ("⚡", "5s", "Reacción instantánea",
      _exp_m1v2,
      {"M1": "100%"},
      vel_short, acceleration, 0.50, 0.30,
-     "Captura micro-movimientos del último tick.<br>"
-     "Usa <b>solo M1</b> como base, amplificado por velocidad instantánea.<br>"
-     "Ideal para confirmar entradas en <b>scalping extremo</b>."),
+     _macro_5s, 0.20, 0.80,
+     "Captura micro-movimientos del último tick + <b>pulso mundial</b>.<br>"
+     "80% técnico (M1) + 20% macro (assets en ~1 min).<br>"
+     "El mundo confirma o frena la señal instantánea."),
     ("🔄", "30s", "Confirmación corta",
      _exp_m1v2 * 0.6 + _exp_m2v2 * 0.4,
      {"M1": "60%", "M2": "40%"},
      vel_medium, acceleration, 0.30, 0.15,
-     "Mezcla M1 (60%) + M2 (40%) para filtrar ruido del tick.<br>"
-     "Velocidad media (~15s). Si coincide con ⚡5s → <b>señal más confiable</b>.<br>"
-     "Divergencia ⚡vs🔄 = señal débil, esperar."),
+     _macro_30s, 0.30, 0.70,
+     "M1+M2 técnico + <b>mundo en 3 min</b>.<br>"
+     "70% técnico + 30% macro (retornos 3-min de 8 assets).<br>"
+     "Filtra señales falsas: si el mundo no acompaña → esperar."),
     ("📊", "1m", "Tendencia corta",
      _exp_m1v2 * 0.4 + _exp_m2v2 * 0.3 + _exp_m5v2 * 0.3,
      {"M1": "40%", "M2": "30%", "M5": "30%"},
      vel_long, acceleration, 0.15, 0.05,
-     "Incorpora M5 (30%) para contexto de tendencia.<br>"
-     "Velocidad larga (~30s). Menos reactiva, más estable.<br>"
-     "Si las 3 anteriores coinciden → <b>alta confluencia técnica</b>."),
+     _macro_1m, 0.40, 0.60,
+     "M1+M2+M5 técnico + <b>mundo en 5 min</b>.<br>"
+     "60% técnico + 40% macro (retornos 5-min).<br>"
+     "Equilibrio: si técnico Y mundo confluyen → <b>señal fuerte</b>."),
     ("🕐", "5m", "Contexto estratégico",
      _exp_m1v2 * 0.2 + _exp_m2v2 * 0.2 + _exp_m5v2 * 0.35 + _exp_m15v2 * 0.25,
      {"M1": "20%", "M2": "20%", "M5": "35%", "M15": "25%"},
      vel_long, acceleration, 0.10, 0.03,
-     "Incluye M15 (25%) como ancla de contexto.<br>"
-     "Señal más lenta — muestra la <b>dirección dominante</b>.<br>"
-     "Si 🕐5m diverge de ⚡5s → posible reversión pronto."),
+     _macro_5m, 0.50, 0.50,
+     "M1-M15 técnico + <b>mundo en 15 min</b>.<br>"
+     "50% técnico + 50% macro (retornos 15-min).<br>"
+     "Señal estratégica: indica la <b>dirección dominante global</b>."),
 ]
 
 _exp_v2_cols = st.columns(4)
-for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _eaw2, _edesc) in enumerate(_exp_v2_defs):
+for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _eaw2,
+               _emacro, _emw, _etw, _edesc) in enumerate(_exp_v2_defs):
+    # Layer 1: Technical base + derivatives
     _ev_boost = vel_to_boost(_evel2)
     _ea_boost = accel_to_boost(_eacc2)
-    _enh2 = max(0, min(100, _ebase2 + (_ev_boost * _evw2 * 2) + (_ea_boost * _eaw2 * 2)))
-    _esd2 = "LONG" if _enh2 >= 55 else ("SHORT" if _enh2 <= 45 else "NEUTRAL")
-    _ecv2 = min(100, abs(_enh2 - 50) * 2)
+    _tech_enhanced = max(0, min(100, _ebase2 + (_ev_boost * _evw2 * 2) + (_ea_boost * _eaw2 * 2)))
+
+    # Layer 2: Macro at matching window
+    _emacro_score = _emacro["score"]
+    _emacro_dir = _emacro["direction"]
+    _emacro_consensus = _emacro["consensus_raw"]
+
+    # Layer 3: Fuse tech + macro
+    _fused = _tech_enhanced * _etw + _emacro_score * _emw
+    _fused = max(0, min(100, _fused))
+
+    _esd2 = "LONG" if _fused >= 55 else ("SHORT" if _fused <= 45 else "NEUTRAL")
+    _ecv2 = min(100, abs(_fused - 50) * 2)
     if _esd2 == "LONG":    _er2, _eg2, _eb2 = 82, 183, 136; _ear2 = "▲"; _eac2 = "COMPRAR"
     elif _esd2 == "SHORT": _er2, _eg2, _eb2 = 239, 71, 111; _ear2 = "▼"; _eac2 = "VENDER"
     else:                  _er2, _eg2, _eb2 = 255, 209, 102; _ear2 = "◆"; _eac2 = "ESPERAR"
@@ -1042,19 +1066,22 @@ for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _e
     elif _eacc2 > -0.002: _eacc_icon = "🔽"; _eacc_txt = "bajando pero frenando"
     else: _eacc_icon = "⏬"; _eacc_txt = "acelerando a la baja"
 
-    # Velocity direction text
     if _evel2 > 0.01: _evel_txt = f"↑ subiendo ({_evel2:+.4f}/s)"
     elif _evel2 < -0.01: _evel_txt = f"↓ bajando ({_evel2:+.4f}/s)"
     else: _evel_txt = f"→ estable ({_evel2:+.4f}/s)"
 
-    # Build blend formula text
     _blend_txt = " + ".join(f"{t}({p})" for t, p in _eblend.items())
     _blend_vals = " + ".join(f"{_exp_sc.get(t, 50):.0f}×{p}" for t, p in _eblend.items())
+
+    # Macro direction indicator for the card
+    if _emacro_dir == "LONG": _macro_icon = "🌍↑"
+    elif _emacro_dir == "SHORT": _macro_icon = "🌍↓"
+    else: _macro_icon = "🌍→"
 
     _card_html = (
         f"<div style='background:{_ebg2};padding:4px 4px;text-align:center;"
         f"border-radius:6px;'>"
-        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic2} {_esp2} {_eacc_icon}</div>"
+        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic2} {_esp2} {_eacc_icon} {_macro_icon}</div>"
         f"<div style='font-size:15px;color:{_etc2};font-weight:900;line-height:1;'>{_ear2}</div>"
         f"<div style='font-size:9px;color:{_etc2};font-weight:bold;line-height:1.1;'>{_eac2}</div>"
         f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv2:.0f}%</div>"
@@ -1065,16 +1092,22 @@ for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _e
         f"<div style='margin-bottom:6px;'>{_edesc}</div>"
         f"<div style='background:rgba(255,255,255,0.06);border:1px solid #333;"
         f"border-radius:5px;padding:6px;margin:4px 0;'>"
-        f"<b>Fórmula en vivo:</b><br>"
-        f"<span style='color:#4cc9f0;'>Base</span> = {_blend_txt}<br>"
-        f"<span style='color:#888;'>{_blend_vals} = <b>{_ebase2:.1f}</b></span><br><br>"
-        f"<span style='color:#4cc9f0;'>Velocidad</span> = {_evel_txt}<br>"
-        f"<span style='color:#888;'>Boost: {_ev_boost:+.1f} × {_evw2} × 2 = <b>{_ev_boost * _evw2 * 2:+.1f}</b></span><br><br>"
-        f"<span style='color:#4cc9f0;'>Aceleración</span> = {_eacc_txt}<br>"
-        f"<span style='color:#888;'>Boost: {_ea_boost:+.1f} × {_eaw2} × 2 = <b>{_ea_boost * _eaw2 * 2:+.1f}</b></span><br><br>"
-        f"<b>Score final</b> = {_ebase2:.1f} {_ev_boost * _evw2 * 2:+.1f} {_ea_boost * _eaw2 * 2:+.1f} = "
-        f"<b style='color:{_etc2};font-size:14px;'>{_enh2:.1f}</b><br>"
-        f"<span style='color:#888;'>Confianza = |{_enh2:.1f} - 50| × 2 = <b>{_ecv2:.0f}%</b></span>"
+        # Layer 1: Technical
+        f"<span style='color:#4cc9f0;font-weight:bold;'>① Técnico ({_etw:.0%})</span><br>"
+        f"Base = {_blend_txt}<br>"
+        f"<span style='color:#888;'>{_blend_vals} = <b>{_ebase2:.1f}</b></span><br>"
+        f"Vel: {_evel_txt} → boost {_ev_boost * _evw2 * 2:+.1f}<br>"
+        f"Acc: {_eacc_txt} → boost {_ea_boost * _eaw2 * 2:+.1f}<br>"
+        f"<b>Tech enhanced = {_tech_enhanced:.1f}</b><br><br>"
+        # Layer 2: Macro
+        f"<span style='color:#ffd166;font-weight:bold;'>② Macro ({_emw:.0%}) — ventana {_emacro['lookback_bars']}min</span><br>"
+        f"Consenso mundo: <b>{_emacro_consensus:+.4f}</b> → score <b>{_emacro_score:.1f}</b><br>"
+        f"Dirección mundo: <b>{_emacro_dir}</b><br><br>"
+        # Layer 3: Fusion
+        f"<span style='color:#52b788;font-weight:bold;'>③ Fusión</span><br>"
+        f"{_tech_enhanced:.1f}×{_etw:.0%} + {_emacro_score:.1f}×{_emw:.0%} = "
+        f"<b style='color:{_etc2};font-size:14px;'>{_fused:.1f}</b><br>"
+        f"Confianza = |{_fused:.1f} - 50| × 2 = <b>{_ecv2:.0f}%</b>"
         f"</div>"
     )
 
