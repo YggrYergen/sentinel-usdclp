@@ -843,18 +843,11 @@ border-radius:4px;color:#4cc9f0;font-size:13px;font-weight:bold;
 border:1px solid #4cc9f044;'>🧪 EXPERIMENTAL v4.0 — Triple Signal System</span></div>""",
 unsafe_allow_html=True)
 
-# Initialize MacroScorer in session state (persists across refreshes)
-if "_macro_scorer" not in st.session_state:
-    from sentinel.macro_scorer import MacroScorer
-    st.session_state._macro_scorer = MacroScorer()
+# Use MacroScorer from core (same instance feeding the composite score)
+_ms = core.macro_scorer
 
-_ms = st.session_state._macro_scorer
-
-# Feed current tick data to EWMA tracker
-_ms.update_tick(feed)
-
-# Calculate macro score
-_macro_result = _ms.calculate_score(feed)
+# Macro result already calculated in core.calculate_composite() — reuse from result
+_macro_result = comp.get("_macro", _ms.calculate_score(feed))
 _macro_score = _macro_result["score"]
 _macro_dir = _macro_result["direction"]
 
