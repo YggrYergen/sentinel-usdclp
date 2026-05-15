@@ -834,6 +834,175 @@ if not rsi_divs and not filtered_alerts and not divs:
     st.caption("✅ Sin alertas activas")
 
 # ══════════════════════════════════════════════════════════
+# EXPERIMENTAL v4.0 — Triple Signal System
+# ══════════════════════════════════════════════════════════
+st.markdown("---")
+st.markdown("""<div style='text-align:center;padding:4px 0;'>
+<span style='background:linear-gradient(90deg,#4cc9f033,#4cc9f000);padding:4px 16px;
+border-radius:4px;color:#4cc9f0;font-size:13px;font-weight:bold;
+border:1px solid #4cc9f044;'>🧪 EXPERIMENTAL v4.0 — Triple Signal System</span></div>""",
+unsafe_allow_html=True)
+
+# Initialize MacroScorer in session state (persists across refreshes)
+if "_macro_scorer" not in st.session_state:
+    from sentinel.macro_scorer import MacroScorer
+    st.session_state._macro_scorer = MacroScorer()
+
+_ms = st.session_state._macro_scorer
+
+# Feed current tick data to EWMA tracker
+_ms.update_tick(feed)
+
+# Calculate macro score
+_macro_result = _ms.calculate_score(feed)
+_macro_score = _macro_result["score"]
+_macro_dir = _macro_result["direction"]
+
+# Technical score (already calculated above)
+_tech_score_v4 = tech_sc  # from production calc
+_tech_dir_v4 = tech_dir
+
+# Fusion
+_fusion = _ms.calculate_fusion(_tech_score_v4, _tech_dir_v4, _macro_score, _macro_dir)
+
+# ── Triple Signal Cards ──
+_exp_c1, _exp_c2, _exp_c3 = st.columns(3)
+
+def _signal_card(label, icon, score, direction, detail_text=""):
+    """Generate a signal card HTML."""
+    if direction == "LONG":
+        clr = "#52b788"; arrow = "▲"; action = "COMPRAR"
+    elif direction == "SHORT":
+        clr = "#ef476f"; arrow = "▼"; action = "VENDER"
+    else:
+        clr = "#ffd166"; arrow = "◆"; action = "ESPERAR"
+    
+    # Confidence bar
+    bar_pct = abs(score - 50) * 2  # 0-100 based on distance from neutral
+    bar_side = "left" if score >= 50 else "right"
+    
+    card = (
+        f"<div style='background:#1a1d23;border-radius:10px;padding:10px 8px;"
+        f"border:1px solid {clr}33;text-align:center;'>"
+        f"<div style='font-size:11px;color:#888;margin-bottom:2px;'>{icon} {label}</div>"
+        f"<div style='font-size:28px;color:{clr};font-weight:900;line-height:1.2;'>{arrow}</div>"
+        f"<div style='font-size:20px;color:{clr};font-weight:bold;'>{score:.0f}</div>"
+        f"<div style='font-size:12px;color:{clr};font-weight:bold;margin:2px 0;'>{action}</div>"
+        f"<div style='background:#2a2d35;border-radius:3px;height:5px;width:100%;overflow:hidden;"
+        f"margin-top:4px;'>"
+        f"<div style='background:{clr};height:100%;width:{bar_pct:.0f}%;border-radius:3px;"
+        f"float:{bar_side};transition:width 0.5s;'></div></div>"
+        f"<div style='font-size:9px;color:#555;margin-top:3px;'>{detail_text}</div>"
+        f"</div>"
+    )
+    return card
+
+with _exp_c1:
+    _t_detail = f"EMA+RSI+MACD+BB×4TF"
+    st.markdown(_signal_card("TÉCNICO", "🔧", _tech_score_v4, _tech_dir_v4, _t_detail),
+                unsafe_allow_html=True)
+
+with _exp_c2:
+    _warmed = _macro_result["assets_warmed_up"]
+    _total = _macro_result["total_assets_tracked"]
+    _conf_avg = _macro_result["confidence_avg"]
+    _m_detail = f"{_warmed}/{_total} activos | conf {_conf_avg:.0%}"
+    st.markdown(_signal_card("MACRO", "🌍", _macro_score, _macro_dir, _m_detail),
+                unsafe_allow_html=True)
+
+with _exp_c3:
+    _f_detail = f"Confl: {_fusion['confluence_pct']:.0f}% | {_fusion['risk_emoji']} {_fusion['risk_mode']}"
+    st.markdown(_signal_card("FUSIÓN", "⚡", _fusion["score"], _fusion["direction"], _f_detail),
+                unsafe_allow_html=True)
+
+# ── Confluence Meter ──
+_conf_pct = _fusion["confluence_pct"]
+_conf_clr = "#52b788" if _fusion["aligned"] else ("#ef476f" if _fusion["opposed"] else "#ffd166")
+_conf_label = "✅ CONFLUENCIA" if _fusion["aligned"] else ("⚠️ DIVERGENCIA" if _fusion["opposed"] else "➡️ PARCIAL")
+_risk = _fusion["risk_mode"]
+_sl_m = _fusion["sl_multiplier"]
+_tp_m = _fusion["tp_multiplier"]
+
+st.markdown(
+    f"<div style='background:#1a1d23;border-radius:8px;padding:8px 12px;margin-top:6px;"
+    f"border:1px solid {_conf_clr}33;'>"
+    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;'>"
+    f"<span style='color:{_conf_clr};font-weight:bold;font-size:13px;'>"
+    f"{_conf_label} {_conf_pct:.0f}%</span>"
+    f"<span style='color:#888;font-size:11px;'>"
+    f"SL: {_sl_m:.1f}×ATR | TP: {_tp_m:.1f}×ATR | {_fusion['risk_emoji']} {_risk}</span></div>"
+    f"<div style='background:#2a2d35;border-radius:4px;height:8px;width:100%;overflow:hidden;'>"
+    f"<div style='background:linear-gradient(90deg,{_conf_clr},{_conf_clr}88);height:100%;"
+    f"width:{_conf_pct:.0f}%;border-radius:4px;transition:width 0.5s;'></div></div>"
+    f"</div>",
+    unsafe_allow_html=True
+)
+
+# ── Per-Asset Vote Breakdown ──
+with st.expander("📊 **Detalle votos por activo** — EWMA Confidence Weighted", expanded=False):
+    _votes = _macro_result.get("votes", {})
+    if _votes:
+        _vote_rows = ""
+        for _vk, _vv in sorted(_votes.items(), key=lambda x: abs(x[1]["weighted_vote"]), reverse=True):
+            _v_name = CN.get(_vk, _vk)
+            _v_ret = _vv["return_bps"]
+            _v_raw = _vv["raw_vote"]
+            _v_conf = _vv["confidence"]
+            _v_ew = _vv["effective_weight"]
+            _v_wv = _vv["weighted_vote"]
+            _v_ewma = _vv["ewma_corr"]
+            _v_conc = _vv["concordance"]
+            _v_warm = _vv["warmup"]
+            
+            # Color based on vote direction
+            if _v_wv > 0.05:
+                _v_clr = "#52b788"
+                _v_dir = "LONG"
+            elif _v_wv < -0.05:
+                _v_clr = "#ef476f"
+                _v_dir = "SHORT"
+            else:
+                _v_clr = "#555"
+                _v_dir = "—"
+            
+            # Confidence bar
+            _c_clr = "#52b788" if _v_conf >= 0.6 else ("#ffd166" if _v_conf >= 0.3 else "#ef476f")
+            _c_pct = _v_conf * 100
+            _warmup_tag = " <span style='color:#ff6b6b;font-size:9px;'>⏳WARMUP</span>" if _v_warm else ""
+            
+            _vote_rows += (
+                f"<tr style='border-bottom:1px solid #1a1d23;'>"
+                f"<td style='padding:4px 6px;color:#ccc;font-weight:bold;'>{_v_name}{_warmup_tag}</td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{'#52b788' if _v_ret > 0 else '#ef476f' if _v_ret < 0 else '#555'};'>"
+                f"{_v_ret:+.1f}bp</td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{_v_clr};font-weight:bold;'>{_v_dir}</td>"
+                f"<td style='padding:4px 4px;text-align:center;'>"
+                f"<div style='background:#2a2d35;border-radius:3px;height:4px;width:50px;display:inline-block;overflow:hidden;'>"
+                f"<div style='background:{_c_clr};height:100%;width:{_c_pct:.0f}%;'></div></div>"
+                f"<span style='color:{_c_clr};font-size:10px;margin-left:3px;'>{_v_conf:.0%}</span></td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{_v_clr};'>{_v_wv:+.3f}</td>"
+                f"</tr>"
+            )
+        
+        st.markdown(
+            f"<table style='width:100%;font-size:12px;font-family:monospace;"
+            f"border-collapse:collapse;background:#0e1117;'>"
+            f"<tr style='border-bottom:1px solid #333;'>"
+            f"<th style='padding:4px 6px;text-align:left;color:#888;font-size:10px;'>ACTIVO</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>Δ3min</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>VOTO</th>"
+            f"<th style='padding:4px 4px;text-align:center;color:#888;font-size:10px;'>CONFIANZA</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>PESO</th>"
+            f"</tr>{_vote_rows}</table>"
+            f"<div style='text-align:center;margin-top:6px;font-size:11px;color:#666;'>"
+            f"Consenso: <b style='color:#fff;'>{_macro_result['consensus_raw']:+.4f}</b> | "
+            f"Confianza promedio: <b style='color:#fff;'>{_macro_result['confidence_avg']:.0%}</b></div>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.caption("⏳ Esperando datos de cross-assets...")
+
+# ══════════════════════════════════════════════════════════
 # BACKTESTING
 # ══════════════════════════════════════════════════════════
 st.markdown("---")

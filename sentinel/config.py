@@ -93,8 +93,8 @@ RISK = RiskConfig()
 # ══════════════════════════════════════════════════════════════
 @dataclass
 class ScoreWeights:
-    technical: float = 0.75      # 75% — Indicadores técnicos (driver principal)
-    correlation: float = 0.25    # 25% — Correlaciones cross-asset (filtro contexto)
+    technical: float = 0.50      # 50% — Indicadores técnicos
+    correlation: float = 0.50    # 50% — Correlaciones cross-asset (mundo)
 
 WEIGHTS = ScoreWeights()
 
