@@ -995,20 +995,45 @@ st.markdown(tt(_exp_sig_html_v1, "🎯 Señales Base (exp)",
     f"{''.join(_exp_ttp_v1)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 🕐=M1+M2+M5+M15",
     "down"), unsafe_allow_html=True)
 
-# V2: Derivative-enhanced signals (velocity + acceleration)
+# V2: Derivative-enhanced signals (velocity + acceleration) — per-card tooltips
 _exp_m1v2 = _exp_sc.get("M1", 50)
 _exp_m2v2 = _exp_sc.get("M2", 50)
 _exp_m5v2 = _exp_sc.get("M5", 50)
 _exp_m15v2 = _exp_sc.get("M15", 50)
 
 _exp_v2_defs = [
-    ("⚡", "5s",  _exp_m1v2, vel_short, acceleration, 0.50, 0.30),
-    ("🔄", "30s", _exp_m1v2 * 0.6 + _exp_m2v2 * 0.4, vel_medium, acceleration, 0.30, 0.15),
-    ("📊", "1m",  _exp_m1v2 * 0.4 + _exp_m2v2 * 0.3 + _exp_m5v2 * 0.3, vel_long, acceleration, 0.15, 0.05),
-    ("🕐", "5m",  _exp_m1v2 * 0.2 + _exp_m2v2 * 0.2 + _exp_m5v2 * 0.35 + _exp_m15v2 * 0.25, vel_long, acceleration, 0.10, 0.03),
+    ("⚡", "5s", "Reacción instantánea",
+     _exp_m1v2,
+     {"M1": "100%"},
+     vel_short, acceleration, 0.50, 0.30,
+     "Captura micro-movimientos del último tick.<br>"
+     "Usa <b>solo M1</b> como base, amplificado por velocidad instantánea.<br>"
+     "Ideal para confirmar entradas en <b>scalping extremo</b>."),
+    ("🔄", "30s", "Confirmación corta",
+     _exp_m1v2 * 0.6 + _exp_m2v2 * 0.4,
+     {"M1": "60%", "M2": "40%"},
+     vel_medium, acceleration, 0.30, 0.15,
+     "Mezcla M1 (60%) + M2 (40%) para filtrar ruido del tick.<br>"
+     "Velocidad media (~15s). Si coincide con ⚡5s → <b>señal más confiable</b>.<br>"
+     "Divergencia ⚡vs🔄 = señal débil, esperar."),
+    ("📊", "1m", "Tendencia corta",
+     _exp_m1v2 * 0.4 + _exp_m2v2 * 0.3 + _exp_m5v2 * 0.3,
+     {"M1": "40%", "M2": "30%", "M5": "30%"},
+     vel_long, acceleration, 0.15, 0.05,
+     "Incorpora M5 (30%) para contexto de tendencia.<br>"
+     "Velocidad larga (~30s). Menos reactiva, más estable.<br>"
+     "Si las 3 anteriores coinciden → <b>alta confluencia técnica</b>."),
+    ("🕐", "5m", "Contexto estratégico",
+     _exp_m1v2 * 0.2 + _exp_m2v2 * 0.2 + _exp_m5v2 * 0.35 + _exp_m15v2 * 0.25,
+     {"M1": "20%", "M2": "20%", "M5": "35%", "M15": "25%"},
+     vel_long, acceleration, 0.10, 0.03,
+     "Incluye M15 (25%) como ancla de contexto.<br>"
+     "Señal más lenta — muestra la <b>dirección dominante</b>.<br>"
+     "Si 🕐5m diverge de ⚡5s → posible reversión pronto."),
 ]
-_exp_cells_v2 = ""
-for _eic2, _esp2, _ebase2, _evel2, _eacc2, _evw2, _eaw2 in _exp_v2_defs:
+
+_exp_v2_cols = st.columns(4)
+for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _eaw2, _edesc) in enumerate(_exp_v2_defs):
     _ev_boost = vel_to_boost(_evel2)
     _ea_boost = accel_to_boost(_eacc2)
     _enh2 = max(0, min(100, _ebase2 + (_ev_boost * _evw2 * 2) + (_ea_boost * _eaw2 * 2)))
@@ -1019,29 +1044,50 @@ for _eic2, _esp2, _ebase2, _evel2, _eacc2, _evw2, _eaw2 in _exp_v2_defs:
     else:                  _er2, _eg2, _eb2 = 255, 209, 102; _ear2 = "◆"; _eac2 = "ESPERAR"
     _eop2 = 0.10 + (_ecv2 / 100) * 0.45
     _etc2 = f"rgb({_er2},{_eg2},{_eb2})"; _ebg2 = f"rgba({_er2},{_eg2},{_eb2},{_eop2:.2f})"
-    if _eacc2 > 0.002: _eacc_icon = "⏫"
-    elif _eacc2 > 0: _eacc_icon = "🔼"
-    elif _eacc2 > -0.002: _eacc_icon = "🔽"
-    else: _eacc_icon = "⏬"
-    _exp_cells_v2 += (
-        f"<td style='background:{_ebg2};padding:2px 4px;text-align:center;"
-        f"border-right:1px solid #333;width:25%;'>"
+    if _eacc2 > 0.002: _eacc_icon = "⏫"; _eacc_txt = "acelerando al alza"
+    elif _eacc2 > 0: _eacc_icon = "🔼"; _eacc_txt = "subiendo pero frenando"
+    elif _eacc2 > -0.002: _eacc_icon = "🔽"; _eacc_txt = "bajando pero frenando"
+    else: _eacc_icon = "⏬"; _eacc_txt = "acelerando a la baja"
+
+    # Velocity direction text
+    if _evel2 > 0.01: _evel_txt = f"↑ subiendo ({_evel2:+.4f}/s)"
+    elif _evel2 < -0.01: _evel_txt = f"↓ bajando ({_evel2:+.4f}/s)"
+    else: _evel_txt = f"→ estable ({_evel2:+.4f}/s)"
+
+    # Build blend formula text
+    _blend_txt = " + ".join(f"{t}({p})" for t, p in _eblend.items())
+    _blend_vals = " + ".join(f"{_exp_sc.get(t, 50):.0f}×{p}" for t, p in _eblend.items())
+
+    _card_html = (
+        f"<div style='background:{_ebg2};padding:4px 4px;text-align:center;"
+        f"border-radius:6px;'>"
         f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic2} {_esp2} {_eacc_icon}</div>"
         f"<div style='font-size:15px;color:{_etc2};font-weight:900;line-height:1;'>{_ear2}</div>"
         f"<div style='font-size:9px;color:{_etc2};font-weight:bold;line-height:1.1;'>{_eac2}</div>"
         f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv2:.0f}%</div>"
-        f"</td>"
+        f"</div>"
     )
 
-_exp_sig_html_v2 = (
-    f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;'>"
-    f"<table style='width:100%;border-collapse:collapse;'><tr>{_exp_cells_v2}</tr></table></div>"
-)
-st.markdown(tt(_exp_sig_html_v2, "🧪 Señales v2 + 5m (exp)",
-    "Señales derivadas con velocidad y aceleración de precio.<br>"
-    "🕐 5m = blend M1(20%) + M2(20%) + M5(35%) + M15(25%)<br><br>"
-    "Próximo paso: integrar macro score a estas señales.",
-    "down"), unsafe_allow_html=True)
+    _tip_body = (
+        f"<div style='margin-bottom:6px;'>{_edesc}</div>"
+        f"<div style='background:rgba(255,255,255,0.06);border:1px solid #333;"
+        f"border-radius:5px;padding:6px;margin:4px 0;'>"
+        f"<b>Fórmula en vivo:</b><br>"
+        f"<span style='color:#4cc9f0;'>Base</span> = {_blend_txt}<br>"
+        f"<span style='color:#888;'>{_blend_vals} = <b>{_ebase2:.1f}</b></span><br><br>"
+        f"<span style='color:#4cc9f0;'>Velocidad</span> = {_evel_txt}<br>"
+        f"<span style='color:#888;'>Boost: {_ev_boost:+.1f} × {_evw2} × 2 = <b>{_ev_boost * _evw2 * 2:+.1f}</b></span><br><br>"
+        f"<span style='color:#4cc9f0;'>Aceleración</span> = {_eacc_txt}<br>"
+        f"<span style='color:#888;'>Boost: {_ea_boost:+.1f} × {_eaw2} × 2 = <b>{_ea_boost * _eaw2 * 2:+.1f}</b></span><br><br>"
+        f"<b>Score final</b> = {_ebase2:.1f} {_ev_boost * _evw2 * 2:+.1f} {_ea_boost * _eaw2 * 2:+.1f} = "
+        f"<b style='color:{_etc2};font-size:14px;'>{_enh2:.1f}</b><br>"
+        f"<span style='color:#888;'>Confianza = |{_enh2:.1f} - 50| × 2 = <b>{_ecv2:.0f}%</b></span>"
+        f"</div>"
+    )
+
+    with _exp_v2_cols[_col_idx]:
+        st.markdown(tt(_card_html, f"{_eic2} {_esp2} — {_erole}", _tip_body, "down"),
+                    unsafe_allow_html=True)
 
 # ── Per-Asset Vote Breakdown ──
 with st.expander("📊 **Detalle votos por activo** — EWMA Confidence Weighted", expanded=False):
