@@ -844,6 +844,10 @@ border:1px solid #4cc9f044;'>🧪 EXPERIMENTAL v4.0 — Triple Signal System</sp
 unsafe_allow_html=True)
 
 # Use MacroScorer from core (same instance feeding the composite score)
+# Fallback: if core was cached before v4.0, create and attach macro_scorer
+if not hasattr(core, 'macro_scorer'):
+    from sentinel.macro_scorer import MacroScorer
+    core.macro_scorer = MacroScorer()
 _ms = core.macro_scorer
 
 # Macro result already calculated in core.calculate_composite() — reuse from result
