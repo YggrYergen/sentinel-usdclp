@@ -938,6 +938,111 @@ st.markdown(
     unsafe_allow_html=True
 )
 
+# ── Experimental Signal Panel (4 signals: 5s / 30s / 1m / 5m) ──
+st.markdown(
+    "<div style='text-align:center;margin-top:8px;margin-bottom:4px;'>"
+    "<span style='color:#888;font-size:11px;'>📡 Señales Experimentales (4 timeframes)</span></div>",
+    unsafe_allow_html=True
+)
+
+# Get TF scores for experimental signals
+_exp_tf = tech_details.get("tf_scores", {})
+_exp_sc = {t: _exp_tf.get(t, {}).get("score", 50) for t in ("M1", "M2", "M5", "M15")}
+_exp_dir = {t: _exp_tf.get(t, {}).get("direction", "NEUTRAL") for t in ("M1", "M2", "M5", "M15")}
+
+# V1: Base signals (static TF blends)
+_exp_sig_defs = [
+    ("⚡", "5s",  {"M1": 1.0}),
+    ("🔄", "30s", {"M1": 0.6, "M2": 0.4}),
+    ("📊", "1m",  {"M1": 0.4, "M2": 0.3, "M5": 0.3}),
+    ("🕐", "5m",  {"M1": 0.2, "M2": 0.2, "M5": 0.35, "M15": 0.25}),
+]
+_exp_cells_v1 = ""
+_exp_ttp_v1 = []
+for _eic, _esp, _ewt in _exp_sig_defs:
+    _ebl = sum(_exp_sc.get(t, 50) * w for t, w in _ewt.items())
+    _evl = sum(w for t, w in _ewt.items() if _exp_dir.get(t) == "LONG")
+    _evs = sum(w for t, w in _ewt.items() if _exp_dir.get(t) == "SHORT")
+    _esd = "LONG" if _evl > _evs and _evl > 0.3 else ("SHORT" if _evs > _evl and _evs > 0.3 else "NEUTRAL")
+    _ecv = min(100, abs(_ebl - 50) * 2)
+    if _esd == "LONG":    _er, _eg, _eb = 82, 183, 136; _ear = "▲"; _eac = "COMPRAR"
+    elif _esd == "SHORT": _er, _eg, _eb = 239, 71, 111; _ear = "▼"; _eac = "VENDER"
+    else:                 _er, _eg, _eb = 255, 209, 102; _ear = "◆"; _eac = "ESPERAR"
+    _eop = 0.10 + (_ecv / 100) * 0.45
+    _etc = f"rgb({_er},{_eg},{_eb})"; _ebg = f"rgba({_er},{_eg},{_eb},{_eop:.2f})"
+    _exp_cells_v1 += (
+        f"<td style='background:{_ebg};padding:2px 4px;text-align:center;"
+        f"border-right:1px solid #333;width:25%;'>"
+        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic} {_esp}</div>"
+        f"<div style='font-size:15px;color:{_etc};font-weight:900;line-height:1;'>{_ear}</div>"
+        f"<div style='font-size:9px;color:{_etc};font-weight:bold;line-height:1.1;'>{_eac}</div>"
+        f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv:.0f}%</div>"
+        f"</td>"
+    )
+    _edet = " + ".join(f"{t}({_exp_sc.get(t,50):.0f})" for t in _ewt)
+    _exp_ttp_v1.append(
+        f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
+        f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
+        f"<b>{_eic} {_esp}</b> — <span style='color:{_etc};'><b>{_eac} {_ecv:.0f}%</b></span><br>"
+        f"<span style='color:#888;'>Blend: {_edet} = {_ebl:.1f}</span></div>"
+    )
+
+_exp_sig_html_v1 = (
+    f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
+    f"<table style='width:100%;border-collapse:collapse;'><tr>{_exp_cells_v1}</tr></table></div>"
+)
+st.markdown(tt(_exp_sig_html_v1, "🎯 Señales Base (exp)",
+    f"{''.join(_exp_ttp_v1)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 🕐=M1+M2+M5+M15",
+    "down"), unsafe_allow_html=True)
+
+# V2: Derivative-enhanced signals (velocity + acceleration)
+_exp_m1v2 = _exp_sc.get("M1", 50)
+_exp_m2v2 = _exp_sc.get("M2", 50)
+_exp_m5v2 = _exp_sc.get("M5", 50)
+_exp_m15v2 = _exp_sc.get("M15", 50)
+
+_exp_v2_defs = [
+    ("⚡", "5s",  _exp_m1v2, vel_short, acceleration, 0.50, 0.30),
+    ("🔄", "30s", _exp_m1v2 * 0.6 + _exp_m2v2 * 0.4, vel_medium, acceleration, 0.30, 0.15),
+    ("📊", "1m",  _exp_m1v2 * 0.4 + _exp_m2v2 * 0.3 + _exp_m5v2 * 0.3, vel_long, acceleration, 0.15, 0.05),
+    ("🕐", "5m",  _exp_m1v2 * 0.2 + _exp_m2v2 * 0.2 + _exp_m5v2 * 0.35 + _exp_m15v2 * 0.25, vel_long, acceleration, 0.10, 0.03),
+]
+_exp_cells_v2 = ""
+for _eic2, _esp2, _ebase2, _evel2, _eacc2, _evw2, _eaw2 in _exp_v2_defs:
+    _ev_boost = vel_to_boost(_evel2)
+    _ea_boost = accel_to_boost(_eacc2)
+    _enh2 = max(0, min(100, _ebase2 + (_ev_boost * _evw2 * 2) + (_ea_boost * _eaw2 * 2)))
+    _esd2 = "LONG" if _enh2 >= 55 else ("SHORT" if _enh2 <= 45 else "NEUTRAL")
+    _ecv2 = min(100, abs(_enh2 - 50) * 2)
+    if _esd2 == "LONG":    _er2, _eg2, _eb2 = 82, 183, 136; _ear2 = "▲"; _eac2 = "COMPRAR"
+    elif _esd2 == "SHORT": _er2, _eg2, _eb2 = 239, 71, 111; _ear2 = "▼"; _eac2 = "VENDER"
+    else:                  _er2, _eg2, _eb2 = 255, 209, 102; _ear2 = "◆"; _eac2 = "ESPERAR"
+    _eop2 = 0.10 + (_ecv2 / 100) * 0.45
+    _etc2 = f"rgb({_er2},{_eg2},{_eb2})"; _ebg2 = f"rgba({_er2},{_eg2},{_eb2},{_eop2:.2f})"
+    if _eacc2 > 0.002: _eacc_icon = "⏫"
+    elif _eacc2 > 0: _eacc_icon = "🔼"
+    elif _eacc2 > -0.002: _eacc_icon = "🔽"
+    else: _eacc_icon = "⏬"
+    _exp_cells_v2 += (
+        f"<td style='background:{_ebg2};padding:2px 4px;text-align:center;"
+        f"border-right:1px solid #333;width:25%;'>"
+        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic2} {_esp2} {_eacc_icon}</div>"
+        f"<div style='font-size:15px;color:{_etc2};font-weight:900;line-height:1;'>{_ear2}</div>"
+        f"<div style='font-size:9px;color:{_etc2};font-weight:bold;line-height:1.1;'>{_eac2}</div>"
+        f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv2:.0f}%</div>"
+        f"</td>"
+    )
+
+_exp_sig_html_v2 = (
+    f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;'>"
+    f"<table style='width:100%;border-collapse:collapse;'><tr>{_exp_cells_v2}</tr></table></div>"
+)
+st.markdown(tt(_exp_sig_html_v2, "🧪 Señales v2 + 5m (exp)",
+    "Señales derivadas con velocidad y aceleración de precio.<br>"
+    "🕐 5m = blend M1(20%) + M2(20%) + M5(35%) + M15(25%)<br><br>"
+    "Próximo paso: integrar macro score a estas señales.",
+    "down"), unsafe_allow_html=True)
+
 # ── Per-Asset Vote Breakdown ──
 with st.expander("📊 **Detalle votos por activo** — EWMA Confidence Weighted", expanded=False):
     _votes = _macro_result.get("votes", {})
