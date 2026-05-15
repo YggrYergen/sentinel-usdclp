@@ -1,4 +1,4 @@
-# 🛡️ SENTINEL v3.6 — USD/CLP Scalping Intelligence Engine
+# 🛡️ SENTINEL v3.7 — USD/CLP Scalping Intelligence Engine
 
 > Sistema de análisis en tiempo real para scalping de USD/CLP.
 > Conecta con MetaTrader 5 para datos en vivo, calcula scores técnicos multi-timeframe,

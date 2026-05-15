@@ -1,2 +1,2 @@
-VERSION = "3.5.0"
-CODENAME = "Scalper Pro"
+VERSION = "3.7.0"
+CODENAME = "AI Advisor"
