@@ -32,7 +32,7 @@ def calculate_technical_score(df: pd.DataFrame, normalize_macd: bool = False) ->
 def calculate_multi_tf_score(data_feed, symbol: str) -> dict:
     from sentinel.config import TIMEFRAMES, BARS_TO_FETCH
     tf_scores = {}
-    tf_w = {"M15": 0.10, "M5": 0.30, "M2": 0.30, "M1": 0.30}
+    tf_w = {"M15": 0.10, "M5": 0.20, "M2": 0.35, "M1": 0.35}
     for tf_name, tf_min in TIMEFRAMES.items():
         df = data_feed.get_data(symbol, tf_min, BARS_TO_FETCH)
         # ATR-normalize MACD for ALL TFs — raw histogram saturates on high-price

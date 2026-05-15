@@ -120,7 +120,7 @@ def replay_scoring(bars_back: int = 500, progress_callback=None) -> pd.DataFrame
     results = []
     total = min(bars_back, len(m1_data) - 200)
     
-    tf_w = {"M15": 0.10, "M5": 0.30, "M2": 0.30, "M1": 0.30}
+    tf_w = {"M15": 0.10, "M5": 0.20, "M2": 0.35, "M1": 0.35}
     
     for i in range(200, 200 + total):
         if progress_callback and i % 50 == 0:

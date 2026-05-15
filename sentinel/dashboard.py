@@ -419,8 +419,8 @@ with col_score:
         f"<span style='color:{dir_color[d]};font-size:18px;font-weight:bold;'>{d}</span>"
         f"<span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
         "📊 Score + Dirección",
-        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.75 + {corr_sc:.0f}×0.25 = <b>{score}</b>"
-        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (x2) | Corr: <b>{corr_dir}</b> (x3)",
+        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.50 + {corr_sc:.0f}×0.50 = <b>{score}</b>"
+        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (50%) | Corr: <b>{corr_dir}</b> (50%)",
         "down"), unsafe_allow_html=True)
 
 
@@ -498,7 +498,7 @@ with col_tf:
         tf_order = ["M1", "M2", "M5", "M15"]
         active_tfs = [t for t in tf_order if t in tf_scores]
         tf_cols = st.columns(len(active_tfs))
-        tf_w = {"M1": "30%", "M2": "30%", "M5": "30%", "M15": "10%"}
+        tf_w = {"M1": "35%", "M2": "35%", "M5": "20%", "M15": "10%"}
         tf_roles = {"M1": "Ejecución", "M2": "Confirmación", "M5": "Tendencia", "M15": "Contexto"}
         for col_idx, tf in enumerate(active_tfs):
             r = tf_scores[tf]
