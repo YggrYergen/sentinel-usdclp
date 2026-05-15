@@ -498,7 +498,7 @@ with col_tf:
         tf_order = ["M1", "M2", "M5", "M15"]
         active_tfs = [t for t in tf_order if t in tf_scores]
         tf_cols = st.columns(len(active_tfs))
-        tf_w = {"M1": "40%", "M2": "30%", "M5": "20%", "M15": "10%"}
+        tf_w = {"M1": "30%", "M2": "30%", "M5": "30%", "M15": "10%"}
         tf_roles = {"M1": "Ejecución", "M2": "Confirmación", "M5": "Tendencia", "M15": "Contexto"}
         for col_idx, tf in enumerate(active_tfs):
             r = tf_scores[tf]
