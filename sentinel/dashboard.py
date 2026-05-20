@@ -78,6 +78,8 @@ st.markdown("""
     section.main div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] > div {
         height: 100%; display: flex; flex-direction: column; justify-content: flex-start;
     }
+    .macro-votes-wrap { display: flex; flex-direction: column; justify-content: space-between; }
+    .macro-votes-wrap table { flex: 1; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -235,9 +237,20 @@ def _slider_bar(label, weight_pct, score, msg):
     )
 
 # ══════════════════════════════════════════════════════════
-# HEADER — 4 columnas en 1 fila
+# PRE-CALC: MacroScorer (needed for header macro votes column)
 # ══════════════════════════════════════════════════════════
-col_score, col_levels, col_tf, col_corr = st.columns([0.55, 0.85, 1.6, 1.0])
+if not hasattr(core, 'macro_scorer'):
+    from sentinel.macro_scorer import MacroScorer
+    core.macro_scorer = MacroScorer()
+_ms = core.macro_scorer
+_macro_result = comp.get("_macro", _ms.calculate_score(feed))
+_macro_score = _macro_result["score"]
+_macro_dir = _macro_result["direction"]
+
+# ══════════════════════════════════════════════════════════
+# HEADER — 5 columnas en 1 fila
+# ══════════════════════════════════════════════════════════
+col_score, col_levels, col_tf, col_corr, col_macro = st.columns([0.55, 0.85, 1.6, 1.0, 0.9])
 
 with col_score:
     # Signal panel (compact, same width as score)
@@ -419,8 +432,8 @@ with col_score:
         f"<span style='color:{dir_color[d]};font-size:18px;font-weight:bold;'>{d}</span>"
         f"<span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
         "📊 Score + Dirección",
-        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.75 + {corr_sc:.0f}×0.25 = <b>{score}</b>"
-        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (x2) | Corr: <b>{corr_dir}</b> (x3)",
+        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.50 + {corr_sc:.0f}×0.50 = <b>{score}</b>"
+        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (50%) | Corr: <b>{corr_dir}</b> (50%)",
         "down"), unsafe_allow_html=True)
 
 
@@ -498,7 +511,7 @@ with col_tf:
         tf_order = ["M1", "M2", "M5", "M15"]
         active_tfs = [t for t in tf_order if t in tf_scores]
         tf_cols = st.columns(len(active_tfs))
-        tf_w = {"M1": "40%", "M2": "30%", "M5": "20%", "M15": "10%"}
+        tf_w = {"M1": "35%", "M2": "35%", "M5": "20%", "M15": "10%"}
         tf_roles = {"M1": "Ejecución", "M2": "Confirmación", "M5": "Tendencia", "M15": "Contexto"}
         for col_idx, tf in enumerate(active_tfs):
             r = tf_scores[tf]
@@ -795,16 +808,69 @@ with col_corr:
                 f"</tr>"
             )
 
-        tbl = (f"<table style='width:100%;font-size:12px;font-family:monospace;"
+        tbl = (f"<div class='corr-table-wrap'>"
+               f"<table style='width:100%;font-size:12px;font-family:monospace;"
                f"border-collapse:collapse;line-height:1.5;'>"
                f"{_hdr_rows}</table>"
                f"<div style='text-align:center;margin-top:3px;padding:2px;"
                f"border-top:1px solid #333;font-size:13px;'>"
                f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
-               f" <span style='color:{cc};font-size:11px;'>{cd}</span></div>")
+               f" <span style='color:{cc};font-size:11px;'>{cd}</span></div>"
+               f"</div>")
         st.markdown(tt(tbl, "🔗 Correlaciones Cross-Asset",
             corr_rec,
             "down"), unsafe_allow_html=True)
+
+# ── COL 5: Macro Votes (copy of experimental breakdown) ──
+with col_macro:
+    _hdr_votes = _macro_result.get("votes", {})
+    if _hdr_votes:
+        _hdr_vote_rows = ""
+        for _hvk, _hvv in sorted(_hdr_votes.items(), key=lambda x: abs(x[1]["weighted_vote"]), reverse=True):
+            _hv_name = CN.get(_hvk, _hvk)
+            _hv_ret = _hvv["return_bps"]
+            _hv_wv = _hvv["weighted_vote"]
+            _hv_conf = _hvv["confidence"]
+            _hv_warm = _hvv["warmup"]
+            if _hv_wv > 0.05: _hv_clr = "#52b788"; _hv_dir = "L"
+            elif _hv_wv < -0.05: _hv_clr = "#ef476f"; _hv_dir = "S"
+            else: _hv_clr = "#555"; _hv_dir = "—"
+            _hc_clr = "#52b788" if _hv_conf >= 0.6 else ("#ffd166" if _hv_conf >= 0.3 else "#ef476f")
+            _hc_pct = _hv_conf * 100
+            _hw_tag = " <span style='color:#ff6b6b;font-size:8px;'>⏳</span>" if _hv_warm else ""
+            _hdr_vote_rows += (
+                f"<tr style='border-bottom:1px solid #1a1d23;'>"
+                f"<td style='padding:3px 3px;color:#ccc;font-size:12px;'>{_hv_name}{_hw_tag}</td>"
+                f"<td style='padding:3px 3px;text-align:right;color:{'#52b788' if _hv_ret > 0 else '#ef476f' if _hv_ret < 0 else '#555'};font-size:12px;'>"
+                f"{_hv_ret:+.1f}</td>"
+                f"<td style='padding:3px 3px;text-align:center;color:{_hv_clr};font-weight:bold;font-size:12px;'>{_hv_dir}</td>"
+                f"<td style='padding:3px 3px;text-align:center;'>"
+                f"<div style='background:#2a2d35;border-radius:2px;height:3px;width:36px;display:inline-block;overflow:hidden;'>"
+                f"<div style='background:{_hc_clr};height:100%;width:{_hc_pct:.0f}%;'></div></div></td>"
+                f"<td style='padding:3px 3px;text-align:right;color:{_hv_clr};font-size:11px;'>{_hv_wv:+.2f}</td>"
+                f"</tr>"
+            )
+        # Macro direction color
+        _hm_clr = "#52b788" if _macro_score >= 65 else ("#ffd166" if _macro_score >= 50 else "#ef476f")
+        _hdr_macro_tbl = (
+            f"<div class='macro-votes-wrap'>"
+            f"<table style='width:100%;font-size:12px;font-family:monospace;"
+            f"border-collapse:collapse;line-height:1.5;'>"
+            f"{_hdr_vote_rows}</table>"
+            f"<div style='text-align:center;margin-top:auto;padding:2px;"
+            f"border-top:1px solid #333;font-size:13px;'>"
+            f"<span style='color:{_hm_clr};font-weight:bold;'>Macro: {_macro_score:.0f}</span>"
+            f" <span style='color:{_hm_clr};font-size:11px;'>{_macro_dir}</span></div>"
+            f"</div>"
+        )
+        st.markdown(tt(_hdr_macro_tbl, "🌍 Votos Macro por Activo",
+            f"Consenso: <b>{_macro_result['consensus_raw']:+.4f}</b><br>"
+            f"Confianza promedio: <b>{_macro_result['confidence_avg']:.0%}</b><br><br>"
+            f"Cada activo vota LONG/SHORT según su retorno reciente,<br>"
+            f"ponderado por confianza EWMA de correlación histórica.",
+            "down"), unsafe_allow_html=True)
+    else:
+        st.caption("⏳ Macro...")
 
 # ══════════════════════════════════════════════════════════
 # ALERTAS Y DIVERGENCIAS
@@ -832,6 +898,347 @@ if divs:
 
 if not rsi_divs and not filtered_alerts and not divs:
     st.caption("✅ Sin alertas activas")
+
+# ══════════════════════════════════════════════════════════
+# EXPERIMENTAL v4.0 — Triple Signal System
+# ══════════════════════════════════════════════════════════
+st.markdown("---")
+st.markdown("""<div style='text-align:center;padding:4px 0;'>
+<span style='background:linear-gradient(90deg,#4cc9f033,#4cc9f000);padding:4px 16px;
+border-radius:4px;color:#4cc9f0;font-size:13px;font-weight:bold;
+border:1px solid #4cc9f044;'>🧪 EXPERIMENTAL v4.0 — Triple Signal System</span></div>""",
+unsafe_allow_html=True)
+
+# MacroScorer already initialized and calculated in pre-calc section above
+# _ms, _macro_result, _macro_score, _macro_dir are already available
+
+# Technical score (already calculated above)
+_tech_score_v4 = tech_sc  # from production calc
+_tech_dir_v4 = tech_dir
+
+# Fusion
+_fusion = _ms.calculate_fusion(_tech_score_v4, _tech_dir_v4, _macro_score, _macro_dir)
+
+# ── Triple Signal Cards ──
+_exp_c1, _exp_c2, _exp_c3 = st.columns(3)
+
+def _signal_card(label, icon, score, direction, detail_text=""):
+    """Generate a signal card HTML."""
+    if direction == "LONG":
+        clr = "#52b788"; arrow = "▲"; action = "COMPRAR"
+    elif direction == "SHORT":
+        clr = "#ef476f"; arrow = "▼"; action = "VENDER"
+    else:
+        clr = "#ffd166"; arrow = "◆"; action = "ESPERAR"
+    
+    # Confidence bar
+    bar_pct = abs(score - 50) * 2  # 0-100 based on distance from neutral
+    bar_side = "left" if score >= 50 else "right"
+    
+    card = (
+        f"<div style='background:#1a1d23;border-radius:10px;padding:10px 8px;"
+        f"border:1px solid {clr}33;text-align:center;'>"
+        f"<div style='font-size:11px;color:#888;margin-bottom:2px;'>{icon} {label}</div>"
+        f"<div style='font-size:28px;color:{clr};font-weight:900;line-height:1.2;'>{arrow}</div>"
+        f"<div style='font-size:20px;color:{clr};font-weight:bold;'>{score:.0f}</div>"
+        f"<div style='font-size:12px;color:{clr};font-weight:bold;margin:2px 0;'>{action}</div>"
+        f"<div style='background:#2a2d35;border-radius:3px;height:5px;width:100%;overflow:hidden;"
+        f"margin-top:4px;'>"
+        f"<div style='background:{clr};height:100%;width:{bar_pct:.0f}%;border-radius:3px;"
+        f"float:{bar_side};transition:width 0.5s;'></div></div>"
+        f"<div style='font-size:9px;color:#555;margin-top:3px;'>{detail_text}</div>"
+        f"</div>"
+    )
+    return card
+
+with _exp_c1:
+    _t_detail = f"EMA+RSI+MACD+BB×4TF"
+    st.markdown(_signal_card("TÉCNICO", "🔧", _tech_score_v4, _tech_dir_v4, _t_detail),
+                unsafe_allow_html=True)
+
+with _exp_c2:
+    _warmed = _macro_result["assets_warmed_up"]
+    _total = _macro_result["total_assets_tracked"]
+    _conf_avg = _macro_result["confidence_avg"]
+    _m_detail = f"{_warmed}/{_total} activos | conf {_conf_avg:.0%}"
+    st.markdown(_signal_card("MACRO", "🌍", _macro_score, _macro_dir, _m_detail),
+                unsafe_allow_html=True)
+
+with _exp_c3:
+    _f_detail = f"Confl: {_fusion['confluence_pct']:.0f}% | {_fusion['risk_emoji']} {_fusion['risk_mode']}"
+    st.markdown(_signal_card("FUSIÓN", "⚡", _fusion["score"], _fusion["direction"], _f_detail),
+                unsafe_allow_html=True)
+
+# ── Confluence Meter ──
+_conf_pct = _fusion["confluence_pct"]
+_conf_clr = "#52b788" if _fusion["aligned"] else ("#ef476f" if _fusion["opposed"] else "#ffd166")
+_conf_label = "✅ CONFLUENCIA" if _fusion["aligned"] else ("⚠️ DIVERGENCIA" if _fusion["opposed"] else "➡️ PARCIAL")
+_risk = _fusion["risk_mode"]
+_sl_m = _fusion["sl_multiplier"]
+_tp_m = _fusion["tp_multiplier"]
+
+st.markdown(
+    f"<div style='background:#1a1d23;border-radius:8px;padding:8px 12px;margin-top:6px;"
+    f"border:1px solid {_conf_clr}33;'>"
+    f"<div style='display:flex;justify-content:space-between;align-items:center;margin-bottom:4px;'>"
+    f"<span style='color:{_conf_clr};font-weight:bold;font-size:13px;'>"
+    f"{_conf_label} {_conf_pct:.0f}%</span>"
+    f"<span style='color:#888;font-size:11px;'>"
+    f"SL: {_sl_m:.1f}×ATR | TP: {_tp_m:.1f}×ATR | {_fusion['risk_emoji']} {_risk}</span></div>"
+    f"<div style='background:#2a2d35;border-radius:4px;height:8px;width:100%;overflow:hidden;'>"
+    f"<div style='background:linear-gradient(90deg,{_conf_clr},{_conf_clr}88);height:100%;"
+    f"width:{_conf_pct:.0f}%;border-radius:4px;transition:width 0.5s;'></div></div>"
+    f"</div>",
+    unsafe_allow_html=True
+)
+
+# ── Experimental Signal Panel (4 signals: 5s / 30s / 1m / 5m) ──
+st.markdown(
+    "<div style='text-align:center;margin-top:8px;margin-bottom:4px;'>"
+    "<span style='color:#888;font-size:11px;'>📡 Señales Experimentales (4 timeframes)</span></div>",
+    unsafe_allow_html=True
+)
+
+# Get TF scores for experimental signals
+_exp_tf = tech_details.get("tf_scores", {})
+_exp_sc = {t: _exp_tf.get(t, {}).get("score", 50) for t in ("M1", "M2", "M5", "M15")}
+_exp_dir = {t: _exp_tf.get(t, {}).get("direction", "NEUTRAL") for t in ("M1", "M2", "M5", "M15")}
+
+# V1: Base signals (static TF blends)
+_exp_sig_defs = [
+    ("⚡", "5s",  {"M1": 1.0}),
+    ("🔄", "30s", {"M1": 0.6, "M2": 0.4}),
+    ("📊", "1m",  {"M1": 0.4, "M2": 0.3, "M5": 0.3}),
+    ("🕐", "5m",  {"M1": 0.2, "M2": 0.2, "M5": 0.35, "M15": 0.25}),
+]
+_exp_cells_v1 = ""
+_exp_ttp_v1 = []
+for _eic, _esp, _ewt in _exp_sig_defs:
+    _ebl = sum(_exp_sc.get(t, 50) * w for t, w in _ewt.items())
+    _evl = sum(w for t, w in _ewt.items() if _exp_dir.get(t) == "LONG")
+    _evs = sum(w for t, w in _ewt.items() if _exp_dir.get(t) == "SHORT")
+    _esd = "LONG" if _evl > _evs and _evl > 0.3 else ("SHORT" if _evs > _evl and _evs > 0.3 else "NEUTRAL")
+    _ecv = min(100, abs(_ebl - 50) * 2)
+    if _esd == "LONG":    _er, _eg, _eb = 82, 183, 136; _ear = "▲"; _eac = "COMPRAR"
+    elif _esd == "SHORT": _er, _eg, _eb = 239, 71, 111; _ear = "▼"; _eac = "VENDER"
+    else:                 _er, _eg, _eb = 255, 209, 102; _ear = "◆"; _eac = "ESPERAR"
+    _eop = 0.10 + (_ecv / 100) * 0.45
+    _etc = f"rgb({_er},{_eg},{_eb})"; _ebg = f"rgba({_er},{_eg},{_eb},{_eop:.2f})"
+    _exp_cells_v1 += (
+        f"<td style='background:{_ebg};padding:2px 4px;text-align:center;"
+        f"border-right:1px solid #333;width:25%;'>"
+        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic} {_esp}</div>"
+        f"<div style='font-size:15px;color:{_etc};font-weight:900;line-height:1;'>{_ear}</div>"
+        f"<div style='font-size:9px;color:{_etc};font-weight:bold;line-height:1.1;'>{_eac}</div>"
+        f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv:.0f}%</div>"
+        f"</td>"
+    )
+    _edet = " + ".join(f"{t}({_exp_sc.get(t,50):.0f})" for t in _ewt)
+    _exp_ttp_v1.append(
+        f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
+        f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
+        f"<b>{_eic} {_esp}</b> — <span style='color:{_etc};'><b>{_eac} {_ecv:.0f}%</b></span><br>"
+        f"<span style='color:#888;'>Blend: {_edet} = {_ebl:.1f}</span></div>"
+    )
+
+_exp_sig_html_v1 = (
+    f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
+    f"<table style='width:100%;border-collapse:collapse;'><tr>{_exp_cells_v1}</tr></table></div>"
+)
+st.markdown(tt(_exp_sig_html_v1, "🎯 Señales Base (exp)",
+    f"{''.join(_exp_ttp_v1)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 🕐=M1+M2+M5+M15",
+    "down"), unsafe_allow_html=True)
+
+# V2: Tech + Derivatives + Macro-fused signals — per-card tooltips
+_exp_m1v2 = _exp_sc.get("M1", 50)
+_exp_m2v2 = _exp_sc.get("M2", 50)
+_exp_m5v2 = _exp_sc.get("M5", 50)
+_exp_m15v2 = _exp_sc.get("M15", 50)
+
+# Calculate macro at each window (cached per refresh since data doesn't change within a cycle)
+_macro_5s = _ms.calculate_score_at_window(feed, lookback_bars=1)
+_macro_30s = _ms.calculate_score_at_window(feed, lookback_bars=3)
+_macro_1m = _ms.calculate_score_at_window(feed, lookback_bars=5)
+_macro_5m = _ms.calculate_score_at_window(feed, lookback_bars=15)
+
+# (icon, label, role, tech_base, tf_blend, vel, accel, vel_weight, accel_weight,
+#  macro_result, macro_weight, tech_weight, description)
+_exp_v2_defs = [
+    ("⚡", "5s", "Reacción instantánea",
+     _exp_m1v2,
+     {"M1": "100%"},
+     vel_short, acceleration, 0.50, 0.30,
+     _macro_5s, 0.20, 0.80,
+     "Captura micro-movimientos del último tick + <b>pulso mundial</b>.<br>"
+     "80% técnico (M1) + 20% macro (assets en ~1 min).<br>"
+     "El mundo confirma o frena la señal instantánea."),
+    ("🔄", "30s", "Confirmación corta",
+     _exp_m1v2 * 0.6 + _exp_m2v2 * 0.4,
+     {"M1": "60%", "M2": "40%"},
+     vel_medium, acceleration, 0.30, 0.15,
+     _macro_30s, 0.30, 0.70,
+     "M1+M2 técnico + <b>mundo en 3 min</b>.<br>"
+     "70% técnico + 30% macro (retornos 3-min de 8 assets).<br>"
+     "Filtra señales falsas: si el mundo no acompaña → esperar."),
+    ("📊", "1m", "Tendencia corta",
+     _exp_m1v2 * 0.4 + _exp_m2v2 * 0.3 + _exp_m5v2 * 0.3,
+     {"M1": "40%", "M2": "30%", "M5": "30%"},
+     vel_long, acceleration, 0.15, 0.05,
+     _macro_1m, 0.40, 0.60,
+     "M1+M2+M5 técnico + <b>mundo en 5 min</b>.<br>"
+     "60% técnico + 40% macro (retornos 5-min).<br>"
+     "Equilibrio: si técnico Y mundo confluyen → <b>señal fuerte</b>."),
+    ("🕐", "5m", "Contexto estratégico",
+     _exp_m1v2 * 0.2 + _exp_m2v2 * 0.2 + _exp_m5v2 * 0.35 + _exp_m15v2 * 0.25,
+     {"M1": "20%", "M2": "20%", "M5": "35%", "M15": "25%"},
+     vel_long, acceleration, 0.10, 0.03,
+     _macro_5m, 0.50, 0.50,
+     "M1-M15 técnico + <b>mundo en 15 min</b>.<br>"
+     "50% técnico + 50% macro (retornos 15-min).<br>"
+     "Señal estratégica: indica la <b>dirección dominante global</b>."),
+]
+
+_exp_v2_cols = st.columns(4)
+for _col_idx, (_eic2, _esp2, _erole, _ebase2, _eblend, _evel2, _eacc2, _evw2, _eaw2,
+               _emacro, _emw, _etw, _edesc) in enumerate(_exp_v2_defs):
+    # Layer 1: Technical base + derivatives
+    _ev_boost = vel_to_boost(_evel2)
+    _ea_boost = accel_to_boost(_eacc2)
+    _tech_enhanced = max(0, min(100, _ebase2 + (_ev_boost * _evw2 * 2) + (_ea_boost * _eaw2 * 2)))
+
+    # Layer 2: Macro at matching window
+    _emacro_score = _emacro["score"]
+    _emacro_dir = _emacro["direction"]
+    _emacro_consensus = _emacro["consensus_raw"]
+
+    # Layer 3: Fuse tech + macro
+    _fused = _tech_enhanced * _etw + _emacro_score * _emw
+    _fused = max(0, min(100, _fused))
+
+    _esd2 = "LONG" if _fused >= 55 else ("SHORT" if _fused <= 45 else "NEUTRAL")
+    _ecv2 = min(100, abs(_fused - 50) * 2)
+    if _esd2 == "LONG":    _er2, _eg2, _eb2 = 82, 183, 136; _ear2 = "▲"; _eac2 = "COMPRAR"
+    elif _esd2 == "SHORT": _er2, _eg2, _eb2 = 239, 71, 111; _ear2 = "▼"; _eac2 = "VENDER"
+    else:                  _er2, _eg2, _eb2 = 255, 209, 102; _ear2 = "◆"; _eac2 = "ESPERAR"
+    _eop2 = 0.10 + (_ecv2 / 100) * 0.45
+    _etc2 = f"rgb({_er2},{_eg2},{_eb2})"; _ebg2 = f"rgba({_er2},{_eg2},{_eb2},{_eop2:.2f})"
+    if _eacc2 > 0.002: _eacc_icon = "⏫"; _eacc_txt = "acelerando al alza"
+    elif _eacc2 > 0: _eacc_icon = "🔼"; _eacc_txt = "subiendo pero frenando"
+    elif _eacc2 > -0.002: _eacc_icon = "🔽"; _eacc_txt = "bajando pero frenando"
+    else: _eacc_icon = "⏬"; _eacc_txt = "acelerando a la baja"
+
+    if _evel2 > 0.01: _evel_txt = f"↑ subiendo ({_evel2:+.4f}/s)"
+    elif _evel2 < -0.01: _evel_txt = f"↓ bajando ({_evel2:+.4f}/s)"
+    else: _evel_txt = f"→ estable ({_evel2:+.4f}/s)"
+
+    _blend_txt = " + ".join(f"{t}({p})" for t, p in _eblend.items())
+    _blend_vals = " + ".join(f"{_exp_sc.get(t, 50):.0f}×{p}" for t, p in _eblend.items())
+
+    # Macro direction indicator for the card
+    if _emacro_dir == "LONG": _macro_icon = "🌍↑"
+    elif _emacro_dir == "SHORT": _macro_icon = "🌍↓"
+    else: _macro_icon = "🌍→"
+
+    _card_html = (
+        f"<div style='background:{_ebg2};padding:4px 4px;text-align:center;"
+        f"border-radius:6px;'>"
+        f"<div style='font-size:9px;color:#888;line-height:1;'>{_eic2} {_esp2} {_eacc_icon} {_macro_icon}</div>"
+        f"<div style='font-size:15px;color:{_etc2};font-weight:900;line-height:1;'>{_ear2}</div>"
+        f"<div style='font-size:9px;color:{_etc2};font-weight:bold;line-height:1.1;'>{_eac2}</div>"
+        f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_ecv2:.0f}%</div>"
+        f"</div>"
+    )
+
+    _tip_body = (
+        f"<div style='margin-bottom:6px;'>{_edesc}</div>"
+        f"<div style='background:rgba(255,255,255,0.06);border:1px solid #333;"
+        f"border-radius:5px;padding:6px;margin:4px 0;'>"
+        # Layer 1: Technical
+        f"<span style='color:#4cc9f0;font-weight:bold;'>① Técnico ({_etw:.0%})</span><br>"
+        f"Base = {_blend_txt}<br>"
+        f"<span style='color:#888;'>{_blend_vals} = <b>{_ebase2:.1f}</b></span><br>"
+        f"Vel: {_evel_txt} → boost {_ev_boost * _evw2 * 2:+.1f}<br>"
+        f"Acc: {_eacc_txt} → boost {_ea_boost * _eaw2 * 2:+.1f}<br>"
+        f"<b>Tech enhanced = {_tech_enhanced:.1f}</b><br><br>"
+        # Layer 2: Macro
+        f"<span style='color:#ffd166;font-weight:bold;'>② Macro ({_emw:.0%}) — ventana {_emacro['lookback_bars']}min</span><br>"
+        f"Consenso mundo: <b>{_emacro_consensus:+.4f}</b> → score <b>{_emacro_score:.1f}</b><br>"
+        f"Dirección mundo: <b>{_emacro_dir}</b><br><br>"
+        # Layer 3: Fusion
+        f"<span style='color:#52b788;font-weight:bold;'>③ Fusión</span><br>"
+        f"{_tech_enhanced:.1f}×{_etw:.0%} + {_emacro_score:.1f}×{_emw:.0%} = "
+        f"<b style='color:{_etc2};font-size:14px;'>{_fused:.1f}</b><br>"
+        f"Confianza = |{_fused:.1f} - 50| × 2 = <b>{_ecv2:.0f}%</b>"
+        f"</div>"
+    )
+
+    with _exp_v2_cols[_col_idx]:
+        st.markdown(tt(_card_html, f"{_eic2} {_esp2} — {_erole}", _tip_body, "down"),
+                    unsafe_allow_html=True)
+
+# ── Per-Asset Vote Breakdown ──
+with st.expander("📊 **Detalle votos por activo** — EWMA Confidence Weighted", expanded=False):
+    _votes = _macro_result.get("votes", {})
+    if _votes:
+        _vote_rows = ""
+        for _vk, _vv in sorted(_votes.items(), key=lambda x: abs(x[1]["weighted_vote"]), reverse=True):
+            _v_name = CN.get(_vk, _vk)
+            _v_ret = _vv["return_bps"]
+            _v_raw = _vv["raw_vote"]
+            _v_conf = _vv["confidence"]
+            _v_ew = _vv["effective_weight"]
+            _v_wv = _vv["weighted_vote"]
+            _v_ewma = _vv["ewma_corr"]
+            _v_conc = _vv["concordance"]
+            _v_warm = _vv["warmup"]
+            
+            # Color based on vote direction
+            if _v_wv > 0.05:
+                _v_clr = "#52b788"
+                _v_dir = "LONG"
+            elif _v_wv < -0.05:
+                _v_clr = "#ef476f"
+                _v_dir = "SHORT"
+            else:
+                _v_clr = "#555"
+                _v_dir = "—"
+            
+            # Confidence bar
+            _c_clr = "#52b788" if _v_conf >= 0.6 else ("#ffd166" if _v_conf >= 0.3 else "#ef476f")
+            _c_pct = _v_conf * 100
+            _warmup_tag = " <span style='color:#ff6b6b;font-size:9px;'>⏳WARMUP</span>" if _v_warm else ""
+            
+            _vote_rows += (
+                f"<tr style='border-bottom:1px solid #1a1d23;'>"
+                f"<td style='padding:4px 6px;color:#ccc;font-weight:bold;'>{_v_name}{_warmup_tag}</td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{'#52b788' if _v_ret > 0 else '#ef476f' if _v_ret < 0 else '#555'};'>"
+                f"{_v_ret:+.1f}bp</td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{_v_clr};font-weight:bold;'>{_v_dir}</td>"
+                f"<td style='padding:4px 4px;text-align:center;'>"
+                f"<div style='background:#2a2d35;border-radius:3px;height:4px;width:50px;display:inline-block;overflow:hidden;'>"
+                f"<div style='background:{_c_clr};height:100%;width:{_c_pct:.0f}%;'></div></div>"
+                f"<span style='color:{_c_clr};font-size:10px;margin-left:3px;'>{_v_conf:.0%}</span></td>"
+                f"<td style='padding:4px 4px;text-align:right;color:{_v_clr};'>{_v_wv:+.3f}</td>"
+                f"</tr>"
+            )
+        
+        st.markdown(
+            f"<table style='width:100%;font-size:12px;font-family:monospace;"
+            f"border-collapse:collapse;background:#0e1117;'>"
+            f"<tr style='border-bottom:1px solid #333;'>"
+            f"<th style='padding:4px 6px;text-align:left;color:#888;font-size:10px;'>ACTIVO</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>Δ3min</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>VOTO</th>"
+            f"<th style='padding:4px 4px;text-align:center;color:#888;font-size:10px;'>CONFIANZA</th>"
+            f"<th style='padding:4px 4px;text-align:right;color:#888;font-size:10px;'>PESO</th>"
+            f"</tr>{_vote_rows}</table>"
+            f"<div style='text-align:center;margin-top:6px;font-size:11px;color:#666;'>"
+            f"Consenso: <b style='color:#fff;'>{_macro_result['consensus_raw']:+.4f}</b> | "
+            f"Confianza promedio: <b style='color:#fff;'>{_macro_result['confidence_avg']:.0%}</b></div>",
+            unsafe_allow_html=True
+        )
+    else:
+        st.caption("⏳ Esperando datos de cross-assets...")
 
 # ══════════════════════════════════════════════════════════
 # BACKTESTING

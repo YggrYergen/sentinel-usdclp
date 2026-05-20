@@ -8,8 +8,9 @@ import sys, os, subprocess, logging, platform, shutil, time, traceback
 import urllib.request, zipfile, threading, webbrowser, glob
 from pathlib import Path
 from datetime import datetime
+import ctypes
 
-VERSION = "3.4.0"
+VERSION = "3.7.0"
 PORT = 8501
 URL = f"http://localhost:{PORT}"
 GITHUB_REPO = "YggrYergen/sentinel-usdclp"
@@ -77,13 +78,73 @@ class Launcher:
             self.log_exc(name)
             return False
 
-    def download(self, url, dest):
+    def _force_rmtree(self, path, label="temp dir"):
+        """Aggressively remove a directory on Windows, retrying for file locks."""
+        p = Path(path)
+        if not p.exists():
+            return True
+        self.log(f"  Cleaning stale {label}: {p}")
+        for attempt in range(1, 4):
+            try:
+                # First attempt: standard removal
+                shutil.rmtree(str(p), ignore_errors=False)
+                self.log(f"    Cleaned on attempt {attempt}")
+                return True
+            except PermissionError:
+                self.log(f"    [RETRY {attempt}/3] File locked — waiting...", "warning")
+                time.sleep(1 * attempt)
+                # On Windows, try to force-kill any processes that may hold locks
+                if attempt == 2 and os.name == 'nt':
+                    try:
+                        # Try to release locks via cmd
+                        subprocess.run(
+                            f'rd /s /q "{p}"', shell=True,
+                            timeout=10, capture_output=True
+                        )
+                        if not p.exists():
+                            self.log(f"    Cleaned via rd /s /q")
+                            return True
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.log(f"    [RETRY {attempt}/3] rmtree failed: {e}", "warning")
+                time.sleep(1)
+        # Last resort: rename out of the way and mark for cleanup
+        try:
+            trash = p.parent / f"{p.name}_trash_{int(time.time())}"
+            p.rename(trash)
+            self.log(f"    Renamed to {trash.name} — will be cleaned later")
+            return True
+        except Exception as e:
+            self.log(f"    [WARN] Could not remove {label}: {e}", "warning")
+            return False
+
+    def download(self, url, dest, retries=3):
         self.log(f"  Downloading: {url}")
         self.log(f"  To: {dest}")
-        urllib.request.urlretrieve(url, str(dest))
-        size = Path(dest).stat().st_size
-        self.log(f"  Downloaded ({size:,} bytes)")
-        return size > 0
+        last_err = None
+        for attempt in range(1, retries + 1):
+            try:
+                req = urllib.request.Request(url, headers={
+                    'User-Agent': 'SENTINEL-Launcher/3.5',
+                })
+                # Try with default SSL first, fallback to unverified for corp proxies
+                try:
+                    import ssl
+                    ctx = ssl.create_default_context()
+                    resp = urllib.request.urlopen(req, timeout=30, context=ctx)
+                except Exception:
+                    resp = urllib.request.urlopen(req, timeout=30)
+                with open(str(dest), 'wb') as f:
+                    shutil.copyfileobj(resp, f)
+                size = Path(dest).stat().st_size
+                self.log(f"  Downloaded ({size:,} bytes)")
+                return size > 0
+            except Exception as e:
+                last_err = e
+                self.log(f"  [RETRY {attempt}/{retries}] Download failed: {e}", "warning")
+                time.sleep(2 * attempt)
+        raise last_err
 
     # ── Step 1: Already running? ──
     def check_running(self):
@@ -329,21 +390,64 @@ class Launcher:
         self.log("[4/8] Checking for updates...")
         git_cmd = getattr(self, '_git_cmd', None)
         git_dir = self.root / ".git"
+
+        # Pre-flight: clean stale temp directories from previous runs
+        self._cleanup_stale_temps()
+
+        # Strategy 1: git pull (if .git exists)
         if git_cmd and git_dir.exists():
-            self.log(f"  .git directory found - using git")
-            return self.safe("git_update", lambda: self._update_git(git_cmd))
+            self.log(f"  .git directory found - using git pull")
+            result = self.safe("git_update", lambda: self._update_git(git_cmd))
+            if result:
+                return True
+            self.log("  [WARN] Git pull failed - trying ZIP fallback", "warning")
+
+        # Strategy 2: git clone (if git available but no .git dir)
         if git_cmd and not git_dir.exists():
-            self.log(f"  .git directory NOT found (ZIP download) - using ZIP updates")
-        elif not git_cmd:
-            self.log("  No git available - using ZIP method")
-        return self.safe("zip_update", self._update_zip)
+            self.log(f"  .git directory NOT found - trying git clone")
+            result = self.safe("git_clone", lambda: self._clone_and_update(git_cmd))
+            if result:
+                return True
+            self.log("  [WARN] Git clone failed - trying ZIP fallback", "warning")
+
+        # Strategy 3: ZIP download (last resort)
+        self.log("  Using ZIP download method")
+        result = self.safe("zip_update", self._update_zip)
+        if result:
+            return True
+
+        # All update methods failed — continue with existing code
+        self.log("  [WARN] All update methods failed - running with existing code", "warning")
+        self.log("  (This is OK if this is a fresh install or GitHub is unreachable)")
+        return True  # Non-blocking: don't prevent launch
+
+    def _cleanup_stale_temps(self):
+        """Remove stale temp directories from previous interrupted runs."""
+        stale_dirs = [
+            self.root / "_git_clone_tmp",
+            self.root / "_update_tmp",
+        ]
+        # Also clean any _trash_ directories from force_rmtree
+        for p in self.root.glob("*_trash_*"):
+            if p.is_dir():
+                stale_dirs.append(p)
+        # Clean stale zip files
+        for p in [self.root / "_update.zip", self.root / "_get_pip.py"]:
+            if p.exists():
+                try:
+                    p.unlink()
+                    self.log(f"  Cleaned stale file: {p.name}")
+                except Exception:
+                    pass
+        for d in stale_dirs:
+            if d.exists():
+                self._force_rmtree(d, d.name)
 
     def _update_git(self, git_cmd):
         g = f'"{git_cmd}"' if ' ' in git_cmd else git_cmd
-        code, _, _ = self.cmd(f"{g} fetch origin {BRANCH}", show=False)
+        code, _, _ = self.cmd(f"{g} fetch origin {BRANCH}", show=False, timeout=30)
         if code != 0:
-            self.log("  [SKIP] Cannot reach GitHub - trying ZIP")
-            return self.safe("zip_fallback", self._update_zip)
+            return False
         _, local, _ = self.cmd(f"{g} rev-parse HEAD", show=False)
         _, remote, _ = self.cmd(f"{g} rev-parse origin/{BRANCH}", show=False)
         if local == remote:
@@ -357,41 +461,103 @@ class Launcher:
             self.log("  [OK] Updated via Git")
         return True
 
+    def _clone_and_update(self, git_cmd):
+        """Clone the repo into a temp dir, then copy sentinel/ files over.
+        This works even for private repos if git has credentials cached."""
+        g = f'"{git_cmd}"' if ' ' in git_cmd else git_cmd
+        clone_dir = self.root / "_git_clone_tmp"
+        clone_url = f"https://github.com/{GITHUB_REPO}.git"
+
+        try:
+            # Aggressively clean previous attempt (Windows file locks)
+            if clone_dir.exists():
+                if not self._force_rmtree(clone_dir, "_git_clone_tmp"):
+                    self.log("  [WARN] Cannot clean previous clone dir — skipping git clone", "warning")
+                    return False
+
+            self.log(f"  Cloning {clone_url} (branch: {BRANCH})...")
+            code, _, err = self.cmd(
+                f'{g} clone --depth 1 --branch {BRANCH} {clone_url} "{clone_dir}"',
+                timeout=60
+            )
+            if code != 0:
+                # If clone failed because dir reappeared, force-clean and give up
+                self._force_rmtree(clone_dir, "_git_clone_tmp (post-fail)")
+                return False
+
+            # Copy sentinel/ files (preserve chat_history)
+            src = clone_dir / "sentinel"
+            updated = 0
+            if src.exists():
+                for f in src.iterdir():
+                    if f.is_file():
+                        shutil.copy2(str(f), str(self.sentinel / f.name))
+                        self.log(f"    Updated: sentinel/{f.name}")
+                        updated += 1
+                    elif f.is_dir() and f.name in ("chat_history",):
+                        self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
+
+            # Copy root-level files
+            for name in ["SENTINEL.bat", ".env.example", "README.md"]:
+                sf = clone_dir / name
+                if sf.exists():
+                    shutil.copy2(str(sf), str(self.root / name))
+                    self.log(f"    Updated: {name}")
+                    updated += 1
+
+            self.log(f"  [OK] Updated {updated} files via git clone")
+            return True
+        except Exception:
+            self.log_exc("clone_and_update")
+            return False
+        finally:
+            self._force_rmtree(clone_dir, "_git_clone_tmp (cleanup)")
+
     def _update_zip(self):
         zip_url = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{BRANCH}.zip"
         zip_path = self.root / "_update.zip"
         tmp_dir = self.root / "_update_tmp"
         self.log(f"  URL: {zip_url}")
 
-        self.download(zip_url, zip_path)
+        try:
+            self.download(zip_url, zip_path)
+        except Exception as e:
+            self.log(f"  [FAIL] ZIP download failed: {e}", "warning")
+            zip_path.unlink(missing_ok=True)
+            return False
 
-        with zipfile.ZipFile(str(zip_path), 'r') as z:
-            self.log(f"  ZIP contains {len(z.namelist())} files")
-            z.extractall(str(tmp_dir))
+        try:
+            with zipfile.ZipFile(str(zip_path), 'r') as z:
+                self.log(f"  ZIP contains {len(z.namelist())} files")
+                z.extractall(str(tmp_dir))
 
-        inner = list(tmp_dir.iterdir())[0]
-        updated = 0
-        src = inner / "sentinel"
-        if src.exists():
-            for f in src.iterdir():
-                if f.is_file():
-                    shutil.copy2(str(f), str(self.sentinel / f.name))
-                    self.log(f"    Updated: sentinel/{f.name}")
+            inner = list(tmp_dir.iterdir())[0]
+            updated = 0
+            src = inner / "sentinel"
+            if src.exists():
+                for f in src.iterdir():
+                    if f.is_file():
+                        shutil.copy2(str(f), str(self.sentinel / f.name))
+                        self.log(f"    Updated: sentinel/{f.name}")
+                        updated += 1
+                    # Preserve local data directories (chat_history, etc.)
+                    elif f.is_dir() and f.name in ("chat_history",):
+                        self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
+            for name in ["SENTINEL.bat", ".env.example", "README.md"]:
+                sf = inner / name
+                if sf.exists():
+                    shutil.copy2(str(sf), str(self.root / name))
+                    self.log(f"    Updated: {name}")
                     updated += 1
-                # Preserve local data directories (chat_history, etc.)
-                elif f.is_dir() and f.name in ("chat_history",):
-                    self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
-        for name in ["SENTINEL.bat", ".env.example", "README.md"]:
-            sf = inner / name
-            if sf.exists():
-                shutil.copy2(str(sf), str(self.root / name))
-                self.log(f"    Updated: {name}")
-                updated += 1
 
-        zip_path.unlink(missing_ok=True)
-        shutil.rmtree(str(tmp_dir), ignore_errors=True)
-        self.log(f"  [OK] Updated {updated} files from GitHub")
-        return True
+            self.log(f"  [OK] Updated {updated} files from GitHub ZIP")
+            return True
+        except Exception:
+            self.log_exc("zip_extract")
+            return False
+        finally:
+            zip_path.unlink(missing_ok=True)
+            shutil.rmtree(str(tmp_dir), ignore_errors=True)
 
     # ── Step 5: Dependencies ──
     def check_deps(self):
@@ -416,7 +582,7 @@ class Launcher:
 
         # Full check: try importing all key packages
         self.log("  Verifying installed packages...")
-        check_script = 'import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print("ALL_OK")'
+        check_script = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print('ALL_OK')"
         code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All packages importable")
@@ -441,7 +607,8 @@ class Launcher:
             return False
 
         # Verify after install
-        code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
+        check_script2 = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print('ALL_OK')"
+        code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script2}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All dependencies verified")
             marker.write_text(f"verified {datetime.now().isoformat()}")
