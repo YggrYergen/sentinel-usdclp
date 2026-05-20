@@ -78,6 +78,8 @@ st.markdown("""
     section.main div[data-testid="stHorizontalBlock"]:first-of-type > div[data-testid="stColumn"] > div {
         height: 100%; display: flex; flex-direction: column; justify-content: flex-start;
     }
+    .macro-votes-wrap { display: flex; flex-direction: column; justify-content: space-between; }
+    .macro-votes-wrap table { flex: 1; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -235,9 +237,20 @@ def _slider_bar(label, weight_pct, score, msg):
     )
 
 # ══════════════════════════════════════════════════════════
-# HEADER — 4 columnas en 1 fila
+# PRE-CALC: MacroScorer (needed for header macro votes column)
 # ══════════════════════════════════════════════════════════
-col_score, col_levels, col_tf, col_corr = st.columns([0.55, 0.85, 1.6, 1.0])
+if not hasattr(core, 'macro_scorer'):
+    from sentinel.macro_scorer import MacroScorer
+    core.macro_scorer = MacroScorer()
+_ms = core.macro_scorer
+_macro_result = comp.get("_macro", _ms.calculate_score(feed))
+_macro_score = _macro_result["score"]
+_macro_dir = _macro_result["direction"]
+
+# ══════════════════════════════════════════════════════════
+# HEADER — 5 columnas en 1 fila
+# ══════════════════════════════════════════════════════════
+col_score, col_levels, col_tf, col_corr, col_macro = st.columns([0.55, 0.85, 1.6, 1.0, 0.9])
 
 with col_score:
     # Signal panel (compact, same width as score)
@@ -795,16 +808,69 @@ with col_corr:
                 f"</tr>"
             )
 
-        tbl = (f"<table style='width:100%;font-size:12px;font-family:monospace;"
+        tbl = (f"<div class='corr-table-wrap'>"
+               f"<table style='width:100%;font-size:12px;font-family:monospace;"
                f"border-collapse:collapse;line-height:1.5;'>"
                f"{_hdr_rows}</table>"
                f"<div style='text-align:center;margin-top:3px;padding:2px;"
                f"border-top:1px solid #333;font-size:13px;'>"
                f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
-               f" <span style='color:{cc};font-size:11px;'>{cd}</span></div>")
+               f" <span style='color:{cc};font-size:11px;'>{cd}</span></div>"
+               f"</div>")
         st.markdown(tt(tbl, "🔗 Correlaciones Cross-Asset",
             corr_rec,
             "down"), unsafe_allow_html=True)
+
+# ── COL 5: Macro Votes (copy of experimental breakdown) ──
+with col_macro:
+    _hdr_votes = _macro_result.get("votes", {})
+    if _hdr_votes:
+        _hdr_vote_rows = ""
+        for _hvk, _hvv in sorted(_hdr_votes.items(), key=lambda x: abs(x[1]["weighted_vote"]), reverse=True):
+            _hv_name = CN.get(_hvk, _hvk)
+            _hv_ret = _hvv["return_bps"]
+            _hv_wv = _hvv["weighted_vote"]
+            _hv_conf = _hvv["confidence"]
+            _hv_warm = _hvv["warmup"]
+            if _hv_wv > 0.05: _hv_clr = "#52b788"; _hv_dir = "L"
+            elif _hv_wv < -0.05: _hv_clr = "#ef476f"; _hv_dir = "S"
+            else: _hv_clr = "#555"; _hv_dir = "—"
+            _hc_clr = "#52b788" if _hv_conf >= 0.6 else ("#ffd166" if _hv_conf >= 0.3 else "#ef476f")
+            _hc_pct = _hv_conf * 100
+            _hw_tag = " <span style='color:#ff6b6b;font-size:8px;'>⏳</span>" if _hv_warm else ""
+            _hdr_vote_rows += (
+                f"<tr style='border-bottom:1px solid #1a1d23;'>"
+                f"<td style='padding:3px 3px;color:#ccc;font-size:12px;'>{_hv_name}{_hw_tag}</td>"
+                f"<td style='padding:3px 3px;text-align:right;color:{'#52b788' if _hv_ret > 0 else '#ef476f' if _hv_ret < 0 else '#555'};font-size:12px;'>"
+                f"{_hv_ret:+.1f}</td>"
+                f"<td style='padding:3px 3px;text-align:center;color:{_hv_clr};font-weight:bold;font-size:12px;'>{_hv_dir}</td>"
+                f"<td style='padding:3px 3px;text-align:center;'>"
+                f"<div style='background:#2a2d35;border-radius:2px;height:3px;width:36px;display:inline-block;overflow:hidden;'>"
+                f"<div style='background:{_hc_clr};height:100%;width:{_hc_pct:.0f}%;'></div></div></td>"
+                f"<td style='padding:3px 3px;text-align:right;color:{_hv_clr};font-size:11px;'>{_hv_wv:+.2f}</td>"
+                f"</tr>"
+            )
+        # Macro direction color
+        _hm_clr = "#52b788" if _macro_score >= 65 else ("#ffd166" if _macro_score >= 50 else "#ef476f")
+        _hdr_macro_tbl = (
+            f"<div class='macro-votes-wrap'>"
+            f"<table style='width:100%;font-size:12px;font-family:monospace;"
+            f"border-collapse:collapse;line-height:1.5;'>"
+            f"{_hdr_vote_rows}</table>"
+            f"<div style='text-align:center;margin-top:auto;padding:2px;"
+            f"border-top:1px solid #333;font-size:13px;'>"
+            f"<span style='color:{_hm_clr};font-weight:bold;'>Macro: {_macro_score:.0f}</span>"
+            f" <span style='color:{_hm_clr};font-size:11px;'>{_macro_dir}</span></div>"
+            f"</div>"
+        )
+        st.markdown(tt(_hdr_macro_tbl, "🌍 Votos Macro por Activo",
+            f"Consenso: <b>{_macro_result['consensus_raw']:+.4f}</b><br>"
+            f"Confianza promedio: <b>{_macro_result['confidence_avg']:.0%}</b><br><br>"
+            f"Cada activo vota LONG/SHORT según su retorno reciente,<br>"
+            f"ponderado por confianza EWMA de correlación histórica.",
+            "down"), unsafe_allow_html=True)
+    else:
+        st.caption("⏳ Macro...")
 
 # ══════════════════════════════════════════════════════════
 # ALERTAS Y DIVERGENCIAS
@@ -843,17 +909,8 @@ border-radius:4px;color:#4cc9f0;font-size:13px;font-weight:bold;
 border:1px solid #4cc9f044;'>🧪 EXPERIMENTAL v4.0 — Triple Signal System</span></div>""",
 unsafe_allow_html=True)
 
-# Use MacroScorer from core (same instance feeding the composite score)
-# Fallback: if core was cached before v4.0, create and attach macro_scorer
-if not hasattr(core, 'macro_scorer'):
-    from sentinel.macro_scorer import MacroScorer
-    core.macro_scorer = MacroScorer()
-_ms = core.macro_scorer
-
-# Macro result already calculated in core.calculate_composite() — reuse from result
-_macro_result = comp.get("_macro", _ms.calculate_score(feed))
-_macro_score = _macro_result["score"]
-_macro_dir = _macro_result["direction"]
+# MacroScorer already initialized and calculated in pre-calc section above
+# _ms, _macro_result, _macro_score, _macro_dir are already available
 
 # Technical score (already calculated above)
 _tech_score_v4 = tech_sc  # from production calc

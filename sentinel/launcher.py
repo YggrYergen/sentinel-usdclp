@@ -8,8 +8,9 @@ import sys, os, subprocess, logging, platform, shutil, time, traceback
 import urllib.request, zipfile, threading, webbrowser, glob
 from pathlib import Path
 from datetime import datetime
+import ctypes
 
-VERSION = "3.5.0"
+VERSION = "3.7.0"
 PORT = 8501
 URL = f"http://localhost:{PORT}"
 GITHUB_REPO = "YggrYergen/sentinel-usdclp"
@@ -75,6 +76,47 @@ class Launcher:
             return func()
         except Exception:
             self.log_exc(name)
+            return False
+
+    def _force_rmtree(self, path, label="temp dir"):
+        """Aggressively remove a directory on Windows, retrying for file locks."""
+        p = Path(path)
+        if not p.exists():
+            return True
+        self.log(f"  Cleaning stale {label}: {p}")
+        for attempt in range(1, 4):
+            try:
+                # First attempt: standard removal
+                shutil.rmtree(str(p), ignore_errors=False)
+                self.log(f"    Cleaned on attempt {attempt}")
+                return True
+            except PermissionError:
+                self.log(f"    [RETRY {attempt}/3] File locked — waiting...", "warning")
+                time.sleep(1 * attempt)
+                # On Windows, try to force-kill any processes that may hold locks
+                if attempt == 2 and os.name == 'nt':
+                    try:
+                        # Try to release locks via cmd
+                        subprocess.run(
+                            f'rd /s /q "{p}"', shell=True,
+                            timeout=10, capture_output=True
+                        )
+                        if not p.exists():
+                            self.log(f"    Cleaned via rd /s /q")
+                            return True
+                    except Exception:
+                        pass
+            except Exception as e:
+                self.log(f"    [RETRY {attempt}/3] rmtree failed: {e}", "warning")
+                time.sleep(1)
+        # Last resort: rename out of the way and mark for cleanup
+        try:
+            trash = p.parent / f"{p.name}_trash_{int(time.time())}"
+            p.rename(trash)
+            self.log(f"    Renamed to {trash.name} — will be cleaned later")
+            return True
+        except Exception as e:
+            self.log(f"    [WARN] Could not remove {label}: {e}", "warning")
             return False
 
     def download(self, url, dest, retries=3):
@@ -349,6 +391,9 @@ class Launcher:
         git_cmd = getattr(self, '_git_cmd', None)
         git_dir = self.root / ".git"
 
+        # Pre-flight: clean stale temp directories from previous runs
+        self._cleanup_stale_temps()
+
         # Strategy 1: git pull (if .git exists)
         if git_cmd and git_dir.exists():
             self.log(f"  .git directory found - using git pull")
@@ -376,6 +421,28 @@ class Launcher:
         self.log("  (This is OK if this is a fresh install or GitHub is unreachable)")
         return True  # Non-blocking: don't prevent launch
 
+    def _cleanup_stale_temps(self):
+        """Remove stale temp directories from previous interrupted runs."""
+        stale_dirs = [
+            self.root / "_git_clone_tmp",
+            self.root / "_update_tmp",
+        ]
+        # Also clean any _trash_ directories from force_rmtree
+        for p in self.root.glob("*_trash_*"):
+            if p.is_dir():
+                stale_dirs.append(p)
+        # Clean stale zip files
+        for p in [self.root / "_update.zip", self.root / "_get_pip.py"]:
+            if p.exists():
+                try:
+                    p.unlink()
+                    self.log(f"  Cleaned stale file: {p.name}")
+                except Exception:
+                    pass
+        for d in stale_dirs:
+            if d.exists():
+                self._force_rmtree(d, d.name)
+
     def _update_git(self, git_cmd):
         g = f'"{git_cmd}"' if ' ' in git_cmd else git_cmd
         code, _, _ = self.cmd(f"{g} fetch origin {BRANCH}", show=False, timeout=30)
@@ -402,16 +469,20 @@ class Launcher:
         clone_url = f"https://github.com/{GITHUB_REPO}.git"
 
         try:
-            # Clean previous attempt
+            # Aggressively clean previous attempt (Windows file locks)
             if clone_dir.exists():
-                shutil.rmtree(str(clone_dir), ignore_errors=True)
+                if not self._force_rmtree(clone_dir, "_git_clone_tmp"):
+                    self.log("  [WARN] Cannot clean previous clone dir — skipping git clone", "warning")
+                    return False
 
             self.log(f"  Cloning {clone_url} (branch: {BRANCH})...")
-            code, _, _ = self.cmd(
+            code, _, err = self.cmd(
                 f'{g} clone --depth 1 --branch {BRANCH} {clone_url} "{clone_dir}"',
                 timeout=60
             )
             if code != 0:
+                # If clone failed because dir reappeared, force-clean and give up
+                self._force_rmtree(clone_dir, "_git_clone_tmp (post-fail)")
                 return False
 
             # Copy sentinel/ files (preserve chat_history)
@@ -440,7 +511,7 @@ class Launcher:
             self.log_exc("clone_and_update")
             return False
         finally:
-            shutil.rmtree(str(clone_dir), ignore_errors=True)
+            self._force_rmtree(clone_dir, "_git_clone_tmp (cleanup)")
 
     def _update_zip(self):
         zip_url = f"https://github.com/{GITHUB_REPO}/archive/refs/heads/{BRANCH}.zip"
