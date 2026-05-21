@@ -80,6 +80,28 @@ st.markdown("""
     }
     .macro-votes-wrap { display: flex; flex-direction: column; justify-content: space-between; }
     .macro-votes-wrap table { flex: 1; }
+    /* Hide Streamlit toolbar (Deploy, menu, etc.) */
+    .stApp > header { display: none !important; }
+    header[data-testid="stHeader"] { display: none !important; }
+    div[data-testid="stToolbar"] { display: none !important; }
+    div[data-testid="stDecoration"] { display: none !important; }
+    #MainMenu { visibility: hidden !important; }
+    footer { visibility: hidden !important; }
+    div[data-testid="stStatusWidget"] { display: none !important; }
+    .stApp [data-testid="stAppViewContainer"] {
+        transition: none !important;
+    }
+    /* Prevent the white flash during rerun */
+    .stApp iframe { display: none !important; }
+    .stApp [data-testid="stAppViewBlockContainer"] {
+        animation: fadeIn 0.15s ease-in;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0.85; }
+        to { opacity: 1; }
+    }
+    /* Ensure tooltips always on top */
+    .tt-wrap { z-index: 100; position: relative; }
 </style>
 """, unsafe_allow_html=True)
 
@@ -250,14 +272,14 @@ _macro_dir = _macro_result["direction"]
 # ══════════════════════════════════════════════════════════
 # HEADER — 5 columnas en 1 fila
 # ══════════════════════════════════════════════════════════
-col_score, col_levels, col_tf, col_corr, col_macro = st.columns([0.55, 0.85, 1.6, 1.0, 0.9])
+col_score, col_macro, col_tf, col_corr, col_levels = st.columns([0.55, 1.1, 1.6, 1.0, 0.65])
 
 with col_score:
     # Signal panel (compact, same width as score)
     _tf_sc = tech_details.get("tf_scores", {})
-    _sc_map = {t: _tf_sc.get(t, {}).get("score", 50) for t in ("M1","M2","M5")}
-    _dir_map = {t: _tf_sc.get(t, {}).get("direction", "NEUTRAL") for t in ("M1","M2","M5")}
-    _sig_defs = [("⚡","5s",{"M1":1.0}),("🔄","30s",{"M1":0.6,"M2":0.4}),("📊","1m",{"M1":0.4,"M2":0.3,"M5":0.3})]
+    _sc_map = {t: _tf_sc.get(t, {}).get("score", 50) for t in ("M1","M2","M5","M15")}
+    _dir_map = {t: _tf_sc.get(t, {}).get("direction", "NEUTRAL") for t in ("M1","M2","M5","M15")}
+    _sig_defs = [("⚡","5s",{"M1":1.0}),("🔄","30s",{"M1":0.6,"M2":0.4}),("📊","1m",{"M1":0.4,"M2":0.3,"M5":0.3}),("📈","5m",{"M5":0.6,"M15":0.4})]
     _cells = ""
     _ttp = []
     for _ic, _sp, _wt in _sig_defs:
@@ -273,7 +295,7 @@ with col_score:
         _tc = f"rgb({_r},{_g},{_b})"; _bg = f"rgba({_r},{_g},{_b},{_op:.2f})"
         _ept = f"<div style='font-size:9px;color:#666;'>{_ep:.1f}</div>" if _ep>0 else ""
         _cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
-                   f"border-right:1px solid #333;width:33%;'>"
+                   f"border-right:1px solid #333;width:25%;'>"
                    f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp}</div>"
                    f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
                    f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
@@ -287,7 +309,7 @@ with col_score:
     _sig_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
                  f"<table style='width:100%;border-collapse:collapse;'><tr>{_cells}</tr></table></div>")
     st.markdown(tt(_sig_html, "🎯 Panel de Señales",
-        f"{''.join(_ttp)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5",
+        f"{''.join(_ttp)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 📈=M5+M15",
         "down"), unsafe_allow_html=True)
 
     # ── Derivative-enhanced signals (v2) ──
@@ -300,28 +322,42 @@ with col_score:
     if curr_bid > 0:
         st.session_state.price_buffer.append(curr_bid)
         st.session_state.price_timestamps.append(now_ts)
-        if len(st.session_state.price_buffer) > 24:
-            st.session_state.price_buffer = st.session_state.price_buffer[-24:]
-            st.session_state.price_timestamps = st.session_state.price_timestamps[-24:]
+        if len(st.session_state.price_buffer) > 200:
+            st.session_state.price_buffer = st.session_state.price_buffer[-200:]
+            st.session_state.price_timestamps = st.session_state.price_timestamps[-200:]
     buf = st.session_state.price_buffer
     ts_buf = st.session_state.price_timestamps
     n_ticks = len(buf)
-    velocity = 0.0; acceleration = 0.0; vel_short = 0.0; vel_medium = 0.0; vel_long = 0.0
+    velocity = 0.0; acceleration = 0.0; vel_short = 0.0; vel_medium = 0.0; vel_long = 0.0; vel_5m = 0.0
+    acc_short = 0.0; acc_medium = 0.0; acc_long = 0.0; acc_5m = 0.0
     if n_ticks >= 2:
         dt = ts_buf[-1] - ts_buf[-2]
         if dt > 0: vel_short = (buf[-1] - buf[-2]) / dt
+    # Per-window acceleration helper
+    def _accel_window(b, tb, w):
+        if len(b) < w + 1: return 0.0
+        mid = w // 2
+        dt1 = tb[-1] - tb[-mid] if tb[-1] != tb[-mid] else 1
+        dt2 = tb[-mid] - tb[-w] if tb[-mid] != tb[-w] else 1
+        v1 = (b[-1] - b[-mid]) / dt1
+        v2 = (b[-mid] - b[-w]) / dt2
+        dt_a = (dt1 + dt2) / 2
+        return (v1 - v2) / dt_a if dt_a > 0 else 0.0
     if n_ticks >= 3:
-        dt1 = ts_buf[-1] - ts_buf[-2]; dt2 = ts_buf[-2] - ts_buf[-3]
-        v1 = (buf[-1] - buf[-2]) / dt1 if dt1 > 0 else 0
-        v2 = (buf[-2] - buf[-3]) / dt2 if dt2 > 0 else 0
-        dt_avg = (dt1 + dt2) / 2
-        acceleration = (v1 - v2) / dt_avg if dt_avg > 0 else 0
+        acc_short = _accel_window(buf, ts_buf, 3)
+        acceleration = acc_short  # backward compat
     if n_ticks >= 6:
         dt_m = ts_buf[-1] - ts_buf[-6]
         if dt_m > 0: vel_medium = (buf[-1] - buf[-6]) / dt_m
+        acc_medium = _accel_window(buf, ts_buf, 6)
     if n_ticks >= 12:
         dt_l = ts_buf[-1] - ts_buf[-12]
         if dt_l > 0: vel_long = (buf[-1] - buf[-12]) / dt_l
+        acc_long = _accel_window(buf, ts_buf, 12)
+    if n_ticks >= 24:
+        dt_5 = ts_buf[-1] - ts_buf[-24]
+        if dt_5 > 0: vel_5m = (buf[-1] - buf[-24]) / dt_5
+        acc_5m = _accel_window(buf, ts_buf, 24)
 
     def vel_to_boost(v, scale=0.05):
         return max(-25, min(25, (v / scale) * 25))
@@ -332,10 +368,12 @@ with col_score:
     _m1_sc2 = _tf_sc2.get("M1", {}).get("score", 50)
     _m2_sc2 = _tf_sc2.get("M2", {}).get("score", 50)
     _m5_sc2 = _tf_sc2.get("M5", {}).get("score", 50)
+    _m15_sc2 = _tf_sc2.get("M15", {}).get("score", 50)
     v2_defs = [
-        ("⚡", "5s", _m1_sc2, vel_short, acceleration, 0.50, 0.30),
-        ("🔄", "30s", _m1_sc2 * 0.6 + _m2_sc2 * 0.4, vel_medium, acceleration, 0.30, 0.15),
-        ("📊", "1m", _m1_sc2 * 0.4 + _m2_sc2 * 0.3 + _m5_sc2 * 0.3, vel_long, acceleration, 0.15, 0.05),
+        ("⚡", "5s", _m1_sc2, vel_short, acc_short, 0.50, 0.30),
+        ("🔄", "30s", _m1_sc2 * 0.6 + _m2_sc2 * 0.4, vel_medium, acc_medium, 0.30, 0.15),
+        ("📊", "1m", _m1_sc2 * 0.4 + _m2_sc2 * 0.3 + _m5_sc2 * 0.3, vel_long, acc_long, 0.15, 0.05),
+        ("📈", "5m", _m5_sc2 * 0.6 + _m15_sc2 * 0.4, vel_5m, acc_5m, 0.10, 0.03),
     ]
     v2_cells = ""; v2_ttp = []
     for _ic, _sp, _base, _vel, _acc, _vw, _aw in v2_defs:
@@ -353,7 +391,7 @@ with col_score:
         elif _acc > -0.002: acc_icon = "🔽"
         else: acc_icon = "⏬"
         v2_cells += (f"<td style='background:{_bg2};padding:2px 4px;text-align:center;"
-                     f"border-right:1px solid #333;width:33%;'>"
+                     f"border-right:1px solid #333;width:25%;'>"
                      f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {acc_icon}</div>"
                      f"<div style='font-size:15px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
                      f"<div style='font-size:9px;color:{_tc2};font-weight:bold;line-height:1.1;'>{_ac}</div>"
@@ -408,20 +446,20 @@ with col_score:
     st.markdown(deriv_info, unsafe_allow_html=True)
 
     if score >= 75:
-        sr = f"🟢 <b>FUERTE ({score})</b><br>Téc({tech_sc:.0f})+Corr({corr_sc:.0f}) confluyen → {direction}."
+        sr = f"🟢 <b>FUERTE ({score})</b><br>Téc({tech_sc:.0f})+Macro({corr_sc:.0f}) confluyen → {direction}."
     elif score >= 65:
-        sr = f"🟡 <b>ALERTA ({score})</b><br>Téc={tech_sc:.0f}, Corr={corr_sc:.0f}. Buscar confirmación."
+        sr = f"🟡 <b>ALERTA ({score})</b><br>Téc={tech_sc:.0f}, Macro={corr_sc:.0f}. Buscar confirmación."
     else:
-        sr = f"🔴 <b>ESPERAR ({score})</b><br>Téc={tech_sc:.0f}, Corr={corr_sc:.0f}. Sin consenso."
+        sr = f"🔴 <b>ESPERAR ({score})</b><br>Téc={tech_sc:.0f}, Macro={corr_sc:.0f}. Sin consenso."
     d = direction
     if tech_dir == corr_dir and tech_dir != "NEUTRAL":
         dr = f"✅ Consenso → {tech_dir}."
     elif tech_dir != corr_dir and "NEUTRAL" not in (tech_dir, corr_dir):
-        dr = f"⚠️ Téc={tech_dir} vs Corr={corr_dir}."
+        dr = f"⚠️ Téc={tech_dir} vs Macro={corr_dir}."
     elif corr_dir != "NEUTRAL":
-        dr = f"Corr → {corr_dir}. Téc neutral."
+        dr = f"Macro → {corr_dir}. Téc neutral."
     elif tech_dir != "NEUTRAL":
-        dr = f"Téc → {tech_dir}. Sin respaldo Corr."
+        dr = f"Téc → {tech_dir}. Sin respaldo Macro."
     else:
         dr = "Ambos neutrales — fuera."
     st.markdown(tt(
@@ -433,7 +471,7 @@ with col_score:
         f"<span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
         "📊 Score + Dirección",
         f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.50 + {corr_sc:.0f}×0.50 = <b>{score}</b>"
-        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (50%) | Corr: <b>{corr_dir}</b> (50%)",
+        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (50%) | Macro: <b>{corr_dir}</b> (50%)",
         "down"), unsafe_allow_html=True)
 
 
@@ -519,23 +557,33 @@ with col_tf:
             sigs = r.get("signals", {})
             dets = r.get("details", {})
             rsi = sigs.get("rsi", 0)
-            clr = "#52b788" if sc >= 65 else ("#ffd166" if sc >= 50 else "#ef476f")
+            # Color gradient based on score intensity (distance from 50)
+            _intensity = min(1.0, abs(sc - 50) / 40)  # 0.0 at 50, 1.0 at 90+
+            if sc >= 50:
+                # Green gradient: gray(136,136,136) → green(82,183,136)
+                _cr = int(136 - (136 - 82) * _intensity)
+                _cg = int(136 + (183 - 136) * _intensity)
+                _cb = int(136 + (136 - 136) * _intensity)
+            else:
+                # Red gradient: gray(136,136,136) → red(239,71,111)
+                _cr = int(136 + (239 - 136) * _intensity)
+                _cg = int(136 - (136 - 71) * _intensity)
+                _cb = int(136 - (136 - 111) * _intensity)
+            clr = f"rgb({_cr},{_cg},{_cb})"
             em = "🟢" if sc >= 65 else ("🟡" if sc >= 50 else "🔴")
             rc = "#ef476f" if rsi >= 70 else ("#52b788" if rsi <= 30 else "#aaa")
             rt = "OB" if rsi >= 70 else ("OS" if rsi <= 30 else "")
             rp = []
-            if sc >= 65 and dr3 == "LONG":
-                action = "📈 LONG"
-                rp.append(f"✅ <b>Señal LONG</b> ({sc}/100). Indicadores al alza.")
-            elif sc >= 65 and dr3 == "SHORT":
-                action = "📉 SHORT"
-                rp.append(f"✅ <b>Señal SHORT</b> ({sc}/100). Indicadores a la baja.")
-            elif sc >= 50:
-                action = "🟡 ESPERAR"
-                rp.append(f"🟡 <b>Débil</b> ({sc}/100). Esperar confirmación.")
+            # Direction-based action labels (traders requested COMPRAR/VENDER/ESPERAR)
+            if dr3 == "LONG":
+                action = "📈 COMPRAR"
+                rp.append(f"✅ <b>Señal COMPRAR</b> ({sc}/100). Indicadores al alza.")
+            elif dr3 == "SHORT":
+                action = "📉 VENDER"
+                rp.append(f"✅ <b>Señal VENDER</b> ({sc}/100). Indicadores a la baja.")
             else:
-                action = "🔴 FUERA"
-                rp.append(f"🔴 <b>Sin señal</b> ({sc}/100). No operar.")
+                action = "🟡 ESPERAR"
+                rp.append(f"🟡 <b>Sin dirección clara</b> ({sc}/100). Esperar confirmación.")
             if rsi >= 70:
                 rp.append(f"<br>⚠️ RSI <b>{rsi:.0f}</b> SOBRECOMPRA.")
             elif rsi <= 30:
@@ -582,77 +630,83 @@ with col_tf:
             e9 = sigs.get("ema_9", 0); e21 = sigs.get("ema_21", 0); e50 = sigs.get("ema_50", 0)
             ema_cross = sigs.get("ema_cross", 0)
             if e9 > e21 > e50 > 0:
-                ema_msg = "Tendencia LONG establecida — EMAs alineadas al alza (9>21>50)"
+                ema_raw = "9>21>50 ✓"
+                ema_msg = f"<b>{ema_raw}</b> · Tendencia LONG establecida — EMAs alineadas al alza"
             elif e9 < e21 < e50 and e50 > 0:
-                ema_msg = "Tendencia SHORT establecida — EMAs alineadas a la baja (9<21<50)"
+                ema_raw = "9<21<50 ✓"
+                ema_msg = f"<b>{ema_raw}</b> · Tendencia SHORT establecida — EMAs alineadas a la baja"
             elif e9 > e21 and e21 < e50 and e50 > 0:
-                ema_msg = "Posible giro alcista — EMA 9 cruzó sobre 21, confirmación pendiente"
+                ema_raw = "9>21, 21<50"
+                ema_msg = f"<b>{ema_raw}</b> · Posible giro alcista — EMA 9 cruzó sobre 21"
             elif e9 < e21 and e21 > e50 and e50 > 0:
-                ema_msg = "Posible giro bajista — EMA 9 cruzó bajo 21, precaución"
+                ema_raw = "9<21, 21>50"
+                ema_msg = f"<b>{ema_raw}</b> · Posible giro bajista — EMA 9 cruzó bajo 21"
             else:
-                ema_msg = "EMAs entrelazadas — sin tendencia clara, mercado lateral"
+                ema_raw = "Entrelazadas"
+                ema_msg = f"<b>{ema_raw}</b> · Sin tendencia clara — mercado lateral"
             if ema_cross == 1:
-                ema_msg += " — ¡Cruce alcista!"
+                ema_msg += " — <b>¡Cruce alcista!</b>"
             elif ema_cross == -1:
-                ema_msg += " — ¡Cruce bajista!"
+                ema_msg += " — <b>¡Cruce bajista!</b>"
             rp.append(_slider_bar("EMA", 30, ema_sc, ema_msg))
 
             # ── RSI slider ──
             rsi_d = dets.get("rsi", {}); rsi_sc2 = rsi_d.get("score", 50)
             if rsi >= 70:
-                rsi_msg = f"Sobrecompra ({rsi:.0f}) — agotamiento probable, NO entrar LONG"
+                rsi_msg = f"<b>RSI: {rsi:.0f}</b> · Sobrecompra — agotamiento probable, NO entrar LONG"
             elif rsi >= 55:
-                rsi_msg = f"Momentum alcista ({rsi:.0f}) — presión compradora activa"
+                rsi_msg = f"<b>RSI: {rsi:.0f}</b> · Momentum alcista — presión compradora activa"
             elif rsi >= 45:
-                rsi_msg = f"Zona neutral ({rsi:.0f}) — sin presión dominante, esperar"
+                rsi_msg = f"<b>RSI: {rsi:.0f}</b> · Zona neutral — sin presión dominante, esperar"
             elif rsi >= 30:
-                rsi_msg = f"Momentum bajista ({rsi:.0f}) — presión vendedora activa"
+                rsi_msg = f"<b>RSI: {rsi:.0f}</b> · Momentum bajista — presión vendedora activa"
             else:
-                rsi_msg = f"Sobreventa ({rsi:.0f}) — rebote probable, buscar LONG"
+                rsi_msg = f"<b>RSI: {rsi:.0f}</b> · Sobreventa — rebote probable, buscar LONG"
             rp.append(_slider_bar("RSI", 20, rsi_sc2, rsi_msg))
 
             # ── MACD slider ──
             macd_d = dets.get("macd", {}); macd_sc = macd_d.get("score", 50)
             macd_h = sigs.get("macd_histogram", 0)
             if macd_h > 0.005:
-                macd_msg = f"Impulso alcista fuerte (H:{macd_h:+.4f}) — compradores dominan"
+                macd_msg = f"<b>H: {macd_h:+.4f}</b> · Impulso alcista fuerte — compradores dominan"
             elif macd_h > 0.001:
-                macd_msg = f"Alcista moderado (H:{macd_h:+.4f}) — tendencia al alza presente"
+                macd_msg = f"<b>H: {macd_h:+.4f}</b> · Alcista moderado — tendencia al alza presente"
             elif macd_h > -0.001:
-                macd_msg = f"Transición (H:{macd_h:+.4f}) — posible cambio de dirección"
+                macd_msg = f"<b>H: {macd_h:+.4f}</b> · Transición — posible cambio de dirección"
             elif macd_h > -0.005:
-                macd_msg = f"Bajista moderado (H:{macd_h:+.4f}) — presión vendedora activa"
+                macd_msg = f"<b>H: {macd_h:+.4f}</b> · Bajista moderado — presión vendedora activa"
             else:
-                macd_msg = f"Impulso bajista fuerte (H:{macd_h:+.4f}) — vendedores dominan"
+                macd_msg = f"<b>H: {macd_h:+.4f}</b> · Impulso bajista fuerte — vendedores dominan"
             rp.append(_slider_bar("MACD", 25, macd_sc, macd_msg))
 
             # ── BB slider ──
             bb_d = dets.get("bb", {}); bb_sc = bb_d.get("score", 50)
             bb_pct = sigs.get("bb_pct", 0.5)
             if bb_pct > 0.95:
-                bb_msg = f"Banda superior ({bb_pct:.0%}) — extremo alto, retroceso probable"
+                bb_msg = f"<b>BB: {bb_pct:.0%}</b> · Banda superior — extremo alto, retroceso probable"
             elif bb_pct > 0.65:
-                bb_msg = f"Mitad superior ({bb_pct:.0%}) — sesgo alcista, zona de precaución"
+                bb_msg = f"<b>BB: {bb_pct:.0%}</b> · Mitad superior — sesgo alcista, zona de precaución"
             elif bb_pct > 0.35:
-                bb_msg = f"Centro ({bb_pct:.0%}) — precio en equilibrio, sin presión extrema"
+                bb_msg = f"<b>BB: {bb_pct:.0%}</b> · Centro — precio en equilibrio, sin presión extrema"
             elif bb_pct > 0.05:
-                bb_msg = f"Mitad inferior ({bb_pct:.0%}) — sesgo bajista, posible rebote"
+                bb_msg = f"<b>BB: {bb_pct:.0%}</b> · Mitad inferior — sesgo bajista, posible rebote"
             else:
-                bb_msg = f"Banda inferior ({bb_pct:.0%}) — extremo bajo, rebote probable"
+                bb_msg = f"<b>BB: {bb_pct:.0%}</b> · Banda inferior — extremo bajo, rebote probable"
             rp.append(_slider_bar("BB", 15, bb_sc, bb_msg))
 
             # ── PA slider ──
             pa_d = dets.get("pa", {}); pa_sc = pa_d.get("score", 50)
+            _last_body = abs(sigs.get("price", 0) - sigs.get("ema_9", 0))  # approx
             if pa_sc >= 70:
-                pa_msg = "Vela alcista fuerte — cuerpo grande, compradores dominan"
+                pa_msg = "<b>Vela alcista fuerte</b> · Cuerpo grande, compradores dominan"
             elif pa_sc >= 55:
-                pa_msg = "Vela alcista moderada — compra presente pero sin convicción total"
+                pa_msg = "<b>Vela alcista moderada</b> · Compra presente pero sin convicción total"
             elif pa_sc >= 45:
-                pa_msg = "Vela indecisa (doji/mecha) — mercado sin definición"
+                pa_msg = "<b>Vela indecisa</b> · Doji/mecha — mercado sin definición"
             elif pa_sc >= 30:
-                pa_msg = "Vela bajista moderada — venta presente pero sin fuerza"
+                pa_msg = "<b>Vela bajista moderada</b> · Venta presente pero sin fuerza"
             else:
-                pa_msg = "Vela bajista fuerte — cuerpo grande, vendedores dominan"
+                pa_msg = "<b>Vela bajista fuerte</b> · Cuerpo grande, vendedores dominan"
             rp.append(_slider_bar("PA", 10, pa_sc, pa_msg))
             card = (f"<div style='text-align:center;background:#1a1d23;padding:6px 3px;border-radius:8px;'>"
                     f"<div style='font-size:10px;color:#888;'>{tf} ({tf_w.get(tf,'')})</div>"
@@ -832,22 +886,39 @@ with col_macro:
             _hv_wv = _hvv["weighted_vote"]
             _hv_conf = _hvv["confidence"]
             _hv_warm = _hvv["warmup"]
-            if _hv_wv > 0.05: _hv_clr = "#52b788"; _hv_dir = "L"
-            elif _hv_wv < -0.05: _hv_clr = "#ef476f"; _hv_dir = "S"
+            if _hv_wv > 0.05: _hv_clr = "#52b788"; _hv_dir = "LONG"
+            elif _hv_wv < -0.05: _hv_clr = "#ef476f"; _hv_dir = "SHORT"
             else: _hv_clr = "#555"; _hv_dir = "—"
             _hc_clr = "#52b788" if _hv_conf >= 0.6 else ("#ffd166" if _hv_conf >= 0.3 else "#ef476f")
             _hc_pct = _hv_conf * 100
             _hw_tag = " <span style='color:#ff6b6b;font-size:8px;'>⏳</span>" if _hv_warm else ""
+            _is_cu = _hv_name == "Cu"
+            _name_style = "color:#fff;font-weight:bold;font-size:13px;" if _is_cu else "color:#ccc;font-size:12px;"
+            _row_border = "border-left:2px solid #ffd166;" if _is_cu else ""
+            # Smooth gradient color for confidence bar: red(0%) → yellow(50%) → green(100%)
+            _cf = max(0, min(1, _hv_conf))
+            if _cf >= 0.5:
+                _t = (_cf - 0.5) * 2  # 0→1 for yellow→green
+                _bar_r = int(255 * (1 - _t) + 82 * _t)
+                _bar_g = int(209 * (1 - _t) + 183 * _t)
+                _bar_b = int(102 * (1 - _t) + 136 * _t)
+            else:
+                _t = _cf * 2  # 0→1 for red→yellow
+                _bar_r = int(239 * (1 - _t) + 255 * _t)
+                _bar_g = int(71 * (1 - _t) + 209 * _t)
+                _bar_b = int(111 * (1 - _t) + 102 * _t)
+            _bar_clr = f"rgb({_bar_r},{_bar_g},{_bar_b})"
             _hdr_vote_rows += (
-                f"<tr style='border-bottom:1px solid #1a1d23;'>"
-                f"<td style='padding:3px 3px;color:#ccc;font-size:12px;'>{_hv_name}{_hw_tag}</td>"
-                f"<td style='padding:3px 3px;text-align:right;color:{'#52b788' if _hv_ret > 0 else '#ef476f' if _hv_ret < 0 else '#555'};font-size:12px;'>"
+                f"<tr style='border-bottom:1px solid #1a1d23;{_row_border}'>"
+                f"<td title='Activo cross-asset: {_hv_name}. Correlación con USDCLP usada para ponderar su voto.' style='padding:3px 3px;{_name_style}'>{_hv_name}{_hw_tag}</td>"
+                f"<td title='Δ3min: {_hv_ret:+.1f} bps. Retorno reciente del activo. Positivo = subió, Negativo = bajó.' style='padding:3px 3px;text-align:right;color:{'#52b788' if _hv_ret > 0 else '#ef476f' if _hv_ret < 0 else '#555'};font-size:12px;'>"
                 f"{_hv_ret:+.1f}</td>"
-                f"<td style='padding:3px 3px;text-align:center;color:{_hv_clr};font-weight:bold;font-size:12px;'>{_hv_dir}</td>"
-                f"<td style='padding:3px 3px;text-align:center;'>"
-                f"<div style='background:#2a2d35;border-radius:2px;height:3px;width:36px;display:inline-block;overflow:hidden;'>"
-                f"<div style='background:{_hc_clr};height:100%;width:{_hc_pct:.0f}%;'></div></div></td>"
-                f"<td style='padding:3px 3px;text-align:right;color:{_hv_clr};font-size:11px;'>{_hv_wv:+.2f}</td>"
+                f"<td title='Dirección: {_hv_dir}. Basada en el retorno reciente del activo y su correlación con USDCLP.' style='padding:3px 3px;text-align:center;color:{_hv_clr};font-weight:bold;font-size:12px;'>{_hv_dir}</td>"
+                f"<td title='Confianza EWMA: {_hv_conf:.0%}.' style='padding:3px 3px;text-align:center;white-space:nowrap;'>"
+                f"<div style='display:inline-flex;align-items:center;gap:3px;'>"
+                f"<div style='background:#2a2d35;border-radius:2px;height:4px;width:32px;display:inline-block;overflow:hidden;'>"
+                f"<div style='background:{_bar_clr};height:100%;width:{_hc_pct:.0f}%;transition:width 1.5s;'></div></div>"
+                f"<span style='color:{_bar_clr};font-size:10px;'>{_hc_pct:.0f}%</span></div></td>"
                 f"</tr>"
             )
         # Macro direction color
@@ -1577,7 +1648,7 @@ st.markdown("---")
 st.caption(f"SENTINEL v{VERSION} \"{CODENAME}\" | "
            f"Última actualización: {datetime.now().strftime('%H:%M:%S')} | "
            f"Fuente: {'🟢 MT5 Real-Time' if feed.mt5_connected else '🟡 Yahoo Finance (delay)'} | "
-           f"Score: Técnico {WEIGHTS.technical*100:.0f}% + Correlación {WEIGHTS.correlation*100:.0f}%")
+           f"Score: Técnico {WEIGHTS.technical*100:.0f}% + Macro {WEIGHTS.correlation*100:.0f}%")
 
 if auto_refresh:
     time.sleep(DASHBOARD_REFRESH_SECONDS)

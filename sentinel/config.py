@@ -141,7 +141,7 @@ NEWS_BUFFER_MINUTES = 30              # No operar 30 min antes/después de notic
 # ══════════════════════════════════════════════════════════════
 # DASHBOARD
 # ══════════════════════════════════════════════════════════════
-DASHBOARD_REFRESH_SECONDS = 2.5  # Refresh rápido para flechas cross-asset
+DASHBOARD_REFRESH_SECONDS = 1.5  # Faster refresh — safe for Capitaria data requests
 DASHBOARD_LANGUAGE = "es"        # Español
 
 # ══════════════════════════════════════════════════════════════

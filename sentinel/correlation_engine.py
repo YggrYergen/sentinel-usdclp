@@ -422,9 +422,17 @@ class RealtimeCorrelationTracker:
         # EWMA correlation
         ewma_c = self._ewma_corr.get(asset_key, 0.0)
 
-        # Sign concordance
+        # Sign concordance — EWMA-smoothed for continuous output
         sh = self._sign_history.get(asset_key, [])
-        concordance = sum(sh) / len(sh) if len(sh) >= 8 else 0.5
+        if len(sh) >= 8:
+            # EWMA smoothing over sign history for continuous concordance
+            _ewma_conc = 0.5
+            _conc_alpha = 2.0 / (min(len(sh), 30) + 1)  # adaptive span
+            for _s in sh[-60:]:
+                _ewma_conc = _conc_alpha * _s + (1 - _conc_alpha) * _ewma_conc
+            concordance = max(0.0, min(1.0, _ewma_conc))
+        else:
+            concordance = 0.5
 
         # Z-Score breakdown
         sp = self._spread_history.get(asset_key, [])
