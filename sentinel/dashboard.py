@@ -22,8 +22,11 @@ from sentinel.data_feed import DataFeed
 from sentinel.sentinel_core import SentinelCore
 from sentinel.version import VERSION, CODENAME
 
-st.set_page_config(page_title=f"SENTINEL v{VERSION} — USD/CLP", page_icon="🛡️",
-                   layout="wide", initial_sidebar_state="collapsed")
+try:
+    st.set_page_config(page_title=f"SENTINEL v{VERSION} — USD/CLP", page_icon="🛡️",
+                       layout="wide", initial_sidebar_state="collapsed")
+except st.errors.StreamlitAPIException:
+    pass  # Already set by app.py when running in multipage mode
 
 st.markdown("""
 <style>
