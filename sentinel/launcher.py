@@ -667,9 +667,9 @@ class Launcher:
     # ── Step 8: Launch ──
     def launch(self):
         self.log("[8/8] Launching SENTINEL dashboard...")
-        dashboard = self.sentinel / "dashboard.py"
+        app_entry = self.sentinel / "app.py"
         cmd = [
-            sys.executable, "-m", "streamlit", "run", str(dashboard),
+            sys.executable, "-m", "streamlit", "run", str(app_entry),
             "--server.headless", "true",
             "--server.port", str(PORT),
             "--browser.gatherUsageStats", "false",
