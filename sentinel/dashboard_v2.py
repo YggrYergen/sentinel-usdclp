@@ -680,114 +680,11 @@ with col_tf:
             with tf_cols[col_idx]:
                 st.markdown(tt(card, f"{tf_roles[tf]} — {tf} ({tf_w.get(tf,'')})", "".join(rp), "down"), unsafe_allow_html=True)
 
-# ── COL 4: Correlaciones ──
+# ── COL 4: Reserved space (correlation table removed) ──
 with col_corr:
-    corr_data = comp["correlation"].get("details", {}).get("correlations", {})
-    if corr_data:
-        CORR_FULL = {
-            "dxy": ("DXY (Dólar global)", +0.75, "directa", "DXY sube → USDCLP sube"),
-            "copper": ("Cobre", -0.70, "inversa", "Cobre sube → CLP fuerte → USDCLP baja"),
-            "wti": ("WTI (Petróleo)", +0.40, "directa", "WTI sube → Chile importa caro → USDCLP sube"),
-            "usdmxn": ("USD/MXN", +0.60, "directa", "Risk-off LATAM → ambas monedas caen juntas"),
-            "usdbrl": ("USD/BRL", +0.55, "directa", "Risk-off LATAM → BRL y CLP caen juntas"),
-            "audusd": ("AUD/USD", -0.50, "inversa", "AUD proxy commodities → sube con Cobre"),
-            "usdcnh": ("USD/CNH", +0.45, "directa", "Yuan débil → menos demanda China → Cobre baja"),
-            "sp500": ("S&P 500", -0.30, "inversa", "Risk-on → EM se fortalecen → USDCLP baja"),
-        }
-        reliable = []; ignore_list = []; caution = []; inst_details = []
-        for k, act in corr_data.items():
-            if act is None or (isinstance(act, float) and np.isnan(act)): continue
-            exp = EXPECTED_CORRELATIONS.get(k, 0)
-            df = act - exp
-            name, ex, rel_type, why = CORR_FULL.get(k, (k, 0, "?", ""))
-            abs_diff = abs(df)
-            if abs_diff < 0.2: status = "✅ Confiable"; reliable.append(CN.get(k, k))
-            elif abs_diff < 0.4: status = "⚠️ Atención"; caution.append(CN.get(k, k))
-            else: status = "🔴 Desconectado"; ignore_list.append(CN.get(k, k))
-        cs = comp["correlation"]["score"]
-        cd = comp["correlation"]["direction"]
-        cc = "#52b788" if cs >= 65 else ("#ffd166" if cs >= 50 else "#ef476f")
-
-        _sorted_keys = sorted(
-            [k for k in _cross_asset_keys if corr_data.get(k) is not None
-             and not (isinstance(corr_data.get(k), float) and np.isnan(corr_data.get(k)))],
-            key=lambda k: abs(corr_data.get(k, 0) - EXPECTED_CORRELATIONS.get(k, 0))
-        )
-        _hdr_rows = ""
-        for _ek in _sorted_keys:
-            _e_act = corr_data[_ek]
-            _e_exp = EXPECTED_CORRELATIONS.get(_ek, 0)
-            _e_df = _e_act - _e_exp
-            _e_ic = "✅" if abs(_e_df) < 0.2 else ("⚠️" if abs(_e_df) < 0.4 else "🔴")
-            _e_fs = 12 + max(0, (0.4 - abs(_e_df)) / 0.4) * 2
-            _e_fw = "700" if abs(_e_df) < 0.15 else ("500" if abs(_e_df) < 0.25 else "400")
-            _rs = f"font-size:{_e_fs:.1f}px;font-weight:{_e_fw};"
-            _e_tech = _cross_tech.get(_ek, {"score": 50, "fast_score": 50, "direction": "NEUTRAL"})
-            _e_fsc = _e_tech["fast_score"]
-            _e_tclr = "#52b788" if _e_fsc >= 60 else ("#ffd166" if _e_fsc >= 45 else "#ef476f")
-            _e_angle = (100 - _e_fsc) / 100 * 180
-            _pm = _cross_m1.get(_ek, {"tick": 0, "m2": 0, "m5": 0})
-            _a5, _c5 = _bps_to_arrow(_pm.get("m5",0), sensitivity=3, threshold=2)
-            _a2, _c2 = _bps_to_arrow(_pm.get("m2",0), sensitivity=6, threshold=1)
-            _at, _ct = _bps_to_arrow(_pm.get("tick",0), sensitivity=25, threshold=0.3)
-            _spark_svg = ""
-            _spark_pts = _pm.get("spark", [])
-            if len(_spark_pts) >= 3:
-                _sw, _sh = 160, 44
-                _smin, _smax = min(_spark_pts), max(_spark_pts)
-                _srng = _smax - _smin if _smax > _smin else 0.01
-                _coords = []
-                for _si, _sp in enumerate(_spark_pts):
-                    _sx = _si / (len(_spark_pts) - 1) * _sw
-                    _sy = _sh - 2 - (_sp - _smin) / _srng * (_sh - 6)
-                    _coords.append(f"{_sx:.1f},{_sy:.1f}")
-                _spoly = " ".join(_coords)
-                _sclr = "#52b788" if _spark_pts[-1] >= _spark_pts[0] else "#ef476f"
-                _sdelta = (_spark_pts[-1] - _spark_pts[0]) / _spark_pts[0] * 100
-                _spark_svg = (
-                    f"<div class='spark-pop'>"
-                    f"<div style='font-size:11px;color:#aaa;margin-bottom:3px;'>"
-                    f"<b style='color:#fff;'>{CN.get(_ek,_ek)}</b> "
-                    f"<span style='color:{_sclr};'>{_spark_pts[-1]:.2f} ({_sdelta:+.3f}%)</span></div>"
-                    f"<svg width='{_sw}' height='{_sh}'>"
-                    f"<polyline points='{_spoly}' fill='none' stroke='{_sclr}' stroke-width='2' "
-                    f"stroke-linecap='round' stroke-linejoin='round'/>"
-                    f"<circle cx='{_sw}' cy='{_coords[-1].split(',')[1]}' r='3' fill='{_sclr}'/>"
-                    f"</svg>"
-                    f"<div style='font-size:9px;color:#555;text-align:center;'>últimos 5 min (M1)</div>"
-                    f"</div>")
-            _hdr_rows += (
-                f"<tr>"
-                f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
-                f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_act:.2f}</td>"
-                f"<td style='padding:1px 3px;text-align:right;color:#555;{_rs}'>{_e_exp}</td>"
-                f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_df:+.2f}</td>"
-                f"<td style='padding:1px 2px;'>"
-                f"<div class='spark-wrap'>"
-                f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
-                f"<span style='display:inline-block;font-size:22px;color:{_ct};line-height:1;"
-                f"transform:rotate({_at:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:17px;color:{_e_tclr};line-height:1;"
-                f"transform:rotate({_e_angle:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:14px;color:{_c2};line-height:1;"
-                f"transform:rotate({_a2:.0f}deg);'>▲</span>"
-                f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
-                f"transform:rotate({_a5:.0f}deg);'>▲</span></div>"
-                f"{_spark_svg}</div></td>"
-                f"</tr>")
-        tbl = (f"<div class='corr-table-wrap'>"
-               f"<table style='width:100%;font-size:12px;font-family:monospace;"
-               f"border-collapse:collapse;line-height:1.5;'>"
-               f"{_hdr_rows}</table>"
-               f"<div style='text-align:center;margin-top:3px;padding:2px;"
-               f"border-top:1px solid #333;font-size:13px;'>"
-               f"<span style='color:{cc};font-weight:bold;'>Corr: {cs}</span>"
-               f" <span style='color:{cc};font-size:11px;'>{cd}</span></div>"
-               f"</div>")
-        st.markdown(tt(tbl, "🔗 Correlaciones Cross-Asset",
-            f"Confirmadores: {', '.join(reliable) if reliable else 'N/A'}<br>"
-            f"Ignorar: {', '.join(ignore_list) if ignore_list else 'N/A'}",
-            "down"), unsafe_allow_html=True)
+    st.markdown(
+        "<div style='min-height:300px;background:#0e1117;'>&nbsp;</div>",
+        unsafe_allow_html=True)
 
 # ── COL 2: Macro Votes (merged: + ✅/⚠️ + HOY% from corr, - slider, fixed order) ──
 _FIXED_ORDER = ["copper", "dxy", "wti", "sp500", "usdmxn", "usdbrl", "audusd", "usdcnh"]
