@@ -415,6 +415,99 @@ with col_score:
         "down"), unsafe_allow_html=True)
     st.markdown(deriv_info, unsafe_allow_html=True)
 
+    # ── Macro Derivative Signal Cards ──
+    # Buffer the macro score over time to compute its velocity & acceleration
+    if "macro_score_buffer" not in st.session_state:
+        st.session_state.macro_score_buffer = []
+        st.session_state.macro_score_ts = []
+    _ms_val = _macro_score  # current macro score (0-100)
+    _ms_now = time.time()
+    st.session_state.macro_score_buffer.append(_ms_val)
+    st.session_state.macro_score_ts.append(_ms_now)
+    if len(st.session_state.macro_score_buffer) > 200:
+        st.session_state.macro_score_buffer = st.session_state.macro_score_buffer[-200:]
+        st.session_state.macro_score_ts = st.session_state.macro_score_ts[-200:]
+    _mb = st.session_state.macro_score_buffer
+    _mt = st.session_state.macro_score_ts
+    _mn = len(_mb)
+
+    # Macro velocities at different windows
+    def _macro_vel(b, t, w):
+        if len(b) < w + 1: return 0.0
+        dt = t[-1] - t[-w]
+        return (b[-1] - b[-w]) / dt if dt > 0 else 0.0
+
+    def _macro_acc(b, t, w):
+        if len(b) < w + 1: return 0.0
+        mid = w // 2
+        dt1 = t[-1] - t[-mid] if t[-1] != t[-mid] else 1
+        dt2 = t[-mid] - t[-w] if t[-mid] != t[-w] else 1
+        v1 = (b[-1] - b[-mid]) / dt1
+        v2 = (b[-mid] - b[-w]) / dt2
+        dt_a = (dt1 + dt2) / 2
+        return (v1 - v2) / dt_a if dt_a > 0 else 0.0
+
+    _mv_s = _macro_vel(_mb, _mt, 2) if _mn >= 3 else 0.0   # ~5s
+    _mv_m = _macro_vel(_mb, _mt, 6) if _mn >= 7 else 0.0   # ~30s
+    _mv_l = _macro_vel(_mb, _mt, 12) if _mn >= 13 else 0.0  # ~1m
+    _mv_5 = _macro_vel(_mb, _mt, 24) if _mn >= 25 else 0.0  # ~5m
+    _ma_s = _macro_acc(_mb, _mt, 3) if _mn >= 4 else 0.0
+    _ma_m = _macro_acc(_mb, _mt, 6) if _mn >= 7 else 0.0
+    _ma_l = _macro_acc(_mb, _mt, 12) if _mn >= 13 else 0.0
+    _ma_5 = _macro_acc(_mb, _mt, 24) if _mn >= 25 else 0.0
+
+    # Macro signal cards: base = macro_score, boosted by macro velocity/acceleration
+    def _m_vel_boost(v, scale=2.0): return max(-25, min(25, (v / scale) * 25))
+    def _m_acc_boost(a, scale=0.5): return max(-10, min(10, (a / scale) * 10))
+
+    _macro_card_defs = [
+        ("⚡", "5s",  _ms_val, _mv_s, _ma_s, 0.50, 0.30),
+        ("🔄", "30s", _ms_val, _mv_m, _ma_m, 0.30, 0.15),
+        ("📊", "1m",  _ms_val, _mv_l, _ma_l, 0.15, 0.05),
+        ("📈", "5m",  _ms_val, _mv_5, _ma_5, 0.10, 0.03),
+    ]
+    _mc_cells = ""; _mc_ttp = []
+    for _ic, _sp, _base, _vel, _acc, _vw, _aw in _macro_card_defs:
+        _vb = _m_vel_boost(_vel); _ab = _m_acc_boost(_acc)
+        _enh = max(0, min(100, _base + (_vb * _vw * 2) + (_ab * _aw * 2)))
+        _sd = "LONG" if _enh >= 55 else ("SHORT" if _enh <= 45 else "NEUTRAL")
+        _cv = min(100, abs(_enh - 50) * 2)
+        if _sd == "LONG":    _r,_g,_b = 82,183,136; _ar="▲"; _ac="COMPRAR"
+        elif _sd == "SHORT": _r,_g,_b = 239,71,111; _ar="▼"; _ac="VENDER"
+        else:                _r,_g,_b = 255,209,102; _ar="◆"; _ac="ESPERAR"
+        _op = 0.10 + (_cv / 100) * 0.45
+        _tc = f"rgb({_r},{_g},{_b})"; _bg = f"rgba({_r},{_g},{_b},{_op:.2f})"
+        if _acc > 0.1: _aic = "⏫"
+        elif _acc > 0: _aic = "🔼"
+        elif _acc > -0.1: _aic = "🔽"
+        else: _aic = "⏬"
+        _mc_cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
+                      f"border-right:1px solid #333;width:25%;'>"
+                      f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {_aic}</div>"
+                      f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
+                      f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
+                      f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
+                      f"</td>")
+        _vd = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
+        _ad = "acelerando" if _acc > 0.05 else ("frenando" if _acc < -0.05 else "estable")
+        _mc_ttp.append(
+            f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
+            f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
+            f"<b>{_ic} {_sp}</b> — <span style='color:{_tc};'><b>{_ac} {_cv:.0f}%</b></span><br>"
+            f"Macro base: {_base:.1f} + Vel({_vb:+.1f}×{_vw}) + Acc({_ab:+.1f}×{_aw}) = <b>{_enh:.1f}</b><br>"
+            f"<span style='color:#888;'>Vel: {_vel:+.2f}/s {_vd} | {_ad}</span></div>")
+    _mc_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;"
+                f"border-left:3px solid #4cc9f0;'>"
+                f"<div style='font-size:8px;color:#4cc9f0;text-align:center;padding:1px 0;"
+                f"background:rgba(76,201,240,0.08);letter-spacing:1px;'>🌍 MACRO DERIVADAS</div>"
+                f"<table style='width:100%;border-collapse:collapse;'><tr>{_mc_cells}</tr></table></div>")
+    st.markdown(tt(_mc_html, "🌍 Señales Macro (derivadas)",
+        f"{''.join(_mc_ttp)}<br>"
+        f"<b>Lógica:</b> Macro score puro ({_ms_val:.1f}) + derivadas de velocidad/aceleración<br>"
+        f"del propio score macro en ventanas de 5s a 5m.<br><br>"
+        f"Buffer: {_mn} muestras (~{_mn*5}s)",
+        "down"), unsafe_allow_html=True)
+
     if score >= 75:
         sr = f"🟢 <b>FUERTE ({score})</b><br>Téc({tech_sc:.0f})+Macro({corr_sc:.0f}) confluyen → {direction}."
     elif score >= 65:
