@@ -646,19 +646,12 @@ with col_corr:
                     f"</svg>"
                     f"<div style='font-size:9px;color:#555;text-align:center;'>últimos 5 min (M1)</div>"
                     f"</div>")
-            _hoy_v = _cross_corr_hoy.get(_ek, -1)
-            if _hoy_v < 0:
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:#555;font-size:10px;'>--</td>"
-            else:
-                _ccclr = "#52b788" if _hoy_v >= 65 else ("#ffd166" if _hoy_v >= 40 else "#ef476f")
-                _cc_html = f"<td style='padding:1px 3px;text-align:center;color:{_ccclr};font-size:11px;font-weight:bold;'>{_hoy_v}%</td>"
             _hdr_rows += (
                 f"<tr>"
                 f"<td style='padding:1px 3px;color:#aaa;{_rs}'>{CN.get(_ek,_ek)}</td>"
                 f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_act:.2f}</td>"
                 f"<td style='padding:1px 3px;text-align:right;color:#555;{_rs}'>{_e_exp}</td>"
                 f"<td style='padding:1px 3px;text-align:right;{_rs}'>{_e_df:+.2f}</td>"
-                f"<td style='padding:1px 2px;{_rs}'>{_e_ic}</td>"
                 f"<td style='padding:1px 2px;'>"
                 f"<div class='spark-wrap'>"
                 f"<div style='display:flex;align-items:center;justify-content:center;gap:3px;'>"
@@ -671,7 +664,6 @@ with col_corr:
                 f"<span style='display:inline-block;font-size:12px;color:{_c5};line-height:1;"
                 f"transform:rotate({_a5:.0f}deg);'>▲</span></div>"
                 f"{_spark_svg}</div></td>"
-                f"{_cc_html}"
                 f"</tr>")
         tbl = (f"<div class='corr-table-wrap'>"
                f"<table style='width:100%;font-size:12px;font-family:monospace;"
@@ -687,49 +679,51 @@ with col_corr:
             f"Ignorar: {', '.join(ignore_list) if ignore_list else 'N/A'}",
             "down"), unsafe_allow_html=True)
 
-# ── COL 2: Macro Votes ──
+# ── COL 2: Macro Votes (merged: + ✅/⚠️ + HOY% from corr, - slider, fixed order) ──
+_FIXED_ORDER = ["copper", "dxy", "wti", "sp500", "usdmxn", "usdbrl", "audusd", "usdcnh"]
 with col_macro:
     _hdr_votes = _macro_result.get("votes", {})
+    corr_data_m = comp["correlation"].get("details", {}).get("correlations", {})
     if _hdr_votes:
         _hdr_vote_rows = ""
-        for _hvk, _hvv in sorted(_hdr_votes.items(), key=lambda x: abs(x[1]["weighted_vote"]), reverse=True):
+        for _hvk in _FIXED_ORDER:
+            _hvv = _hdr_votes.get(_hvk)
+            if not _hvv:
+                continue
             _hv_name = CN.get(_hvk, _hvk)
             _hv_ret = _hvv["return_bps"]
             _hv_wv = _hvv["weighted_vote"]
-            _hv_conf = _hvv["confidence"]
             _hv_warm = _hvv["warmup"]
             if _hv_wv > 0.05: _hv_clr = "#52b788"; _hv_dir = "LONG"
             elif _hv_wv < -0.05: _hv_clr = "#ef476f"; _hv_dir = "SHORT"
             else: _hv_clr = "#555"; _hv_dir = "—"
-            _hc_clr = "#52b788" if _hv_conf >= 0.6 else ("#ffd166" if _hv_conf >= 0.3 else "#ef476f")
-            _hc_pct = _hv_conf * 100
             _hw_tag = " <span style='color:#ff6b6b;font-size:8px;'>⏳</span>" if _hv_warm else ""
             _is_cu = _hv_name == "Cu"
             _name_style = "color:#fff;font-weight:bold;font-size:13px;" if _is_cu else "color:#ccc;font-size:12px;"
             _row_border = "border-left:2px solid #ffd166;" if _is_cu else ""
-            _cf = max(0, min(1, _hv_conf))
-            if _cf >= 0.5:
-                _t = (_cf - 0.5) * 2
-                _bar_r = int(255 * (1 - _t) + 82 * _t)
-                _bar_g = int(209 * (1 - _t) + 183 * _t)
-                _bar_b = int(102 * (1 - _t) + 136 * _t)
+            # ✅/⚠️/🔴 from correlation data
+            _e_act_m = corr_data_m.get(_hvk)
+            if _e_act_m is not None and not (isinstance(_e_act_m, float) and np.isnan(_e_act_m)):
+                _e_exp_m = EXPECTED_CORRELATIONS.get(_hvk, 0)
+                _e_df_m = abs(_e_act_m - _e_exp_m)
+                _status_ic = "✅" if _e_df_m < 0.2 else ("⚠️" if _e_df_m < 0.4 else "🔴")
             else:
-                _t = _cf * 2
-                _bar_r = int(239 * (1 - _t) + 255 * _t)
-                _bar_g = int(71 * (1 - _t) + 209 * _t)
-                _bar_b = int(111 * (1 - _t) + 102 * _t)
-            _bar_clr = f"rgb({_bar_r},{_bar_g},{_bar_b})"
+                _status_ic = "—"
+            # HOY% from M1 rolling correlation
+            _hoy_v = _cross_corr_hoy.get(_hvk, -1)
+            if _hoy_v < 0:
+                _hoy_html = "<span style='color:#555;font-size:10px;'>--</span>"
+            else:
+                _hoy_clr = "#52b788" if _hoy_v >= 65 else ("#ffd166" if _hoy_v >= 40 else "#ef476f")
+                _hoy_html = f"<span style='color:{_hoy_clr};font-size:11px;font-weight:bold;'>{_hoy_v}%</span>"
             _hdr_vote_rows += (
                 f"<tr style='border-bottom:1px solid #1a1d23;{_row_border}'>"
-                f"<td title='{_hv_name}' style='padding:3px 3px;{_name_style}'>{_hv_name}{_hw_tag}</td>"
+                f"<td style='padding:3px 3px;{_name_style}'>{_hv_name}{_hw_tag}</td>"
                 f"<td style='padding:3px 3px;text-align:right;color:{'#52b788' if _hv_ret > 0 else '#ef476f' if _hv_ret < 0 else '#555'};font-size:12px;'>"
                 f"{_hv_ret:+.1f}</td>"
                 f"<td style='padding:3px 3px;text-align:center;color:{_hv_clr};font-weight:bold;font-size:12px;'>{_hv_dir}</td>"
-                f"<td style='padding:3px 3px;text-align:center;white-space:nowrap;'>"
-                f"<div style='display:inline-flex;align-items:center;gap:3px;'>"
-                f"<div style='background:#2a2d35;border-radius:2px;height:4px;width:32px;display:inline-block;overflow:hidden;'>"
-                f"<div style='background:{_bar_clr};height:100%;width:{_hc_pct:.0f}%;transition:width 1.5s;'></div></div>"
-                f"<span style='color:{_bar_clr};font-size:10px;'>{_hc_pct:.0f}%</span></div></td>"
+                f"<td style='padding:3px 2px;text-align:center;'>{_status_ic}</td>"
+                f"<td style='padding:3px 3px;text-align:center;'>{_hoy_html}</td>"
                 f"</tr>")
         _hm_clr = "#52b788" if _macro_score >= 65 else ("#ffd166" if _macro_score >= 50 else "#ef476f")
         _hdr_macro_tbl = (
