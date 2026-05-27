@@ -526,34 +526,57 @@ with col_score:
         f"Buffer: {_mn} muestras (~{_mn*5}s)",
         "down"), unsafe_allow_html=True)
 
-    if score >= 75:
-        sr = f"🟢 <b>FUERTE ({score})</b><br>Téc({tech_sc:.0f})+Macro({corr_sc:.0f}) confluyen → {direction}."
-    elif score >= 65:
-        sr = f"🟡 <b>ALERTA ({score})</b><br>Téc={tech_sc:.0f}, Macro={corr_sc:.0f}. Buscar confirmación."
-    else:
-        sr = f"🔴 <b>ESPERAR ({score})</b><br>Téc={tech_sc:.0f}, Macro={corr_sc:.0f}. Sin consenso."
-    d = direction
-    if tech_dir == corr_dir and tech_dir != "NEUTRAL":
-        dr = f"✅ Consenso → {tech_dir}."
-    elif tech_dir != corr_dir and "NEUTRAL" not in (tech_dir, corr_dir):
-        dr = f"⚠️ Téc={tech_dir} vs Macro={corr_dir}."
-    elif corr_dir != "NEUTRAL":
-        dr = f"Macro → {corr_dir}. Téc neutral."
-    elif tech_dir != "NEUTRAL":
-        dr = f"Téc → {tech_dir}. Sin respaldo Macro."
-    else:
-        dr = "Ambos neutrales — fuera."
-    st.markdown(tt(
-        f"<div style='display:flex;align-items:center;justify-content:center;gap:6px;padding:4px 0;'>"
-        f"<span style='background:{dir_color[d]}22;border:1px solid {dir_color[d]};border-radius:4px;"
-        f"padding:1px 6px;font-size:16px;font-weight:900;color:{dir_color[d]};line-height:1.3;'>{score}</span>"
-        f"<span style='font-size:22px;'>{dir_emoji[d]}</span>"
-        f"<span style='color:{dir_color[d]};font-size:18px;font-weight:bold;'>{d}</span>"
-        f"<span style='font-size:11px;color:#888;'>{result['signal']}</span></div>",
-        "📊 Score + Dirección",
-        f"{sr}<br><br><b>Fórmula:</b> {tech_sc:.0f}×0.50 + {corr_sc:.0f}×0.50 = <b>{score}</b>"
-        f"<br><br>{dr}<br><br>Téc: <b>{tech_dir}</b> (50%) | Macro: <b>{corr_dir}</b> (50%)",
-        "down"), unsafe_allow_html=True)
+    # ── Triple Signal Cards (Técnico / Macro / Fusión) ──
+    _fusion = _ms.calculate_fusion(tech_sc, tech_dir, _macro_score, _macro_dir)
+    def _mini_card(label, sc, dr):
+        if dr == 'LONG':    clr='#52b788'; ar='▲'; ac='COMPRAR'
+        elif dr == 'SHORT': clr='#ef476f'; ar='▼'; ac='VENDER'
+        else:               clr='#ffd166'; ar='◆'; ac='ESPERAR'
+        bp = min(100, abs(sc - 50) * 2)
+        bs = 'left' if sc >= 50 else 'right'
+        return (
+            f"<td style='width:33.3%;padding:0 2px;vertical-align:top;'>"
+            f"<div style='background:#1a1d23;border-radius:6px;padding:3px 4px;"
+            f"text-align:center;border:1px solid {clr}22;'>"
+            f"<div style='font-size:8px;color:#888;line-height:1;'>{label}</div>"
+            f"<div style='font-size:16px;color:{clr};font-weight:900;line-height:1.1;'>{ar}</div>"
+            f"<div style='font-size:13px;color:{clr};font-weight:bold;line-height:1.1;'>{sc:.0f}</div>"
+            f"<div style='font-size:8px;color:{clr};font-weight:bold;line-height:1.1;'>{ac}</div>"
+            f"<div style='background:#2a2d35;border-radius:2px;height:3px;margin-top:2px;overflow:hidden;'>"
+            f"<div style='background:{clr};height:100%;width:{bp:.0f}%;border-radius:2px;"
+            f"float:{bs};'></div></div>"
+            f"</div></td>")
+
+    _tc1 = _mini_card('\U0001f527 T\u00e9cnico', tech_sc, tech_dir)
+    _tc2 = _mini_card('\U0001f30d Macro', _macro_score, _macro_dir)
+    _tc3 = _mini_card('\u26a1 Fusi\u00f3n', _fusion['score'], _fusion['direction'])
+    _triple_html = (
+        f"<table style='width:100%;border-collapse:collapse;table-layout:fixed;margin-top:3px;'>"
+        f"<tr>{_tc1}{_tc2}{_tc3}</tr></table>")
+    _warmed = _macro_result['assets_warmed_up']
+    _total = _macro_result['total_assets_tracked']
+    _conf_avg = _macro_result['confidence_avg']
+    st.markdown(tt(_triple_html, '\U0001f9ea Triple Signal System',
+        f"T\u00e9cnico: <b>{tech_sc:.0f}</b> ({tech_dir}) \u2014 EMA+RSI+MACD+BB\u00d74TF<br>"
+        f"Macro: <b>{_macro_score:.0f}</b> ({_macro_dir}) \u2014 {_warmed}/{_total} activos, conf {_conf_avg:.0%}<br>"
+        f"Fusi\u00f3n: <b>{_fusion['score']:.0f}</b> ({_fusion['direction']}) \u2014 Confl {_fusion['confluence_pct']:.0f}%",
+        'down'), unsafe_allow_html=True)
+
+    # Confluence slider
+    _conf_pct = _fusion['confluence_pct']
+    _conf_clr = '#52b788' if _fusion['aligned'] else ('#ef476f' if _fusion['opposed'] else '#ffd166')
+    _conf_label = '\u2705 CONFL' if _fusion['aligned'] else ('\u26a0\ufe0f DIVER' if _fusion['opposed'] else '\u27a1\ufe0f PARCIAL')
+    _risk = _fusion['risk_mode']
+    st.markdown(
+        f"<div style='background:#1a1d23;border-radius:6px;padding:2px 6px;margin-top:2px;'>"
+        f"<div style='display:flex;justify-content:space-between;align-items:center;font-size:9px;'>"
+        f"<span style='color:{_conf_clr};font-weight:bold;'>{_conf_label} {_conf_pct:.0f}%</span>"
+        f"<span style='color:#555;'>{_fusion['risk_emoji']} {_risk}</span></div>"
+        f"<div style='background:#2a2d35;border-radius:3px;height:4px;margin-top:2px;overflow:hidden;'>"
+        f"<div style='background:{_conf_clr};height:100%;width:{_conf_pct:.0f}%;"
+        f"border-radius:3px;'></div></div></div>",
+        unsafe_allow_html=True)
+
 
 # ── COL 5: Niveles ──
 def _level_tooltip(lb, lv, curr_price, is_resistance):
