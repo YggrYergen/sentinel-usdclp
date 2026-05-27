@@ -128,13 +128,15 @@ class Launcher:
                 req = urllib.request.Request(url, headers={
                     'User-Agent': 'SENTINEL-Launcher/3.5',
                 })
-                # Try with default SSL first, fallback to unverified for corp proxies
+                # Try with default SSL first, fallback to unverified for embedded Python
+                import ssl
                 try:
-                    import ssl
                     ctx = ssl.create_default_context()
                     resp = urllib.request.urlopen(req, timeout=30, context=ctx)
-                except Exception:
-                    resp = urllib.request.urlopen(req, timeout=30)
+                except ssl.SSLCertVerificationError:
+                    self.log(f"  [SSL] Default certs failed — using unverified context", "warning")
+                    ctx = ssl._create_unverified_context()
+                    resp = urllib.request.urlopen(req, timeout=30, context=ctx)
                 with open(str(dest), 'wb') as f:
                     shutil.copyfileobj(resp, f)
                 size = Path(dest).stat().st_size
@@ -488,14 +490,23 @@ class Launcher:
             # Copy sentinel/ files (preserve chat_history)
             src = clone_dir / "sentinel"
             updated = 0
+            _PRESERVE = {"chat_history", "__pycache__"}
             if src.exists():
                 for f in src.iterdir():
                     if f.is_file():
                         shutil.copy2(str(f), str(self.sentinel / f.name))
                         self.log(f"    Updated: sentinel/{f.name}")
                         updated += 1
-                    elif f.is_dir() and f.name in ("chat_history",):
+                    elif f.is_dir() and f.name in _PRESERVE:
                         self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
+                    elif f.is_dir():
+                        dest_dir = self.sentinel / f.name
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        for sf in f.iterdir():
+                            if sf.is_file():
+                                shutil.copy2(str(sf), str(dest_dir / sf.name))
+                                updated += 1
+                        self.log(f"    Updated: sentinel/{f.name}/ ({len(list(f.iterdir()))} files)")
 
             # Copy root-level files
             for name in ["SENTINEL.bat", ".env.example", "README.md"]:
@@ -534,15 +545,23 @@ class Launcher:
             inner = list(tmp_dir.iterdir())[0]
             updated = 0
             src = inner / "sentinel"
+            _PRESERVE = {"chat_history", "__pycache__"}
             if src.exists():
                 for f in src.iterdir():
                     if f.is_file():
                         shutil.copy2(str(f), str(self.sentinel / f.name))
                         self.log(f"    Updated: sentinel/{f.name}")
                         updated += 1
-                    # Preserve local data directories (chat_history, etc.)
-                    elif f.is_dir() and f.name in ("chat_history",):
+                    elif f.is_dir() and f.name in _PRESERVE:
                         self.log(f"    [SKIP] Preserving local: sentinel/{f.name}/")
+                    elif f.is_dir():
+                        dest_dir = self.sentinel / f.name
+                        dest_dir.mkdir(parents=True, exist_ok=True)
+                        for sf in f.iterdir():
+                            if sf.is_file():
+                                shutil.copy2(str(sf), str(dest_dir / sf.name))
+                                updated += 1
+                        self.log(f"    Updated: sentinel/{f.name}/ ({len(list(f.iterdir()))} files)")
             for name in ["SENTINEL.bat", ".env.example", "README.md"]:
                 sf = inner / name
                 if sf.exists():
@@ -601,7 +620,7 @@ class Launcher:
         self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --no-cache-dir --upgrade pip setuptools wheel')
 
         self.log("  Installing project dependencies...")
-        code, _, err = self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --no-cache-dir -r "{req}"')
+        code, _, err = self.cmd(f'"{sys.executable}" -m pip install --no-warn-script-location --no-cache-dir -r "{req}"', timeout=900)
         if code != 0:
             self.log(f"[ERROR] pip install failed!", "error")
             return False
