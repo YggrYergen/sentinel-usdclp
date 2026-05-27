@@ -269,43 +269,7 @@ _macro_dir = _macro_result["direction"]
 col_score, col_macro, col_tf, col_corr, col_levels = st.columns([0.55, 1.1, 1.6, 1.0, 0.35])
 
 with col_score:
-    _tf_sc = tech_details.get("tf_scores", {})
-    _sc_map = {t: _tf_sc.get(t, {}).get("score", 50) for t in ("M1","M2","M5","M15")}
-    _dir_map = {t: _tf_sc.get(t, {}).get("direction", "NEUTRAL") for t in ("M1","M2","M5","M15")}
-    _sig_defs = [("⚡","5s",{"M1":1.0}),("🔄","30s",{"M1":0.6,"M2":0.4}),("📊","1m",{"M1":0.4,"M2":0.3,"M5":0.3}),("📈","5m",{"M5":0.6,"M15":0.4})]
-    _cells = ""
-    _ttp = []
-    for _ic, _sp, _wt in _sig_defs:
-        _bl = sum(_sc_map.get(t,50)*w for t,w in _wt.items())
-        _vl = sum(w for t,w in _wt.items() if _dir_map.get(t)=="LONG")
-        _vs = sum(w for t,w in _wt.items() if _dir_map.get(t)=="SHORT")
-        _sd = "LONG" if _vl>_vs and _vl>0.3 else ("SHORT" if _vs>_vl and _vs>0.3 else "NEUTRAL")
-        _cv = min(100, abs(_bl-50)*2)
-        if _sd=="LONG":    _r,_g,_b=82,183,136; _ar="▲"; _ac="COMPRAR"; _ep=price_info.get("ask",0)
-        elif _sd=="SHORT": _r,_g,_b=239,71,111; _ar="▼"; _ac="VENDER"; _ep=price_info.get("bid",0)
-        else:              _r,_g,_b=255,209,102; _ar="◆"; _ac="ESPERAR"; _ep=0
-        _op = 0.10+(_cv/100)*0.45
-        _tc = f"rgb({_r},{_g},{_b})"; _bg = f"rgba({_r},{_g},{_b},{_op:.2f})"
-        _ept = f"<div style='font-size:9px;color:#666;'>{_ep:.1f}</div>" if _ep>0 else ""
-        _cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
-                   f"border-right:1px solid #333;width:25%;'>"
-                   f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp}</div>"
-                   f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
-                   f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
-                   f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
-                   f"{_ept}</td>")
-        _det = " + ".join(f"{t}({_sc_map.get(t,50):.0f})" for t in _wt)
-        _ttp.append(f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
-                    f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
-                    f"<b>{_ic} {_sp}</b> — <span style='color:{_tc};'><b>{_ac} {_cv:.0f}%</b></span><br>"
-                    f"<span style='color:#888;'>Blend: {_det} = {_bl:.1f}</span></div>")
-    _sig_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
-                 f"<table style='width:100%;border-collapse:collapse;'><tr>{_cells}</tr></table></div>")
-    st.markdown(tt(_sig_html, "🎯 Panel de Señales",
-        f"{''.join(_ttp)}<br>⚡=M1 | 🔄=M1+M2 | 📊=M1+M2+M5 | 📈=M5+M15",
-        "down"), unsafe_allow_html=True)
-
-    # ── Derivative-enhanced signals (v2) ──
+    # ── Price derivative buffer ──
     if "price_buffer" not in st.session_state:
         st.session_state.price_buffer = []
         st.session_state.price_timestamps = []
@@ -320,11 +284,15 @@ with col_score:
     buf = st.session_state.price_buffer
     ts_buf = st.session_state.price_timestamps
     n_ticks = len(buf)
-    velocity = 0.0; acceleration = 0.0; vel_short = 0.0; vel_medium = 0.0; vel_long = 0.0; vel_5m = 0.0
+
+    # Velocity & acceleration at different windows
+    vel_short = 0.0; vel_medium = 0.0; vel_long = 0.0; vel_5m = 0.0
     acc_short = 0.0; acc_medium = 0.0; acc_long = 0.0; acc_5m = 0.0
+    velocity = 0.0; acceleration = 0.0
     if n_ticks >= 2:
         dt = ts_buf[-1] - ts_buf[-2]
         if dt > 0: vel_short = (buf[-1] - buf[-2]) / dt
+        velocity = vel_short
     def _accel_window(b, tb, w):
         if len(b) < w + 1: return 0.0
         mid = w // 2
@@ -353,63 +321,101 @@ with col_score:
     def vel_to_boost(v, scale=0.05): return max(-25, min(25, (v / scale) * 25))
     def accel_to_boost(a, scale=0.01): return max(-10, min(10, (a / scale) * 10))
 
-    _tf_sc2 = tech_details.get("tf_scores", {})
-    _m1_sc2 = _tf_sc2.get("M1", {}).get("score", 50)
-    _m2_sc2 = _tf_sc2.get("M2", {}).get("score", 50)
-    _m5_sc2 = _tf_sc2.get("M5", {}).get("score", 50)
-    _m15_sc2 = _tf_sc2.get("M15", {}).get("score", 50)
-    v2_defs = [
-        ("⚡", "5s", _m1_sc2, vel_short, acc_short, 0.50, 0.30),
-        ("🔄", "30s", _m1_sc2 * 0.6 + _m2_sc2 * 0.4, vel_medium, acc_medium, 0.30, 0.15),
-        ("📊", "1m", _m1_sc2 * 0.4 + _m2_sc2 * 0.3 + _m5_sc2 * 0.3, vel_long, acc_long, 0.15, 0.05),
-        ("📈", "5m", _m5_sc2 * 0.6 + _m15_sc2 * 0.4, vel_5m, acc_5m, 0.10, 0.03),
+    # ── Fused signal cards (A+C): direction from engine, confidence from enhanced ──
+    _tf_sc = tech_details.get("tf_scores", {})
+    _sc_map = {t: _tf_sc.get(t, {}).get("score", 50) for t in ("M1","M2","M5","M15")}
+    _dir_map = {t: _tf_sc.get(t, {}).get("direction", "NEUTRAL") for t in ("M1","M2","M5","M15")}
+
+    _fused_defs = [
+        ("\u26a1", "5s",  {"M1":1.0},                         vel_short,  acc_short,  0.50, 0.30),
+        ("\U0001f504", "30s", {"M1":0.6,"M2":0.4},                vel_medium, acc_medium, 0.30, 0.15),
+        ("\U0001f4ca", "1m",  {"M1":0.4,"M2":0.3,"M5":0.3},       vel_long,   acc_long,   0.15, 0.05),
+        ("\U0001f4c8", "5m",  {"M5":0.6,"M15":0.4},               vel_5m,     acc_5m,     0.10, 0.03),
     ]
-    v2_cells = ""; v2_ttp = []
-    for _ic, _sp, _base, _vel, _acc, _vw, _aw in v2_defs:
-        v_boost = vel_to_boost(_vel); a_boost = accel_to_boost(_acc)
-        enhanced = max(0, min(100, _base + (v_boost * _vw * 2) + (a_boost * _aw * 2)))
-        _sd2 = "LONG" if enhanced >= 55 else ("SHORT" if enhanced <= 45 else "NEUTRAL")
-        _cv2 = min(100, abs(enhanced - 50) * 2)
-        if _sd2 == "LONG": _r,_g,_b = 82,183,136; _ar="▲"; _ac="COMPRAR"; _ep2=price_info.get("ask",0)
-        elif _sd2 == "SHORT": _r,_g,_b = 239,71,111; _ar="▼"; _ac="VENDER"; _ep2=price_info.get("bid",0)
-        else: _r,_g,_b = 255,209,102; _ar="◆"; _ac="ESPERAR"; _ep2=0
-        _op2 = 0.10+(_cv2/100)*0.45
-        _tc2 = f"rgb({_r},{_g},{_b})"; _bg2 = f"rgba({_r},{_g},{_b},{_op2:.2f})"
-        if _acc > 0.002: acc_icon = "⏫"
-        elif _acc > 0: acc_icon = "🔼"
-        elif _acc > -0.002: acc_icon = "🔽"
-        else: acc_icon = "⏬"
-        v2_cells += (f"<td style='background:{_bg2};padding:2px 4px;text-align:center;"
-                     f"border-right:1px solid #333;width:25%;'>"
-                     f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {acc_icon}</div>"
-                     f"<div style='font-size:15px;color:{_tc2};font-weight:900;line-height:1;'>{_ar}</div>"
-                     f"<div style='font-size:9px;color:{_tc2};font-weight:bold;line-height:1.1;'>{_ac}</div>"
-                     f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv2:.0f}%</div>"
-                     f"</td>")
-        v_dir = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
+    _cells = ""; _ttp = []
+    for _ic, _sp, _wt, _vel, _acc, _vw, _aw in _fused_defs:
+        # Direction from engine voting (Row 1 logic)
+        _vl = sum(w for t,w in _wt.items() if _dir_map.get(t)=="LONG")
+        _vs = sum(w for t,w in _wt.items() if _dir_map.get(t)=="SHORT")
+        _sd = "LONG" if _vl>_vs and _vl>0.3 else ("SHORT" if _vs>_vl and _vs>0.3 else "NEUTRAL")
+
+        # Enhanced score for confidence (Row 2 logic)
+        _bl = sum(_sc_map.get(t,50)*w for t,w in _wt.items())
+        _vb = vel_to_boost(_vel); _ab = accel_to_boost(_acc)
+        _enh = max(0, min(100, _bl + (_vb * _vw * 2) + (_ab * _aw * 2)))
+        _cv = min(100, abs(_enh - 50) * 2)
+
+        # Disagreement detection
+        _sd2 = "LONG" if _enh >= 55 else ("SHORT" if _enh <= 45 else "NEUTRAL")
+        _disagree = (_sd != _sd2) and _sd != "NEUTRAL" and _sd2 != "NEUTRAL"
+
+        # Colors
+        if _sd=="LONG":    _r,_g,_b=82,183,136; _ar="\u25b2"; _ac="COMPRAR"; _ep=price_info.get("ask",0)
+        elif _sd=="SHORT": _r,_g,_b=239,71,111; _ar="\u25bc"; _ac="VENDER"; _ep=price_info.get("bid",0)
+        else:              _r,_g,_b=255,209,102; _ar="\u25c6"; _ac="ESPERAR"; _ep=0
+        _op = 0.10+(_cv/100)*0.45
+        _tc = f"rgb({_r},{_g},{_b})"; _bg = f"rgba({_r},{_g},{_b},{_op:.2f})"
+
+        # Acceleration icon
+        if _acc > 0.002: _aic = "\u23eb"
+        elif _acc > 0: _aic = "\U0001f53c"
+        elif _acc > -0.002: _aic = "\U0001f53d"
+        else: _aic = "\u23ec"
+
+        # Disagreement dot
+        _dot = (f"<span style='position:absolute;top:1px;right:2px;font-size:7px;"
+                f"color:#ff9f1c;' title='T\u00e9c\u2260Deriv'>\u25cf</span>") if _disagree else ""
+
+        _ept = f"<div style='font-size:9px;color:#666;'>{_ep:.1f}</div>" if _ep>0 else ""
+        _cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
+                   f"border-right:1px solid #333;width:25%;position:relative;'>"
+                   f"{_dot}"
+                   f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {_aic}</div>"
+                   f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
+                   f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
+                   f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
+                   f"{_ept}</td>")
+
+        # Tooltip
+        _det = " + ".join(f"{t}({_sc_map.get(t,50):.0f})" for t in _wt)
+        v_dir = "\u2191" if _vel > 0 else ("\u2193" if _vel < 0 else "\u2192")
         a_dir = "acelerando" if _acc > 0.001 else ("frenando" if _acc < -0.001 else "estable")
-        v2_ttp.append(
+        _disag_txt = f"<br><span style='color:#ff9f1c;'>\u26a0\ufe0f Derivadas dicen: {_sd2}</span>" if _disagree else ""
+        _ttp.append(
             f"<div style='background:rgba(255,255,255,0.04);border:1px solid #333;"
             f"border-radius:5px;padding:4px 7px;margin:3px 0;'>"
-            f"<b>{_ic} {_sp}</b> — <span style='color:{_tc2};'><b>{_ac} {_cv2:.0f}%</b></span><br>"
-            f"Base: {_base:.1f} + Vel({v_boost:+.1f}×{_vw}) + Acc({a_boost:+.1f}×{_aw}) = <b>{enhanced:.1f}</b><br>"
-            f"<span style='color:#888;'>Velocidad: {_vel:+.4f}/s {v_dir} | {a_dir}</span></div>")
-    v2_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;'>"
-               f"<table style='width:100%;border-collapse:collapse;'><tr>{v2_cells}</tr></table></div>")
+            f"<b>{_ic} {_sp}</b> \u2014 <span style='color:{_tc};'><b>{_ac} {_cv:.0f}%</b></span><br>"
+            f"<span style='color:#888;'>T\u00e9c: {_det} = {_bl:.1f}</span><br>"
+            f"<span style='color:#888;'>+ Vel({_vb:+.1f}\u00d7{_vw}) + Acc({_ab:+.1f}\u00d7{_aw}) = <b>{_enh:.1f}</b></span><br>"
+            f"<span style='color:#888;'>Velocidad: {_vel:+.4f}/s {v_dir} | {_aic} {a_dir}</span>"
+            f"{_disag_txt}</div>")
+
+    _sig_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
+                 f"<table style='width:100%;border-collapse:collapse;'><tr>{_cells}</tr></table></div>")
+    st.markdown(tt(_sig_html, "\U0001f3af Se\u00f1ales Fusionadas (T\u00e9c + Derivadas)",
+        f"{''.join(_ttp)}<br>"
+        f"<b>Direcci\u00f3n:</b> del engine t\u00e9cnico (votaci\u00f3n por TF)<br>"
+        f"<b>Confianza %:</b> score t\u00e9cnico + derivadas de precio<br>"
+        f"<b>{_aic}:</b> aceleraci\u00f3n del precio<br>"
+        f"<b style='color:#ff9f1c;'>\u25cf</b> punto naranja = derivadas discrepan del t\u00e9cnico<br><br>"
+        f"\u26a1=M1 | \U0001f504=M1+M2 | \U0001f4ca=M1+M2+M5 | \U0001f4c8=M5+M15",
+        "down"), unsafe_allow_html=True)
+
+    # \u2500\u2500 Momentum slider bar \u2500\u2500
     if vel_short > 0.01 and acceleration > 0.001:
-        mom_txt = "📈 Subiendo y acelerando"; mom_clr = "#52b788"; mom_ic = "⏫"
+        mom_txt = "\U0001f4c8 Subiendo y acelerando"; mom_clr = "#52b788"; mom_ic = "\u23eb"
     elif vel_short > 0.01 and acceleration < -0.001:
-        mom_txt = "📈 Subiendo pero frenando"; mom_clr = "#a8d5a2"; mom_ic = "🔼"
+        mom_txt = "\U0001f4c8 Subiendo pero frenando"; mom_clr = "#a8d5a2"; mom_ic = "\U0001f53c"
     elif vel_short > 0:
-        mom_txt = "↗️ Subiendo suave"; mom_clr = "#888"; mom_ic = "🔼"
+        mom_txt = "\u2197\ufe0f Subiendo suave"; mom_clr = "#888"; mom_ic = "\U0001f53c"
     elif vel_short < -0.01 and acceleration < -0.001:
-        mom_txt = "📉 Bajando y acelerando"; mom_clr = "#ef476f"; mom_ic = "⏬"
+        mom_txt = "\U0001f4c9 Bajando y acelerando"; mom_clr = "#ef476f"; mom_ic = "\u23ec"
     elif vel_short < -0.01 and acceleration > 0.001:
-        mom_txt = "📉 Bajando pero frenando"; mom_clr = "#f4a0b0"; mom_ic = "🔽"
+        mom_txt = "\U0001f4c9 Bajando pero frenando"; mom_clr = "#f4a0b0"; mom_ic = "\U0001f53d"
     elif vel_short < 0:
-        mom_txt = "↘️ Bajando suave"; mom_clr = "#888"; mom_ic = "🔽"
+        mom_txt = "\u2198\ufe0f Bajando suave"; mom_clr = "#888"; mom_ic = "\U0001f53d"
     else:
-        mom_txt = "➡️ Sin movimiento"; mom_clr = "#555"; mom_ic = "⏸️"
+        mom_txt = "\u27a1\ufe0f Sin movimiento"; mom_clr = "#555"; mom_ic = "\u23f8\ufe0f"
     mom_pct = min(100, abs(vel_short) / 0.05 * 100)
     bar_clr = "#52b788" if vel_short > 0 else "#ef476f"
     fill_dir = "right" if vel_short > 0 else "left"
@@ -421,17 +427,12 @@ with col_score:
         f"<div style='background:#111;border-radius:3px;height:4px;margin-top:2px;overflow:hidden;'>"
         f"<div style='width:{mom_pct:.0f}%;height:100%;background:{bar_clr};"
         f"border-radius:3px;float:{fill_dir};'></div></div></div>")
-    st.markdown(tt(v2_html, "🧪 Señales v2 (derivadas)",
-        f"{''.join(v2_ttp)}<br>"
-        f"<b>Momentum:</b> {mom_txt}<br><br>"
-        f"<b>Interpretación:</b><br>"
-        f"⏫ Precio sube cada vez más rápido → impulso comprador fuerte<br>"
-        f"🔼 Precio sube pero pierde fuerza → posible techo pronto<br>"
-        f"⏬ Precio baja cada vez más rápido → impulso vendedor fuerte<br>"
-        f"🔽 Precio baja pero pierde fuerza → posible piso pronto<br><br>"
+    st.markdown(tt(deriv_info, "\U0001f4c8 Momentum del Precio",
+        f"<b>{mom_txt}</b><br>"
+        f"Vel: {vel_short:+.4f}/s | Acc: {acceleration:+.6f}/s\u00b2<br>"
         f"Buffer: {n_ticks} ticks (~{n_ticks*5}s)",
         "down"), unsafe_allow_html=True)
-    st.markdown(deriv_info, unsafe_allow_html=True)
+
 
     # ── Macro Derivative Signal Cards ──
     # Buffer the macro score over time to compute its velocity & acceleration
