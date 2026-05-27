@@ -465,35 +465,35 @@ with col_levels:
         below = combined.get("below", [])
         for i, lv in enumerate(reversed(above)):
             lb = f"R{len(above) - i}"
-            rh = (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:1px 2px;"
-                  f"font-family:monospace;font-size:9px;background:rgba(239,71,111,0.08);"
-                  f"border-left:2px solid #ef476f;border-radius:2px;margin:0;line-height:1.2;'>"
-                  f"<span style='color:#ef476f;font-size:8px;'>{lb}</span>"
-                  f"<span style='font-weight:bold;font-size:12px;'>{lv['price']:.1f}</span>"
-                  f"<span style='color:#ef476f;font-size:8px;'>{lv['pct']:+.1f}%</span></div>")
+            rh = (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:4px 3px;"
+                  f"font-family:monospace;background:rgba(239,71,111,0.08);"
+                  f"border-left:2px solid #ef476f;border-radius:2px;margin:0;line-height:1.3;'>"
+                  f"<span style='color:#ef476f;font-size:9px;'>{lb}</span>"
+                  f"<span style='font-weight:bold;font-size:16px;'>{lv['price']:.1f}</span>"
+                  f"<span style='color:#ef476f;font-size:9px;'>{lv['pct']:+.1f}%</span></div>")
             tip = _level_tooltip(lb, lv, curr_price, True)
             st.markdown(tt(rh, f"🔴 {lb} — Resistencia ({lv['price']:.2f})", tip, "down"), unsafe_allow_html=True)
         _sprd = price_info.get('spread', 0) if price_info else 0
         _src = 'MT5' if price_info.get('source')=='mt5' else 'Yahoo'
         st.markdown(tt(
-            f"<div style='display:flex;justify-content:space-between;align-items:center;padding:2px 3px;"
+            f"<div style='display:flex;justify-content:space-between;align-items:center;padding:5px 3px;"
             f"font-family:monospace;background:rgba(76,201,240,0.12);border:1px solid #4cc9f0;"
-            f"border-radius:2px;margin:1px 0;line-height:1.2;'>"
-            f"<span style='color:#4cc9f0;font-size:8px;font-weight:bold;'>USD</span>"
-            f"<span style='font-size:14px;font-weight:bold;color:#4cc9f0;'>{curr_price:.1f}</span>"
-            f"<span style='color:#4cc9f0;font-size:8px;'>±{_sprd:.0f}</span></div>",
+            f"border-radius:2px;margin:1px 0;line-height:1.3;'>"
+            f"<span style='color:#4cc9f0;font-size:9px;font-weight:bold;'>USD</span>"
+            f"<span style='font-size:17px;font-weight:bold;color:#4cc9f0;'>{curr_price:.1f}</span>"
+            f"<span style='color:#4cc9f0;font-size:9px;'>±{_sprd:.0f}</span></div>",
             "💲 Precio en Vivo",
             f"Bid: {price_info['bid']:.2f} | Ask: {price_info['ask']:.2f} | Spread: {_sprd:.2f}<br>"
             f"Fuente: <b>{_src}</b>",
             "down"), unsafe_allow_html=True)
         for i, lv in enumerate(below):
             lb = f"S{i+1}"
-            rh = (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:1px 2px;"
-                  f"font-family:monospace;font-size:9px;background:rgba(82,183,136,0.08);"
-                  f"border-left:2px solid #52b788;border-radius:2px;margin:0;line-height:1.2;'>"
-                  f"<span style='color:#52b788;font-size:8px;'>{lb}</span>"
-                  f"<span style='font-weight:bold;font-size:12px;'>{lv['price']:.1f}</span>"
-                  f"<span style='color:#52b788;font-size:8px;'>{lv['pct']:+.1f}%</span></div>")
+            rh = (f"<div style='display:flex;justify-content:space-between;align-items:center;padding:4px 3px;"
+                  f"font-family:monospace;background:rgba(82,183,136,0.08);"
+                  f"border-left:2px solid #52b788;border-radius:2px;margin:0;line-height:1.3;'>"
+                  f"<span style='color:#52b788;font-size:9px;'>{lb}</span>"
+                  f"<span style='font-weight:bold;font-size:16px;'>{lv['price']:.1f}</span>"
+                  f"<span style='color:#52b788;font-size:9px;'>{lv['pct']:+.1f}%</span></div>")
             tip = _level_tooltip(lb, lv, curr_price, False)
             st.markdown(tt(rh, f"🟢 {lb} — Soporte ({lv['price']:.2f})", tip, "down"), unsafe_allow_html=True)
     else:
