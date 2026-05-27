@@ -615,7 +615,7 @@ with col_tf:
     if tf_scores:
         tf_order = ["M1", "M2", "M5", "M15"]
         active_tfs = [t for t in tf_order if t in tf_scores]
-        tf_cols = st.columns(len(active_tfs))
+        tf_cols = st.columns(len(active_tfs), gap="small")
         tf_w = {"M1": "35%", "M2": "35%", "M5": "20%", "M15": "10%"}
         tf_roles = {"M1": "Ejecución", "M2": "Confirmación", "M5": "Tendencia", "M15": "Contexto"}
         for col_idx, tf in enumerate(active_tfs):
@@ -671,11 +671,11 @@ with col_tf:
             rp.append(_slider_bar("BB", 15, bb_sc, f"<b>BB: {bb_pct:.0%}</b>"))
             pa_d = dets.get("pa", {}); pa_sc = pa_d.get("score", 50)
             rp.append(_slider_bar("PA", 10, pa_sc, "Price Action"))
-            card = (f"<div style='text-align:center;background:#1a1d23;padding:6px 3px;border-radius:8px;'>"
-                    f"<div style='font-size:10px;color:#888;'>{tf} ({tf_w.get(tf,'')})</div>"
-                    f"<div style='font-size:22px;color:{clr};font-weight:bold;'>{em} {sc}</div>"
-                    f"<div style='font-size:11px;color:{clr};font-weight:bold;'>{action}</div>"
-                    f"<div style='font-size:11px;color:{rc};margin-top:2px;border-top:1px solid #333;padding-top:2px;'>"
+            card = (f"<div style='text-align:center;background:#1a1d23;padding:2px 2px;border-radius:5px;'>"
+                    f"<div style='font-size:10px;color:#888;line-height:1.1;'>{tf} ({tf_w.get(tf,'')})</div>"
+                    f"<div style='font-size:22px;color:{clr};font-weight:bold;line-height:1.1;'>{em} {sc}</div>"
+                    f"<div style='font-size:11px;color:{clr};font-weight:bold;line-height:1.1;'>{action}</div>"
+                    f"<div style='font-size:11px;color:{rc};margin-top:1px;border-top:1px solid #333;padding-top:1px;line-height:1.2;'>"
                     f"RSI: <b>{rsi:.0f}</b> {rt}</div></div>")
             with tf_cols[col_idx]:
                 st.markdown(tt(card, f"{tf_roles[tf]} — {tf} ({tf_w.get(tf,'')})", "".join(rp), "down"), unsafe_allow_html=True)
