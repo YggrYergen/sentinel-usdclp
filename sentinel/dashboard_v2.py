@@ -367,13 +367,12 @@ with col_score:
                 f"color:#ff9f1c;' title='T\u00e9c\u2260Deriv'>\u25cf</span>") if _disagree else ""
 
         _ept = f"<div style='font-size:9px;color:#666;'>{_ep:.1f}</div>" if _ep>0 else ""
-        _cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
+        _cells += (f"<td style='background:{_bg};padding:4px 4px;text-align:center;"
                    f"border-right:1px solid #333;width:25%;position:relative;'>"
                    f"{_dot}"
-                   f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {_aic}</div>"
-                   f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
-                   f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
-                   f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
+                   f"<div style='font-size:18px;color:{_tc};font-weight:900;line-height:1.2;'>{_ar}</div>"
+                   f"<div style='font-size:10px;color:{_tc};font-weight:bold;line-height:1.2;'>{_ac}</div>"
+                   f"<div style='font-size:13px;color:#fff;font-weight:bold;line-height:1.2;'>{_cv:.0f}%</div>"
                    f"{_ept}</td>")
 
         # Tooltip
@@ -500,12 +499,11 @@ with col_score:
         elif _acc > 0: _aic = "🔼"
         elif _acc > -0.1: _aic = "🔽"
         else: _aic = "⏬"
-        _mc_cells += (f"<td style='background:{_bg};padding:2px 4px;text-align:center;"
+        _mc_cells += (f"<td style='background:{_bg};padding:4px 4px;text-align:center;"
                       f"border-right:1px solid #333;width:25%;'>"
-                      f"<div style='font-size:9px;color:#888;line-height:1;'>{_ic} {_sp} {_aic}</div>"
-                      f"<div style='font-size:15px;color:{_tc};font-weight:900;line-height:1;'>{_ar}</div>"
-                      f"<div style='font-size:9px;color:{_tc};font-weight:bold;line-height:1.1;'>{_ac}</div>"
-                      f"<div style='font-size:12px;color:#fff;font-weight:bold;line-height:1.1;'>{_cv:.0f}%</div>"
+                      f"<div style='font-size:18px;color:{_tc};font-weight:900;line-height:1.2;'>{_ar}</div>"
+                      f"<div style='font-size:10px;color:{_tc};font-weight:bold;line-height:1.2;'>{_ac}</div>"
+                      f"<div style='font-size:13px;color:#fff;font-weight:bold;line-height:1.2;'>{_cv:.0f}%</div>"
                       f"</td>")
         _vd = "↑" if _vel > 0 else ("↓" if _vel < 0 else "→")
         _ad = "acelerando" if _acc > 0.05 else ("frenando" if _acc < -0.05 else "estable")
