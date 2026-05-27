@@ -29,8 +29,8 @@ def init_system():
 feed, core = init_system()
 
 # ── Page definitions ──
-v1 = st.Page("dashboard.py", title="SENTINEL v1", icon="🛡️", default=True)
-v2 = st.Page("dashboard_v2.py", title="SENTINEL v2", icon="⚡")
+v1 = st.Page("dashboard.py", title="SENTINEL v1", icon="🛡️", default=True, url_path="")
+v2 = st.Page("dashboard_v2.py", title="SENTINEL v2", icon="⚡", url_path="v2")
 
 # ── Navigation ──
 pg = st.navigation(
