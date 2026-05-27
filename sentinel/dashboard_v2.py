@@ -850,8 +850,8 @@ def render_dashboard():
                 f"Consenso: <b>{_macro_result['consensus_raw']:+.4f}</b><br>"
                 f"Confianza promedio: <b>{_macro_result['confidence_avg']:.0%}</b>",
             "down"), unsafe_allow_html=True)
-    else:
-        st.caption("⏳ Macro...")
+        else:
+            st.caption("⏳ Macro...")
 
 # ══════════════════════════════════════════════════════════
 # RENDER (fragment handles auto-refresh internally)
