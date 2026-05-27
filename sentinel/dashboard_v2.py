@@ -390,7 +390,9 @@ with col_score:
             f"{_disag_txt}</div>")
 
     _sig_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;'>"
-                 f"<table style='width:100%;border-collapse:collapse;'><tr>{_cells}</tr></table></div>")
+                 f"<table style='width:100%;border-collapse:collapse;table-layout:fixed;'><tr>{_cells}</tr></table>"
+                 f"<div style='text-align:center;font-size:7px;color:#555;letter-spacing:2px;padding:1px 0;"
+                 f"background:#151820;border-top:1px solid #222;'>TÉCNICO</div></div>")
     st.markdown(tt(_sig_html, "\U0001f3af Se\u00f1ales Fusionadas (T\u00e9c + Derivadas)",
         f"{''.join(_ttp)}<br>"
         f"<b>Direcci\u00f3n:</b> del engine t\u00e9cnico (votaci\u00f3n por TF)<br>"
@@ -513,11 +515,10 @@ with col_score:
             f"<b>{_ic} {_sp}</b> — <span style='color:{_tc};'><b>{_ac} {_cv:.0f}%</b></span><br>"
             f"Macro base: {_base:.1f} + Vel({_vb:+.1f}×{_vw}) + Acc({_ab:+.1f}×{_aw}) = <b>{_enh:.1f}</b><br>"
             f"<span style='color:#888;'>Vel: {_vel:+.2f}/s {_vd} | {_ad}</span></div>")
-    _mc_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;"
-                f"border-left:3px solid #4cc9f0;'>"
-                f"<div style='font-size:8px;color:#4cc9f0;text-align:center;padding:1px 0;"
-                f"background:rgba(76,201,240,0.08);letter-spacing:1px;'>🌍 MACRO DERIVADAS</div>"
-                f"<table style='width:100%;border-collapse:collapse;'><tr>{_mc_cells}</tr></table></div>")
+    _mc_html = (f"<div style='background:#1a1d23;border-radius:8px;overflow:hidden;margin-top:3px;'>"
+                f"<table style='width:100%;border-collapse:collapse;table-layout:fixed;'><tr>{_mc_cells}</tr></table>"
+                f"<div style='text-align:center;font-size:7px;color:#555;letter-spacing:2px;padding:1px 0;"
+                f"background:#151820;border-top:1px solid #222;'>MACRO</div></div>")
     st.markdown(tt(_mc_html, "🌍 Señales Macro (derivadas)",
         f"{''.join(_mc_ttp)}<br>"
         f"<b>Lógica:</b> Macro score puro ({_ms_val:.1f}) + derivadas de velocidad/aceleración<br>"
