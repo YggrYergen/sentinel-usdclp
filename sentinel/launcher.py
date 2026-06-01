@@ -10,7 +10,7 @@ from pathlib import Path
 from datetime import datetime
 import ctypes
 
-VERSION = "3.7.0"
+VERSION = "3.7.1"
 PORT = 8501
 URL = f"http://localhost:{PORT}"
 GITHUB_REPO = "YggrYergen/sentinel-usdclp"
@@ -592,8 +592,9 @@ class Launcher:
             self.log(f"    {line}")
 
         # Check marker file — skip install if deps already verified
+        # Include VERSION in hash so launcher upgrades invalidate stale markers
         import hashlib
-        req_hash = hashlib.md5(req_content.encode()).hexdigest()[:12]
+        req_hash = hashlib.md5((req_content + VERSION).encode()).hexdigest()[:12]
         marker = self.portable_dir / f"_deps_ok_{req_hash}"
         if marker.exists():
             self.log(f"  [OK] Dependencies verified (marker: {marker.name})")
@@ -601,7 +602,7 @@ class Launcher:
 
         # Full check: try importing all key packages
         self.log("  Verifying installed packages...")
-        check_script = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print('ALL_OK')"
+        check_script = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance; print('ALL_OK')"
         code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All packages importable")
@@ -626,7 +627,7 @@ class Launcher:
             return False
 
         # Verify after install
-        check_script2 = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic; print('ALL_OK')"
+        check_script2 = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance; print('ALL_OK')"
         code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script2}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All dependencies verified")
@@ -648,6 +649,7 @@ class Launcher:
             "ta": "Technical indicators",
             "scipy": "Signal processing",
             "anthropic": "AI chat",
+            "yfinance": "Yahoo Finance fallback",
         }
         ok = True
         for mod, desc in modules.items():
@@ -751,7 +753,32 @@ class Launcher:
         self.safe("check_git", self.check_git)
 
         # Step 3: Check for updates ALWAYS (even if already running)
+        # Snapshot launcher.py hash BEFORE update to detect self-updates
+        import hashlib
+        launcher_path = self.sentinel / "launcher.py"
+        launcher_hash_before = ""
+        try:
+            launcher_hash_before = hashlib.md5(launcher_path.read_bytes()).hexdigest()
+        except Exception:
+            pass
+
         self.safe("check_updates", self.check_updates)
+
+        # If launcher.py was updated, re-launch to load new code
+        # This ensures new dependency checks (e.g. yfinance) run correctly
+        try:
+            launcher_hash_after = hashlib.md5(launcher_path.read_bytes()).hexdigest()
+            if launcher_hash_before and launcher_hash_after != launcher_hash_before:
+                self.log("")
+                self.log("  [UPDATE] Launcher updated — restarting with new code...")
+                # Also clear dep markers so new checks run fresh
+                for m in self.portable_dir.glob("_deps_ok_*"):
+                    m.unlink(missing_ok=True)
+                    self.log(f"  Cleared stale marker: {m.name}")
+                self._relaunch(sys.executable)
+                return False  # Won't reach here — _relaunch calls sys.exit
+        except Exception:
+            self.log_exc("launcher_self_update_check")
 
         # Step 4: Now check if already running (after updates)
         self.log("[1/8] Checking if SENTINEL is already running...")

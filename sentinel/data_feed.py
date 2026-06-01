@@ -13,6 +13,9 @@ import logging
 
 logger = logging.getLogger("sentinel.data")
 
+# Flag to log yfinance import error only once (prevents log flooding)
+_yfinance_warning_logged = False
+
 # ══════════════════════════════════════════════════════════════
 # Mapeo de timeframes: minutos → constantes MT5
 # ══════════════════════════════════════════════════════════════
@@ -265,10 +268,13 @@ class DataFeed:
     def _get_data_yfinance(self, symbol: str, timeframe_minutes: int,
                             bars: int) -> pd.DataFrame:
         """Obtiene datos OHLCV desde Yahoo Finance (fallback)."""
+        global _yfinance_warning_logged
         try:
             import yfinance as yf
         except ImportError:
-            logger.error("yfinance no instalado")
+            if not _yfinance_warning_logged:
+                logger.warning("yfinance no instalado — pip install yfinance para habilitar fallback")
+                _yfinance_warning_logged = True
             return pd.DataFrame()
 
         ticker = YAHOO_TICKERS.get(symbol, symbol)
