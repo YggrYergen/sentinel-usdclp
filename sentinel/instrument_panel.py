@@ -43,7 +43,7 @@ def render_panel(feed, symbols_cfg, expected_corrs, asset_weights,
     CN = {}
     cn_map = {"dxy":"DXY","copper":"Cu","wti":"WTI","usdmxn":"MXN","usdbrl":"BRL",
               "audusd":"AUD","usdcnh":"CNH","sp500":"S&P","silver":"Ag","vix":"VIX",
-              "eurusd":"EUR","usdjpy":"JPY","bitcoin":"BTC","gold":"Au"}
+              "eurusd":"EUR","usdjpy":"USD/JPY","bitcoin":"BTC","gold":"Au"}
     for k in expected_corrs:
         CN[k] = cn_map.get(k, k.upper())
     # Header

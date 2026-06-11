@@ -68,30 +68,27 @@ SYMBOLS_GOLD = {
     "dxy":      "USDX_Jun26",
     "silver":   "XAGUSD",
     "vix":      "VIX_Jun26",
-    "wti":      "WTI",
     "eurusd":   "EURUSD",
     "sp500":    "SP",
-    "usdjpy":   "USDJPY",
+    "usdjpy":   "USDJPY",       # Proxy real-time de US10Y yields (24/5)
     "copper":   "Cobre_Jul26",
 }
 EXPECTED_CORRELATIONS_GOLD = {
     "dxy":      -0.70,   # DXY up → Gold down (denominator effect)
     "silver":   +0.85,   # Peer precious metal — strongest correlation
-    "vix":      +0.35,   # Fear rising → safety demand → Gold up
-    "wti":      +0.35,   # Oil up → inflation hedge → Gold up
+    "vix":      +0.35,   # Fear rising → safety demand → Gold up (weak, inconsistent)
     "eurusd":   +0.45,   # EUR up (dollar weak) → Gold up
     "sp500":    -0.15,   # Risk-on → less gold demand (weak, near-zero)
-    "usdjpy":   -0.60,   # USD/JPY up → risk-on → Gold down
+    "usdjpy":   -0.60,   # USD/JPY up → yields up → opportunity cost → Gold down
     "copper":   +0.30,   # Shared macro — weak positive
 }
 ASSET_WEIGHTS_GOLD = {
     "dxy":      3.0,
     "silver":   2.5,
-    "vix":      2.0,
-    "wti":      1.5,
+    "usdjpy":   2.5,     # Proxy yields US: subido de 2.0 (absorbe canal WTI eliminado)
     "eurusd":   1.5,
+    "vix":      1.0,     # Bajado de 2.0: correlación débil (+0.35) no justifica peso alto
     "sp500":    1.0,
-    "usdjpy":   2.0,
     "copper":   1.0,
 }
 
@@ -125,7 +122,7 @@ ASSET_WEIGHTS_NASDAQ = {
     "dxy":      2.5,
     "usdjpy":   2.0,
     "bitcoin":  1.5,
-    "wti":      1.5,
+    "wti":      0.7,     # Bajado de 1.5: señal indirecta vía inflación, débil intraday
     "eurusd":   1.0,
     "gold":     0.5,
 }
