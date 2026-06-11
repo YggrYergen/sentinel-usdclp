@@ -32,6 +32,14 @@ YAHOO_TICKERS = {
     "AUDUSD":       "AUDUSD=X",
     "USDCNH":       "CNH=X",
     "SP":           "^GSPC",
+    # Gold / NASDAQ cross-asset symbols
+    "XAUUSD":       "GC=F",
+    "XAGUSD":       "SI=F",
+    "NQ100":        "^NDX",
+    "BTCUSD":       "BTC-USD",
+    "VIX_Jun26":    "^VIX",
+    "EURUSD":       "EURUSD=X",
+    "USDJPY":       "JPY=X",
 }
 YF_INTERVALS = {1: "1m", 5: "5m", 15: "15m", 30: "30m", 60: "60m", 240: "1d", 1440: "1d"}
 YF_PERIODS = {"1m": "7d", "5m": "60d", "15m": "60d", "30m": "60d", "60m": "60d", "1d": "1y"}
@@ -108,9 +116,12 @@ class DataFeed:
 
     def _enable_symbols(self):
         """Habilita todos los símbolos de SENTINEL en Market Watch de MT5."""
-        from sentinel.config import SYMBOLS
+        from sentinel.config import SYMBOLS, SYMBOLS_GOLD, SYMBOLS_NASDAQ
         mt5 = self._mt5
-        for key, symbol in SYMBOLS.items():
+        all_symbols = set()
+        for cfg in (SYMBOLS, SYMBOLS_GOLD, SYMBOLS_NASDAQ):
+            all_symbols.update(cfg.values())
+        for symbol in all_symbols:
             info = mt5.symbol_info(symbol)
             if info and not info.visible:
                 mt5.symbol_select(symbol, True)

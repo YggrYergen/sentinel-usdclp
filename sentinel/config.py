@@ -61,6 +61,76 @@ EXPECTED_CORRELATIONS = {
 }
 
 # ══════════════════════════════════════════════════════════════
+# GOLD (XAUUSD) — Instrument config
+# ══════════════════════════════════════════════════════════════
+SYMBOLS_GOLD = {
+    "target":   "XAUUSD",
+    "dxy":      "USDX_Jun26",
+    "silver":   "XAGUSD",
+    "vix":      "VIX_Jun26",
+    "wti":      "WTI",
+    "eurusd":   "EURUSD",
+    "sp500":    "SP",
+    "usdjpy":   "USDJPY",
+    "copper":   "Cobre_Jul26",
+}
+EXPECTED_CORRELATIONS_GOLD = {
+    "dxy":      -0.70,   # DXY up → Gold down (denominator effect)
+    "silver":   +0.85,   # Peer precious metal — strongest correlation
+    "vix":      +0.35,   # Fear rising → safety demand → Gold up
+    "wti":      +0.35,   # Oil up → inflation hedge → Gold up
+    "eurusd":   +0.45,   # EUR up (dollar weak) → Gold up
+    "sp500":    -0.15,   # Risk-on → less gold demand (weak, near-zero)
+    "usdjpy":   -0.60,   # USD/JPY up → risk-on → Gold down
+    "copper":   +0.30,   # Shared macro — weak positive
+}
+ASSET_WEIGHTS_GOLD = {
+    "dxy":      3.0,
+    "silver":   2.5,
+    "vix":      2.0,
+    "wti":      1.5,
+    "eurusd":   1.5,
+    "sp500":    1.0,
+    "usdjpy":   2.0,
+    "copper":   1.0,
+}
+
+# ══════════════════════════════════════════════════════════════
+# NASDAQ 100 (NQ100) — Instrument config
+# ══════════════════════════════════════════════════════════════
+SYMBOLS_NASDAQ = {
+    "target":   "NQ100",
+    "sp500":    "SP",
+    "vix":      "VIX_Jun26",
+    "dxy":      "USDX_Jun26",
+    "usdjpy":   "USDJPY",
+    "bitcoin":  "BTCUSD",
+    "wti":      "WTI",
+    "eurusd":   "EURUSD",
+    "gold":     "XAUUSD",
+}
+EXPECTED_CORRELATIONS_NASDAQ = {
+    "sp500":    +0.92,   # Mechanical — NASDAQ is subset of broad equities
+    "vix":      -0.80,   # VIX up → growth selloff → NASDAQ down
+    "dxy":      -0.50,   # Dollar up → tech earnings hurt → NASDAQ down
+    "usdjpy":   +0.45,   # Carry trade intact → risk-on → NASDAQ up
+    "bitcoin":  +0.55,   # Institutional linkage — shared macro (unstable)
+    "wti":      -0.35,   # Oil up → inflation → rates up → NASDAQ down
+    "eurusd":   +0.35,   # EUR up → dollar weak → risk-on → NASDAQ up
+    "gold":     -0.15,   # Gold up → safety flight → NASDAQ down (weak)
+}
+ASSET_WEIGHTS_NASDAQ = {
+    "sp500":    3.0,
+    "vix":      3.0,
+    "dxy":      2.5,
+    "usdjpy":   2.0,
+    "bitcoin":  1.5,
+    "wti":      1.5,
+    "eurusd":   1.0,
+    "gold":     0.5,
+}
+
+# ══════════════════════════════════════════════════════════════
 # TIMEFRAMES
 # ══════════════════════════════════════════════════════════════
 TIMEFRAMES = {

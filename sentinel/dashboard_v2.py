@@ -17,7 +17,9 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("sentinel.dashboard_v2")
 
 from sentinel.config import (SYMBOLS, WEIGHTS, SCORE_ALERT_THRESHOLD,
-    SCORE_STRONG_THRESHOLD, DASHBOARD_REFRESH_SECONDS, EXPECTED_CORRELATIONS)
+    SCORE_STRONG_THRESHOLD, DASHBOARD_REFRESH_SECONDS, EXPECTED_CORRELATIONS,
+    SYMBOLS_GOLD, EXPECTED_CORRELATIONS_GOLD, ASSET_WEIGHTS_GOLD,
+    SYMBOLS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ, ASSET_WEIGHTS_NASDAQ)
 from sentinel.data_feed import DataFeed
 from sentinel.sentinel_core import SentinelCore
 from sentinel.version import VERSION, CODENAME
@@ -277,11 +279,11 @@ _macro_score = _macro_result["score"]
 _macro_dir = _macro_result["direction"]
 
 # ══════════════════════════════════════════════════════════
-# LAYOUT — 3 columns (group | reserved | reserved)
+# LAYOUT — 3 panels stacked in left 1/3
 # ══════════════════════════════════════════════════════════
-_col_group, _col_mid, _col_right_empty = st.columns([1, 1, 1], gap="small")
+_col_left, _col_mid, _col_right = st.columns([1, 1, 1], gap="small")
 
-with _col_group:
+with _col_left:
     col_score, col_right = st.columns([0.40, 0.60], gap="small")
 
     with col_score:
@@ -791,15 +793,24 @@ with _col_group:
                     st.caption("⏳ Macro...")
 
 
-with _col_mid:
-    st.markdown(
-        "<div style='min-height:100px;'>&nbsp;</div>",
-        unsafe_allow_html=True)
+    # ══════════════════════════════════════════════════════
+    # NASDAQ 100 Panel (inside left 1/3 column)
+    # ══════════════════════════════════════════════════════
+    from sentinel.instrument_panel import render_panel
+    render_panel(feed, SYMBOLS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ,
+                 ASSET_WEIGHTS_NASDAQ, "nasdaq", "NQ100", "💻")
 
-with _col_right_empty:
-    st.markdown(
-        "<div style='min-height:100px;'>&nbsp;</div>",
-        unsafe_allow_html=True)
+    # ══════════════════════════════════════════════════════
+    # GOLD Panel (inside left 1/3 column)
+    # ══════════════════════════════════════════════════════
+    render_panel(feed, SYMBOLS_GOLD, EXPECTED_CORRELATIONS_GOLD,
+                 ASSET_WEIGHTS_GOLD, "gold", "XAUUSD", "🥇")
+
+with _col_mid:
+    st.markdown("<div style='min-height:100px;'>&nbsp;</div>", unsafe_allow_html=True)
+
+with _col_right:
+    st.markdown("<div style='min-height:100px;'>&nbsp;</div>", unsafe_allow_html=True)
 
 # ══════════════════════════════════════════════════════════
 # AUTO-REFRESH
