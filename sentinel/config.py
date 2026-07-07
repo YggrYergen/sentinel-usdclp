@@ -212,9 +212,19 @@ DASHBOARD_REFRESH_SECONDS = 1.5  # Faster refresh — safe for Capitaria data re
 DASHBOARD_LANGUAGE = "es"        # Español
 
 # ══════════════════════════════════════════════════════════════
+# TICK LOGGING (Task 0.6 — SENTINEL revamp)
+# ══════════════════════════════════════════════════════════════
+# Default OFF: current behavior is unchanged unless explicitly enabled.
+# When True, the live dashboard path logs observed bid/ask ticks for the
+# TARGET instrument to logs/ticks/<symbol>/<YYYY-MM-DD>.parquet via
+# sentinel.logging.tick_logger.TickLogger. Read-only — never places orders.
+LOG_TICKS = False
+
+# ══════════════════════════════════════════════════════════════
 # PATHS
 # ══════════════════════════════════════════════════════════════
 import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DATA_DIR = os.path.join(BASE_DIR, "data")
 JOURNAL_PATH = os.path.join(DATA_DIR, "trades_journal.csv")
+LOGS_DIR = os.path.join(BASE_DIR, "logs")  # Runtime data (tick logs, etc.) — .gitignored

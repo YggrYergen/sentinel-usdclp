@@ -19,10 +19,18 @@ logger = logging.getLogger("sentinel.dashboard_v2")
 from sentinel.config import (SYMBOLS, WEIGHTS, SCORE_ALERT_THRESHOLD,
     SCORE_STRONG_THRESHOLD, DASHBOARD_REFRESH_SECONDS, EXPECTED_CORRELATIONS,
     SYMBOLS_GOLD, EXPECTED_CORRELATIONS_GOLD, ASSET_WEIGHTS_GOLD,
-    SYMBOLS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ, ASSET_WEIGHTS_NASDAQ)
+    SYMBOLS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ, ASSET_WEIGHTS_NASDAQ,
+    LOG_TICKS, LOGS_DIR)
 from sentinel.data_feed import DataFeed
 from sentinel.sentinel_core import SentinelCore
 from sentinel.version import VERSION, CODENAME
+
+if LOG_TICKS:
+    from sentinel.logging.tick_logger import TickLogger
+
+    @st.cache_resource
+    def _init_tick_logger():
+        return TickLogger(SYMBOLS["target"], LOGS_DIR)
 
 try:
     st.set_page_config(page_title=f"SENTINEL v2 — USD/CLP", page_icon="⚡",
@@ -164,6 +172,8 @@ result = core.calculate_composite()
 score = result["composite_score"]
 direction = result["direction"]
 price_info = feed.get_current_price(SYMBOLS["target"])
+if LOG_TICKS and price_info.get("time") and price_info.get("bid", 0) > 0:
+    _init_tick_logger().on_tick(price_info["time"], price_info["bid"], price_info["ask"])
 levels = result.get("levels", {})
 combined = levels.get("combined", {})
 curr_price = levels.get("current_price", 0)

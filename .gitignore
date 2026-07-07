@@ -29,6 +29,9 @@ MT5_Portable/
 data/*.csv
 sentinel_log.txt
 
+# Runtime tick logs (Task 0.6 — generated, never committed)
+logs/
+
 # Chat history (local per-operator, never committed)
 sentinel/chat_history/
 
