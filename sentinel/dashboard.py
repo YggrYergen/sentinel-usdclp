@@ -141,13 +141,18 @@ def init_system():
 feed, core = init_system()
 
 # Task 0.8 stopgap: move the expensive core.calculate_composite() call OFF
-# the synchronous rerun path. A single background thread (process-wide
-# singleton — see compute_service.get_or_start_shared_worker) computes
+# the synchronous rerun path. A single background thread computes
 # composites on a fixed cadence and publishes them to a thread-safe holder;
 # each rerun below just reads the latest snapshot instead of recomputing
-# it. This worker is the ONLY caller of core.calculate_composite() for the
-# life of the process — see .superpowers/sdd/task-0.8-report.md for the
-# threading-safety audit.
+# it. This dashboard's `init_system()` is a SEPARATE @st.cache_resource
+# entry from dashboard_v2.py's (Streamlit keys cache_resource off the
+# decorated function's (module, qualname), not off "same logical
+# resource"), so `core` here is this page's OWN SentinelCore instance,
+# with its own `macro_scorer` EWMA state — not shared with dashboard_v2.
+# get_or_start_shared_worker(key=_core) keys the worker registry off this
+# core's identity, so this worker is the ONLY caller of
+# core.calculate_composite() for THIS core, for the life of the process —
+# see .superpowers/sdd/task-0.8-report.md for the threading-safety audit.
 from sentinel.compute_service import get_or_start_shared_worker
 
 @st.cache_resource
@@ -158,12 +163,16 @@ def _init_compute_worker(_core):
         # regardless of how many reruns happen per compute cycle.
         if LOG_SNAPSHOTS:
             _init_snapshot_logger().log(snapshot)
-    # get_or_start_shared_worker (not start_worker) — this is a PROCESS-WIDE
-    # singleton, so if dashboard_v2.py's page also asks for a worker around
-    # this same shared `core`, it gets back this SAME holder/thread instead
-    # of starting a second thread that would race calculate_composite().
+    # get_or_start_shared_worker keyed by `key=_core`: this core's identity
+    # is the registry key, so repeated calls for THIS core (e.g. across
+    # reruns) return the SAME holder/thread, while dashboard_v2.py's
+    # distinct core gets its own independent holder/worker — no shared
+    # state, no race on either core's calculate_composite().
     return get_or_start_shared_worker(
-        _core.calculate_composite, DASHBOARD_REFRESH_SECONDS, on_publish=_on_publish
+        _core.calculate_composite,
+        DASHBOARD_REFRESH_SECONDS,
+        on_publish=_on_publish,
+        key=_core,
     )
 
 _compute_holder = _init_compute_worker(core)

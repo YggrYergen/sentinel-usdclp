@@ -52,6 +52,7 @@ Design notes
 from __future__ import annotations
 
 import json
+import threading
 from collections import defaultdict
 from datetime import datetime, date, timezone
 from pathlib import Path
@@ -63,6 +64,35 @@ COLUMNS = [
     "ts", "symbol", "seq", "config_hash",
     "composite_score", "direction", "signal", "snapshot_json",
 ]
+
+# ══════════════════════════════════════════════════════════
+# Module-level per-path lock registry
+# ══════════════════════════════════════════════════════════
+# After the IMP-1 fix (per-core compute workers), each core's worker has
+# its own `_on_publish` callback and therefore its own SnapshotLogger
+# INSTANCE — but two separate SnapshotLogger instances (one per dashboard
+# core) can still write to the SAME dated Parquet file
+# (snapshots/<symbol>/<day>.parquet) if both cores are for the same
+# symbol. `_write_rows` does read-parquet -> concat -> rewrite with no
+# atomicity between the read and the write, so two instances racing on
+# the same path can lose rows (both read the same existing_df, both
+# compute overlapping seq ranges, second writer's to_parquet clobbers the
+# first writer's rows). An instance-level lock cannot prevent this,
+# since the two racing writers are different instances. So the lock must
+# be keyed by the target PATH (as a string) and shared at module scope
+# across every SnapshotLogger instance in the process.
+_PATH_LOCKS: dict[str, threading.Lock] = {}
+_PATH_LOCKS_GUARD = threading.Lock()
+
+
+def _lock_for_path(path_key: str) -> threading.Lock:
+    """Return the process-wide lock for `path_key`, creating it if needed."""
+    with _PATH_LOCKS_GUARD:
+        lock = _PATH_LOCKS.get(path_key)
+        if lock is None:
+            lock = threading.Lock()
+            _PATH_LOCKS[path_key] = lock
+        return lock
 
 
 def to_canonical_json(snapshot: dict) -> str:
@@ -160,21 +190,27 @@ class SnapshotLogger:
         path = self._path_for(symbol, day)
         path.parent.mkdir(parents=True, exist_ok=True)
 
-        if path.exists():
-            existing_df = pd.read_parquet(path)
-            next_seq = int(existing_df["seq"].max()) + 1 if len(existing_df) else 0
-        else:
-            existing_df = None
-            next_seq = 0
+        # Module-level, path-keyed lock: guards the whole
+        # read-exists -> seq assignment -> concat -> rewrite sequence so two
+        # SnapshotLogger instances (e.g. one per dashboard core after the
+        # IMP-1 per-core worker fix) writing to the SAME dated Parquet file
+        # can't interleave and silently drop each other's rows.
+        with _lock_for_path(str(path)):
+            if path.exists():
+                existing_df = pd.read_parquet(path)
+                next_seq = int(existing_df["seq"].max()) + 1 if len(existing_df) else 0
+            else:
+                existing_df = None
+                next_seq = 0
 
-        for i, row in enumerate(rows):
-            row["seq"] = next_seq + i
+            for i, row in enumerate(rows):
+                row["seq"] = next_seq + i
 
-        new_df = pd.DataFrame(rows, columns=COLUMNS)
+            new_df = pd.DataFrame(rows, columns=COLUMNS)
 
-        if existing_df is not None:
-            combined_df = pd.concat([existing_df, new_df], ignore_index=True)
-        else:
-            combined_df = new_df
+            if existing_df is not None:
+                combined_df = pd.concat([existing_df, new_df], ignore_index=True)
+            else:
+                combined_df = new_df
 
-        combined_df.to_parquet(path, index=False)
+            combined_df.to_parquet(path, index=False)

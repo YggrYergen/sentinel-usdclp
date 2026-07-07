@@ -156,57 +156,75 @@ def start_worker(
 
 
 # ══════════════════════════════════════════════════════════
-# Process-wide singleton accessor
+# Per-core worker registry
 # ══════════════════════════════════════════════════════════
-# SENTINEL serves two Streamlit pages (dashboard.py / dashboard_v2.py) that
-# share one SentinelCore via st.cache_resource in sentinel/app.py. Each page
-# is a SEPARATE module/function object, so wrapping a *local* factory in
-# each dashboard file with its own @st.cache_resource does NOT guarantee
-# Streamlit will collapse both into the same cache entry (cache_resource
-# keys off the calling function's identity/bytecode, not "this represents
-# the same logical resource"). If both pages independently started their
-# own worker thread around the SAME core, TWO threads would call
-# core.calculate_composite() concurrently — exactly the race this stopgap
-# must avoid, since it mutates core.macro_scorer's stateful EWMA tracker.
+# SENTINEL serves two Streamlit pages (dashboard.py / dashboard_v2.py).
+# Each page defines its OWN `@st.cache_resource def init_system()`, and
+# `st.cache_resource` keys its cache off the (module, qualname) of the
+# decorated function — NOT off "this represents the same logical
+# resource". So dashboard.py and dashboard_v2.py each end up with their
+# OWN SentinelCore instance, each with its own stateful `macro_scorer`
+# EWMA tracker. There is no single shared core.
 #
-# get_or_start_shared_worker() sidesteps that entirely with a plain
-# stdlib lock-guarded module global: whichever page asks first creates the
-# one worker; every later caller (from either page, any rerun) gets the
-# SAME holder back. No Streamlit dependency needed for this guarantee.
-_shared_lock = threading.Lock()
-_shared_holder: Optional[SnapshotHolder] = None
-_shared_worker: Optional[ComputeWorker] = None
+# Because of that, a single process-wide worker singleton is WRONG: it
+# would capture only the first caller's `compute_fn` (bound to the first
+# caller's core), and every other core's page would silently read that
+# first core's composite — wrong scoring output, since each core's
+# macro_scorer EWMA state has diverged.
+#
+# get_or_start_shared_worker() instead keeps a PER-CORE registry keyed by
+# the identity of an explicit `key` object (in production, `key=_core`,
+# i.e. each dashboard's own `SentinelCore` instance). The guarantee this
+# provides is: one worker PER core, keyed by core identity —
+# - the SAME key → the SAME holder, and starts NO second worker thread
+#   (preserves the no-concurrent-mutation guarantee for that one core's
+#   macro_scorer EWMA tracker);
+# - two DIFFERENT keys → two DIFFERENT holders, each fed by its own
+#   single worker calling its own core's compute_fn.
+#
+# The registry keys off `id(key)` but also holds a strong reference to
+# `key` itself for as long as the entry is live, so `id()` cannot be
+# reused/aliased by an unrelated object being garbage-collected into the
+# same address while an entry is still registered.
+_registry_lock = threading.Lock()
+_registry: Dict[int, Tuple[Any, SnapshotHolder, ComputeWorker]] = {}
 
 
 def get_or_start_shared_worker(
     compute_fn: Callable[[], Dict[str, Any]],
     interval_seconds: float,
     on_publish: Optional[Callable[[Dict[str, Any]], None]] = None,
+    *,
+    key: Any,
 ) -> SnapshotHolder:
-    """Return the process-wide shared holder, starting the worker on the
-    first call. Safe to call from any thread/module any number of times.
+    """Return the holder for the worker associated with `key`, starting
+    that worker on the first call for this `key`. Safe to call from any
+    thread/module any number of times.
 
-    Only the FIRST caller's `compute_fn`/`on_publish` are actually used —
-    once the worker exists, later calls just return the existing holder.
-    In production all callers pass the same bound `core.calculate_composite`
-    (same shared `core`), so this is a distinction without a difference.
+    `key` identifies the core this worker computes for (in production,
+    the dashboard's own `SentinelCore` instance, e.g. `key=_core`). Only
+    the FIRST caller for a given `key` actually supplies the
+    `compute_fn`/`on_publish` used by that key's worker; later calls with
+    the SAME key just return the existing holder for it. Calls with a
+    DIFFERENT key get their own independent holder/worker pair.
     """
-    global _shared_holder, _shared_worker
-    with _shared_lock:
-        if _shared_worker is None:
-            _shared_holder, _shared_worker = start_worker(
+    with _registry_lock:
+        entry = _registry.get(id(key))
+        if entry is None:
+            holder, worker = start_worker(
                 compute_fn, interval_seconds, on_publish=on_publish
             )
-        return _shared_holder
+            _registry[id(key)] = (key, holder, worker)
+            return holder
+        _, holder, _ = entry
+        return holder
 
 
 def _reset_shared_worker_for_tests() -> None:
-    """Test-only escape hatch: stop and clear the process-wide singleton
+    """Test-only escape hatch: stop and clear every worker in the registry
     so each test starts from a clean slate. Not used by production code.
     """
-    global _shared_holder, _shared_worker
-    with _shared_lock:
-        if _shared_worker is not None:
-            _shared_worker.stop()
-        _shared_holder = None
-        _shared_worker = None
+    with _registry_lock:
+        for _key, _holder, worker in _registry.values():
+            worker.stop()
+        _registry.clear()

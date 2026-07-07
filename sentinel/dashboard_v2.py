@@ -167,12 +167,17 @@ def init_system():
 feed, core = init_system()
 
 # Task 0.8 stopgap: same background-holder pattern as dashboard.py (v1).
-# get_or_start_shared_worker() is a process-wide singleton (stdlib
-# lock-guarded module global in compute_service.py, not st.cache_resource),
-# so even though this page defines its own local _init_compute_worker
-# function object, it resolves to the SAME underlying holder/thread as
-# dashboard.py's — only one background thread ever computes composites
-# for the whole process, whichever page's Streamlit session starts first.
+# This page's `init_system()` is a SEPARATE @st.cache_resource entry from
+# dashboard.py's (Streamlit keys cache_resource off the decorated
+# function's (module, qualname), not off "same logical resource"), so
+# `core` here is THIS page's own SentinelCore instance, with its own
+# `macro_scorer` EWMA state — not shared with dashboard.py (v1).
+# get_or_start_shared_worker(key=_core) keys the worker registry off this
+# core's identity: this call starts a worker dedicated to THIS core
+# (independent from v1's worker for v1's core), and repeated calls for
+# this same core (across reruns) return the SAME holder instead of
+# starting a second thread that would race this core's
+# calculate_composite().
 from sentinel.compute_service import get_or_start_shared_worker
 
 @st.cache_resource
@@ -180,12 +185,11 @@ def _init_compute_worker(_core):
     def _on_publish(snapshot):
         if LOG_SNAPSHOTS:
             _init_snapshot_logger().log(snapshot)
-    # get_or_start_shared_worker (not start_worker) — process-wide singleton,
-    # so if v1 (dashboard.py) already started the worker around this same
-    # shared `core`, this call returns that SAME holder instead of starting
-    # a second thread that would race core.calculate_composite().
     return get_or_start_shared_worker(
-        _core.calculate_composite, DASHBOARD_REFRESH_SECONDS, on_publish=_on_publish
+        _core.calculate_composite,
+        DASHBOARD_REFRESH_SECONDS,
+        on_publish=_on_publish,
+        key=_core,
     )
 
 _compute_holder = _init_compute_worker(core)

@@ -9,6 +9,7 @@ Covers:
 All I/O happens under pytest's tmp_path — never the repo's real logs/.
 """
 import json
+import threading
 
 import pandas as pd
 import pytest
@@ -120,6 +121,56 @@ def test_context_manager_flushes_on_exit(tmp_path):
     path = list((tmp_path / "snapshots" / "USDCLP").glob("*.parquet"))[0]
     df = pd.read_parquet(path)
     assert len(df) == 3
+
+
+def test_concurrent_writers_to_same_path_lose_no_rows_and_seq_is_unique(tmp_path):
+    """IMP-2 regression test: after the IMP-1 per-core worker fix, two
+    separate SnapshotLogger INSTANCES (one per dashboard core) can write
+    to the SAME symbol/day Parquet file concurrently. `_write_rows` does
+    read -> concat -> rewrite with no atomicity between the read and the
+    write; without a shared per-path lock, two racing writers can each
+    read the same existing_df, compute overlapping seq ranges, and the
+    second writer's to_parquet clobbers the first writer's rows. This
+    test spawns several threads, each with its OWN SnapshotLogger
+    instance, all logging to the same symbol/day, and asserts every row
+    survives with unique, contiguous seq values.
+    """
+    n_threads = 6
+    rows_per_thread = 20
+    total_rows = n_threads * rows_per_thread
+    errors: list[Exception] = []
+
+    def worker(thread_idx: int) -> None:
+        try:
+            # batch_size=1 forces every log() call to flush immediately,
+            # maximizing the chance of interleaving reads/writes across
+            # threads/instances if the lock weren't there.
+            logger = SnapshotLogger(
+                tmp_path, CONFIG_HASH, symbol="USDCLP", batch_size=1
+            )
+            for i in range(rows_per_thread):
+                logger.log(_make_snapshot(thread_idx * 1000 + i))
+            logger.close()
+        except Exception as exc:  # pragma: no cover - surfaced via errors list
+            errors.append(exc)
+
+    threads = [
+        threading.Thread(target=worker, args=(t,)) for t in range(n_threads)
+    ]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert not errors
+
+    path = list((tmp_path / "snapshots" / "USDCLP").glob("*.parquet"))[0]
+    df = pd.read_parquet(path)
+
+    assert len(df) == total_rows
+    seqs = sorted(df["seq"].tolist())
+    assert seqs == list(range(total_rows))
+    assert len(set(seqs)) == total_rows
 
 
 def test_symbol_can_come_from_snapshot_dict_instead_of_constructor(tmp_path):

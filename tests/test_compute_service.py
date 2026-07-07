@@ -199,7 +199,7 @@ def test_on_publish_callback_invoked_with_each_published_snapshot():
 
 
 # ══════════════════════════════════════════════════════════
-# get_or_start_shared_worker — process-wide singleton
+# get_or_start_shared_worker — per-core registry, keyed by `key`
 # ══════════════════════════════════════════════════════════
 
 def test_shared_worker_singleton_returns_same_holder_across_calls():
@@ -209,18 +209,19 @@ def test_shared_worker_singleton_returns_same_holder_across_calls():
         calls["n"] += 1
         return {"composite_score": calls["n"]}
 
-    holder1 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02)
+    same_key = object()
+    holder1 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02, key=same_key)
     holder1.get_latest(timeout=5)
-    holder2 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02)
+    holder2 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02, key=same_key)
 
     assert holder1 is holder2
 
 
 def test_shared_worker_singleton_does_not_start_a_second_thread():
-    """Simulates dashboard.py and dashboard_v2.py both asking for a worker
-    around the SAME compute_fn — must never end up with two threads
-    calling compute_fn concurrently (the exact race this stopgap must
-    avoid for core.macro_scorer's stateful EWMA tracker)."""
+    """Simulates the SAME core's dashboard page asking for a worker twice
+    (e.g. across Streamlit reruns) — must never end up with two threads
+    calling that core's compute_fn concurrently (the exact race this
+    stopgap must avoid for core.macro_scorer's stateful EWMA tracker)."""
     concurrent_calls = {"n": 0, "max_concurrent": 0}
     call_lock = threading.Lock()
 
@@ -235,16 +236,43 @@ def test_shared_worker_singleton_does_not_start_a_second_thread():
             concurrent_calls["n"] -= 1
         return {"composite_score": 1}
 
-    # "v1" asks first.
-    holder_v1 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02)
-    # "v2" asks moments later, around the same compute_fn/core.
-    holder_v2 = get_or_start_shared_worker(fake_compute, interval_seconds=0.02)
+    same_key = object()
+    # First call for this core/key.
+    holder_a = get_or_start_shared_worker(fake_compute, interval_seconds=0.02, key=same_key)
+    # A later call (e.g. next rerun) for the SAME core/key.
+    holder_b = get_or_start_shared_worker(fake_compute, interval_seconds=0.02, key=same_key)
 
-    holder_v1.get_latest(timeout=5)
+    holder_a.get_latest(timeout=5)
     time.sleep(0.2)
 
-    assert holder_v1 is holder_v2
+    assert holder_a is holder_b
     assert concurrent_calls["max_concurrent"] <= 1
+
+
+def test_shared_worker_different_keys_get_independent_holders_and_workers():
+    """IMP-1 regression test: dashboard.py and dashboard_v2.py each build
+    their OWN SentinelCore (separate st.cache_resource entries), so they
+    must each get their OWN worker/holder — not silently share the first
+    caller's compute_fn/core, which was the bug (v2 reading v1's stale
+    macro_scorer-derived composite)."""
+    k1 = object()
+    k2 = object()
+
+    def compute_fn_1():
+        return {"composite_score": "from_core_1"}
+
+    def compute_fn_2():
+        return {"composite_score": "from_core_2"}
+
+    holder1 = get_or_start_shared_worker(compute_fn_1, interval_seconds=0.02, key=k1)
+    holder2 = get_or_start_shared_worker(compute_fn_2, interval_seconds=0.02, key=k2)
+
+    snap1 = holder1.get_latest(timeout=5)
+    snap2 = holder2.get_latest(timeout=5)
+
+    assert holder1 is not holder2
+    assert snap1["composite_score"] == "from_core_1"
+    assert snap2["composite_score"] == "from_core_2"
 
 
 def test_stop_halts_further_compute_fn_calls():
