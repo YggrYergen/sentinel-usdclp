@@ -28,16 +28,28 @@ from pathlib import Path
 from typing import Any, Callable
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+from pydantic import BaseModel
 from starlette.staticfiles import StaticFiles
 
 from sentinel_engine.config import InstrumentConfig, config_hash, load_instrument
-from sentinel_engine.engine import Engine
+from sentinel_engine.engine import Engine, Snapshot
 from sentinel_engine.feed import Feed
 
+from .chat import answer_chat
 from .stream import Broadcaster
 
 DEFAULT_INSTRUMENTS: tuple[str, ...] = ("usdclp", "gold", "nasdaq")
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+
+
+class ChatRequest(BaseModel):
+    question: str
+    instrument: str | None = None
+
+
+class ChatResponse(BaseModel):
+    content: str
+    error: str | None = None
 
 
 def _snapshot_to_json(snap_dict: dict) -> dict:
@@ -61,10 +73,12 @@ class InstrumentRunner:
         self.engine = Engine(cfg, feed)
         self._seq = 0
         self.latest: dict | None = None
+        self.latest_snapshot: Snapshot | None = None
 
     def compute(self) -> dict:
         snap = self.engine.step(seq=self._seq)
         self._seq += 1
+        self.latest_snapshot = snap
         self.latest = _snapshot_to_json(snap.to_dict())
         return self.latest
 
@@ -116,6 +130,10 @@ def create_app(
     app.state.runners = runners
     app.state.broadcaster = broadcaster
     app.state.compute_and_broadcast_once = _compute_and_broadcast_once
+    # Optional injected assistant client (tests only) — None uses the default
+    # `sentinel.ai_chat.SentinelAI()`, which mock-answers offline when no
+    # ANTHROPIC_API_KEY is set. See `.chat.answer_chat`.
+    app.state.chat_client = None
 
     def _resolve(instrument: str | None) -> InstrumentRunner:
         name = instrument or next(iter(runners))
@@ -140,6 +158,22 @@ def create_app(
             "config": asdict(runner.cfg),
             "instruments": list(runners.keys()),
         }
+
+    @app.post("/chat", response_model=ChatResponse)
+    def post_chat(payload: ChatRequest) -> ChatResponse:
+        runner = _resolve(payload.instrument)
+        if runner.latest_snapshot is None:
+            raise HTTPException(status_code=503, detail="snapshot not ready")
+        positions_fn = getattr(runner.feed, "positions", None)
+        positions = positions_fn() if positions_fn is not None else []
+        reply = answer_chat(
+            payload.question,
+            runner.latest_snapshot,
+            runner.cfg,
+            positions,
+            client=app.state.chat_client,
+        )
+        return ChatResponse(content=reply.content, error=reply.error)
 
     @app.websocket("/stream")
     async def stream_ws(websocket: WebSocket, instrument: str | None = None) -> None:
