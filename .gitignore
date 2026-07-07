@@ -25,8 +25,10 @@ Thumbs.db
 *.exe
 MT5_Portable/
 
-# Data files (generated)
+# Data files (generated — real market data lake, regenerable via scripts/mt5_dump_history.py)
 data/*.csv
+data/raw/
+data/lake/
 sentinel_log.txt
 
 # Runtime tick logs (Task 0.6 — generated, never committed)
