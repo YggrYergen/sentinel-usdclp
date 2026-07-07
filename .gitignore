@@ -42,6 +42,8 @@ _get_pip.py
 # Scratch/temp/dev files
 scratch_*.py
 test_*.py
+# ...but the committed test suite under tests/ is the parity gate — keep it tracked
+!tests/**/test_*.py
 deep_reserach_one.md
 
 # Legacy scripts (replaced by SENTINEL.bat)
