@@ -24,12 +24,13 @@ This module is purely additive: it does not modify or import from
 """
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any
 
 from sentinel.correlation_engine import calculate_target_correlations, detect_divergence
 from sentinel.levels_engine import calculate_levels
+from sentinel_engine.ai_context import render_ai_context
 from sentinel_engine.config import InstrumentConfig, config_hash
 from sentinel_engine.feed import Feed
 from sentinel_engine.macro import MacroScorer
@@ -175,7 +176,7 @@ class Engine:
             "_macro": macro,
         }
 
-        return Snapshot(
+        snapshot = Snapshot(
             ts=None,
             symbol=target,
             seq=seq,
@@ -193,3 +194,9 @@ class Engine:
             macro=macro,
             ai_context="",
         )
+
+        # Single-producer AI context. Deterministic given (feed, config): no
+        # wall-clock / randomness; live-UI extras (price/derivatives/cross-asset)
+        # are intentionally omitted here (they are not part of the scoring
+        # snapshot). Task 1.7.
+        return replace(snapshot, ai_context=render_ai_context(snapshot, cfg))

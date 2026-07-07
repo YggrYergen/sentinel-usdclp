@@ -70,3 +70,83 @@ def test_context_tf_weights_are_sourced_not_literal(monkeypatch):
 
     assert "M1=50%, M2=30%, M5=15%, M15=5%" in ctx
     assert "M1=40%, M2=30%, M5=20%, M15=10%" not in ctx
+
+
+# ── Engine single-producer path: render_ai_context(snapshot, cfg) ──
+# Same anti-literal guarantee as build_market_context, but sourced from the
+# per-instrument InstrumentConfig (composite weights via the snapshot's
+# config-set component weights, TF weights via cfg.technical.tf_weights).
+import dataclasses
+
+from sentinel_engine.ai_context import render_ai_context
+from sentinel_engine.config import load_instrument
+from sentinel_engine.engine import Engine
+from tests.golden.capture_engine import ENGINE_WARMUP_TICKS
+from tests.golden.fake_feed import FakeFeed
+
+
+def _engine_snapshot(cfg):
+    engine = Engine(cfg, FakeFeed())
+    for _ in range(ENGINE_WARMUP_TICKS):
+        engine._macro.update_tick(engine.feed)
+    return engine.step()
+
+
+def test_render_ai_context_weights_are_sourced_from_config():
+    cfg = load_instrument("usdclp")
+    snap = _engine_snapshot(cfg)
+
+    ctx = render_ai_context(snap, cfg)
+
+    # usdclp config: technical=0.50/correlation=0.50, tf M1=35 M2=35 M5=20 M15=10
+    w_tech = cfg.composite.weights["technical"]
+    w_corr = cfg.composite.weights["correlation"]
+    assert f"Tech×{w_tech:.2f} + Corr×{w_corr:.2f}" in ctx
+    assert f"[peso: {w_tech*100:.0f}%]" in ctx
+    assert f"[peso: {w_corr*100:.0f}%]" in ctx
+    tf = cfg.technical.tf_weights
+    assert (f"M1={tf['M1']*100:.0f}%, M2={tf['M2']*100:.0f}%, "
+            f"M5={tf['M5']*100:.0f}%, M15={tf['M15']*100:.0f}%") in ctx
+
+
+def test_render_ai_context_composite_weights_not_literal():
+    cfg = load_instrument("usdclp")
+    snap = _engine_snapshot(cfg)
+
+    # Mutate the config-derived composite weights carried by the snapshot;
+    # the rendered text must follow (proving no hardcoded 50/50 literal).
+    comps = dict(snap.components)
+    comps["technical"] = {**comps["technical"], "weight": 0.6}
+    comps["correlation"] = {**comps["correlation"], "weight": 0.4}
+    snap = dataclasses.replace(snap, components=comps)
+
+    ctx = render_ai_context(snap, cfg)
+
+    assert "Tech×0.60 + Corr×0.40" in ctx
+    assert "[peso: 60%]" in ctx
+    assert "[peso: 40%]" in ctx
+    assert "[peso: 50%]" not in ctx
+
+
+def test_render_ai_context_tf_weights_not_literal():
+    cfg = load_instrument("usdclp")
+    snap = _engine_snapshot(cfg)
+
+    # Swap tf_weights on a config copy → rendered TF header must change.
+    new_tech = dataclasses.replace(
+        cfg.technical, tf_weights={"M1": 0.5, "M2": 0.3, "M5": 0.15, "M15": 0.05}
+    )
+    cfg2 = dataclasses.replace(cfg, technical=new_tech)
+
+    ctx = render_ai_context(snap, cfg2)
+
+    assert "M1=50%, M2=30%, M5=15%, M15=5%" in ctx
+    assert "M1=35%, M2=35%, M5=20%, M15=10%" not in ctx
+
+
+def test_render_ai_context_is_deterministic():
+    cfg = load_instrument("usdclp")
+    outs = {render_ai_context(_engine_snapshot(cfg), cfg) for _ in range(3)}
+    assert len(outs) == 1
+    ctx = next(iter(outs))
+    assert "now(" not in ctx.lower()
