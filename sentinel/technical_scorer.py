@@ -29,16 +29,20 @@ def calculate_technical_score(df: pd.DataFrame, normalize_macd: bool = False) ->
     direction = "LONG" if votes > 1 else ("SHORT" if votes < -1 else "NEUTRAL")
     return {"score": composite, "direction": direction, "details": details, "signals": signals}
 
+# Pesos por timeframe del score compuesto multi-TF.
+# Fuente única de verdad — consumido tanto por calculate_multi_tf_score()
+# como por el prompt de la IA (sentinel/ai_chat.py) para evitar drift.
+TF_WEIGHTS = {"M15": 0.10, "M5": 0.20, "M2": 0.35, "M1": 0.35}
+
 def calculate_multi_tf_score(data_feed, symbol: str) -> dict:
     from sentinel.config import TIMEFRAMES, BARS_TO_FETCH
     tf_scores = {}
-    tf_w = {"M15": 0.10, "M5": 0.20, "M2": 0.35, "M1": 0.35}
     for tf_name, tf_min in TIMEFRAMES.items():
         df = data_feed.get_data(symbol, tf_min, BARS_TO_FETCH)
         # ATR-normalize MACD for ALL TFs — raw histogram saturates on high-price
         # instruments like USDCLP (e.g. h=1.5 → 60+1500=clamp→100 = always maxed)
         tf_scores[tf_name] = calculate_technical_score(df, normalize_macd=True)
-    wscore = sum(tf_scores.get(t, {}).get("score", 50) * tw for t, tw in tf_w.items())
+    wscore = sum(tf_scores.get(t, {}).get("score", 50) * tw for t, tw in TF_WEIGHTS.items())
     anchor_dir = tf_scores.get("M15", {}).get("direction", "NEUTRAL")
     dirs = [tf_scores[t]["direction"] for t in tf_scores]
     confluence = max(sum(1 for d in dirs if d == "LONG"), sum(1 for d in dirs if d == "SHORT"))

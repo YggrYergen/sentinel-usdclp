@@ -225,6 +225,13 @@ def build_market_context(result: dict, price_info: dict,
     divergences = result.get("divergences", [])
     div_lines = [d.get("description", "") for d in divergences[:3]]
 
+    # ── Scoring weights (sourced from authoritative constants — no literals) ──
+    from sentinel.config import WEIGHTS
+    from sentinel.technical_scorer import TF_WEIGHTS
+    w_tech = WEIGHTS.technical
+    w_corr = WEIGHTS.correlation
+    tf_w_pct = {tf: TF_WEIGHTS.get(tf, 0) * 100 for tf in ["M1", "M2", "M5", "M15"]}
+
     # ── Web search instruction ──
     web_instruction = ""
     if web_search_enabled:
@@ -253,12 +260,12 @@ Posiciones típicas: 1-2 minutos, máximo 30 min. Capital ~$1.5M CLP.
 === PRECIO ===
 Bid: {price_info.get('bid', 0):.2f} | Ask: {price_info.get('ask', 0):.2f} | Spread: {price_info.get('spread', 0):.2f}
 
-=== SCORE COMPUESTO (fórmula: Tech×0.75 + Corr×0.25) ===
+=== SCORE COMPUESTO (fórmula: Tech×{w_tech:.2f} + Corr×{w_corr:.2f}) ===
 Final: {result.get('composite_score', 0)} | Dirección: {result.get('direction', 'N/A')} | Señal: {result.get('signal', '')}
-Técnico: {tech.get('score', 0):.1f} ({tech.get('direction', '?')}) [peso: 75%]
-Correlación: {corr.get('score', 0):.1f} ({corr.get('direction', '?')}) [peso: 25%]
+Técnico: {tech.get('score', 0):.1f} ({tech.get('direction', '?')}) [peso: {w_tech*100:.0f}%]
+Correlación: {corr.get('score', 0):.1f} ({corr.get('direction', '?')}) [peso: {w_corr*100:.0f}%]
 
-=== TIMEFRAMES (M1=40%, M2=30%, M5=20%, M15=10%) ===
+=== TIMEFRAMES (M1={tf_w_pct['M1']:.0f}%, M2={tf_w_pct['M2']:.0f}%, M5={tf_w_pct['M5']:.0f}%, M15={tf_w_pct['M15']:.0f}%) ===
 Cada TF: Score_TF = EMA×30% + RSI×20% + MACD×25% + BB×15% + PA×10%
 {chr(10).join(tf_lines)}
 
