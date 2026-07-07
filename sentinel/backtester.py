@@ -69,7 +69,7 @@ def fetch_historical_candles(symbol: str, timeframe_minutes: int,
 # MOTOR DE REPLAY
 # ══════════════════════════════════════════════════════════
 
-def replay_scoring(bars_back: int = 500, progress_callback=None) -> pd.DataFrame:
+def replay_scoring(bars_back: int = 500, progress_callback=None, feed=None) -> pd.DataFrame:
     """
     Reproduce el sistema de scoring SENTINEL sobre datos históricos.
     
@@ -83,13 +83,13 @@ def replay_scoring(bars_back: int = 500, progress_callback=None) -> pd.DataFrame
         timestamp, price, score, direction, tech_score, corr_score,
         m1_score, m2_score, m5_score, m15_score, signal_5s, signal_30s, signal_1m
     """
-    from sentinel.data_feed import DataFeed
     from sentinel.config import SYMBOLS, TIMEFRAMES, BARS_TO_FETCH
     from sentinel.technical_scorer import calculate_technical_score
-    from sentinel.correlation_engine import CorrelationEngine
     from sentinel.config import WEIGHTS
-    
-    feed = DataFeed()
+
+    if feed is None:
+        from sentinel.data_feed import DataFeed
+        feed = DataFeed()
     logger.info(f"Iniciando replay de {bars_back} velas M1...")
     
     # Get M1 candles as the base timeline
@@ -106,16 +106,12 @@ def replay_scoring(bars_back: int = 500, progress_callback=None) -> pd.DataFrame
         if d is not None and len(d) > 0:
             tf_data[tf_name] = d
     
-    # Get correlation data (less frequent, use most recent)
-    corr_engine = CorrelationEngine(feed)
-    try:
-        corr_result = corr_engine.calculate()
-        corr_score = corr_result.get("score", 50)
-        corr_dir = corr_result.get("direction", "NEUTRAL")
-    except Exception as e:
-        logger.warning(f"Correlación no disponible para backtest: {e}")
-        corr_score = 50
-        corr_dir = "NEUTRAL"
+    # Legacy CorrelationEngine class does not exist (never part of the live
+    # composite — sentinel_core.py uses the macro score, not this legacy
+    # correlation engine). Replay scoring excludes it and collapses to the
+    # neutral fallback that was already the except-branch behavior here.
+    corr_score = 50
+    corr_dir = "NEUTRAL"
     
     results = []
     total = min(bars_back, len(m1_data) - 200)
