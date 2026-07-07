@@ -140,6 +140,34 @@ def init_system():
 
 feed, core = init_system()
 
+# Task 0.8 stopgap: move the expensive core.calculate_composite() call OFF
+# the synchronous rerun path. A single background thread (process-wide
+# singleton — see compute_service.get_or_start_shared_worker) computes
+# composites on a fixed cadence and publishes them to a thread-safe holder;
+# each rerun below just reads the latest snapshot instead of recomputing
+# it. This worker is the ONLY caller of core.calculate_composite() for the
+# life of the process — see .superpowers/sdd/task-0.8-report.md for the
+# threading-safety audit.
+from sentinel.compute_service import get_or_start_shared_worker
+
+@st.cache_resource
+def _init_compute_worker(_core):
+    def _on_publish(snapshot):
+        # LOG_SNAPSHOTS moved here (compute cadence) instead of the render
+        # path, so every distinct computed snapshot is logged exactly once
+        # regardless of how many reruns happen per compute cycle.
+        if LOG_SNAPSHOTS:
+            _init_snapshot_logger().log(snapshot)
+    # get_or_start_shared_worker (not start_worker) — this is a PROCESS-WIDE
+    # singleton, so if dashboard_v2.py's page also asks for a worker around
+    # this same shared `core`, it gets back this SAME holder/thread instead
+    # of starting a second thread that would race calculate_composite().
+    return get_or_start_shared_worker(
+        _core.calculate_composite, DASHBOARD_REFRESH_SECONDS, on_publish=_on_publish
+    )
+
+_compute_holder = _init_compute_worker(core)
+
 with st.sidebar:
     st.title(f"🛡️ SENTINEL v{VERSION}")
     st.caption("USD/CLP Trading System")
@@ -158,14 +186,14 @@ with st.sidebar:
 # ══════════════════════════════════════════════════════════
 # CÁLCULO
 # ══════════════════════════════════════════════════════════
-result = core.calculate_composite()
+# Blocks only on true cold start (nothing published yet); every subsequent
+# rerun is a cheap dict read — the worker thread owns calculate_composite().
+result = _compute_holder.get_latest()
 score = result["composite_score"]
 direction = result["direction"]
 price_info = feed.get_current_price(SYMBOLS["target"])
 if LOG_TICKS and price_info.get("time") and price_info.get("bid", 0) > 0:
     _init_tick_logger().on_tick(price_info["time"], price_info["bid"], price_info["ask"])
-if LOG_SNAPSHOTS:
-    _init_snapshot_logger().log(result)
 levels = result.get("levels", {})
 combined = levels.get("combined", {})
 curr_price = levels.get("current_price", 0)
@@ -285,11 +313,20 @@ def _slider_bar(label, weight_pct, score, msg):
 # ══════════════════════════════════════════════════════════
 # PRE-CALC: MacroScorer (needed for header macro votes column)
 # ══════════════════════════════════════════════════════════
+# core.macro_scorer is always set by SentinelCore.__init__ (kept as a
+# defensive fallback only). Task 0.8: the background worker is now the
+# ONLY thread allowed to read/mutate core.macro_scorer's EWMA tracker via
+# calculate_composite(); "_macro" is always present in comp (see
+# SentinelCore.calculate_composite), so we read it directly here instead
+# of calling _ms.calculate_score(feed) again from the main thread (that
+# extra call was previously always executed too — dict.get() evaluates its
+# default eagerly — doing redundant work AND touching shared tracker state
+# from the render thread).
 if not hasattr(core, 'macro_scorer'):
     from sentinel.macro_scorer import MacroScorer
     core.macro_scorer = MacroScorer()
 _ms = core.macro_scorer
-_macro_result = comp.get("_macro", _ms.calculate_score(feed))
+_macro_result = comp["_macro"]
 _macro_score = _macro_result["score"]
 _macro_dir = _macro_result["direction"]
 
