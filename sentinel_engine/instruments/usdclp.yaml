@@ -1,0 +1,58 @@
+instrument: usdclp
+target: USDCLP
+symbols:
+  dxy: USDX_Jun26
+  copper: Cobre_Jul26
+  wti: WTI
+  usdmxn: USDMXN
+  usdbrl: USDBRL
+  audusd: AUDUSD
+  usdcnh: USDCNH
+  sp500: SP
+expected_correlations:
+  dxy: 0.75
+  copper: -0.70
+  wti: 0.40
+  usdmxn: 0.60
+  usdbrl: 0.55
+  audusd: -0.50
+  usdcnh: 0.45
+  sp500: -0.30
+asset_weights:
+  dxy: 3.0
+  copper: 2.5
+  usdmxn: 1.5
+  usdbrl: 1.5
+  wti: 1.0
+  audusd: 1.0
+  usdcnh: 1.0
+  sp500: 0.5
+macro:
+  tanh_sensitivity: 5.0
+  tracker: {lambda_var: 0.85, lambda_cov: 0.97, concordance_window: 60}
+  warmup_threshold: 30
+  direction_threshold: 0.15
+technical:
+  tf_weights: {M15: 0.10, M5: 0.20, M2: 0.35, M1: 0.35}
+  indicators:
+    ema_fast: 9
+    ema_mid: 21
+    ema_slow: 50
+    ema_trend: 200
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    bb_period: 20
+    bb_std: 2.0
+    atr_period: 14
+composite:
+  weights: {technical: 0.50, correlation: 0.50}
+  direction_vote_weights: {technical: 2, macro: 3}
+  score_alert_threshold: 65
+  score_strong_threshold: 75
+data:
+  bars_to_fetch: 200
+  timeframes: {M1: 1, M2: 2, M5: 5, M15: 15}
