@@ -161,3 +161,173 @@ class MacroScorer:
             "total_assets_tracked": len(votes),
             "assets_warmed_up": sum(1 for v in votes.values() if not v["warmup"]),
         }
+
+    def calculate_score_at_window(self, feed: Feed, lookback_bars: int = 3) -> dict:
+        """Calculate macro score using a specific lookback window.
+
+        Reproduces `sentinel.macro_scorer.MacroScorer.calculate_score_at_window`
+        exactly, sourcing every constant from `self.cfg` instead of the
+        USDCLP-hardwired module globals.
+
+        This allows each signal timeframe to get macro context at the right
+        scale:
+          - 5s signal → lookback_bars=1  (tick-level, ~1 min)
+          - 30s signal → lookback_bars=3  (~3 min)
+          - 1m signal → lookback_bars=5   (~5 min)
+          - 5m signal → lookback_bars=15  (~15 min)
+
+        Returns: score (0-100), direction, consensus_raw, per-asset votes
+        """
+        total_weighted_vote = 0.0
+        total_max_weight = 0.0
+        votes = {}
+
+        for asset_key, base_weight in self.cfg.asset_weights.items():
+            symbol = self.cfg.symbols.get(asset_key, "")
+            if not symbol:
+                continue
+
+            # EWMA confidence (same regardless of window)
+            conf_data = self.tracker.get_confidence(asset_key)
+            confidence = conf_data.get("confidence", 0.0)
+            warmup = conf_data.get("warmup", True)
+
+            # Get returns at the specified lookback window
+            try:
+                bars_needed = lookback_bars + 2  # extra for safety
+                m1_data = feed.get_data(symbol, timeframe_minutes=1, bars=bars_needed)
+                if m1_data is not None and len(m1_data) >= lookback_bars + 1:
+                    closes = m1_data['close'].values
+                    idx = min(lookback_bars, len(closes) - 1)
+                    recent_return_bps = (closes[-1] - closes[-1 - idx]) / closes[-1 - idx] * 10000
+                else:
+                    recent_return_bps = 0.0
+            except Exception:
+                recent_return_bps = 0.0
+
+            exp_sign = np.sign(self.cfg.expected_correlations.get(asset_key, 0))
+
+            # Scale tanh sensitivity by window: shorter windows = more sensitive
+            window_sensitivity = self.cfg.macro.tanh_sensitivity * max(1, lookback_bars / 3)
+            raw_vote = np.tanh(recent_return_bps / window_sensitivity) * exp_sign
+
+            effective_weight = confidence * base_weight
+            weighted_vote = raw_vote * effective_weight
+
+            total_weighted_vote += weighted_vote
+            total_max_weight += effective_weight
+
+            votes[asset_key] = {
+                "return_bps": round(recent_return_bps, 2),
+                "raw_vote": round(raw_vote, 3),
+                "confidence": round(confidence, 3),
+                "weighted_vote": round(weighted_vote, 3),
+                "warmup": warmup,
+            }
+
+        if total_max_weight > 0.01:
+            consensus = total_weighted_vote / total_max_weight
+        else:
+            consensus = 0.0
+
+        score = round(max(0, min(100, 50 + consensus * 50)), 1)
+
+        dth = self.cfg.macro.direction_threshold
+        if consensus > dth:
+            direction = "LONG"
+        elif consensus < -dth:
+            direction = "SHORT"
+        else:
+            direction = "NEUTRAL"
+
+        return {
+            "score": score,
+            "direction": direction,
+            "consensus_raw": round(consensus, 4),
+            "votes": votes,
+            "lookback_bars": lookback_bars,
+        }
+
+    def calculate_fusion(self, tech_score: float, tech_direction: str,
+                          macro_score: float, macro_direction: str) -> dict:
+        """Calculate the Fusion signal combining Technical + Macro.
+
+        Byte-identical reproduction of
+        `sentinel.macro_scorer.MacroScorer.calculate_fusion` — a pure
+        function of its 4 arguments (no feed/tracker access). Its constants
+        are fusion-logic constants, not per-instrument config, so they are
+        kept as literals exactly as the source.
+
+        The fusion score accounts for alignment:
+        - Both same direction → boost
+        - Opposite directions → penalize
+        """
+        # Directional alignment
+        aligned = (tech_direction == macro_direction and
+                   tech_direction != "NEUTRAL")
+        opposed = (tech_direction != macro_direction and
+                   "NEUTRAL" not in (tech_direction, macro_direction))
+
+        if aligned:
+            # Both agree → weighted average with boost
+            fusion_score = (tech_score + macro_score) / 2
+            # Boost: the more both are extreme, the stronger
+            boost = min(10, abs(tech_score - 50) * abs(macro_score - 50) / 500)
+            if tech_direction == "LONG":
+                fusion_score += boost
+            else:
+                fusion_score -= boost
+            confluence_pct = round((tech_score + macro_score) / 2, 1)
+        elif opposed:
+            # Divergence → pull toward neutral (50)
+            fusion_score = 50 + (tech_score - 50) * 0.3 + (macro_score - 50) * 0.3
+            confluence_pct = round(100 - abs(tech_score - macro_score), 1)
+        else:
+            # One is neutral → lean toward the active one
+            if tech_direction != "NEUTRAL":
+                fusion_score = 50 + (tech_score - 50) * 0.6
+            elif macro_direction != "NEUTRAL":
+                fusion_score = 50 + (macro_score - 50) * 0.6
+            else:
+                fusion_score = 50
+            confluence_pct = round((tech_score + macro_score) / 2, 1)
+
+        fusion_score = round(max(0, min(100, fusion_score)), 1)
+        confluence_pct = max(0, min(100, confluence_pct))
+
+        # Fusion direction
+        if fusion_score >= 60:
+            fusion_dir = "LONG"
+        elif fusion_score <= 40:
+            fusion_dir = "SHORT"
+        else:
+            fusion_dir = "NEUTRAL"
+
+        # Risk mode based on confluence
+        if aligned and confluence_pct >= 80:
+            risk_mode = "AGGRESSIVE"
+            risk_emoji = "🟢"
+            sl_mult = 2.0
+            tp_mult = 3.5
+        elif confluence_pct >= 50:
+            risk_mode = "NORMAL"
+            risk_emoji = "🟡"
+            sl_mult = 2.0
+            tp_mult = 3.0
+        else:
+            risk_mode = "CONSERVATIVE"
+            risk_emoji = "🔴"
+            sl_mult = 1.5
+            tp_mult = 2.0
+
+        return {
+            "score": fusion_score,
+            "direction": fusion_dir,
+            "aligned": aligned,
+            "opposed": opposed,
+            "confluence_pct": confluence_pct,
+            "risk_mode": risk_mode,
+            "risk_emoji": risk_emoji,
+            "sl_multiplier": sl_mult,
+            "tp_multiplier": tp_mult,
+        }
