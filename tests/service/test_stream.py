@@ -16,19 +16,22 @@ def test_ws_client_receives_monotonically_increasing_seq(app_factory):
 
 def test_ws_two_simultaneous_clients_get_identical_snapshot(app_factory):
     app = app_factory(instruments=("usdclp",), loop_interval=0.02, autostart_loop=True)
+    # State-consistency invariant: a snapshot is computed exactly ONCE per seq
+    # and fanned out unmodified, so for ANY seq both clients observed, the
+    # payloads must be byte-identical. We collect a window from each client and
+    # compare on the overlapping seqs — robust to connect-time queue offset
+    # (clients connect a beat apart against a free-running loop), which a
+    # single "next tick must align" assertion was not (load-timing flaky).
     with TestClient(app) as client:
         with client.websocket_connect("/stream?instrument=usdclp") as ws1, \
                 client.websocket_connect("/stream?instrument=usdclp") as ws2:
-            # Drain each client's connect-time seed snapshot (independent of
-            # the other client's seed, delivered on accept).
-            ws1.receive_json()
-            ws2.receive_json()
-            # The next tick is produced by exactly ONE background compute
-            # and fanned out to both — payloads (including seq) must match.
-            m1 = ws1.receive_json()
-            m2 = ws2.receive_json()
-    assert m1 == m2
-    assert m1["seq"] >= 1
+            msgs1 = {m["seq"]: m for m in (ws1.receive_json() for _ in range(8))}
+            msgs2 = {m["seq"]: m for m in (ws2.receive_json() for _ in range(8))}
+    shared = set(msgs1) & set(msgs2)
+    assert shared, (sorted(msgs1), sorted(msgs2))  # windows must overlap
+    for seq in shared:
+        assert msgs1[seq] == msgs2[seq]  # same seq => identical fan-out
+    assert max(shared) >= 1
 
 
 def test_ws_unknown_instrument_closes(app_factory):
