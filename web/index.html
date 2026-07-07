@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SENTINEL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css" />
+  <link rel="stylesheet" href="/vendor/uplot/uPlot.min.css" />
+</head>
+<body>
+  <header>
+    <h1>SENTINEL</h1>
+    <select id="instrument-select">
+      <option value="usdclp">USDCLP</option>
+      <option value="gold">GOLD</option>
+      <option value="nasdaq">NASDAQ</option>
+    </select>
+    <span id="conn-status" class="connecting">connecting…</span>
+    <span class="meta" id="meta-line"></span>
+  </header>
+
+  <main>
+    <section class="panel" id="panel-composite">
+      <h2>Composite</h2>
+      <div class="big-score" id="composite-score">--</div>
+      <div id="composite-direction" class="meta">--</div>
+      <div id="composite-signal" class="meta">--</div>
+      <div id="composite-chart"></div>
+      <div id="no-chart-note" hidden>uPlot not available — showing latest value only.</div>
+    </section>
+
+    <section class="panel" id="panel-technical">
+      <h2>Technical — per timeframe</h2>
+      <table id="tf-table">
+        <thead>
+          <tr><th>TF</th><th>Score</th><th>Direction</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="panel-macro">
+      <h2>Macro (EWMA consensus)</h2>
+      <table id="macro-table">
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="panel-levels">
+      <h2>Levels</h2>
+      <table id="levels-table">
+        <thead>
+          <tr><th>Side</th><th>Label</th><th>Price</th><th>%</th></tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </section>
+
+    <section class="panel" id="panel-alerts">
+      <h2>Alerts</h2>
+      <ul class="alert-list" id="alerts-list"></ul>
+    </section>
+
+    <section class="panel" id="panel-divergences">
+      <h2>Divergences</h2>
+      <ul class="divergence-list" id="divergences-list"></ul>
+    </section>
+  </main>
+
+  <script src="/vendor/uplot/uPlot.iife.min.js"></script>
+  <script src="/app.js"></script>
+</body>
+</html>
