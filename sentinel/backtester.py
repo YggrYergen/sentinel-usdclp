@@ -138,7 +138,7 @@ def replay_scoring(bars_back: int = 500, progress_callback=None, feed=None) -> p
                 subset = d[mask].tail(BARS_TO_FETCH)
                 if len(subset) >= 30:
                     try:
-                        tf_scores[tf_name] = calculate_technical_score(subset)
+                        tf_scores[tf_name] = calculate_technical_score(subset, normalize_macd=True)
                     except Exception:
                         tf_scores[tf_name] = {"score": 50, "direction": "NEUTRAL"}
                 else:
