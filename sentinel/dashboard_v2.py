@@ -37,9 +37,12 @@ if LOG_SNAPSHOTS:
 
     @st.cache_resource
     def _init_snapshot_logger():
-        # config_hash: P1's InstrumentConfig hashing is not wired yet —
-        # "unversioned" is a placeholder until P1 lands (see task 0.7 report).
-        return SnapshotLogger(LOGS_DIR, "unversioned", symbol=SYMBOLS["target"])
+        # config_hash: real per-instrument hash from P1's InstrumentConfig
+        # (dashboard target = USD/CLP), replacing the 0.7 "unversioned" placeholder.
+        from sentinel_engine.config import load_instrument, config_hash
+        return SnapshotLogger(
+            LOGS_DIR, config_hash(load_instrument("usdclp")), symbol=SYMBOLS["target"]
+        )
 
 try:
     st.set_page_config(page_title=f"SENTINEL v2 — USD/CLP", page_icon="⚡",
