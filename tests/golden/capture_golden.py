@@ -99,20 +99,25 @@ def _capture_usdclp(feed) -> dict:
     return result
 
 
-def _capture_panel_instrument(feed, symbols_cfg, asset_weights, expected_corrs) -> dict:
-    from sentinel.macro_scorer import MacroScorer
-    from sentinel.technical_scorer import calculate_multi_tf_score
+def _capture_panel_instrument(feed, instrument: str) -> dict:
+    # The legacy inline `instrument_panel._update_macro`/`_calc_macro`
+    # pure-compute pair was deleted at the P1 live-cutover; the engine
+    # scorer (its proven-equivalent replacement — see tests/test_macro_engine.py)
+    # is now the sole implementation, so this reference capture drives it.
     from sentinel.levels_engine import calculate_levels
-    from sentinel.instrument_panel import _update_macro, _calc_macro
+    from sentinel_engine.config import load_instrument
+    from sentinel_engine.macro import MacroScorer
+    from sentinel_engine.technical import TechnicalScorer
 
-    target = symbols_cfg["target"]
+    cfg = load_instrument(instrument)
+    target = cfg.target
 
-    ms = MacroScorer()
+    ms = MacroScorer(cfg)
     for _ in range(WARMUP_CYCLES):
-        _update_macro(ms, feed, symbols_cfg, asset_weights, expected_corrs)
-    macro = _calc_macro(ms, feed, symbols_cfg, expected_corrs, asset_weights)
+        ms.update_tick(feed)
+    macro = ms.score(feed)
 
-    technical = calculate_multi_tf_score(feed, target)
+    technical = TechnicalScorer(cfg).score(feed)
     levels = calculate_levels(feed, target)
 
     return {
@@ -123,13 +128,11 @@ def _capture_panel_instrument(feed, symbols_cfg, asset_weights, expected_corrs) 
 
 
 def _capture_gold(feed) -> dict:
-    from sentinel.config import SYMBOLS_GOLD, ASSET_WEIGHTS_GOLD, EXPECTED_CORRELATIONS_GOLD
-    return _capture_panel_instrument(feed, SYMBOLS_GOLD, ASSET_WEIGHTS_GOLD, EXPECTED_CORRELATIONS_GOLD)
+    return _capture_panel_instrument(feed, "gold")
 
 
 def _capture_nasdaq(feed) -> dict:
-    from sentinel.config import SYMBOLS_NASDAQ, ASSET_WEIGHTS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ
-    return _capture_panel_instrument(feed, SYMBOLS_NASDAQ, ASSET_WEIGHTS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ)
+    return _capture_panel_instrument(feed, "nasdaq")
 
 
 _CAPTURERS = {

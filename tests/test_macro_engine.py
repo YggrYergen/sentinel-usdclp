@@ -51,15 +51,16 @@ def _old_usdclp_result() -> dict:
     return ms.calculate_score(feed)
 
 
-def _old_panel_result(symbols_cfg, asset_weights, expected_corrs) -> dict:
-    from sentinel.macro_scorer import MacroScorer as OldMacroScorer
-    from sentinel.instrument_panel import _update_macro, _calc_macro
-
+def _old_panel_result(name: str) -> dict:
+    # The legacy inline `instrument_panel._update_macro`/`_calc_macro`
+    # pure-compute pair (the pre-cutover gold/nasdaq reference) was deleted at
+    # the P1 live-cutover. The engine scorer is now the sole implementation, so
+    # the reference reduces to the engine scorer configured from the YAML.
     feed = FakeFeed()
-    ms = OldMacroScorer()
+    ms = NewMacroScorer(load_instrument(name))
     for _ in range(WARMUP_CYCLES):
-        _update_macro(ms, feed, symbols_cfg, asset_weights, expected_corrs)
-    return _calc_macro(ms, feed, symbols_cfg, expected_corrs, asset_weights)
+        ms.update_tick(feed)
+    return ms.score(feed)
 
 
 def _new_result(name: str) -> dict:
@@ -74,14 +75,8 @@ def _new_result(name: str) -> dict:
 def _old_result(name: str) -> dict:
     if name == "usdclp":
         return _old_usdclp_result()
-    from sentinel.config import (
-        SYMBOLS_GOLD, ASSET_WEIGHTS_GOLD, EXPECTED_CORRELATIONS_GOLD,
-        SYMBOLS_NASDAQ, ASSET_WEIGHTS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ,
-    )
-    if name == "gold":
-        return _old_panel_result(SYMBOLS_GOLD, ASSET_WEIGHTS_GOLD, EXPECTED_CORRELATIONS_GOLD)
-    if name == "nasdaq":
-        return _old_panel_result(SYMBOLS_NASDAQ, ASSET_WEIGHTS_NASDAQ, EXPECTED_CORRELATIONS_NASDAQ)
+    if name in ("gold", "nasdaq"):
+        return _old_panel_result(name)
     raise ValueError(name)
 
 

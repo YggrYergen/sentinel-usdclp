@@ -5,7 +5,8 @@ import streamlit as st
 import numpy as np
 import time
 from sentinel.technical_scorer import calculate_multi_tf_score
-from sentinel.macro_scorer import MacroScorer
+from sentinel_engine.config import load_instrument
+from sentinel_engine.macro import MacroScorer
 
 
 def _tt(content, title, body, direction="up"):
@@ -27,17 +28,18 @@ def _accel_w(b, tb, w):
 def render_panel(feed, symbols_cfg, expected_corrs, asset_weights,
                  panel_key, label, emoji):
     target = symbols_cfg["target"]
-    # MacroScorer per-instrument
+    # MacroScorer per-instrument — the engine scorer, configured from this
+    # panel's instrument YAML (panel_key == instrument name, e.g. "gold").
     msk = f"_ms_{panel_key}"
     if msk not in st.session_state:
-        st.session_state[msk] = MacroScorer()
+        st.session_state[msk] = MacroScorer(load_instrument(panel_key))
     _ms = st.session_state[msk]
     # Technical scores
     tech = calculate_multi_tf_score(feed, target)
     tech_sc = tech["composite_score"]; tech_dir = tech["h4_direction"]
-    # Macro tick update + score
-    _update_macro(_ms, feed, symbols_cfg, asset_weights, expected_corrs)
-    mr = _calc_macro(_ms, feed, symbols_cfg, expected_corrs, asset_weights)
+    # Macro tick update + score (engine scorer — one code path)
+    _ms.update_tick(feed)
+    mr = _ms.score(feed)
     m_sc = mr["score"]; m_dir = mr["direction"]
     price_info = feed.get_current_price(target)
     CN = {}
@@ -56,58 +58,6 @@ def render_panel(feed, symbols_cfg, expected_corrs, asset_weights,
         _render_left(feed, price_info, tech, _ms, m_sc, m_dir, tech_sc, tech_dir, mr, panel_key)
     with col_r:
         _render_right(feed, tech, mr, expected_corrs, symbols_cfg, price_info, CN, panel_key)
-
-
-def _update_macro(ms, feed, syms, weights, ecorrs):
-    tp = feed.get_current_price(syms["target"])
-    tb = tp.get("bid", 0)
-    if tb <= 0: return
-    pt = ms._prev_prices.get("target", tb)
-    rt = (tb - pt) / pt * 10000 if pt > 0 else 0
-    ms._prev_prices["target"] = tb
-    for ak in weights:
-        sym = syms.get(ak, "")
-        if not sym: continue
-        try:
-            pi = feed.get_current_price(sym)
-            cb = pi.get("bid", 0) if pi else 0
-            if cb <= 0: continue
-            pb = ms._prev_prices.get(ak, cb)
-            ra = (cb - pb) / pb * 10000
-            ms._prev_prices[ak] = cb
-            es = np.sign(ecorrs.get(ak, 0))
-            ms.tracker.update(ak, rt, ra, es)
-        except Exception: pass
-
-
-def _calc_macro(ms, feed, syms, ecorrs, weights):
-    votes = {}; twv = 0.0; tmw = 0.0
-    for ak, bw in weights.items():
-        sym = syms.get(ak, "")
-        if not sym: continue
-        cd = ms.tracker.get_confidence(ak)
-        conf = cd.get("confidence", 0.0); warm = cd.get("warmup", True)
-        try:
-            m1 = feed.get_data(sym, timeframe_minutes=1, bars=10)
-            if m1 is not None and len(m1) >= 4:
-                c = m1['close'].values; rb = (c[-1] - c[-4]) / c[-4] * 10000
-            else: rb = 0.0
-        except Exception: rb = 0.0
-        es = np.sign(ecorrs.get(ak, 0))
-        rv = np.tanh(rb / 5.0) * es; ew = conf * bw; wv = rv * ew
-        twv += wv; tmw += ew
-        votes[ak] = {"return_bps": round(rb, 2), "raw_vote": round(rv, 3),
-                      "confidence": round(conf, 3), "weighted_vote": round(wv, 3), "warmup": warm}
-    cons = twv / tmw if tmw > 0.01 else 0.0
-    sc = round(max(0, min(100, 50 + cons * 50)), 1)
-    dr = "LONG" if cons > 0.15 else ("SHORT" if cons < -0.15 else "NEUTRAL")
-    ac = ms.tracker.get_all_confidence()
-    cv = [v["confidence"] for v in ac.values() if not v.get("warmup")]
-    avg = sum(cv) / len(cv) if cv else 0.0
-    return {"score": sc, "direction": dr, "consensus_raw": round(cons, 4),
-            "votes": votes, "confidence_avg": round(avg, 3),
-            "total_assets_tracked": len(votes),
-            "assets_warmed_up": sum(1 for v in votes.values() if not v["warmup"])}
 
 
 def _render_left(feed, pi, tech_d, _ms, m_sc, m_dir, t_sc, t_dir, mr, pk):
