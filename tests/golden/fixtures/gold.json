@@ -1,4 +1,435 @@
 {
+  "ai_context": "",
+  "alerts": [
+    "⚠️ QUIEBRE: copper correlación actual=0.09 vs esperada=-0.70",
+    "⚠️ QUIEBRE: usdmxn correlación actual=0.04 vs esperada=0.60",
+    "⚠️ QUIEBRE: usdbrl correlación actual=-0.15 vs esperada=0.55",
+    "⚠️ QUIEBRE: audusd correlación actual=-0.14 vs esperada=-0.50",
+    "⚠️ QUIEBRE: usdcnh correlación actual=0.11 vs esperada=0.45"
+  ],
+  "block_reason": "",
+  "blocked": false,
+  "components": {
+    "_correlation_legacy": {
+      "details": {
+        "alerts": [
+          "⚠️ QUIEBRE: copper correlación actual=0.09 vs esperada=-0.70",
+          "⚠️ QUIEBRE: usdmxn correlación actual=0.04 vs esperada=0.60",
+          "⚠️ QUIEBRE: usdbrl correlación actual=-0.15 vs esperada=0.55",
+          "⚠️ QUIEBRE: audusd correlación actual=-0.14 vs esperada=-0.50",
+          "⚠️ QUIEBRE: usdcnh correlación actual=0.11 vs esperada=0.45"
+        ],
+        "breaks": [
+          "copper",
+          "usdmxn",
+          "usdbrl",
+          "audusd",
+          "usdcnh"
+        ],
+        "correlations": {
+          "audusd": -0.139,
+          "copper": 0.091,
+          "dxy": -0.318,
+          "sp500": -0.396,
+          "usdbrl": -0.149,
+          "usdcnh": 0.107,
+          "usdmxn": 0.045,
+          "wti": -0.025
+        },
+        "direction": "NEUTRAL",
+        "divergences": {
+          "audusd": 0.361,
+          "copper": 0.791,
+          "dxy": -1.068,
+          "sp500": -0.096,
+          "usdbrl": -0.699,
+          "usdcnh": -0.343,
+          "usdmxn": -0.555,
+          "wti": -0.425
+        },
+        "score": 83.3
+      },
+      "direction": "NEUTRAL",
+      "score": 83.3
+    },
+    "_macro": {
+      "assets_warmed_up": 7,
+      "confidence_avg": 0.608,
+      "consensus_raw": 0.4151,
+      "consensus_score": 70.8,
+      "direction": "LONG",
+      "direction_score": 70.8,
+      "score": 70.8,
+      "total_assets_tracked": 7,
+      "votes": {
+        "copper": {
+          "concordance": 0.643,
+          "confidence": 0.839,
+          "effective_weight": 0.839,
+          "ewma_corr": 0.2397,
+          "raw_vote": 1.0,
+          "return_bps": 50.11,
+          "warmup": false,
+          "weighted_vote": 0.839
+        },
+        "dxy": {
+          "concordance": 0.492,
+          "confidence": 0.485,
+          "effective_weight": 1.455,
+          "ewma_corr": 0.1272,
+          "raw_vote": 0.911,
+          "return_bps": -7.68,
+          "warmup": false,
+          "weighted_vote": 1.326
+        },
+        "eurusd": {
+          "concordance": 0.44,
+          "confidence": 0.591,
+          "effective_weight": 0.886,
+          "ewma_corr": 0.0211,
+          "raw_vote": 1.0,
+          "return_bps": 22.04,
+          "warmup": false,
+          "weighted_vote": 0.886
+        },
+        "silver": {
+          "concordance": 0.525,
+          "confidence": 0.678,
+          "effective_weight": 1.695,
+          "ewma_corr": 0.0761,
+          "raw_vote": 0.164,
+          "return_bps": 0.83,
+          "warmup": false,
+          "weighted_vote": 0.278
+        },
+        "sp500": {
+          "concordance": 0.369,
+          "confidence": 0.366,
+          "effective_weight": 0.366,
+          "ewma_corr": 0.2431,
+          "raw_vote": 1.0,
+          "return_bps": -22.82,
+          "warmup": false,
+          "weighted_vote": 0.366
+        },
+        "usdjpy": {
+          "concordance": 0.551,
+          "confidence": 0.47,
+          "effective_weight": 1.175,
+          "ewma_corr": 0.1742,
+          "raw_vote": 0.115,
+          "return_bps": -0.58,
+          "warmup": false,
+          "weighted_vote": 0.136
+        },
+        "vix": {
+          "concordance": 0.617,
+          "confidence": 0.826,
+          "effective_weight": 0.826,
+          "ewma_corr": 0.1979,
+          "raw_vote": -0.998,
+          "return_bps": -16.98,
+          "warmup": false,
+          "weighted_vote": -0.824
+        }
+      }
+    },
+    "correlation": {
+      "details": {
+        "alerts": [
+          "⚠️ QUIEBRE: copper correlación actual=0.09 vs esperada=-0.70",
+          "⚠️ QUIEBRE: usdmxn correlación actual=0.04 vs esperada=0.60",
+          "⚠️ QUIEBRE: usdbrl correlación actual=-0.15 vs esperada=0.55",
+          "⚠️ QUIEBRE: audusd correlación actual=-0.14 vs esperada=-0.50",
+          "⚠️ QUIEBRE: usdcnh correlación actual=0.11 vs esperada=0.45"
+        ],
+        "breaks": [
+          "copper",
+          "usdmxn",
+          "usdbrl",
+          "audusd",
+          "usdcnh"
+        ],
+        "correlations": {
+          "audusd": -0.139,
+          "copper": 0.091,
+          "dxy": -0.318,
+          "sp500": -0.396,
+          "usdbrl": -0.149,
+          "usdcnh": 0.107,
+          "usdmxn": 0.045,
+          "wti": -0.025
+        },
+        "direction": "NEUTRAL",
+        "divergences": {
+          "audusd": 0.361,
+          "copper": 0.791,
+          "dxy": -1.068,
+          "sp500": -0.096,
+          "usdbrl": -0.699,
+          "usdcnh": -0.343,
+          "usdmxn": -0.555,
+          "wti": -0.425
+        },
+        "score": 83.3
+      },
+      "direction": "LONG",
+      "score": 70.8,
+      "weight": 0.5
+    },
+    "technical": {
+      "details": {
+        "composite_score": 52.9,
+        "confluence": 1,
+        "h4_direction": "NEUTRAL",
+        "rsi_divergences": [
+          {
+            "description": "RSI M1=44 vs M2=62 (Δ-18) — 🟡 MODERADA — M1 más bajista que M2 → momentum desacelerando",
+            "diff": -18.3,
+            "interpretation": "M1 más bajista que M2 → momentum desacelerando",
+            "mag_score": 2,
+            "magnitude": "🟡 MODERADA",
+            "rsi_fast": 43.8,
+            "rsi_slow": 62.1,
+            "tf_fast": "M1",
+            "tf_slow": "M2"
+          },
+          {
+            "description": "RSI M2=62 vs M5=40 (Δ+22) — 🟡 MODERADA — M2 más alcista que M5 → momentum acelerando",
+            "diff": 22.1,
+            "interpretation": "M2 más alcista que M5 → momentum acelerando",
+            "mag_score": 2,
+            "magnitude": "🟡 MODERADA",
+            "rsi_fast": 62.1,
+            "rsi_slow": 40.0,
+            "tf_fast": "M2",
+            "tf_slow": "M5"
+          },
+          {
+            "description": "RSI M5=40 vs M15=28 (Δ+12) — 🟢 LEVE — M5 más alcista que M15 → momentum acelerando",
+            "diff": 11.7,
+            "interpretation": "M5 más alcista que M15 → momentum acelerando",
+            "mag_score": 1,
+            "magnitude": "🟢 LEVE",
+            "rsi_fast": 40.0,
+            "rsi_slow": 28.3,
+            "tf_fast": "M5",
+            "tf_slow": "M15"
+          }
+        ],
+        "tf_scores": {
+          "M1": {
+            "details": {
+              "bb": {
+                "detail": "BB 0.11",
+                "score": 60,
+                "vote": 0
+              },
+              "ema": {
+                "detail": "EMA alineación",
+                "score": 85,
+                "vote": 1
+              },
+              "macd": {
+                "detail": "MACD -2.0472 (h/ATR=-0.34)",
+                "score": 36.6,
+                "vote": -1
+              },
+              "pa": {
+                "detail": "Vela normal 4%",
+                "score": 55,
+                "vote": 0
+              },
+              "rsi": {
+                "detail": "RSI=43.8",
+                "score": 41.9,
+                "vote": -1
+              }
+            },
+            "direction": "NEUTRAL",
+            "score": 57.5,
+            "signals": {
+              "atr": 6.091829,
+              "bb_lower": 2493.690676,
+              "bb_pct": 0.112183,
+              "bb_upper": 2515.497255,
+              "ema_200": 2463.998799,
+              "ema_21": 2502.183687,
+              "ema_50": 2494.917728,
+              "ema_9": 2502.402663,
+              "ema_cross": 0.0,
+              "ema_trend_signal": 1.0,
+              "macd": 1.81859,
+              "macd_histogram": -2.047153,
+              "macd_signal": 3.865743,
+              "macd_trade_signal": -1.0,
+              "price": 2496.137006,
+              "rsi": 43.766127,
+              "rsi_signal": -0.5
+            }
+          },
+          "M15": {
+            "details": {
+              "bb": {
+                "detail": "BB baja 0.01",
+                "score": 75,
+                "vote": 1
+              },
+              "ema": {
+                "detail": "EMA alineación",
+                "score": 15,
+                "vote": -1
+              },
+              "macd": {
+                "detail": "MACD -2.9887 (h/ATR=-0.46)",
+                "score": 31.5,
+                "vote": -1
+              },
+              "pa": {
+                "detail": "Vela normal 36%",
+                "score": 55,
+                "vote": 0
+              },
+              "rsi": {
+                "detail": "RSI=28.3 OS",
+                "score": 70,
+                "vote": 1
+              }
+            },
+            "direction": "NEUTRAL",
+            "score": 43.1,
+            "signals": {
+              "atr": 6.459512,
+              "bb_lower": 2461.062166,
+              "bb_pct": 0.011835,
+              "bb_upper": 2504.985046,
+              "ema_200": 2466.139343,
+              "ema_21": 2479.151635,
+              "ema_50": 2482.916961,
+              "ema_9": 2471.498379,
+              "ema_cross": 0.0,
+              "ema_trend_signal": -1.0,
+              "macd": -6.402292,
+              "macd_histogram": -2.988716,
+              "macd_signal": -3.413577,
+              "macd_trade_signal": -1.0,
+              "price": 2461.581999,
+              "rsi": 28.335042,
+              "rsi_signal": 1.0
+            }
+          },
+          "M2": {
+            "details": {
+              "bb": {
+                "detail": "BB alta 1.00",
+                "score": 25,
+                "vote": -1
+              },
+              "ema": {
+                "detail": "EMA alineación",
+                "score": 85,
+                "vote": 1
+              },
+              "macd": {
+                "detail": "MACD +0.3438 (h/ATR=+0.04)",
+                "score": 51.8,
+                "vote": 1
+              },
+              "pa": {
+                "detail": "Vela normal 34%",
+                "score": 55,
+                "vote": 0
+              },
+              "rsi": {
+                "detail": "RSI=62.1",
+                "score": 61.1,
+                "vote": 1
+              }
+            },
+            "direction": "LONG",
+            "score": 59.9,
+            "signals": {
+              "atr": 7.790495,
+              "bb_lower": 2415.154938,
+              "bb_pct": 1.003758,
+              "bb_upper": 2433.370283,
+              "ema_200": 2413.374702,
+              "ema_21": 2424.404924,
+              "ema_50": 2419.542531,
+              "ema_9": 2428.066081,
+              "ema_cross": 0.0,
+              "ema_trend_signal": 1.0,
+              "macd": 3.899167,
+              "macd_histogram": 0.343824,
+              "macd_signal": 3.555343,
+              "macd_trade_signal": 1.0,
+              "price": 2433.438728,
+              "rsi": 62.145969,
+              "rsi_signal": 0.5
+            }
+          },
+          "M5": {
+            "details": {
+              "bb": {
+                "detail": "BB 0.24",
+                "score": 60,
+                "vote": 0
+              },
+              "ema": {
+                "detail": "EMA alineación",
+                "score": 15,
+                "vote": -1
+              },
+              "macd": {
+                "detail": "MACD -1.2782 (h/ATR=-0.21)",
+                "score": 41.8,
+                "vote": -1
+              },
+              "pa": {
+                "detail": "Vela normal 19%",
+                "score": 55,
+                "vote": 0
+              },
+              "rsi": {
+                "detail": "RSI=40.0",
+                "score": 40.0,
+                "vote": -1
+              }
+            },
+            "direction": "SHORT",
+            "score": 37.4,
+            "signals": {
+              "atr": 6.233639,
+              "bb_lower": 2362.35071,
+              "bb_pct": 0.240933,
+              "bb_upper": 2397.813559,
+              "ema_200": 2377.021793,
+              "ema_21": 2377.151557,
+              "ema_50": 2377.236619,
+              "ema_9": 2373.327475,
+              "ema_cross": 0.0,
+              "ema_trend_signal": -1.0,
+              "macd": -3.188773,
+              "macd_histogram": -1.278217,
+              "macd_signal": -1.910556,
+              "macd_trade_signal": -1.0,
+              "price": 2370.894864,
+              "rsi": 39.963452,
+              "rsi_signal": -0.5
+            }
+          }
+        },
+        "total_timeframes": 4
+      },
+      "direction": "NEUTRAL",
+      "score": 52.9,
+      "weight": 0.5
+    }
+  },
+  "composite_score": 61.8,
+  "config_hash": "6034eb02112d",
+  "direction": "LONG",
+  "divergences": [],
   "levels": {
     "combined": {
       "above": [
@@ -73,54 +504,77 @@
     "assets_warmed_up": 7,
     "confidence_avg": 0.608,
     "consensus_raw": 0.4151,
+    "consensus_score": 70.8,
     "direction": "LONG",
+    "direction_score": 70.8,
     "score": 70.8,
     "total_assets_tracked": 7,
     "votes": {
       "copper": {
+        "concordance": 0.643,
         "confidence": 0.839,
+        "effective_weight": 0.839,
+        "ewma_corr": 0.2397,
         "raw_vote": 1.0,
         "return_bps": 50.11,
         "warmup": false,
         "weighted_vote": 0.839
       },
       "dxy": {
+        "concordance": 0.492,
         "confidence": 0.485,
+        "effective_weight": 1.455,
+        "ewma_corr": 0.1272,
         "raw_vote": 0.911,
         "return_bps": -7.68,
         "warmup": false,
         "weighted_vote": 1.326
       },
       "eurusd": {
+        "concordance": 0.44,
         "confidence": 0.591,
+        "effective_weight": 0.886,
+        "ewma_corr": 0.0211,
         "raw_vote": 1.0,
         "return_bps": 22.04,
         "warmup": false,
         "weighted_vote": 0.886
       },
       "silver": {
+        "concordance": 0.525,
         "confidence": 0.678,
+        "effective_weight": 1.695,
+        "ewma_corr": 0.0761,
         "raw_vote": 0.164,
         "return_bps": 0.83,
         "warmup": false,
         "weighted_vote": 0.278
       },
       "sp500": {
+        "concordance": 0.369,
         "confidence": 0.366,
+        "effective_weight": 0.366,
+        "ewma_corr": 0.2431,
         "raw_vote": 1.0,
         "return_bps": -22.82,
         "warmup": false,
         "weighted_vote": 0.366
       },
       "usdjpy": {
+        "concordance": 0.551,
         "confidence": 0.47,
+        "effective_weight": 1.175,
+        "ewma_corr": 0.1742,
         "raw_vote": 0.115,
         "return_bps": -0.58,
         "warmup": false,
         "weighted_vote": 0.136
       },
       "vix": {
+        "concordance": 0.617,
         "confidence": 0.826,
+        "effective_weight": 0.826,
+        "ewma_corr": 0.1979,
         "raw_vote": -0.998,
         "return_bps": -16.98,
         "warmup": false,
@@ -128,6 +582,9 @@
       }
     }
   },
+  "seq": 0,
+  "signal": "🔴 ESPERAR",
+  "symbol": "XAUUSD",
   "technical": {
     "composite_score": 52.9,
     "confluence": 1,
@@ -370,5 +827,6 @@
       }
     },
     "total_timeframes": 4
-  }
+  },
+  "ts": null
 }

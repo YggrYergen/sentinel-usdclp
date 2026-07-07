@@ -1,10 +1,13 @@
 """
-Task 0.2: Parity test — the baseline lock.
+Task 0.2 / P1 Task 1.6b: Parity test — the baseline lock.
 
 For each of the 3 target instruments (usdclp, gold, nasdaq), this test runs
-the CURRENT scoring path (via `capture_golden`, driven by a deterministic
-`FakeFeed`) and asserts the result is recursively equal to the committed
-golden JSON in `fixtures/<instrument>.json`.
+the headless `sentinel_engine.engine.Engine` (via `capture_engine`, driven by
+a deterministic `FakeFeed`) and asserts the result is recursively equal to
+the committed golden JSON in `fixtures/<instrument>.json`. The parity gate
+was repointed from the legacy scoring path (`capture_golden`, still proven
+equivalent — see `tests/test_engine.py`) to the new Engine as of Task 1.6b;
+the golden fixtures were regenerated from the Engine at the same time.
 
 This test must stay GREEN after every future scoring-touching refactor. If
 it goes red, that means observable output changed — either a genuine
@@ -17,7 +20,8 @@ from pathlib import Path
 
 import pytest
 
-from tests.golden.capture_golden import capture_golden, _clean
+from tests.golden.capture_golden import _clean
+from tests.golden.capture_engine import capture_engine
 from tests.golden.fake_feed import FakeFeed
 
 INSTRUMENTS = ["usdclp", "gold", "nasdaq"]
@@ -94,7 +98,7 @@ def test_parity_against_golden(instrument):
     # float rounding) used when the golden fixtures were generated, so the
     # comparison is against the same representation, not raw float noise
     # from repr/serialization round-tripping. See `to_canonical_json`.
-    actual = _clean(capture_golden(instrument, FakeFeed()))
+    actual = _clean(capture_engine(instrument, FakeFeed()))
 
     fixture_path = FIXTURES_DIR / f"{instrument}.json"
     expected = json.loads(fixture_path.read_text(encoding="utf-8"))
