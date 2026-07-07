@@ -221,6 +221,18 @@ DASHBOARD_LANGUAGE = "es"        # Español
 LOG_TICKS = False
 
 # ══════════════════════════════════════════════════════════════
+# SNAPSHOT LOGGING (Task 0.7 — SENTINEL revamp)
+# ══════════════════════════════════════════════════════════════
+# Default OFF: current behavior is unchanged unless explicitly enabled.
+# When True, the live dashboard path logs every computed composite
+# scoring snapshot (SentinelCore.calculate_composite() result) for the
+# TARGET instrument to logs/snapshots/<symbol>/<YYYY-MM-DD>.parquet via
+# sentinel.logging.snapshot_logger.SnapshotLogger. Read-only — never
+# places orders. Used by P2.8 to prove the historical replayer
+# reproduces the live snapshot at a given time.
+LOG_SNAPSHOTS = False
+
+# ══════════════════════════════════════════════════════════════
 # PATHS
 # ══════════════════════════════════════════════════════════════
 import os

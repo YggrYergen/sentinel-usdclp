@@ -18,7 +18,7 @@ logger = logging.getLogger("sentinel.dashboard")
 
 from sentinel.config import (SYMBOLS, WEIGHTS, SCORE_ALERT_THRESHOLD,
     SCORE_STRONG_THRESHOLD, DASHBOARD_REFRESH_SECONDS, EXPECTED_CORRELATIONS,
-    LOG_TICKS, LOGS_DIR)
+    LOG_TICKS, LOG_SNAPSHOTS, LOGS_DIR)
 from sentinel.data_feed import DataFeed
 from sentinel.sentinel_core import SentinelCore
 from sentinel.version import VERSION, CODENAME
@@ -29,6 +29,15 @@ if LOG_TICKS:
     @st.cache_resource
     def _init_tick_logger():
         return TickLogger(SYMBOLS["target"], LOGS_DIR)
+
+if LOG_SNAPSHOTS:
+    from sentinel.logging.snapshot_logger import SnapshotLogger
+
+    @st.cache_resource
+    def _init_snapshot_logger():
+        # config_hash: P1's InstrumentConfig hashing is not wired yet —
+        # "unversioned" is a placeholder until P1 lands (see task 0.7 report).
+        return SnapshotLogger(LOGS_DIR, "unversioned", symbol=SYMBOLS["target"])
 
 try:
     st.set_page_config(page_title=f"SENTINEL v{VERSION} — USD/CLP", page_icon="🛡️",
@@ -155,6 +164,8 @@ direction = result["direction"]
 price_info = feed.get_current_price(SYMBOLS["target"])
 if LOG_TICKS and price_info.get("time") and price_info.get("bid", 0) > 0:
     _init_tick_logger().on_tick(price_info["time"], price_info["bid"], price_info["ask"])
+if LOG_SNAPSHOTS:
+    _init_snapshot_logger().log(result)
 levels = result.get("levels", {})
 combined = levels.get("combined", {})
 curr_price = levels.get("current_price", 0)
