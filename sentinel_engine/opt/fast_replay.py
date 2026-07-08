@@ -101,7 +101,7 @@ import pandas as pd
 
 from sentinel.correlation_engine import RealtimeCorrelationTracker
 from sentinel.indicators import calculate_all
-from sentinel_engine.config import InstrumentConfig
+from sentinel_engine.config import IndicatorConfig, InstrumentConfig
 from sentinel_engine.lake.store import read_bars
 from sentinel_engine.opt.labels import triple_barrier
 from sentinel_engine.opt.levers import apply_overrides
@@ -149,12 +149,16 @@ class FastReplayCache:
       1. raw parquet reads (`_read_tf`, `_target_m1_frame`) -- tiny key
          space, unbounded dict.
       2. per-TF vectorized technical score (`_vectorized_tf_score`) --
-         tiny key space, unbounded dict.
+         keyed on window + the G1 indicator-param tuple (`_indicator_key`,
+         since the score now depends on `cfg.technical.indicators`) --
+         unbounded dict (small key space per study: one entry per distinct
+         (tf, indicator-params) pair actually visited).
       3. macro per-asset tick/return/recent-return arrays -- tiny key
          space, unbounded dict.
-      4. `_technical_arrays` result, keyed on window + tf_weights --
-         bounded LRU (cfg-dependent, so the key space can grow across a
-         study; capped to avoid unbounded memory growth on a long run).
+      4. `_technical_arrays` result, keyed on window + tf_weights +
+         indicator-param tuple -- bounded LRU (cfg-dependent, so the key
+         space can grow across a study; capped to avoid unbounded memory
+         growth on a long run).
       5. `_macro_arrays` result, keyed on window + every macro lever that
          affects the tracker loop -- bounded LRU, same rationale as #4.
 
@@ -323,13 +327,21 @@ def _vec_score_pa(openp, high, low, close) -> Tuple[np.ndarray, np.ndarray]:
     return sc, v
 
 
-def _vectorized_tf_score(df: pd.DataFrame) -> pd.DataFrame:
+def _vectorized_tf_score(df: pd.DataFrame, indicators: IndicatorConfig) -> pd.DataFrame:
     """Vectorized replication of
     `sentinel_engine.technical.calculate_technical_score` applied to EVERY
     row of `df` (as if that row were the last row of its own trailing
     tail-window) -- see module ambiguity #5 for the tolerance this
     implies. Returns a frame indexed like `df` with columns
-    `composite_score` (float) and `direction` (str)."""
+    `composite_score` (float) and `direction` (str).
+
+    `indicators` (G1 lever group, `cfg.technical.indicators`) is threaded
+    straight into `calculate_all` -- REQUIRED (not optional) here since this
+    function is only ever called with a concrete per-instrument cfg; the
+    oracle path (`sentinel_engine.technical.calculate_technical_score`)
+    defaults to `None` (global `INDICATORS`) only for callers that predate
+    G1 wiring, but `_technical_arrays`/`_vectorized_tf_score_cached` always
+    have a `cfg` in scope, so there is no such default here."""
     n = len(df)
     idx = df.index
     if n < 50:
@@ -338,7 +350,7 @@ def _vectorized_tf_score(df: pd.DataFrame) -> pd.DataFrame:
             index=idx,
         )
 
-    ind = calculate_all(df)
+    ind = calculate_all(df, indicators)
     price = ind["close"].to_numpy(dtype=float)
     e9 = ind["ema_9"].to_numpy(dtype=float)
     e21 = ind["ema_21"].to_numpy(dtype=float)
@@ -396,26 +408,53 @@ def _asof_align(tbl: pd.DataFrame, bar_times: pd.DatetimeIndex) -> pd.DataFrame:
     return merged
 
 
+def _indicator_key(indicators: IndicatorConfig) -> tuple:
+    """A hashable tuple of every `IndicatorConfig` field that
+    `calculate_all` actually reads, in a fixed field order -- used as (part
+    of) the cache key wherever a per-TF technical score is memoized. Two
+    `IndicatorConfig` instances with the same field values must produce the
+    same key (dataclasses aren't hashable by value here since they also
+    hold floats, so a plain tuple is used instead of `hash(indicators)`)."""
+    return (
+        indicators.ema_fast,
+        indicators.ema_mid,
+        indicators.ema_slow,
+        indicators.ema_trend,
+        indicators.rsi_period,
+        float(indicators.rsi_overbought),
+        float(indicators.rsi_oversold),
+        indicators.macd_fast,
+        indicators.macd_slow,
+        indicators.macd_signal,
+        indicators.bb_period,
+        float(indicators.bb_std),
+        indicators.atr_period,
+    )
+
+
 def _vectorized_tf_score_cached(
     lake_root: Path,
     target: str,
     tf_min: int,
     window_end: pd.Timestamp,
+    indicators: IndicatorConfig,
     cache: Optional[FastReplayCache],
 ) -> pd.DataFrame:
-    """Cache layer #2: the per-TF vectorized score is param-independent
-    (`_vectorized_tf_score`/`calculate_all` never read `cfg` levers), keyed
-    `(str(lake_root), target, tf_min, window_end_ns)`."""
+    """Cache layer #2: the per-TF vectorized score DOES depend on the G1
+    indicator-param lever group now that `_vectorized_tf_score`/
+    `calculate_all` read `cfg.technical.indicators`, so the indicator-param
+    tuple (`_indicator_key`) is now part of the key: `(str(lake_root),
+    target, tf_min, window_end_ns, indicator_key_tuple)`."""
     if cache is None:
         raw = _read_tf(lake_root, target, tf_min, window_end, None)
-        return _vectorized_tf_score(raw)
+        return _vectorized_tf_score(raw, indicators)
 
-    key = (str(lake_root), target, tf_min, window_end.value)
+    key = (str(lake_root), target, tf_min, window_end.value, _indicator_key(indicators))
     hit = cache._tf_scores.get(key)
     if hit is not None:
         return hit
     raw = _read_tf(lake_root, target, tf_min, window_end, cache)
-    tbl = _vectorized_tf_score(raw)
+    tbl = _vectorized_tf_score(raw, indicators)
     cache._tf_scores[key] = tbl
     return tbl
 
@@ -431,23 +470,30 @@ def _technical_arrays(
     """Returns (tech_score, tech_dir) arrays aligned to `bar_times`.
 
     Cache layer #4 (whole-result memoization): keyed `window_key +
-    sorted(tf_weights.items())` -- `tf_weights` is the only cfg dependence
-    in this function's output."""
+    sorted(tf_weights.items()) + indicator_key` -- `tf_weights` AND the G1
+    indicator-param group (`cfg.technical.indicators`) are now both cfg
+    dependences of this function's output (the latter flows through
+    `_vectorized_tf_score_cached`'s own, separately-keyed cache layer #2,
+    but this whole-result cache must ALSO fold it in, else a stale
+    whole-result hit from a prior indicator config would be returned)."""
     n = len(bar_times)
     if n == 0:
         return np.zeros(0), np.full(0, "NEUTRAL", dtype=object)
 
     tf_weights = cfg.technical.tf_weights
+    ind_key = _indicator_key(cfg.technical.indicators)
 
     if cache is not None and window_key is not None:
-        key = (window_key, tuple(sorted(tf_weights.items())))
+        key = (window_key, tuple(sorted(tf_weights.items())), ind_key)
         hit = cache._technical_arrays.get(key)
         if hit is not None:
             return hit
 
     aligned: Dict[str, pd.DataFrame] = {}
     for tf_name, tf_min in cfg.data.timeframes.items():
-        tbl = _vectorized_tf_score_cached(lake_root, cfg.target, tf_min, window_end, cache)
+        tbl = _vectorized_tf_score_cached(
+            lake_root, cfg.target, tf_min, window_end, cfg.technical.indicators, cache
+        )
         aligned[tf_name] = _asof_align(tbl, bar_times)
 
     wscore = np.zeros(n)

@@ -14,11 +14,36 @@ can re-run a narrow final stage over the union of winning params if desired).
 
 Ambiguity log (this module):
   1. G1 "Indicator params" (Fable: 12 raw levers -- EMA x3, RSI x3, MACD x3,
-     BB x2, ATR x1) exceeds the 3-8 dim/fit cap by itself. Split: the 8
-     highest-signal/most-referenced dims (EMA fast/mid/slow, RSI period +
-     OB/OS, MACD fast/slow) go into G1 proper; the remainder (MACD signal,
-     BB period/std, ATR period) are folded into "G6" below. `ema_trend`
-     (200) is held fixed per Fable's own note ("keep 200 fixed").
+     BB x2, ATR x1) exceeds the 3-8 dim/fit cap by itself. Split: 6
+     highest-signal, SCORE-AFFECTING dims (EMA fast/mid/slow, RSI period,
+     MACD fast/slow) go into G1 proper; the remainder (MACD signal, BB
+     period/std, ATR period) are folded into "G6" below. `ema_trend` (200)
+     is held fixed per Fable's own note ("keep 200 fixed").
+
+     `rsi_overbought`/`rsi_oversold` are DROPPED entirely (not a lever
+     anywhere, not just moved out of G1) -- traced (2026-07-08, indicator-
+     levers wiring task) and found PROVABLY INERT on the composite technical
+     score in BOTH scorer implementations: `calculate_all` writes them only
+     into the derived `rsi_signal` column (`sentinel/indicators.py`), which
+     is exposed via `get_latest_signals` purely for reporting/telemetry.
+     Neither `sentinel_engine.technical._score_rsi` (reads raw `s["rsi"]`
+     against hardcoded 70/30/50 thresholds) nor the vectorized fast-path
+     `sentinel_engine.opt.fast_replay._vec_score_rsi` (same hardcoded
+     70/30/50) ever reads `rsi_signal`/`rsi_overbought`/`rsi_oversold`. A
+     study varying these two would burn trials with zero score movement --
+     an honest empty lever beats a fake one. `rsi_period` (which DOES change
+     the raw RSI value feeding `_score_rsi`) is kept.
+
+     All 6 remaining G1 dims, plus G6's 4 (macd_signal, bb_period, bb_std,
+     atr_period), were traced and CONFIRMED score-affecting on both paths:
+     `macd_signal` changes the MACD signal line -> `macd_histogram`
+     (`macd.macd_diff()`) -> `_score_macd`/`_vec_score_macd`; `bb_period`/
+     `bb_std` change `bb_pct` -> `_score_bb`/`_vec_score_bb`; `atr_period`
+     changes `atr`, which normalizes `_score_macd`/`_vec_score_macd` (both
+     paths call with `normalize_macd=True`/the ATR-aware branch always
+     active in the fast path). See `tests/opt/test_indicator_levers.py` for
+     the executable proof (per-param score-movement assertions) and the
+     mission report's param -> affects-score -> action table.
   2. G6 (this module): Fable's actual G6 ("Fusion & risk": fusion boost cap,
      opposed-pull, neutral-lean, confluence bands, ATR SL/TP multipliers,
      R:R min) has NO matching field anywhere in `InstrumentConfig` -- this
@@ -126,6 +151,16 @@ _G5 = LeverGroup(
 )
 
 # --- G1: Indicator params, core (stage order position 4) -------------------
+# NOTE: `rsi_overbought`/`rsi_oversold` were DROPPED (see ambiguity #1) --
+# provably inert on the composite score in both scorer paths, not merely
+# moved to another group. MACD fast<slow is a HARD constraint the real MACD
+# math requires (a slow period <= fast period inverts/degenerates the
+# indicator); `ParamSpec`/`staged_search` sample each dim independently with
+# no cross-param constraint mechanism, so this is enforced downstream in
+# `apply_overrides` (swap-if-inverted, see below) rather than by changing
+# `search.py`'s sampling -- flagged as the simplest correct fix within this
+# module's ownership; a "proper" fix (rejection sampling / a joint
+# MACD-pair ParamSpec) would need `search.py`, out of scope here.
 _G1 = LeverGroup(
     name="G1_indicator_params",
     params=[
@@ -133,8 +168,6 @@ _G1 = LeverGroup(
         ParamSpec("technical.indicators.ema_mid", 8, 34, is_int=True),
         ParamSpec("technical.indicators.ema_slow", 20, 80, is_int=True),
         ParamSpec("technical.indicators.rsi_period", 6, 22, is_int=True),
-        ParamSpec("technical.indicators.rsi_overbought", 55.0, 90.0),
-        ParamSpec("technical.indicators.rsi_oversold", 10.0, 45.0),
         ParamSpec("technical.indicators.macd_fast", 5, 19, is_int=True),
         ParamSpec("technical.indicators.macd_slow", 11, 42, is_int=True),
     ],
@@ -195,8 +228,6 @@ _GETTERS: Dict[str, Callable[[InstrumentConfig], float]] = {
     "technical.indicators.ema_mid": lambda c: c.technical.indicators.ema_mid,
     "technical.indicators.ema_slow": lambda c: c.technical.indicators.ema_slow,
     "technical.indicators.rsi_period": lambda c: c.technical.indicators.rsi_period,
-    "technical.indicators.rsi_overbought": lambda c: c.technical.indicators.rsi_overbought,
-    "technical.indicators.rsi_oversold": lambda c: c.technical.indicators.rsi_oversold,
     "technical.indicators.macd_fast": lambda c: c.technical.indicators.macd_fast,
     "technical.indicators.macd_slow": lambda c: c.technical.indicators.macd_slow,
     "technical.indicators.macd_signal": lambda c: c.technical.indicators.macd_signal,
@@ -272,16 +303,32 @@ def apply_overrides(cfg: InstrumentConfig, params: Dict[str, float]) -> Instrume
 
     # --- technical.indicators ---
     ind = cfg.technical.indicators
+
+    # MACD fast<slow is a hard constraint the indicator math requires (see
+    # ambiguity #1 note above _G1): `ParamSpec`/`staged_search` sample
+    # macd_fast/macd_slow independently, so an inverted/tied draw is
+    # possible. Swap-if-inverted (rather than clamp/reject) keeps both
+    # sampled magnitudes in play (just assigned to the correct slot) instead
+    # of silently narrowing the search or raising mid-study.
+    macd_fast_raw = int(round(r("technical.indicators.macd_fast")))
+    macd_slow_raw = int(round(r("technical.indicators.macd_slow")))
+    if macd_fast_raw >= macd_slow_raw:
+        macd_fast_val, macd_slow_val = macd_slow_raw, macd_fast_raw
+        if macd_fast_val == macd_slow_val:
+            macd_slow_val = macd_fast_val + 1  # break the tie, still fast < slow
+    else:
+        macd_fast_val, macd_slow_val = macd_fast_raw, macd_slow_raw
+
     new_indicators = IndicatorConfig(
         ema_fast=int(round(r("technical.indicators.ema_fast"))),
         ema_mid=int(round(r("technical.indicators.ema_mid"))),
         ema_slow=int(round(r("technical.indicators.ema_slow"))),
         ema_trend=ind.ema_trend,  # held fixed -- Fable: "keep 200 fixed"
         rsi_period=int(round(r("technical.indicators.rsi_period"))),
-        rsi_overbought=r("technical.indicators.rsi_overbought"),
-        rsi_oversold=r("technical.indicators.rsi_oversold"),
-        macd_fast=int(round(r("technical.indicators.macd_fast"))),
-        macd_slow=int(round(r("technical.indicators.macd_slow"))),
+        rsi_overbought=ind.rsi_overbought,  # dropped as a lever -- provably inert (see ambiguity #1)
+        rsi_oversold=ind.rsi_oversold,      # dropped as a lever -- provably inert (see ambiguity #1)
+        macd_fast=macd_fast_val,
+        macd_slow=macd_slow_val,
         macd_signal=int(round(r("technical.indicators.macd_signal"))),
         bb_period=int(round(r("technical.indicators.bb_period"))),
         bb_std=r("technical.indicators.bb_std"),

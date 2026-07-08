@@ -20,7 +20,7 @@ from __future__ import annotations
 import pandas as pd
 
 from sentinel.indicators import calculate_all, get_latest_signals
-from sentinel_engine.config import InstrumentConfig
+from sentinel_engine.config import IndicatorConfig, InstrumentConfig
 from sentinel_engine.feed import Feed
 
 # Sub-weights for the composite per-timeframe technical score. GLOBAL
@@ -29,12 +29,29 @@ from sentinel_engine.feed import Feed
 _SUBWEIGHTS = {"ema": 0.30, "rsi": 0.20, "macd": 0.25, "bb": 0.15, "pa": 0.10}
 
 
-def calculate_technical_score(df: pd.DataFrame, normalize_macd: bool = False) -> dict:
+def calculate_technical_score(
+    df: pd.DataFrame,
+    normalize_macd: bool = False,
+    indicators: IndicatorConfig | None = None,
+) -> dict:
     """Byte-identical reproduction of
-    `sentinel.technical_scorer.calculate_technical_score`."""
+    `sentinel.technical_scorer.calculate_technical_score`.
+
+    `indicators` (an `sentinel_engine.config.IndicatorConfig`, G1 lever
+    group): when given, threads the per-instrument indicator periods into
+    `calculate_all`. `IndicatorConfig`'s fields are a 1:1 name match with
+    `sentinel.indicators`'s `IndicatorParams` (ema_fast/mid/slow/trend,
+    rsi_period/overbought/oversold, macd_fast/slow/signal, bb_period/std,
+    atr_period), so it is passed straight through with no field mapping.
+    When omitted, `calculate_all`'s own default (the global
+    `sentinel.config.INDICATORS`) is used — byte-identical to the
+    pre-wiring behavior for any caller that doesn't pass it."""
     if df.empty or len(df) < 50:
         return {"score": 50, "direction": "NEUTRAL", "details": {}, "signals": {}}
-    df_ind = calculate_all(df)
+    if indicators is None:
+        df_ind = calculate_all(df)
+    else:
+        df_ind = calculate_all(df, indicators)
     signals = get_latest_signals(df_ind)
     if not signals:
         return {"score": 50, "direction": "NEUTRAL", "details": {}, "signals": {}}
@@ -221,7 +238,9 @@ class TechnicalScorer:
             df = feed.get_data(symbol, tf_min, bars)
             # ATR-normalize MACD for ALL TFs — raw histogram saturates on high-price
             # instruments like USDCLP (e.g. h=1.5 → 60+1500=clamp→100 = always maxed)
-            tf_scores[tf_name] = calculate_technical_score(df, normalize_macd=True)
+            tf_scores[tf_name] = calculate_technical_score(
+                df, normalize_macd=True, indicators=self.cfg.technical.indicators
+            )
 
         wscore = sum(tf_scores.get(t, {}).get("score", 50) * tw for t, tw in tf_weights.items())
         anchor_dir = tf_scores.get("M15", {}).get("direction", "NEUTRAL")

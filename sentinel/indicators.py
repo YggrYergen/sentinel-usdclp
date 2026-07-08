@@ -6,24 +6,32 @@ Calcula EMA, RSI, MACD, Bollinger Bands, ATR para un DataFrame OHLCV.
 import pandas as pd
 import numpy as np
 import ta
-from sentinel.config import INDICATORS as IND
+from sentinel.config import INDICATORS, IndicatorParams
 
 
-def calculate_all(df: pd.DataFrame) -> pd.DataFrame:
+def calculate_all(df: pd.DataFrame, indicators: IndicatorParams = INDICATORS) -> pd.DataFrame:
     """
     Calcula todos los indicadores técnicos sobre un DataFrame OHLCV.
-    
+
     Args:
         df: DataFrame con columnas [open, high, low, close, volume]
-    
+        indicators: parámetros de indicadores a usar (períodos EMA/RSI/MACD/BB/ATR
+            y umbrales RSI). Por defecto el `IndicatorParams` global
+            (`sentinel.config.INDICATORS`) — así todo caller existente que no
+            pase este argumento obtiene el comportamiento byte-idéntico de
+            siempre. Pasar un `IndicatorParams` (o cualquier objeto con los
+            mismos atributos, p.ej. `sentinel_engine.config.IndicatorConfig`)
+            distinto permite variar los levers G1 por-instrumento.
+
     Returns:
         DataFrame original + columnas de indicadores
     """
     if df.empty or len(df) < 50:
         return df
-    
+
+    IND = indicators
     result = df.copy()
-    
+
     # ── EMAs ──────────────────────────────────────────────
     result['ema_9'] = ta.trend.ema_indicator(result['close'], window=IND.ema_fast)
     result['ema_21'] = ta.trend.ema_indicator(result['close'], window=IND.ema_mid)
@@ -32,31 +40,31 @@ def calculate_all(df: pd.DataFrame) -> pd.DataFrame:
         result['ema_200'] = ta.trend.ema_indicator(result['close'], window=IND.ema_trend)
     else:
         result['ema_200'] = np.nan
-    
+
     # ── RSI ───────────────────────────────────────────────
     result['rsi'] = ta.momentum.rsi(result['close'], window=IND.rsi_period)
-    
+
     # ── MACD ──────────────────────────────────────────────
-    macd = ta.trend.MACD(result['close'], 
-                          window_slow=IND.macd_slow, 
-                          window_fast=IND.macd_fast, 
+    macd = ta.trend.MACD(result['close'],
+                          window_slow=IND.macd_slow,
+                          window_fast=IND.macd_fast,
                           window_sign=IND.macd_signal)
     result['macd'] = macd.macd()
     result['macd_signal'] = macd.macd_signal()
     result['macd_histogram'] = macd.macd_diff()
-    
+
     # ── Bollinger Bands ───────────────────────────────────
-    bb = ta.volatility.BollingerBands(result['close'], 
-                                       window=IND.bb_period, 
+    bb = ta.volatility.BollingerBands(result['close'],
+                                       window=IND.bb_period,
                                        window_dev=IND.bb_std)
     result['bb_upper'] = bb.bollinger_hband()
     result['bb_middle'] = bb.bollinger_mavg()
     result['bb_lower'] = bb.bollinger_lband()
     result['bb_pct'] = bb.bollinger_pband()  # % position within bands
-    
+
     # ── ATR ────────────────────────────────────────────────
     result['atr'] = ta.volatility.average_true_range(
-        result['high'], result['low'], result['close'], 
+        result['high'], result['low'], result['close'],
         window=IND.atr_period
     )
     

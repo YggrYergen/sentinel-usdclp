@@ -33,7 +33,7 @@ from sentinel_engine.config import load_instrument
 from sentinel_engine.lake.store import read_bars
 from sentinel_engine.opt.evaluator import evaluate_config
 from sentinel_engine.opt.fast_replay import FastReplayCache, fast_evaluate_config
-from sentinel_engine.opt.levers import LEVER_GROUPS
+from sentinel_engine.opt.levers import LEVER_GROUPS, apply_overrides
 
 LAKE_ROOT = Path("D:/FOREX/data/lake")
 INSTRUMENT = "gold"
@@ -88,6 +88,42 @@ def _all_configs():
     ]
     for _ in range(N_RANDOM_CONFIGS):
         configs.append(_random_param_overrides(rng))
+    return configs
+
+
+def _indicator_lever_configs():
+    """G1/G6 indicator-param configs -- one lever varied per config, wide
+    range, PLUS a lowered alert threshold on each so the oracle actually
+    fires entries over the short real window (an indicator-param sweep at
+    the default threshold could easily produce 0 trades on every config,
+    which would make the equivalence comparison vacuous). This is the
+    config set that would have caught the original `calculate_all`-reads-
+    module-global bug: before the G1 wiring fix, every one of these scored
+    identically to the baseline regardless of the indicator override."""
+    low_threshold = {"composite.score_alert_threshold": 45.0}
+    configs = [
+        dict(low_threshold),  # baseline (wired levers at production values)
+    ]
+    for ema_fast in (5, 9, 20):
+        configs.append({**low_threshold, "technical.indicators.ema_fast": float(ema_fast)})
+    for ema_slow in (25, 50, 75):
+        configs.append({**low_threshold, "technical.indicators.ema_slow": float(ema_slow)})
+    for rsi_period in (7, 14, 21):
+        configs.append({**low_threshold, "technical.indicators.rsi_period": float(rsi_period)})
+    for macd_fast, macd_slow in ((5, 26), (12, 26), (12, 40)):
+        configs.append({
+            **low_threshold,
+            "technical.indicators.macd_fast": float(macd_fast),
+            "technical.indicators.macd_slow": float(macd_slow),
+        })
+    for bb_period in (10, 20, 30):
+        configs.append({**low_threshold, "technical.indicators.bb_period": float(bb_period)})
+    for bb_std in (1.5, 2.0, 2.8):
+        configs.append({**low_threshold, "technical.indicators.bb_std": bb_std})
+    for atr_period in (7, 14, 20):
+        configs.append({**low_threshold, "technical.indicators.atr_period": float(atr_period)})
+    for macd_signal in (5, 9, 13):
+        configs.append({**low_threshold, "technical.indicators.macd_signal": float(macd_signal)})
     return configs
 
 
@@ -185,6 +221,84 @@ def test_oracle_equivalence_and_ranking_and_speed():
     assert speedup >= 5.0, f"fast path only {speedup:.1f}x faster than slow oracle (need >= 5x)"
 
 
+def test_indicator_levers_move_score_and_stay_bit_exact():
+    """THE decisive test for the G1 indicator-param wiring fix (2026-07-08):
+    before this fix, `calculate_all` read indicator periods from the module
+    global `sentinel.config.INDICATORS`, never from `cfg` -- every one of
+    these configs would have scored IDENTICALLY to the baseline in both
+    `evaluate_config` (oracle) and `fast_evaluate_config` (fast), which was
+    the bug. Now: (1) fast must stay bit-exact vs oracle for EVERY
+    period-varying config, AND (2) the set of resulting scores must show
+    real movement (non-vacuous -- a wired lever that still doesn't move the
+    score is a failure, not a pass)."""
+    cfg, w_start, w_end = _window()
+    symbols = cfg.symbols
+    configs = _indicator_lever_configs()
+
+    # The candidate configs lower composite.score_alert_threshold to 45 (see
+    # _indicator_lever_configs) so the oracle actually fires entries over the
+    # short window. But the objective's sqrt(n_trades / n_ref) term needs
+    # n_ref > 0 to discriminate ANY config: n_ref is the trade count of a
+    # reference policy replayed over the SAME window, and evaluate_config
+    # defaults that reference to the UNMODIFIED cfg (production threshold 65),
+    # which fires 0 entries over this window -> n_ref == 0 -> every score
+    # collapses to exactly 0.0 regardless of the levers (a degenerate objective,
+    # not a wiring no-op). Pin the reference to the same firing threshold so
+    # n_ref > 0 and the objective is non-degenerate; this is the reference-count
+    # denominator, not a scoring lever, so it does not alter any candidate's own
+    # trades or the oracle-vs-fast bit-exactness being asserted below.
+    ref_cfg = apply_overrides(cfg, {"composite.score_alert_threshold": 45.0})
+
+    slow_scores = []
+    fast_scores = []
+    mismatches = []
+
+    for i, overrides in enumerate(configs):
+        slow = evaluate_config(
+            cfg, overrides, LAKE_ROOT, w_start, w_end, symbols, reference_cfg=ref_cfg, **OBJ_KW
+        )
+        fast = fast_evaluate_config(
+            cfg, overrides, LAKE_ROOT, w_start, w_end, symbols, reference_cfg=ref_cfg, **OBJ_KW
+        )
+
+        slow_scores.append(slow.score)
+        fast_scores.append(fast.score)
+
+        if slow.score != fast.score or slow.metrics != fast.metrics:
+            mismatches.append((i, overrides, slow, fast))
+
+        print(
+            f"[ind-cfg {i}] {overrides} -> slow score={slow.score:.6f} n={slow.metrics['n_trades']}  "
+            f"fast score={fast.score:.6f} n={fast.metrics['n_trades']}"
+        )
+
+    for i, overrides, slow, fast in mismatches:
+        print(f"[MISMATCH ind-cfg {i}] overrides={overrides}")
+        print(f"  slow: score={slow.score} metrics={slow.metrics}")
+        print(f"  fast: score={fast.score} metrics={fast.metrics}")
+
+    assert not mismatches, (
+        f"{len(mismatches)}/{len(configs)} indicator-param configs produced a "
+        f"fast != oracle mismatch (see printed detail above) -- the fast and "
+        f"oracle paths are no longer honoring the same cfg indicator periods."
+    )
+
+    # ---- non-vacuity: the wired levers must actually MOVE the score ----
+    distinct_scores = len(set(slow_scores))
+    print(f"\nDistinct oracle scores across {len(configs)} indicator configs: {distinct_scores}")
+    assert distinct_scores >= 2, (
+        f"VACUOUS G1 WIRING: all {len(configs)} period-varying configs produced the "
+        f"SAME score ({slow_scores[0]}). With the firing reference above (n_ref > 0) "
+        f"the objective is non-degenerate, so identical scores here mean the indicator "
+        f"levers no longer reach the score at all -- e.g. calculate_all reading the "
+        f"module global instead of the passed cfg indicators. (Indicator levers are "
+        f"low-leverage on gold's objective -- tech is 0.5x of composite and direction "
+        f"is macro-dominated -- so movement comes from the few configs that flip an "
+        f"entry near the threshold; if this ever regresses to <2, widen the window or "
+        f"the config set rather than weakening the assertion.)"
+    )
+
+
 def test_determinism():
     cfg, w_start, w_end = _window()
     symbols = cfg.symbols
@@ -244,6 +358,29 @@ def _cache_correctness_configs(cfg) -> list:
             "macro.direction_threshold": 0.15,
             "asset_weights.dxy": 2.0,
             "asset_weights.copper": 1.5,
+        },
+        # G1/G6 indicator params -- layer #2 (`_vectorized_tf_score_cached`)
+        # and layer #4 (`_technical_arrays`) caches must now include the
+        # indicator-param tuple in their keys, else a stale hit keyed only on
+        # (lake_root, target, tf_min, window_end) from a PRIOR indicator
+        # config in this same shared cache would silently corrupt these.
+        {"technical.indicators.ema_fast": 5},
+        {"technical.indicators.ema_fast": 20},
+        {"technical.indicators.ema_slow": 75},
+        {"technical.indicators.rsi_period": 21},
+        {"technical.indicators.macd_fast": 5, "technical.indicators.macd_slow": 26},
+        {"technical.indicators.bb_period": 30},
+        {"technical.indicators.bb_std": 2.8},
+        {"technical.indicators.atr_period": 20},
+        {"technical.indicators.macd_signal": 13},
+        # combination: indicator params + a cacheable non-indicator family,
+        # to prove the two cache-key extensions (indicator tuple + the
+        # pre-existing tf_weights/macro keys) compose correctly
+        {
+            "technical.indicators.ema_fast": 6,
+            "technical.indicators.rsi_period": 9,
+            "technical.tf_weights.M15": 0.35,
+            "macro.tanh_sensitivity": 5.0,
         },
     ]
     del tf_weights  # only used to document intent above; not needed directly
