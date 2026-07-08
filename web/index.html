@@ -8,66 +8,47 @@
   <link rel="stylesheet" href="/vendor/uplot/uPlot.min.css" />
 </head>
 <body>
-  <header>
-    <h1>SENTINEL</h1>
-    <select id="instrument-select">
-      <option value="usdclp">USDCLP</option>
-      <option value="gold">GOLD</option>
-      <option value="nasdaq">NASDAQ</option>
-    </select>
-    <span id="conn-status" class="connecting">connecting…</span>
-    <span class="meta" id="meta-line"></span>
+  <header id="topbar">
+    <span id="topbar-logo">&#9889;SENTINEL</span>
+    <span id="topbar-cfg-hash" class="chip mono">cfg#--------</span>
+    <span id="topbar-status" class="chip connecting">connecting&hellip;</span>
+    <span id="topbar-stale" class="chip mono">stale: --s</span>
+    <span id="topbar-news-countdown" class="chip" hidden>&#9203; --</span>
   </header>
 
-  <main>
-    <section class="panel" id="panel-composite">
-      <h2>Composite</h2>
-      <div class="big-score" id="composite-score">--</div>
-      <div id="composite-direction" class="meta">--</div>
-      <div id="composite-signal" class="meta">--</div>
-      <div id="composite-chart"></div>
-      <div id="no-chart-note" hidden>uPlot not available — showing latest value only.</div>
-    </section>
+  <div id="app-body">
+    <div id="left-column">
+      <section class="asset-panel" id="panel-usdclp" data-instrument="usdclp">
+        <div class="v2-mount"></div>
+      </section>
+      <section class="asset-panel" id="panel-nasdaq" data-instrument="nasdaq">
+        <div class="v2-mount"></div>
+      </section>
+      <section class="asset-panel" id="panel-gold" data-instrument="gold">
+        <div class="v2-mount"></div>
+      </section>
+    </div>
 
-    <section class="panel" id="panel-technical">
-      <h2>Technical — per timeframe</h2>
-      <table id="tf-table">
-        <thead>
-          <tr><th>TF</th><th>Score</th><th>Direction</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
+    <nav id="navbar">
+      <button data-section="chat" class="nav-btn active" title="Chat">&#128172;</button>
+      <button data-section="lab" class="nav-btn" title="Lab">&#129514;</button>
+      <button data-section="regime" class="nav-btn" title="Regime">&#128200;</button>
+      <button data-section="news" class="nav-btn" title="News">&#128240;</button>
+      <button data-section="study" class="nav-btn" title="Study">&#128202;</button>
+    </nav>
 
-    <section class="panel" id="panel-macro">
-      <h2>Macro (EWMA consensus)</h2>
-      <table id="macro-table">
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <section class="panel" id="panel-levels">
-      <h2>Levels</h2>
-      <table id="levels-table">
-        <thead>
-          <tr><th>Side</th><th>Label</th><th>Price</th><th>%</th></tr>
-        </thead>
-        <tbody></tbody>
-      </table>
-    </section>
-
-    <section class="panel" id="panel-alerts">
-      <h2>Alerts</h2>
-      <ul class="alert-list" id="alerts-list"></ul>
-    </section>
-
-    <section class="panel" id="panel-divergences">
-      <h2>Divergences</h2>
-      <ul class="divergence-list" id="divergences-list"></ul>
-    </section>
-  </main>
+    <main id="right-pane">
+      <section class="right-section" id="section-chat"></section>
+      <section class="right-section" id="section-lab" hidden></section>
+      <section class="right-section" id="section-regime" hidden></section>
+      <section class="right-section" id="section-news" hidden></section>
+      <section class="right-section" id="section-study" hidden></section>
+    </main>
+  </div>
 
   <script src="/vendor/uplot/uPlot.iife.min.js"></script>
   <script src="/app.js"></script>
+  <script src="/lab.js"></script>
+  <script src="/chat.js"></script>
 </body>
 </html>
