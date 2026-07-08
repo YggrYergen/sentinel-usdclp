@@ -9,6 +9,7 @@ SNAPSHOT_FIELDS = {
     "ts", "symbol", "seq", "config_hash", "composite_score", "direction",
     "signal", "blocked", "block_reason", "components", "levels",
     "divergences", "alerts", "technical", "macro", "ai_context",
+    "data_source", "stale_seconds", "regime",
 }
 
 

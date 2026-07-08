@@ -57,6 +57,9 @@ class Snapshot:
     technical: dict = field(default_factory=dict)
     macro: dict = field(default_factory=dict)
     ai_context: str = ""
+    data_source: str = "unknown"
+    stale_seconds: float = 0.0
+    regime: dict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         """Plain, JSON-safe dict of every field (datetime kept as-is or None —
@@ -78,6 +81,9 @@ class Snapshot:
             "technical": self.technical,
             "macro": self.macro,
             "ai_context": self.ai_context,
+            "data_source": self.data_source,
+            "stale_seconds": self.stale_seconds,
+            "regime": self.regime,
         }
 
 

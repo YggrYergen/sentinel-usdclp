@@ -428,6 +428,7 @@
   },
   "composite_score": 61.8,
   "config_hash": "6034eb02112d",
+  "data_source": "unknown",
   "direction": "LONG",
   "divergences": [],
   "levels": {
@@ -582,8 +583,10 @@
       }
     }
   },
+  "regime": null,
   "seq": 0,
   "signal": "🔴 ESPERAR",
+  "stale_seconds": 0.0,
   "symbol": "XAUUSD",
   "technical": {
     "composite_score": 52.9,

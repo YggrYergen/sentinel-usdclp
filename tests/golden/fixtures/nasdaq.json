@@ -438,6 +438,7 @@
   },
   "composite_score": 44.3,
   "config_hash": "3b022d347462",
+  "data_source": "unknown",
   "direction": "NEUTRAL",
   "divergences": [],
   "levels": {
@@ -602,8 +603,10 @@
       }
     }
   },
+  "regime": null,
   "seq": 0,
   "signal": "🔴 ESPERAR",
+  "stale_seconds": 0.0,
   "symbol": "NQ100",
   "technical": {
     "composite_score": 41.5,

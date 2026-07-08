@@ -23,7 +23,8 @@ from __future__ import annotations
 
 import asyncio
 from contextlib import asynccontextmanager
-from dataclasses import asdict
+from dataclasses import asdict, replace
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -62,6 +63,32 @@ def _snapshot_to_json(snap_dict: dict) -> dict:
     return out
 
 
+def _infer_data_source(feed: Feed) -> str:
+    """Best-effort, additive-only classification of the feed backing this
+    runner — used purely for the UI's data-source badge (spec §7). No new
+    Feed protocol method is added; this reads the feed's class name only."""
+    name = type(feed).__name__.lower()
+    if "mt5" in name:
+        return "mt5"
+    if "historical" in name:
+        return "historical"
+    if "fake" in name:
+        return "fake"
+    return "yahoo"
+
+
+def _compute_stale_seconds(ts) -> float:
+    if ts is None:
+        return 0.0
+    now = datetime.now(timezone.utc)
+    try:
+        if ts.tzinfo is None:
+            ts = ts.replace(tzinfo=timezone.utc)
+        return max(0.0, (now - ts).total_seconds())
+    except Exception:
+        return 0.0
+
+
 class InstrumentRunner:
     """Owns one `Engine` for one instrument: a monotonic seq counter and the
     single latest computed snapshot (shared by every reader)."""
@@ -77,6 +104,11 @@ class InstrumentRunner:
 
     def compute(self) -> dict:
         snap = self.engine.step(seq=self._seq)
+        snap = replace(
+            snap,
+            data_source=_infer_data_source(self.feed),
+            stale_seconds=_compute_stale_seconds(snap.ts),
+        )
         self._seq += 1
         self.latest_snapshot = snap
         self.latest = _snapshot_to_json(snap.to_dict())
