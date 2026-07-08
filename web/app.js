@@ -408,6 +408,15 @@
   }
 
   // ── top bar ──
+  // Also used as the panel's title-bar tooltip summary — reads the raw
+  // top-level composite fields directly (not just via `.components`),
+  // matching the golden Snapshot schema's flat top-level keys.
+  function summarizeSnapshot(snapshot) {
+    return `${snapshot.symbol} #${snapshot.seq}: ${snapshot.composite_score} ` +
+      `${snapshot.direction} — ${snapshot.signal} ` +
+      `(tech=${(snapshot.technical || {}).composite_score ?? "?"}, macro=${(snapshot.macro || {}).score ?? "?"})`;
+  }
+
   function updateTopBar(snapshot) {
     const cfgHashEl = document.getElementById("topbar-cfg-hash");
     const statusEl = document.getElementById("topbar-status");
@@ -418,6 +427,7 @@
     staleEl.className = "chip mono" + (stale > 30 ? " stale-crit" : stale > 10 ? " stale-warn" : "");
     statusEl.className = "chip connected";
     statusEl.textContent = "● REAL-TIME";
+    statusEl.title = summarizeSnapshot(snapshot);
   }
 
   // ── WS client (one socket per left-column instrument) ──
