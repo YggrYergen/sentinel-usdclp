@@ -44,24 +44,14 @@ Ambiguity log (this module):
      NOT inputs to `composite_score`/`direction`. So entries are fully
      determined by `cfg.symbols`/`cfg.target`, independent of the
      caller's `symbols` argument.
-  2. `_ReplayFeed.get_current_price`'s tick-advance has a quirk worth
-     documenting explicitly (empirically verified against the real oracle
-     on real lake data before writing this module): its per-symbol tick
-     counter `idx` increments by 1 per `Engine.step` (once per call), and
-     `i = idx % len(df_filtered_to_as_of)`. Since `len(df_filtered)` for
-     any realistically-populated lake symbol is always vastly larger than
-     the step count `seq` within a single replay window (window sizes here
-     are hundreds of bars; the lake stores ~100k bars/symbol), the modulo
-     is *always* a no-op: `i == seq`. So the "current price" `update_tick`
-     feeds to the correlation tracker at step `seq` is simply
-     `raw_full_close[seq]` -- the (seq)-th bar counting from the ABSOLUTE
-     START of that symbol's own ingested history, NOT anything related to
-     the replay window. This is almost certainly an artifact of
-     `_ReplayFeed` (a global tick counter modulo a growing, not reset,
-     filtered length) rather than intentional semantics, but it is what
-     the oracle does, so it is replicated EXACTLY here (see
-     `_tick_price_array`). Flagged for the evaluator.py owner; NOT
-     touched here per this task's file-ownership rule.
+  2. `update_tick`'s per-step "current price" is the as-of price: the close
+     of the most recent bar with `ts <= bar_times[seq]` (see
+     `_tick_price_array`), matching `_ReplayFeed.get_current_price`. (An
+     earlier revision mirrored a tick-count-modulo-length quirk in the
+     oracle that fed the correlation tracker prices marching from the
+     ABSOLUTE START of history rather than the replay window; that oracle
+     bug was fixed to the leakage-safe as-of price and this fast path was
+     updated to match. Both remain bit-exact against each other.)
   3. `MacroScorer.score()`'s `recent_return_bps` lookup (via
      `feed.get_data(symbol, 1, bars=10)`) is a SEPARATE, properly
      leakage-safe as-of windowed lookup (unrelated to the tick-count quirk
@@ -355,21 +345,16 @@ def _technical_arrays(
 # ───────────────────────────── macro (fast) ───────────────────────────────
 
 def _tick_price_array(bar_times: pd.DatetimeIndex, raw_full: pd.DataFrame) -> np.ndarray:
-    """Replicates `_ReplayFeed.get_current_price`'s tick-count-modulo-
-    length quirk exactly (ambiguity #2): at step `seq`, `i = seq %
-    n_symbol(seq)` where `n_symbol(seq)` is the count of `raw_full`'s own
-    bars with `ts <= bar_times[seq]`. Returns the bid array (0.0 where no
-    data is available at all -- matches the oracle's empty-frame zero
-    price)."""
+    """Each step's as-of current price: the close of the most recent bar with
+    `ts <= bar_times[seq]` (matches `_ReplayFeed.get_current_price`). Returns
+    the bid array (0.0 where no bar exists at-or-before the step -- matches
+    the oracle's empty-frame zero price)."""
     n = len(bar_times)
     if raw_full.empty:
         return np.zeros(n)
-    n_at_step = raw_full.index.searchsorted(bar_times, side="right")
+    pos = raw_full.index.searchsorted(bar_times, side="right") - 1
     close = raw_full["close"].to_numpy(dtype=float)
-    seq = np.arange(n)
-    safe_n = np.maximum(n_at_step, 1)
-    i = seq % safe_n
-    bid = np.where(n_at_step > 0, close[np.clip(i, 0, len(close) - 1)], 0.0)
+    bid = np.where(pos >= 0, close[np.clip(pos, 0, len(close) - 1)], 0.0)
     return bid
 
 

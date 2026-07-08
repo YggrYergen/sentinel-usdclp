@@ -102,7 +102,6 @@ class _ReplayFeed:
         self._lake_root = Path(lake_root)
         self._symbols = dict(symbols)
         self._raw_cache: Dict[Tuple[str, int], pd.DataFrame] = {}
-        self._tick_idx: Dict[str, int] = {}
         self._as_of: pd.Timestamp
         self.advance(as_of)
 
@@ -140,14 +139,17 @@ class _ReplayFeed:
         return df.tail(bars)
 
     def get_current_price(self, symbol: str) -> dict:
+        # The current price AT as_of: the close of the most recent bar with
+        # ts <= as_of. (Earlier this mirrored FakeFeed's idx%n tick-advance,
+        # which is correct for the short golden fixtures but for a windowed
+        # real replay fed the macro tracker prices marching from the ABSOLUTE
+        # start of history rather than the window — time-misaligning the
+        # correlation half of the score. Fixed to the leakage-safe as-of price;
+        # golden parity is unaffected (golden uses FakeFeed, not _ReplayFeed).)
         df1 = self._filtered(symbol, 1)
         if df1.empty:
             return {"bid": 0, "ask": 0, "spread": 0, "time": None, "source": "replay"}
-        idx = self._tick_idx.get(symbol, 0)
-        n = len(df1)
-        i = idx % n
-        self._tick_idx[symbol] = idx + 1
-        bid = float(df1["close"].iloc[i])
+        bid = float(df1["close"].iloc[-1])
         spread = round(bid * SPREAD_PCT, 6)
         return {"bid": bid, "ask": bid + spread, "spread": spread, "time": None, "source": "replay"}
 
