@@ -91,9 +91,10 @@ Ambiguity log (this module):
 """
 from __future__ import annotations
 
+from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
+from typing import Any, Callable, Dict, List, NamedTuple, Optional, Sequence, Tuple
 
 import numpy as np
 import pandas as pd
@@ -111,6 +112,72 @@ from sentinel_engine.opt.objective import ObjectiveResult, objective
 _SUBWEIGHTS = {"ema": 0.30, "rsi": 0.20, "macd": 0.25, "bb": 0.15, "pa": 0.10}
 
 
+# ───────────────────────── study-scoped memoization ───────────────────────
+
+class _BoundedLRU:
+    """A tiny, dependency-free bounded LRU dict. Not thread-safe (this
+    module has no concurrency -- a single study drives one sequential
+    search loop). `get`/`put` are the only operations used; `put` evicts
+    the least-recently-used entry once `maxsize` is exceeded."""
+
+    def __init__(self, maxsize: int) -> None:
+        self._maxsize = maxsize
+        self._data: "OrderedDict[Any, Any]" = OrderedDict()
+
+    def get(self, key: Any, default: Any = None) -> Any:
+        if key not in self._data:
+            return default
+        self._data.move_to_end(key)
+        return self._data[key]
+
+    def put(self, key: Any, value: Any) -> None:
+        self._data[key] = value
+        self._data.move_to_end(key)
+        if len(self._data) > self._maxsize:
+            self._data.popitem(last=False)
+
+
+class FastReplayCache:
+    """Study-scoped memoization for `fast_evaluate_config`'s param-
+    INDEPENDENT (or mostly-independent) work. ONE instance is created per
+    study/objective (`make_fast_objective_fn`) and garbage-collected with
+    it -- there is NO module-global mutable state, so two studies (or two
+    test cases) never share, and calling `fast_evaluate_config` with
+    `cache=None` is byte-identical to the pre-caching code path.
+
+    Cache layers (see module docstring / task brief for the exact keys):
+      1. raw parquet reads (`_read_tf`, `_target_m1_frame`) -- tiny key
+         space, unbounded dict.
+      2. per-TF vectorized technical score (`_vectorized_tf_score`) --
+         tiny key space, unbounded dict.
+      3. macro per-asset tick/return/recent-return arrays -- tiny key
+         space, unbounded dict.
+      4. `_technical_arrays` result, keyed on window + tf_weights --
+         bounded LRU (cfg-dependent, so the key space can grow across a
+         study; capped to avoid unbounded memory growth on a long run).
+      5. `_macro_arrays` result, keyed on window + every macro lever that
+         affects the tracker loop -- bounded LRU, same rationale as #4.
+
+    All cached numpy arrays / DataFrames are treated as READ-ONLY once
+    stored: `_vectorized_tf_score`/`_asof_align`/`_technical_arrays`/
+    `_macro_arrays` never mutate an input array in place (verified by
+    inspection -- every transform either allocates a new array via
+    `np.where`/arithmetic or builds a fresh DataFrame), so no defensive
+    copy is required for correctness; as an extra safety margin, raw
+    DataFrames returned from the lake-read cache are read-only pandas
+    objects consumed only via `.to_numpy()`/column selection (which
+    themselves allocate), never assigned into or `.loc`-mutated anywhere
+    in this module.
+    """
+
+    def __init__(self, array_cache_maxsize: int = 64) -> None:
+        self._raw_reads: Dict[Any, pd.DataFrame] = {}
+        self._tf_scores: Dict[Any, pd.DataFrame] = {}
+        self._macro_asset_arrays: Dict[Any, Tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        self._technical_arrays: _BoundedLRU = _BoundedLRU(array_cache_maxsize)
+        self._macro_arrays: _BoundedLRU = _BoundedLRU(array_cache_maxsize)
+
+
 class _Entry(NamedTuple):
     ts: pd.Timestamp
     direction: str
@@ -119,20 +186,41 @@ class _Entry(NamedTuple):
 
 # ─────────────────────────── lake I/O helpers ────────────────────────────
 
-def _target_m1_frame(lake_root: Path, target: str, window_end: pd.Timestamp) -> pd.DataFrame:
+def _target_m1_frame(
+    lake_root: Path,
+    target: str,
+    window_end: pd.Timestamp,
+    cache: Optional[FastReplayCache] = None,
+) -> pd.DataFrame:
     """The target's full M1 history, truncated to `ts <= window_end` --
     identical rule to `evaluator._target_m1_frame`."""
-    df = read_bars(lake_root, target, 1)
-    if df.empty:
-        return df
-    return df[df.index <= window_end]
+    return _read_tf(lake_root, target, 1, window_end, cache)
 
 
-def _read_tf(lake_root: Path, symbol: str, tf_min: int, window_end: pd.Timestamp) -> pd.DataFrame:
+def _read_tf(
+    lake_root: Path,
+    symbol: str,
+    tf_min: int,
+    window_end: pd.Timestamp,
+    cache: Optional[FastReplayCache] = None,
+) -> pd.DataFrame:
+    """Param-independent raw read, keyed `(str(lake_root), symbol, tf_min,
+    window_end_ns)` when `cache` is supplied (cache layer #1)."""
+    if cache is None:
+        df = read_bars(lake_root, symbol, tf_min)
+        if df.empty:
+            return df
+        return df[df.index <= window_end]
+
+    key = (str(lake_root), symbol, tf_min, window_end.value)
+    hit = cache._raw_reads.get(key)
+    if hit is not None:
+        return hit
     df = read_bars(lake_root, symbol, tf_min)
-    if df.empty:
-        return df
-    return df[df.index <= window_end]
+    if not df.empty:
+        df = df[df.index <= window_end]
+    cache._raw_reads[key] = df
+    return df
 
 
 # ────────────────────── vectorized technical scoring ─────────────────────
@@ -308,24 +396,60 @@ def _asof_align(tbl: pd.DataFrame, bar_times: pd.DatetimeIndex) -> pd.DataFrame:
     return merged
 
 
+def _vectorized_tf_score_cached(
+    lake_root: Path,
+    target: str,
+    tf_min: int,
+    window_end: pd.Timestamp,
+    cache: Optional[FastReplayCache],
+) -> pd.DataFrame:
+    """Cache layer #2: the per-TF vectorized score is param-independent
+    (`_vectorized_tf_score`/`calculate_all` never read `cfg` levers), keyed
+    `(str(lake_root), target, tf_min, window_end_ns)`."""
+    if cache is None:
+        raw = _read_tf(lake_root, target, tf_min, window_end, None)
+        return _vectorized_tf_score(raw)
+
+    key = (str(lake_root), target, tf_min, window_end.value)
+    hit = cache._tf_scores.get(key)
+    if hit is not None:
+        return hit
+    raw = _read_tf(lake_root, target, tf_min, window_end, cache)
+    tbl = _vectorized_tf_score(raw)
+    cache._tf_scores[key] = tbl
+    return tbl
+
+
 def _technical_arrays(
     cfg: InstrumentConfig,
     lake_root: Path,
     window_end: pd.Timestamp,
     bar_times: pd.DatetimeIndex,
+    window_key: Optional[Tuple[str, int, int]] = None,
+    cache: Optional[FastReplayCache] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
-    """Returns (tech_score, tech_dir) arrays aligned to `bar_times`."""
+    """Returns (tech_score, tech_dir) arrays aligned to `bar_times`.
+
+    Cache layer #4 (whole-result memoization): keyed `window_key +
+    sorted(tf_weights.items())` -- `tf_weights` is the only cfg dependence
+    in this function's output."""
     n = len(bar_times)
     if n == 0:
         return np.zeros(0), np.full(0, "NEUTRAL", dtype=object)
 
+    tf_weights = cfg.technical.tf_weights
+
+    if cache is not None and window_key is not None:
+        key = (window_key, tuple(sorted(tf_weights.items())))
+        hit = cache._technical_arrays.get(key)
+        if hit is not None:
+            return hit
+
     aligned: Dict[str, pd.DataFrame] = {}
     for tf_name, tf_min in cfg.data.timeframes.items():
-        raw = _read_tf(lake_root, cfg.target, tf_min, window_end)
-        tbl = _vectorized_tf_score(raw)
+        tbl = _vectorized_tf_score_cached(lake_root, cfg.target, tf_min, window_end, cache)
         aligned[tf_name] = _asof_align(tbl, bar_times)
 
-    tf_weights = cfg.technical.tf_weights
     wscore = np.zeros(n)
     for tf_name, weight in tf_weights.items():
         tbl = aligned.get(tf_name)
@@ -338,6 +462,9 @@ def _technical_arrays(
         tech_dir = aligned["M15"]["direction"].to_numpy()
     else:
         tech_dir = np.full(n, "NEUTRAL", dtype=object)
+
+    if cache is not None and window_key is not None:
+        cache._technical_arrays.put(key, (tech_score, tech_dir))
 
     return tech_score, tech_dir
 
@@ -394,23 +521,79 @@ def _recent_return_bps(bar_times: pd.DatetimeIndex, raw_full: pd.DataFrame) -> n
     return out
 
 
+def _asset_arrays_cached(
+    lake_root: Path,
+    symbol: str,
+    window_end: pd.Timestamp,
+    bar_times: pd.DatetimeIndex,
+    window_key: Optional[Tuple[str, int, int]],
+    cache: Optional[FastReplayCache],
+) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Cache layer #3 (per macro asset): `_tick_price_array`,
+    `_tick_returns_bps`, `_recent_return_bps` are all param-independent;
+    keyed `(str(lake_root), symbol, window_key)`. Returns
+    (bid, ret_bps, recent_bps)."""
+    if cache is None or window_key is None:
+        raw = _read_tf(lake_root, symbol, 1, window_end, cache)
+        bid = _tick_price_array(bar_times, raw)
+        ret = _tick_returns_bps(bid)
+        recent = _recent_return_bps(bar_times, raw)
+        return bid, ret, recent
+
+    key = (str(lake_root), symbol, window_key)
+    hit = cache._macro_asset_arrays.get(key)
+    if hit is not None:
+        return hit
+    raw = _read_tf(lake_root, symbol, 1, window_end, cache)
+    bid = _tick_price_array(bar_times, raw)
+    ret = _tick_returns_bps(bid)
+    recent = _recent_return_bps(bar_times, raw)
+    result = (bid, ret, recent)
+    cache._macro_asset_arrays[key] = result
+    return result
+
+
 def _macro_arrays(
     cfg: InstrumentConfig,
     lake_root: Path,
     window_end: pd.Timestamp,
     bar_times: pd.DatetimeIndex,
+    window_key: Optional[Tuple[str, int, int]] = None,
+    cache: Optional[FastReplayCache] = None,
 ) -> Tuple[np.ndarray, np.ndarray]:
     """Returns (macro_score, macro_dir) arrays aligned to `bar_times`, via a
     SINGLE forward pass driving a fresh `RealtimeCorrelationTracker`
     (imported verbatim -- its EWMA/concordance/z-score math is not
-    reimplemented)."""
+    reimplemented).
+
+    Cache layer #5 (whole-result memoization): keyed `window_key + sorted
+    tuple of every macro input that affects the tracker loop`: lambda_var,
+    lambda_cov, concordance_window, tanh_sensitivity, direction_threshold,
+    asset_weights (sorted items), expected_correlations (sorted items),
+    symbols (sorted items)."""
     n = len(bar_times)
     if n == 0:
         return np.zeros(0), np.full(0, "NEUTRAL", dtype=object)
 
-    target_raw = _read_tf(lake_root, cfg.target, 1, window_end)
-    target_bid = _tick_price_array(bar_times, target_raw)
-    ret_target = _tick_returns_bps(target_bid)
+    if cache is not None and window_key is not None:
+        macro_key = (
+            window_key,
+            float(cfg.macro.tracker.lambda_var),
+            float(cfg.macro.tracker.lambda_cov),
+            int(cfg.macro.tracker.concordance_window),
+            float(cfg.macro.tanh_sensitivity),
+            float(cfg.macro.direction_threshold),
+            tuple(sorted(cfg.asset_weights.items())),
+            tuple(sorted(cfg.expected_correlations.items())),
+            tuple(sorted(cfg.symbols.items())),
+        )
+        hit = cache._macro_arrays.get(macro_key)
+        if hit is not None:
+            return hit
+    else:
+        macro_key = None
+
+    target_bid, ret_target, _ = _asset_arrays_cached(lake_root, cfg.target, window_end, bar_times, window_key, cache)
 
     asset_keys = list(cfg.asset_weights.keys())
     asset_bid: Dict[str, np.ndarray] = {}
@@ -430,10 +613,9 @@ def _macro_arrays(
             ret_asset[asset_key] = np.zeros(n)
             recent_bps[asset_key] = np.zeros(n)
             continue
-        raw = _read_tf(lake_root, symbol, 1, window_end)
-        asset_bid[asset_key] = _tick_price_array(bar_times, raw)
-        ret_asset[asset_key] = _tick_returns_bps(asset_bid[asset_key])
-        recent_bps[asset_key] = _recent_return_bps(bar_times, raw)
+        asset_bid[asset_key], ret_asset[asset_key], recent_bps[asset_key] = _asset_arrays_cached(
+            lake_root, symbol, window_end, bar_times, window_key, cache
+        )
 
     tracker = RealtimeCorrelationTracker(
         lambda_var=cfg.macro.tracker.lambda_var,
@@ -483,6 +665,9 @@ def _macro_arrays(
         else:
             macro_dir[seq] = "NEUTRAL"
 
+    if cache is not None and macro_key is not None:
+        cache._macro_arrays.put(macro_key, (macro_score, macro_dir))
+
     return macro_score, macro_dir
 
 
@@ -521,12 +706,14 @@ def _replay_entries_fast(
     bar_times: pd.DatetimeIndex,
     window_end: pd.Timestamp,
     price_index: Dict[pd.Timestamp, int],
+    window_key: Optional[Tuple[str, int, int]] = None,
+    cache: Optional[FastReplayCache] = None,
 ) -> List[_Entry]:
     if len(bar_times) == 0:
         return []
 
-    tech_score, tech_dir = _technical_arrays(cfg, lake_root, window_end, bar_times)
-    macro_score, macro_dir = _macro_arrays(cfg, lake_root, window_end, bar_times)
+    tech_score, tech_dir = _technical_arrays(cfg, lake_root, window_end, bar_times, window_key, cache)
+    macro_score, macro_dir = _macro_arrays(cfg, lake_root, window_end, bar_times, window_key, cache)
     composite, direction = _composite_and_direction(cfg, tech_score, tech_dir, macro_score, macro_dir)
 
     thresh = cfg.composite.score_alert_threshold
@@ -585,6 +772,7 @@ def fast_evaluate_config(
     tp_r: float,
     sl: float,
     reference_cfg: Optional[InstrumentConfig] = None,
+    cache: Optional[FastReplayCache] = None,
     **objective_kwargs,
 ) -> ObjectiveResult:
     """Vectorized fast-path equivalent of
@@ -592,7 +780,14 @@ def fast_evaluate_config(
     return type. `symbols` is accepted for contract parity but unused for
     entry generation (ambiguity #1 -- it only ever reached legacy
     correlation/divergence reporting in the oracle, not `composite_score`/
-    `direction`)."""
+    `direction`).
+
+    ``cache`` (optional, default ``None``): a `FastReplayCache` for
+    study-scoped memoization of the param-independent (or mostly-
+    independent) work. When ``None`` (the default), behavior is byte-for-
+    byte identical to the original uncached implementation -- existing
+    callers that don't pass `cache` are completely unaffected. See
+    `FastReplayCache`'s docstring for the exact cache keys."""
     lake_root = Path(lake_root)
     w_start = pd.Timestamp(window_start)
     w_end = pd.Timestamp(window_end)
@@ -603,7 +798,7 @@ def fast_evaluate_config(
 
     cfg2 = apply_overrides(cfg, param_overrides)
 
-    m1 = _target_m1_frame(lake_root, cfg2.target, w_end)
+    m1 = _target_m1_frame(lake_root, cfg2.target, w_end, cache)
     if m1.empty:
         prices: List[float] = []
         price_index: Dict[pd.Timestamp, int] = {}
@@ -613,12 +808,14 @@ def fast_evaluate_config(
         price_index = {ts: i for i, ts in enumerate(m1.index)}
         bar_times = pd.DatetimeIndex([t for t in m1.index if t >= w_start])
 
-    candidate_entries = _replay_entries_fast(cfg2, lake_root, bar_times, w_end, price_index)
+    window_key = (cfg2.target, w_start.value, w_end.value)
+    candidate_entries = _replay_entries_fast(cfg2, lake_root, bar_times, w_end, price_index, window_key, cache)
     trades = _label_entries(prices, candidate_entries, tp_r=tp_r, sl=sl, horizon=horizon)
     trades_R = [pnl for _, pnl in trades]
 
     ref_cfg = reference_cfg if reference_cfg is not None else cfg
-    ref_entries = _replay_entries_fast(ref_cfg, lake_root, bar_times, w_end, price_index)
+    ref_window_key = (ref_cfg.target, w_start.value, w_end.value)
+    ref_entries = _replay_entries_fast(ref_cfg, lake_root, bar_times, w_end, price_index, ref_window_key, cache)
     n_ref = float(len(ref_entries))
 
     return objective(trades_R, n_ref=n_ref, **objective_kwargs)
@@ -631,11 +828,20 @@ def make_fast_objective_fn(
     symbols: Dict[str, str],
     **kw,
 ) -> Callable[[Dict[str, float]], float]:
-    """Fast-path equivalent of `evaluator.make_objective_fn`."""
+    """Fast-path equivalent of `evaluator.make_objective_fn`. Creates ONE
+    `FastReplayCache` internally, shared across every `fast_evaluate_config`
+    call this objective function makes (so every trial in a staged search
+    over this window reuses the same param-independent work). The cache is
+    private to this closure -- garbage-collected with it, never a module
+    global -- so determinism/test isolation across separate objective
+    functions (or separate studies) is unaffected."""
     window_start, window_end = window
+    cache = FastReplayCache()
 
     def _objective_fn(params: Dict[str, float]) -> float:
-        result = fast_evaluate_config(cfg, params, lake_root, window_start, window_end, symbols, **kw)
+        result = fast_evaluate_config(
+            cfg, params, lake_root, window_start, window_end, symbols, cache=cache, **kw
+        )
         return result.score
 
     return _objective_fn
