@@ -45,6 +45,7 @@ CHUNK = 20000  # bars per copy_rates_from call (100k errors; 20k-50k safe)
 
 TIMEFRAMES = {
     1: mt5.TIMEFRAME_M1,
+    2: mt5.TIMEFRAME_M2,
     5: mt5.TIMEFRAME_M5,
     15: mt5.TIMEFRAME_M15,
     60: mt5.TIMEFRAME_H1,
