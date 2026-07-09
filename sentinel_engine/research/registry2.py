@@ -1,0 +1,474 @@
+"""sentinel_engine.research.registry2 — ResearchRegistry (M0.1).
+
+SQLite/WAL-backed registry for research data: strategies, variants,
+param sets, runs, trades, preregistrations, forward sessions, magic-number
+allocation, audit log, and import-checksum bookkeeping.
+
+DDL is copied EXACTLY from
+`docs/superpowers/plans/2026-07-09-sentinel-v2-tokata.md` §D.5 — do not
+redesign the schema here. Default db path is `data/research.db`, always
+injectable via the constructor.
+
+Windows-safe: `pathlib.Path` throughout, `encoding="utf-8"` on every text
+`open()` (registry itself uses `sqlite3`, which has no encoding param, but
+any helper here that opens text files must specify it).
+"""
+from __future__ import annotations
+
+import json
+import sqlite3
+from pathlib import Path
+from typing import Any
+
+DEFAULT_DB_PATH = Path("data/research.db")
+
+# 12-color fixed palette (D.3), index = strategy_seq % 12.
+STRATEGY_PALETTE: tuple[str, ...] = (
+    "#00bfff", "#26a69a", "#ef5350", "#ffb020", "#7c4dff", "#ff6e40",
+    "#18ffff", "#f8ff4d", "#4dff91", "#4d9fff", "#ff9e4d", "#ff4d6d",
+)
+
+_DDL = """
+PRAGMA journal_mode=WAL;
+CREATE TABLE IF NOT EXISTS strategy(
+  strategy_id TEXT PRIMARY KEY, strategy_seq INTEGER UNIQUE NOT NULL,
+  name TEXT NOT NULL, familia TEXT NOT NULL, platform TEXT NOT NULL,        -- 'mt5'|'nt8'|'py'
+  color_idx INTEGER NOT NULL, indicators_json TEXT NOT NULL DEFAULT '[]',
+  param_schema_json TEXT NOT NULL DEFAULT '{}', defaults_json TEXT NOT NULL DEFAULT '{}',
+  sweepable INTEGER NOT NULL DEFAULT 0, graduated INTEGER NOT NULL DEFAULT 0, notes TEXT);
+CREATE TABLE IF NOT EXISTS variant(
+  variant_id TEXT PRIMARY KEY, strategy_id TEXT NOT NULL REFERENCES strategy,
+  variant_seq INTEGER NOT NULL, params_delta_json TEXT NOT NULL,
+  tf TEXT, instrumento TEXT, modo_salida TEXT,
+  UNIQUE(strategy_id, variant_seq));
+CREATE TABLE IF NOT EXISTS param_set(params_hash TEXT PRIMARY KEY, params_json TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS run(
+  run_id TEXT PRIMARY KEY, variant_id TEXT REFERENCES variant, params_hash TEXT REFERENCES param_set,
+  engine TEXT NOT NULL CHECK(engine IN('sentinel-replay','sentinel-sim','mt5-tester','nt8-manual')),
+  fidelity TEXT NOT NULL CHECK(fidelity IN('research','screening','real-tick','forward','live-demo')),
+  periodo_desde TEXT, periodo_hasta TEXT, modelo_sim TEXT, status TEXT,
+  trades INTEGER, net REAL, pf REAL, wr REAL, payoff REAL, maxdd REAL, sharpe REAL,
+  metrics_json TEXT NOT NULL DEFAULT '{}', preregistro_id TEXT,
+  report_path TEXT, trades_path TEXT, equity_path TEXT, signal_history_path TEXT,
+  fecha_corrida TEXT, seed INTEGER, config_hash TEXT, source_file TEXT, source_row INTEGER);
+CREATE INDEX IF NOT EXISTS ix_run_variant ON run(variant_id);
+CREATE TABLE IF NOT EXISTS trade(
+  trade_id TEXT PRIMARY KEY, run_id TEXT REFERENCES run,       -- NULL => vivo (B4)
+  origin TEXT NOT NULL DEFAULT 'strategy' CHECK(origin IN('human','strategy','ai')),
+  origin_id TEXT, session_id TEXT, ts_in TEXT NOT NULL, ts_out TEXT,
+  px_in REAL NOT NULL, px_out REAL, side TEXT CHECK(side IN('LONG','SHORT')),
+  volume REAL, sl REAL, tp REAL, exit_reason TEXT, exit_reason_source TEXT,
+  pnl REAL, mae REAL, mfe REAL, snapshot_ref TEXT, decision_trace_ref TEXT);
+CREATE INDEX IF NOT EXISTS ix_trade_run ON trade(run_id);
+CREATE TABLE IF NOT EXISTS preregistration(
+  preregistro_id TEXT PRIMARY KEY, variant_id TEXT, hipotesis TEXT, mecanismo TEXT,
+  metrica_primaria TEXT, umbral_exito TEXT, condicion_descarte TEXT, fecha TEXT, autor TEXT, raw_json TEXT);
+CREATE TABLE IF NOT EXISTS forward_session(
+  session_id TEXT PRIMARY KEY, strategy_id TEXT, variant_id TEXT, cuenta TEXT, perfil TEXT,
+  inicio TEXT, fin TEXT, estado TEXT, source_file TEXT);
+CREATE TABLE IF NOT EXISTS magic_allocation(
+  magic INTEGER PRIMARY KEY, strategy_id TEXT NOT NULL, variant_id TEXT, asignado TEXT);
+CREATE TABLE IF NOT EXISTS audit_log(
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, actor TEXT, accion TEXT, detalle_json TEXT);
+CREATE TABLE IF NOT EXISTS import_checksum(path TEXT PRIMARY KEY, sha256 TEXT NOT NULL, imported_at TEXT);
+"""
+
+_RUN_COLUMNS = (
+    "run_id", "variant_id", "params_hash", "engine", "fidelity",
+    "periodo_desde", "periodo_hasta", "modelo_sim", "status",
+    "trades", "net", "pf", "wr", "payoff", "maxdd", "sharpe",
+    "metrics_json", "preregistro_id", "report_path", "trades_path",
+    "equity_path", "signal_history_path", "fecha_corrida", "seed",
+    "config_hash", "source_file", "source_row",
+)
+
+_TRADE_COLUMNS = (
+    "trade_id", "run_id", "origin", "origin_id", "session_id", "ts_in",
+    "ts_out", "px_in", "px_out", "side", "volume", "sl", "tp",
+    "exit_reason", "exit_reason_source", "pnl", "mae", "mfe",
+    "snapshot_ref", "decision_trace_ref",
+)
+
+_PREREG_COLUMNS = (
+    "preregistro_id", "variant_id", "hipotesis", "mecanismo",
+    "metrica_primaria", "umbral_exito", "condicion_descarte", "fecha",
+    "autor", "raw_json",
+)
+
+_FORWARD_SESSION_COLUMNS = (
+    "session_id", "strategy_id", "variant_id", "cuenta", "perfil",
+    "inicio", "fin", "estado", "source_file",
+)
+
+_RUN_ORDER_COLUMNS = {"net", "pf", "wr", "maxdd", "sharpe", "fecha_corrida"}
+
+
+def _utcnow_iso() -> str:
+    from datetime import datetime, timezone
+
+    return datetime.now(timezone.utc).isoformat()
+
+
+class ResearchRegistry:
+    """SQLite/WAL registry for SENTINEL research data (strategies, variants,
+    runs, trades, ...). See module docstring / plan §D.5 for schema."""
+
+    def __init__(self, db_path: Path = DEFAULT_DB_PATH):
+        self.db_path = Path(db_path)
+        self.db_path.parent.mkdir(parents=True, exist_ok=True)
+        conn = self._connect()
+        try:
+            conn.executescript(_DDL)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def _connect(self) -> sqlite3.Connection:
+        conn = sqlite3.connect(str(self.db_path))
+        conn.execute("PRAGMA foreign_keys=ON")
+        return conn
+
+    # ------------------------------------------------------------------
+    # strategy / variant / param_set
+    # ------------------------------------------------------------------
+    def upsert_strategy(self, name: str, familia: str, platform: str) -> str:
+        """Idempotent on (name, familia): returns existing strategy_id if a
+        row with the same name+familia already exists, else creates one with
+        the next `strategy_seq` and `color_idx = seq % 12`."""
+        strategy_id = f"{familia}::{name}"
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT strategy_id FROM strategy WHERE strategy_id=?", (strategy_id,)
+            ).fetchone()
+            if row is not None:
+                return row[0]
+            seq_row = conn.execute("SELECT COALESCE(MAX(strategy_seq), -1) FROM strategy").fetchone()
+            next_seq = seq_row[0] + 1
+            color_idx = next_seq % len(STRATEGY_PALETTE)
+            conn.execute(
+                """INSERT INTO strategy(strategy_id, strategy_seq, name, familia, platform, color_idx)
+                   VALUES (?, ?, ?, ?, ?, ?)""",
+                (strategy_id, next_seq, name, familia, platform, color_idx),
+            )
+            conn.commit()
+            return strategy_id
+        finally:
+            conn.close()
+
+    def upsert_variant(
+        self,
+        strategy_id: str,
+        variant_id: str,
+        params_delta: dict[str, Any] | None,
+        tf: str | None,
+        instrumento: str | None,
+        modo_salida: str | None,
+    ) -> str:
+        params_delta_json = json.dumps(params_delta or {}, ensure_ascii=False)
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT variant_id FROM variant WHERE variant_id=?", (variant_id,)
+            ).fetchone()
+            if row is not None:
+                return row[0]
+            seq_row = conn.execute(
+                "SELECT COALESCE(MAX(variant_seq), -1) FROM variant WHERE strategy_id=?",
+                (strategy_id,),
+            ).fetchone()
+            next_seq = seq_row[0] + 1
+            conn.execute(
+                """INSERT INTO variant(variant_id, strategy_id, variant_seq, params_delta_json, tf, instrumento, modo_salida)
+                   VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                (variant_id, strategy_id, next_seq, params_delta_json, tf, instrumento, modo_salida),
+            )
+            conn.commit()
+            return variant_id
+        finally:
+            conn.close()
+
+    def upsert_param_set(self, params_hash: str, params_json: str) -> str:
+        conn = self._connect()
+        try:
+            conn.execute(
+                """INSERT INTO param_set(params_hash, params_json) VALUES (?, ?)
+                   ON CONFLICT(params_hash) DO NOTHING""",
+                (params_hash, params_json),
+            )
+            conn.commit()
+            return params_hash
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # run / trade / preregistration / forward_session
+    # ------------------------------------------------------------------
+    def insert_run(self, data: dict[str, Any]) -> str:
+        payload = {col: data.get(col) for col in _RUN_COLUMNS}
+        if payload.get("metrics_json") is None:
+            payload["metrics_json"] = "{}"
+        placeholders = ", ".join("?" for _ in _RUN_COLUMNS)
+        cols = ", ".join(_RUN_COLUMNS)
+        conn = self._connect()
+        try:
+            conn.execute(
+                f"INSERT INTO run({cols}) VALUES ({placeholders})",
+                tuple(payload[c] for c in _RUN_COLUMNS),
+            )
+            conn.commit()
+            return payload["run_id"]
+        finally:
+            conn.close()
+
+    def insert_trades(self, run_id: str, trades: list[dict[str, Any]]) -> None:
+        if not trades:
+            return
+        cols = ", ".join(_TRADE_COLUMNS)
+        placeholders = ", ".join("?" for _ in _TRADE_COLUMNS)
+        conn = self._connect()
+        try:
+            for t in trades:
+                payload = dict(t)
+                payload.setdefault("run_id", run_id)
+                payload.setdefault("origin", "strategy")
+                row = tuple(payload.get(c) for c in _TRADE_COLUMNS)
+                conn.execute(f"INSERT INTO trade({cols}) VALUES ({placeholders})", row)
+            conn.commit()
+        finally:
+            conn.close()
+
+    def insert_preregistration(self, data: dict[str, Any]) -> str:
+        payload = {col: data.get(col) for col in _PREREG_COLUMNS}
+        cols = ", ".join(_PREREG_COLUMNS)
+        placeholders = ", ".join("?" for _ in _PREREG_COLUMNS)
+        conn = self._connect()
+        try:
+            conn.execute(
+                f"""INSERT INTO preregistration({cols}) VALUES ({placeholders})
+                    ON CONFLICT(preregistro_id) DO NOTHING""",
+                tuple(payload[c] for c in _PREREG_COLUMNS),
+            )
+            conn.commit()
+            return payload["preregistro_id"]
+        finally:
+            conn.close()
+
+    def upsert_forward_session(self, data: dict[str, Any]) -> str:
+        payload = {col: data.get(col) for col in _FORWARD_SESSION_COLUMNS}
+        cols = ", ".join(_FORWARD_SESSION_COLUMNS)
+        placeholders = ", ".join("?" for _ in _FORWARD_SESSION_COLUMNS)
+        update_cols = [c for c in _FORWARD_SESSION_COLUMNS if c != "session_id"]
+        update_clause = ", ".join(f"{c}=excluded.{c}" for c in update_cols)
+        conn = self._connect()
+        try:
+            conn.execute(
+                f"""INSERT INTO forward_session({cols}) VALUES ({placeholders})
+                    ON CONFLICT(session_id) DO UPDATE SET {update_clause}""",
+                tuple(payload[c] for c in _FORWARD_SESSION_COLUMNS),
+            )
+            conn.commit()
+            return payload["session_id"]
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # queries
+    # ------------------------------------------------------------------
+    def query_strategies(self) -> list[dict[str, Any]]:
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                """SELECT s.*,
+                          (SELECT COUNT(*) FROM variant v WHERE v.strategy_id = s.strategy_id) AS n_variants,
+                          (SELECT COUNT(*) FROM run r JOIN variant v ON r.variant_id = v.variant_id
+                             WHERE v.strategy_id = s.strategy_id) AS n_runs
+                   FROM strategy s ORDER BY s.strategy_seq"""
+            ).fetchall()
+            out = []
+            for row in rows:
+                d = dict(row)
+                d["display_color"] = STRATEGY_PALETTE[d["color_idx"] % len(STRATEGY_PALETTE)]
+                d["sweepable"] = bool(d["sweepable"])
+                d["graduated"] = bool(d["graduated"])
+                out.append(d)
+            return out
+        finally:
+            conn.close()
+
+    def query_runs(
+        self,
+        strategy_id: str | None = None,
+        variant_id: str | None = None,
+        instrumento: str | None = None,
+        engine: str | None = None,
+        fidelity: str | None = None,
+        desde: str | None = None,
+        hasta: str | None = None,
+        order_by: str = "fecha_corrida",
+        dir: str = "desc",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        if order_by not in _RUN_ORDER_COLUMNS:
+            order_by = "fecha_corrida"
+        direction = "ASC" if str(dir).lower() == "asc" else "DESC"
+
+        where = []
+        params: list[Any] = []
+        if strategy_id is not None:
+            where.append("v.strategy_id = ?")
+            params.append(strategy_id)
+        if variant_id is not None:
+            where.append("r.variant_id = ?")
+            params.append(variant_id)
+        if instrumento is not None:
+            where.append("v.instrumento = ?")
+            params.append(instrumento)
+        if engine is not None:
+            where.append("r.engine = ?")
+            params.append(engine)
+        if fidelity is not None:
+            where.append("r.fidelity = ?")
+            params.append(fidelity)
+        if desde is not None:
+            where.append("r.fecha_corrida >= ?")
+            params.append(desde)
+        if hasta is not None:
+            where.append("r.fecha_corrida <= ?")
+            params.append(hasta)
+
+        where_clause = f"WHERE {' AND '.join(where)}" if where else ""
+
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            total = conn.execute(
+                f"""SELECT COUNT(*) FROM run r
+                    LEFT JOIN variant v ON r.variant_id = v.variant_id
+                    {where_clause}""",
+                params,
+            ).fetchone()[0]
+
+            rows = conn.execute(
+                f"""SELECT r.run_id, r.variant_id, r.engine, r.fidelity,
+                           r.periodo_desde, r.periodo_hasta, r.modelo_sim,
+                           r.trades, r.net, r.pf, r.wr, r.payoff, r.maxdd, r.sharpe,
+                           r.fecha_corrida, r.report_path,
+                           v.instrumento AS instrumento, v.strategy_id AS strategy_id,
+                           s.name AS strategy_name, s.familia AS familia,
+                           s.color_idx AS color_idx, v.params_delta_json AS params_delta_json
+                    FROM run r
+                    LEFT JOIN variant v ON r.variant_id = v.variant_id
+                    LEFT JOIN strategy s ON v.strategy_id = s.strategy_id
+                    {where_clause}
+                    ORDER BY r.{order_by} {direction}
+                    LIMIT ? OFFSET ?""",
+                params + [limit, offset],
+            ).fetchall()
+
+            out_rows = []
+            for row in rows:
+                d = dict(row)
+                strategy_name = d.get("strategy_name")
+                familia = d.get("familia")
+                color_idx = d.get("color_idx")
+                variant_suffix = d.get("variant_id") or ""
+                display_name = f"{familia} · {strategy_name} · {variant_suffix}" if familia else None
+                out_rows.append({
+                    "run_id": d["run_id"],
+                    "variant_id": d["variant_id"],
+                    "display_name": display_name,
+                    "color_idx": color_idx,
+                    "familia": familia,
+                    "instrumento": d.get("instrumento"),
+                    "engine": d["engine"],
+                    "fidelity": d["fidelity"],
+                    "periodo_desde": d.get("periodo_desde"),
+                    "periodo_hasta": d.get("periodo_hasta"),
+                    "modelo_sim": d.get("modelo_sim"),
+                    "trades": d.get("trades"),
+                    "net": d.get("net"),
+                    "pf": d.get("pf"),
+                    "wr": d.get("wr"),
+                    "payoff": d.get("payoff"),
+                    "maxdd": d.get("maxdd"),
+                    "sharpe": d.get("sharpe"),
+                    "fecha_corrida": d.get("fecha_corrida"),
+                    "report_path": d.get("report_path"),
+                })
+            return {"total": total, "rows": out_rows}
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # magic allocation
+    # ------------------------------------------------------------------
+    def allocate_magic(self, strategy_id: str, variant_id: str) -> int:
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            srow = conn.execute(
+                "SELECT strategy_seq FROM strategy WHERE strategy_id=?", (strategy_id,)
+            ).fetchone()
+            if srow is None:
+                raise ValueError(f"unknown strategy_id: {strategy_id}")
+            vrow = conn.execute(
+                "SELECT variant_seq FROM variant WHERE variant_id=?", (variant_id,)
+            ).fetchone()
+            if vrow is None:
+                raise ValueError(f"unknown variant_id: {variant_id}")
+            strategy_seq = srow["strategy_seq"]
+            variant_seq = vrow["variant_seq"]
+            if strategy_seq >= 900:
+                raise ValueError(f"strategy_seq out of range (<900 required): {strategy_seq}")
+            if variant_seq >= 1000:
+                raise ValueError(f"variant_seq out of range (<1000 required): {variant_seq}")
+            magic = 100000 + strategy_seq * 1000 + variant_seq
+            conn.execute(
+                """INSERT INTO magic_allocation(magic, strategy_id, variant_id, asignado)
+                   VALUES (?, ?, ?, ?)
+                   ON CONFLICT(magic) DO UPDATE SET strategy_id=excluded.strategy_id, variant_id=excluded.variant_id""",
+                (magic, strategy_id, variant_id, _utcnow_iso()),
+            )
+            conn.commit()
+            return magic
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # audit / import checksum
+    # ------------------------------------------------------------------
+    def audit(self, actor: str | None, accion: str, detalle: dict[str, Any] | None = None) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                "INSERT INTO audit_log(ts, actor, accion, detalle_json) VALUES (?, ?, ?, ?)",
+                (_utcnow_iso(), actor, accion, json.dumps(detalle or {}, ensure_ascii=False)),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def checksum_seen(self, path: str, sha: str) -> bool:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT sha256 FROM import_checksum WHERE path=?", (str(path),)
+            ).fetchone()
+            return row is not None and row[0] == sha
+        finally:
+            conn.close()
+
+    def mark_checksum(self, path: str, sha: str) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                """INSERT INTO import_checksum(path, sha256, imported_at) VALUES (?, ?, ?)
+                   ON CONFLICT(path) DO UPDATE SET sha256=excluded.sha256, imported_at=excluded.imported_at""",
+                (str(path), sha, _utcnow_iso()),
+            )
+            conn.commit()
+        finally:
+            conn.close()
