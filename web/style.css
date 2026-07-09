@@ -983,3 +983,124 @@ html, body {
 }
 
 .review-chart-host { flex: 1; min-height: 380px; }
+
+/* ---- M2.7: management UI (create variant, run backtest, graduate) ---- */
+.runs-toolbar { display: flex; justify-content: flex-end; margin-bottom: var(--sp-2); }
+.manage-add-variant-btn,
+.manage-submit-btn {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--accent-celeste);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.manage-add-variant-btn:hover,
+.manage-submit-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.manage-add-variant-btn:focus-visible,
+.manage-submit-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.manage-submit-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+.runs-backtest-btn {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--accent-celeste);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.runs-backtest-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.3); }
+.runs-backtest-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+/* generic modal shell reused by "+ Variante" and "Backtest" (D.2 tokens) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 20, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+.modal-box {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  width: 420px;
+  max-width: calc(100vw - 2 * var(--sp-4));
+  max-height: calc(100vh - 2 * var(--sp-4));
+  overflow: auto;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
+.modal-header h3 { margin: 0; color: var(--accent-celeste); font-size: 0.95rem; font-weight: 600; }
+.modal-close { background: transparent; border: none; color: var(--text-1); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+.modal-close:hover { color: var(--accent-celeste); }
+.modal-close:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+.manage-form { display: flex; flex-direction: column; gap: var(--sp-2); }
+.manage-field { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; color: var(--text-1); }
+.manage-input {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.manage-input:focus-visible { outline: 1px solid var(--accent-celeste); }
+.manage-params-editor { display: flex; flex-direction: column; gap: var(--sp-1); border-top: var(--border); padding-top: var(--sp-2); }
+.manage-params-title { color: var(--text-2); font-size: 0.7rem; text-transform: uppercase; }
+.manage-param-field { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.manage-param-field span { min-width: 120px; }
+.manage-param-input { flex: 1; }
+.manage-form-error { color: var(--accent-red); font-size: 0.78rem; }
+.manage-job-progress { color: var(--text-1); font-size: 0.78rem; font-family: var(--font-mono); }
+.manage-form-actions { display: flex; justify-content: flex-end; margin-top: var(--sp-2); }
+
+/* strategy state panel (POSICIONES tab ESTRATEGIA) */
+.manage-strategy-panel { margin-bottom: var(--sp-4); }
+.manage-strategy-panel-title { color: var(--text-2); font-size: 0.75rem; text-transform: uppercase; margin-bottom: var(--sp-2); }
+.manage-strategy-cards { display: flex; flex-direction: column; gap: var(--sp-2); }
+.manage-strategy-card {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.manage-strategy-card-top { display: flex; align-items: center; gap: var(--sp-2); }
+.manage-graduated-star { color: var(--accent-amber); font-size: 0.9rem; }
+.manage-estado-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  border: var(--border);
+  color: var(--text-1);
+}
+.manage-estado-activa { color: var(--long); border-color: var(--long); }
+.manage-estado-pausada { color: var(--accent-amber); border-color: var(--accent-amber); }
+.manage-estado-graduada { color: var(--accent-celeste); border-color: var(--accent-celeste); }
+.manage-estado-controls { display: flex; gap: var(--sp-1); }
+.manage-estado-btn {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.manage-estado-btn.active { color: var(--accent-celeste); border-color: var(--accent-celeste); }
+.manage-estado-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.25); }
+.manage-estado-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+.manage-estado-btn:focus-visible { outline: 1px solid var(--accent-celeste); }

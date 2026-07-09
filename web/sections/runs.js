@@ -87,7 +87,7 @@
 
   // ---- table columns (D.7-RUNS: badge estrategia · variant_id mono · instr ·
   // fidelity badge · trades · net · PF · WR% · payoff · maxDD · sharpe · fecha) ----
-  function buildColumns() {
+  function buildColumns(onBacktestClick) {
     const fmt = window.SENTINEL.fmt;
     const badge = window.SENTINEL.badge;
     return [
@@ -106,6 +106,8 @@
       { key: "maxdd", label: "MaxDD", width: "80px", sortable: true, numeric: true, render: (r) => fmt.num(r.maxdd) },
       { key: "sharpe", label: "Sharpe", width: "80px", sortable: true, numeric: true, render: (r) => fmt.num(r.sharpe) },
       { key: "fecha_corrida", label: "Fecha", width: "110px", sortable: true, render: (r) => escapeHtml(r.fecha_corrida || "--") },
+      { key: "actions", label: "", width: "110px",
+        render: (r) => `<button type="button" class="runs-backtest-btn" data-variant-id="${escapeHtml(r.variant_id || "")}">&#9654; Backtest</button>` },
     ];
   }
 
@@ -118,6 +120,271 @@
     return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
       "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
     }[c]));
+  }
+
+  // ---- schema-driven "+ Variante" modal (M2.7) ----
+  // Builds param_delta fields from the strategy's param_schema_json (a
+  // {param_name: default_value} or {param_name: {type,default}} shaped
+  // object as produced by the registry; we treat any JSON-serializable
+  // shape leniently: object keys become text inputs, values pre-fill).
+  function parseParamSchema(strategy) {
+    const raw = strategy && (strategy.param_schema_json || strategy.param_schema);
+    if (!raw) return {};
+    if (typeof raw === "object") return raw;
+    try {
+      const parsed = JSON.parse(raw);
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function openCreateVariantModal(strategies, onCreated) {
+    const overlay = el("div", { class: "modal-overlay" });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay) overlay.remove(); });
+    const modal = el("div", { class: "modal-box manage-variant-modal" });
+
+    const stratOptions = strategies.map((s) =>
+      `<option value="${escapeHtml(s.strategy_id)}">${escapeHtml(s.display_name || `${s.familia} · ${s.name}`)}</option>`
+    ).join("");
+
+    modal.innerHTML = `
+      <div class="modal-header">
+        <h3>&#65291; Variante</h3>
+        <button type="button" class="modal-close" aria-label="Cerrar">&times;</button>
+      </div>
+      <form class="manage-form">
+        <label class="manage-field">
+          <span>Estrategia</span>
+          <select class="manage-input" name="strategy_id" required>${stratOptions}</select>
+        </label>
+        <label class="manage-field">
+          <span>Sufijo de variante</span>
+          <input class="manage-input" name="variant_suffix" type="text" required placeholder="ej. M5_c2_sar3m3" />
+        </label>
+        <label class="manage-field">
+          <span>TF</span>
+          <input class="manage-input" name="tf" type="text" placeholder="M5" />
+        </label>
+        <label class="manage-field">
+          <span>Instrumento</span>
+          <input class="manage-input" name="instrumento" type="text" placeholder="XAUUSD" />
+        </label>
+        <label class="manage-field">
+          <span>Modo salida</span>
+          <input class="manage-input" name="modo_salida" type="text" placeholder="sl_tp" />
+        </label>
+        <div class="manage-params-editor"></div>
+        <div class="manage-form-error" hidden></div>
+        <div class="manage-form-actions">
+          <button type="submit" class="manage-submit-btn">Crear</button>
+        </div>
+      </form>`;
+    modal.querySelector(".modal-close").addEventListener("click", () => overlay.remove());
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const form = modal.querySelector(".manage-form");
+    const stratSel = form.querySelector('[name="strategy_id"]');
+    const paramsHost = form.querySelector(".manage-params-editor");
+    const errBox = form.querySelector(".manage-form-error");
+
+    function renderParamFields() {
+      paramsHost.innerHTML = "";
+      const strategy = strategies.find((s) => s.strategy_id === stratSel.value);
+      const schema = parseParamSchema(strategy);
+      const keys = Object.keys(schema);
+      if (!keys.length) return;
+      paramsHost.appendChild(el("div", { class: "manage-params-title", text: "params_delta" }));
+      keys.forEach((k) => {
+        const row = el("label", { class: "manage-field manage-param-field" });
+        const defaultVal = schema[k] && typeof schema[k] === "object" && "default" in schema[k] ? schema[k].default : schema[k];
+        row.innerHTML = `<span>${escapeHtml(k)}</span><input class="manage-input manage-param-input" data-param-key="${escapeHtml(k)}" type="text" placeholder="${escapeHtml(defaultVal == null ? "" : String(defaultVal))}" />`;
+        paramsHost.appendChild(row);
+      });
+    }
+    stratSel.addEventListener("change", renderParamFields);
+    renderParamFields();
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.hidden = true;
+      const submitBtn = form.querySelector(".manage-submit-btn");
+      submitBtn.disabled = true;
+      submitBtn.textContent = "Creando…";
+      const paramsDelta = {};
+      paramsHost.querySelectorAll(".manage-param-input").forEach((input) => {
+        if (input.value !== "") {
+          const num = Number(input.value);
+          paramsDelta[input.dataset.paramKey] = Number.isNaN(num) ? input.value : num;
+        }
+      });
+      const body = {
+        strategy_id: stratSel.value,
+        variant_suffix: form.variant_suffix.value.trim(),
+        params_delta: paramsDelta,
+        tf: form.tf.value.trim() || null,
+        instrumento: form.instrumento.value.trim() || null,
+        modo_salida: form.modo_salida.value.trim() || null,
+      };
+      try {
+        const resp = await fetch("/api/variants", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          const code = json && json.error && json.error.code;
+          if (code === "variant_exists") {
+            errBox.hidden = false;
+            errBox.textContent = "Esta variante ya existe.";
+          } else {
+            errBox.hidden = false;
+            errBox.textContent = (json && json.error && json.error.message) || `Error creando variante (${resp.status})`;
+          }
+          submitBtn.disabled = false;
+          submitBtn.textContent = "Crear";
+          return;
+        }
+        if (window.SENTINEL.toast) {
+          window.SENTINEL.toast.show(`Variante creada: ${json.variant_id}`, { type: "success" });
+        }
+        overlay.remove();
+        if (onCreated) onCreated();
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = "Error de red creando variante.";
+        submitBtn.disabled = false;
+        submitBtn.textContent = "Crear";
+      }
+    });
+  }
+
+  // ---- "▶ Backtest" modal + job polling (M2.7) ----
+  function openBacktestModal(variantId, onDone) {
+    const overlay = el("div", { class: "modal-overlay" });
+    overlay.addEventListener("click", (e) => { if (e.target === overlay && !overlay.dataset.busy) overlay.remove(); });
+    const modal = el("div", { class: "modal-box manage-backtest-modal" });
+    modal.innerHTML = `
+      <div class="modal-header">
+        <h3>&#9654; Backtest &middot; <span class="mono">${escapeHtml(variantId)}</span></h3>
+        <button type="button" class="modal-close" aria-label="Cerrar">&times;</button>
+      </div>
+      <form class="manage-form">
+        <label class="manage-field">
+          <span>Symbol</span>
+          <input class="manage-input" name="symbol" type="text" required placeholder="XAUUSD" />
+        </label>
+        <label class="manage-field">
+          <span>TF</span>
+          <input class="manage-input" name="tf" type="text" required placeholder="M5" />
+        </label>
+        <label class="manage-field">
+          <span>Desde</span>
+          <input class="manage-input" name="desde" type="date" />
+        </label>
+        <label class="manage-field">
+          <span>Hasta</span>
+          <input class="manage-input" name="hasta" type="date" />
+        </label>
+        <div class="manage-form-error" hidden></div>
+        <div class="manage-job-progress" hidden></div>
+        <div class="manage-form-actions">
+          <button type="submit" class="manage-submit-btn">Correr backtest</button>
+        </div>
+      </form>`;
+    modal.querySelector(".modal-close").addEventListener("click", () => { if (!overlay.dataset.busy) overlay.remove(); });
+    overlay.appendChild(modal);
+    document.body.appendChild(overlay);
+
+    const form = modal.querySelector(".manage-form");
+    const errBox = form.querySelector(".manage-form-error");
+    const progressBox = form.querySelector(".manage-job-progress");
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.hidden = true;
+      const submitBtn = form.querySelector(".manage-submit-btn");
+      submitBtn.disabled = true;
+      overlay.dataset.busy = "1";
+      progressBox.hidden = false;
+      progressBox.textContent = "Encolando job…";
+      const body = {
+        variant_id: variantId,
+        symbol: form.symbol.value.trim(),
+        tf: form.tf.value.trim(),
+        desde: form.desde.value || null,
+        hasta: form.hasta.value || null,
+      };
+      try {
+        const resp = await fetch("/api/backtest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          errBox.hidden = false;
+          errBox.textContent = (json && json.error && json.error.message) || `Error POST /api/backtest (${resp.status})`;
+          submitBtn.disabled = false;
+          delete overlay.dataset.busy;
+          progressBox.hidden = true;
+          return;
+        }
+        pollJob(json.job_id, progressBox, () => {
+          delete overlay.dataset.busy;
+          overlay.remove();
+          if (onDone) onDone();
+        }, (msg) => {
+          errBox.hidden = false;
+          errBox.textContent = msg;
+          submitBtn.disabled = false;
+          delete overlay.dataset.busy;
+          progressBox.hidden = true;
+        });
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = "Error de red en POST /api/backtest.";
+        submitBtn.disabled = false;
+        delete overlay.dataset.busy;
+        progressBox.hidden = true;
+      }
+    });
+  }
+
+  function pollJob(jobId, progressBox, onDone, onError) {
+    const started = Date.now();
+    const timer = window.setInterval(async () => {
+      let job;
+      try {
+        const resp = await fetch(`/api/jobs/${encodeURIComponent(jobId)}`);
+        job = await resp.json();
+        if (!resp.ok) throw new Error((job && job.error && job.error.message) || `GET /api/jobs/${jobId} failed`);
+      } catch (e) {
+        window.clearInterval(timer);
+        if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error consultando job de backtest", { type: "error" });
+        onError("Error consultando el job.");
+        return;
+      }
+      const elapsedS = Math.round((Date.now() - started) / 1000);
+      if (job.status === "queued" || job.status === "running") {
+        progressBox.textContent = `${job.status}… (${elapsedS}s)`;
+        return;
+      }
+      window.clearInterval(timer);
+      if (job.status === "done") {
+        if (window.SENTINEL.toast) {
+          window.SENTINEL.toast.show(`Backtest listo: run ${job.run_id}`, { type: "success" });
+        }
+        onDone();
+      } else {
+        if (window.SENTINEL.toast) {
+          window.SENTINEL.toast.show(`Backtest falló: ${job.error || "error desconocido"}`, { type: "error" });
+        }
+        onError(job.error || "Backtest falló.");
+      }
+    }, 1000);
   }
 
   // ---- filter bar ----
@@ -340,6 +607,9 @@
     const root = el("div", { class: "runs-section" });
     el0.appendChild(root);
 
+    const toolbarHost = el("div", { class: "runs-toolbar" });
+    const addVariantBtn = el("button", { type: "button", class: "manage-add-variant-btn", text: "＋ Variante" });
+    toolbarHost.appendChild(addVariantBtn);
     const filterBarHost = el("div", { class: "runs-filterbar-host" });
     const tableHost = el("div", { class: "runs-table-host" });
     const compareBarHost = el("div", { class: "runs-compare-bar", hidden: "hidden" }, [
@@ -347,6 +617,7 @@
       el("button", { type: "button", class: "runs-compare-btn", text: "Comparar" }),
     ]);
 
+    root.appendChild(toolbarHost);
     root.appendChild(filterBarHost);
     root.appendChild(compareBarHost);
     root.appendChild(tableHost);
@@ -354,12 +625,22 @@
     let vt = null;
     let currentFilters = { order_by: "fecha_corrida", dir: "desc" };
     let strategiesById = {};
+    let allStrategies = [];
+
+    addVariantBtn.addEventListener("click", () => {
+      if (!allStrategies.length) {
+        if (window.SENTINEL.toast) window.SENTINEL.toast.show("Sin estrategias disponibles todavía", { type: "warn" });
+        return;
+      }
+      openCreateVariantModal(allStrategies, () => { loadRuns(); });
+    });
 
     async function loadStrategiesAndBar() {
       try {
         const body = await fetchStrategies();
         strategiesById = {};
-        (body.strategies || []).forEach((s) => { strategiesById[s.strategy_id] = s; });
+        allStrategies = body.strategies || [];
+        allStrategies.forEach((s) => { strategiesById[s.strategy_id] = s; });
         renderFilterBar(filterBarHost, body.strategies || [], (patch) => {
           Object.assign(currentFilters, patch);
           loadRuns();
@@ -389,6 +670,19 @@
       }
       const tableEl = el("div", { class: "runs-vtable" });
       tableHost.appendChild(tableEl);
+      // Event delegation for the per-row "Backtest" button: vtable re-renders
+      // row DOM on scroll/sort, so a single listener on the table root
+      // (rather than per-render binding) survives those re-renders.
+      // Capture phase: fires before the row's own click listener (added
+      // directly on .vtable-row by vtable.js), so stopping propagation
+      // here reliably prevents the drawer from also opening.
+      tableEl.addEventListener("click", (e) => {
+        const btn = e.target.closest(".runs-backtest-btn");
+        if (!btn) return;
+        e.stopPropagation();
+        const variantId = btn.dataset.variantId;
+        if (variantId) openBacktestModal(variantId, () => loadRuns());
+      }, true);
       vt = window.SENTINEL.vtable.createVTable(tableEl, {
         columns: buildColumns(),
         rows,

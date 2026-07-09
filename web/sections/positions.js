@@ -55,11 +55,89 @@
     return d.getTime() / 1000;
   }
 
+  const ESTADOS = ["activa", "pausada", "graduada"];
+
   // ---- data fetch (D.6 contracts) ----
   async function fetchSessions() {
     const resp = await fetch("/api/forward/sessions");
     if (!resp.ok) throw new Error(`GET /api/forward/sessions failed: ${resp.status}`);
     return resp.json();
+  }
+
+  async function fetchStrategies() {
+    const resp = await fetch("/api/strategies");
+    if (!resp.ok) throw new Error(`GET /api/strategies failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  async function postEstado(strategyId, estado) {
+    const resp = await fetch(`/api/strategies/${encodeURIComponent(strategyId)}/estado`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ estado }),
+    });
+    const json = await resp.json().catch(() => ({}));
+    if (!resp.ok) {
+      const msg = (json && json.error && json.error.message) || `POST estado failed: ${resp.status}`;
+      throw new Error(msg);
+    }
+    return json;
+  }
+
+  // ---- strategy state panel (M2.7): per-strategy activa/pausada/graduada
+  // segmented control + state badge next to the strategy badge. Graduated
+  // strategies list first, marked with a star (plan Task M2.7). ----
+  function sortStrategiesGraduatedFirst(strategies) {
+    return strategies.slice().sort((a, b) => {
+      const ga = a.graduated ? 1 : 0;
+      const gb = b.graduated ? 1 : 0;
+      if (ga !== gb) return gb - ga;
+      return (a.name || "").localeCompare(b.name || "");
+    });
+  }
+
+  function renderStrategyStateCard(strategy, onChanged) {
+    const badge = window.SENTINEL.badge;
+    const estado = strategy.estado || "activa";
+    const card = el("div", { class: "manage-strategy-card" });
+    const stratBadge = badge.strategyBadge({
+      familia: strategy.familia,
+      name: strategy.familia && strategy.familia.toLowerCase() === (strategy.name || "").toLowerCase() ? "" : strategy.name,
+      color_idx: strategy.color_idx,
+      display_name: strategy.name,
+    });
+    const starHtml = strategy.graduated ? '<span class="manage-graduated-star" title="Graduada">&#9733;</span>' : "";
+    card.innerHTML = `
+      <div class="manage-strategy-card-top">${starHtml}${stratBadge}
+        <span class="manage-estado-badge manage-estado-${escapeHtml(estado)}">${escapeHtml(estado)}</span>
+      </div>
+      <div class="manage-estado-controls"></div>`;
+    const controls = card.querySelector(".manage-estado-controls");
+    ESTADOS.forEach((e) => {
+      const btn = el("button", {
+        type: "button",
+        class: `manage-estado-btn${e === estado ? " active" : ""}`,
+      });
+      btn.textContent = e;
+      btn.addEventListener("click", async () => {
+        if (btn.disabled || e === estado) return;
+        controls.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+        try {
+          await postEstado(strategy.strategy_id, e);
+          if (window.SENTINEL.toast) {
+            window.SENTINEL.toast.show(`${strategy.name}: estado -> ${e}`, { type: "success" });
+          }
+          if (onChanged) onChanged();
+        } catch (err) {
+          if (window.SENTINEL.toast) {
+            window.SENTINEL.toast.show(`Error cambiando estado: ${err.message}`, { type: "error" });
+          }
+          controls.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+        }
+      });
+      controls.appendChild(btn);
+    });
+    return card;
   }
 
   async function fetchSessionTrades(sessionId) {
@@ -189,6 +267,15 @@
     }
 
     async function loadSessions() {
+      let strategies = [];
+      try {
+        const stratResp = await fetchStrategies();
+        strategies = stratResp.strategies || [];
+      } catch (e) {
+        // Strategy state panel is additive; sessions can still render if
+        // /api/strategies is unavailable.
+      }
+
       try {
         const resp = await fetchSessions();
         sessions = resp.sessions || [];
@@ -205,17 +292,31 @@
       sessionsById = {};
       sessions.forEach((s) => { sessionsById[s.session_id] = s; });
 
+      body.innerHTML = "";
+      const wrap = el("div", { class: "positions-estrategia-wrap" });
+
+      if (strategies.length) {
+        const stratPanel = el("div", { class: "manage-strategy-panel" });
+        stratPanel.appendChild(el("div", { class: "manage-strategy-panel-title", text: "Estrategias" }));
+        const stratCards = el("div", { class: "manage-strategy-cards" });
+        sortStrategiesGraduatedFirst(strategies).forEach((s) => {
+          stratCards.appendChild(renderStrategyStateCard(s, renderEstrategiaTab));
+        });
+        stratPanel.appendChild(stratCards);
+        body.appendChild(stratPanel);
+      }
+
       if (!sessions.length) {
-        renderEmptySessions(body);
+        const sessionsHost = el("div", {});
+        renderEmptySessions(sessionsHost);
+        body.appendChild(sessionsHost);
         return;
       }
 
-      const wrap = el("div", { class: "positions-estrategia-wrap" });
       const cardsHost = el("div", { class: "positions-cards" });
       const detailHost = el("div", { class: "positions-detail" });
       wrap.appendChild(cardsHost);
       wrap.appendChild(detailHost);
-      body.innerHTML = "";
       body.appendChild(wrap);
 
       sessions.forEach((session) => {
