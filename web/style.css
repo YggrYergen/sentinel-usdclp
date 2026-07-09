@@ -168,3 +168,122 @@ html, body {
 @media (max-width: 1100px) {
   .lab-grid { grid-template-columns: 1fr; }
 }
+
+/* ============================================================
+   M1.1 — SENTINEL V2+TOKATA design tokens (spec D.2, EXACT).
+   Additive only: does not remove/override existing --fx-*/--v2-*
+   vars used by #left-column/asset-panels (D.9 preservation gate).
+   ============================================================ */
+:root {
+  --bg-0:#0a0e14; --bg-1:#0d1117; --bg-2:#131a24; --bg-3:#1a2332;
+  --text-0:#c9d4e3; --text-1:#8b98ab; --text-2:#5c6a7d;
+  --accent-celeste:#00bfff; --accent-green:#26a69a; --accent-red:#ef5350; --accent-amber:#ffb020;
+  --long:#26a69a; --short:#ef5350; --neutral:#8b98ab;
+  --border:1px solid rgba(0,191,255,.18); --radius:6px;
+  --glow-sm:0 0 6px; /* SOLO interactivo/activo; blur max 8px */
+  --font-mono:'Cascadia Mono',Consolas,monospace; --font-ui:'Segoe UI',system-ui,sans-serif;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px;
+}
+
+/* -- navbar active-state reskin: celeste eléctrico dominante (D.2) --
+   Scoped to .nav-btn only; does not touch #left-column/.asset-panel. */
+.nav-btn.active, .nav-btn:hover {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+
+/* -- new right-pane sections (charts/review/runs/positions): celeste accent -- */
+#section-charts, #section-review, #section-runs, #section-positions {
+  font-family: var(--font-ui);
+  color: var(--text-0);
+}
+#section-charts .section-placeholder,
+#section-review .section-placeholder,
+#section-runs .section-placeholder,
+#section-positions .section-placeholder {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+}
+.section-placeholder h2 {
+  color: var(--accent-celeste);
+  margin: 0 0 var(--sp-2) 0;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.section-placeholder p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+/* -- strategy/fidelity badges (D.3), reused across all new sections -- */
+.sentinel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 0.72rem;
+  padding: 1px var(--sp-1);
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.sentinel-badge-strategy .sentinel-badge-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.sentinel-badge-strategy .sentinel-badge-familia {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-1);
+}
+.sentinel-badge-strategy .sentinel-badge-name { color: var(--text-0); }
+.sentinel-badge-fidelity {
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+
+/* -- numbers/ids/prices: mono tabular (D.2 hard rule) -- */
+.mono, .sentinel-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- toasts (lib/toast.js), bottom-right -- */
+#sentinel-toast-container {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  z-index: 9999;
+  pointer-events: none;
+}
+.sentinel-toast {
+  pointer-events: auto;
+  background: var(--bg-3);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.8rem;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.sentinel-toast-visible { opacity: 1; transform: translateY(0); }
+.sentinel-toast-error { border-color: var(--accent-red); color: var(--accent-red); }
+.sentinel-toast-success { border-color: var(--accent-green); color: var(--accent-green); }
+.sentinel-toast-warn { border-color: var(--accent-amber); color: var(--accent-amber); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sentinel-toast { transition: none; }
+}

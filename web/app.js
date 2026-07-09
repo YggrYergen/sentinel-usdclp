@@ -472,19 +472,38 @@
 
     // ── nav router ──
     const buttons = document.querySelectorAll(".nav-btn");
+    const renderedSections = new Set();
     buttons.forEach((btn) => {
       btn.addEventListener("click", () => {
         buttons.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
-        document.querySelectorAll(".right-section").forEach((s) => (s.hidden = true));
-        const target = document.getElementById(`section-${btn.dataset.section}`);
-        if (target) target.hidden = false;
-        window.dispatchEvent(new CustomEvent("sentinel:section", { detail: btn.dataset.section }));
+        const name = btn.dataset.section;
+        document.querySelectorAll(".right-section").forEach((s) => {
+          if (!s.hidden && s.id !== `section-${name}`) {
+            const prevName = s.id.replace(/^section-/, "");
+            const prevMod = window.SENTINEL.sections && window.SENTINEL.sections[prevName];
+            if (prevMod && typeof prevMod.teardown === "function") {
+              try { prevMod.teardown(); } catch (e) { /* noop */ }
+            }
+          }
+          s.hidden = true;
+        });
+        const target = document.getElementById(`section-${name}`);
+        if (target) {
+          target.hidden = false;
+          const mod = window.SENTINEL.sections && window.SENTINEL.sections[name];
+          if (mod && typeof mod.render === "function" && !renderedSections.has(name)) {
+            renderedSections.add(name);
+            try { mod.render(target); } catch (e) { /* noop */ }
+          }
+        }
+        window.dispatchEvent(new CustomEvent("sentinel:section", { detail: name }));
       });
     });
   }
 
   window.SENTINEL = window.SENTINEL || {};
+  window.SENTINEL.sections = window.SENTINEL.sections || {};
   window.SENTINEL.renderAssetPanel = renderAssetPanel;
   window.SENTINEL.probeEndpoint = probeEndpoint;
   window.SENTINEL.tickBuffers = tickBuffers;
