@@ -519,3 +519,149 @@ html, body {
 .runs-compare-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--text-1); }
 .runs-compare-dash-label { color: var(--text-2); }
 .runs-compare-chart { width: 100%; min-height: 320px; }
+
+/* ============================================================
+   M1.3 — shared chart module (lib/chart.js) + CHARTS section
+   (spec D.7-CHARTS, D.4 trade markers). Celeste accent, mono
+   tabular numbers, long/short tokens for candles (D.2 hard rule).
+   ============================================================ */
+.charts-section { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; }
+
+.charts-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.charts-toolbar-group { display: flex; flex-direction: column; gap: 2px; }
+.charts-toolbar-group label {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.charts-symbol-select {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 3px 6px;
+  font-size: 0.78rem;
+}
+.charts-tf-buttons { display: flex; gap: 2px; }
+.charts-tf-btn {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.charts-tf-btn:hover { color: var(--accent-celeste); }
+.charts-tf-btn.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.charts-live-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 0.78rem;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.charts-overlay-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.charts-overlay-chip {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.charts-overlay-chip:hover { color: var(--accent-celeste); }
+.charts-overlay-chip.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.3);
+}
+.charts-tf-btn:focus-visible, .charts-overlay-chip:focus-visible, .charts-symbol-select:focus-visible {
+  outline: 1px solid var(--accent-celeste);
+}
+
+.charts-chart-host { flex: 1; min-height: 420px; }
+
+.chart-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+.chart-canvas-host { width: 100%; height: 100%; min-height: 420px; }
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 20;
+  background: var(--bg-3);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-1) var(--sp-2);
+  font-size: 0.72rem;
+  color: var(--text-0);
+  pointer-events: none;
+  max-width: 220px;
+}
+.chart-tooltip-row { line-height: 1.4; }
+.chart-tooltip-ts { color: var(--text-1); }
+
+.chart-state-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10,14,20,.55);
+  z-index: 10;
+}
+.chart-skeleton, .chart-empty {
+  padding: var(--sp-4) var(--sp-6);
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.chart-skeleton { animation: sentinel-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-skeleton { animation: none; }
+}
+.chart-error-box {
+  padding: var(--sp-4) var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.chart-error-box button, .chart-retry-btn {
+  margin-top: var(--sp-2);
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.chart-error { color: var(--accent-red); padding: var(--sp-4); }
