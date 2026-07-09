@@ -665,3 +665,108 @@ html, body {
   cursor: pointer;
 }
 .chart-error { color: var(--accent-red); padding: var(--sp-4); }
+
+/* -- TRADE REVIEW (M2.2, plan §D.7-REVIEW: 2 columns 320px | 1fr) -- */
+.review-section {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.review-left {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+  overflow: hidden;
+}
+.review-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+
+.review-selector-host { flex: 0 0 auto; }
+.review-run-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 40%;
+}
+.review-run-search {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+.review-run-search:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-run-groups {
+  overflow-y: auto;
+  max-height: 240px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.review-run-group { border-bottom: 1px solid rgba(0,191,255,.08); }
+.review-run-group:last-child { border-bottom: none; }
+.review-run-group-header { padding: var(--sp-1) var(--sp-2); }
+.review-run-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--text-1);
+  padding: 3px var(--sp-2) 3px var(--sp-3);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.review-run-item:hover { color: var(--text-0); background: var(--bg-3); }
+.review-run-item.active {
+  color: var(--accent-celeste);
+  border-left-color: var(--accent-celeste);
+  background: var(--bg-3);
+}
+.review-run-item:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-run-empty { padding: var(--sp-3); color: var(--text-2); font-size: 0.78rem; }
+
+.review-tradelist-host {
+  flex: 1;
+  min-height: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.review-vtable { height: 100%; }
+.review-tradelist-loading, .review-tradelist-empty, .review-tradelist-error {
+  padding: var(--sp-4);
+  color: var(--text-1);
+}
+.review-row-selected {
+  background: rgba(0,191,255,.14) !important;
+  box-shadow: inset 2px 0 0 var(--accent-celeste);
+}
+
+.review-header-host {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.review-header-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.review-header-window, .review-header-modelo { color: var(--text-1); font-size: 0.74rem; }
+.review-header-summary { display: flex; gap: var(--sp-4); font-size: 0.78rem; color: var(--text-0); }
+.review-header-loading, .review-header-empty, .review-header-error { color: var(--text-1); }
+
+.review-chart-host { flex: 1; min-height: 380px; }
