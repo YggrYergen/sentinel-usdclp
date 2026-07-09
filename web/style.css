@@ -732,6 +732,150 @@ html, body {
   border-left-color: var(--accent-celeste);
   background: var(--bg-3);
 }
+
+/* -- POSICIONES (M2.3, plan §D.7-POSICIONES: tabs + forward_session cards) -- */
+.positions-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.positions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex: 0 0 auto;
+}
+.positions-tabs { display: flex; gap: var(--sp-2); }
+.positions-tab {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 4px var(--sp-3);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.positions-tab:hover { color: var(--text-0); }
+.positions-tab.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.positions-tab:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-reimport-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.positions-reimport-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.positions-reimport-btn:disabled { opacity: 0.6; cursor: default; }
+.positions-reimport-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+.positions-body { flex: 1; min-height: 0; overflow: auto; }
+.positions-empty-future,
+.positions-empty,
+.positions-loading,
+.positions-error {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+  font-size: 0.85rem;
+}
+.positions-error { color: var(--accent-red); }
+.positions-retry-btn {
+  display: block;
+  margin: var(--sp-2) auto 0;
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.positions-estrategia-wrap {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.positions-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow-y: auto;
+}
+.positions-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  text-align: left;
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+}
+.positions-session-card:hover { background: var(--bg-3); }
+.positions-session-card.active {
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.positions-session-card:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-1);
+}
+.positions-card-perfil, .positions-card-estado { color: var(--text-1); }
+.positions-card-pnl { font-weight: 600; }
+
+.positions-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow: hidden;
+}
+.positions-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.positions-view-review-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.positions-view-review-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.positions-view-review-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-detail-empty,
+.positions-detail-loading,
+.positions-detail-error {
+  color: var(--text-1);
+  font-size: 0.85rem;
+  padding: var(--sp-3);
+}
+.positions-detail-error { color: var(--accent-red); }
+.positions-vtable { flex: 1; min-height: 0; }
 .review-run-item:focus-visible { outline: 1px solid var(--accent-celeste); }
 .review-run-empty { padding: var(--sp-3); color: var(--text-2); font-size: 0.78rem; }
 
