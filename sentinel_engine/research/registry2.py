@@ -402,6 +402,122 @@ class ResearchRegistry:
         finally:
             conn.close()
 
+    def get_run(self, run_id: str) -> dict[str, Any] | None:
+        """Full `run` row joined with variant/strategy display info, plus
+        `preregistration` (or None) — shape for `GET /api/runs/{id}` (D.6)."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                """SELECT r.*, v.instrumento AS instrumento, v.strategy_id AS strategy_id,
+                          v.tf AS tf, v.modo_salida AS modo_salida,
+                          s.name AS strategy_name, s.familia AS familia, s.color_idx AS color_idx
+                   FROM run r
+                   LEFT JOIN variant v ON r.variant_id = v.variant_id
+                   LEFT JOIN strategy s ON v.strategy_id = s.strategy_id
+                   WHERE r.run_id = ?""",
+                (run_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            familia = d.get("familia")
+            strategy_name = d.get("strategy_name")
+            variant_suffix = d.get("variant_id") or ""
+            d["display_name"] = (
+                f"{familia} · {strategy_name} · {variant_suffix}" if familia else None
+            )
+
+            prereg = None
+            preregistro_id = d.get("preregistro_id")
+            if preregistro_id:
+                prow = conn.execute(
+                    "SELECT * FROM preregistration WHERE preregistro_id=?", (preregistro_id,)
+                ).fetchone()
+                if prow is not None:
+                    prereg = dict(prow)
+            if prereg is None:
+                prow = conn.execute(
+                    "SELECT * FROM preregistration WHERE variant_id=?", (d.get("variant_id"),)
+                ).fetchone()
+                if prow is not None:
+                    prereg = dict(prow)
+            d["preregistration"] = prereg
+            d["artifacts"] = {
+                "report_path": d.get("report_path"),
+                "trades_path": d.get("trades_path"),
+                "equity_path": d.get("equity_path"),
+                "signal_history_path": d.get("signal_history_path"),
+            }
+            return d
+        finally:
+            conn.close()
+
+    def get_trades_for_run(self, run_id: str) -> list[dict[str, Any]]:
+        """`trade` rows for one run, ordered `ts_in` asc — shape for
+        `GET /api/runs/{id}/trades` (D.6)."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT * FROM trade WHERE run_id=? ORDER BY ts_in ASC", (run_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
+    def query_forward_sessions(self) -> list[dict[str, Any]]:
+        """`forward_session` rows + n_trades/pnl_total + display info —
+        shape for `GET /api/forward/sessions` (D.6)."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                """SELECT fs.*, s.name AS strategy_name, s.familia AS familia,
+                          s.color_idx AS color_idx,
+                          (SELECT COUNT(*) FROM trade t WHERE t.session_id = fs.session_id) AS n_trades,
+                          (SELECT COALESCE(SUM(t.pnl), 0) FROM trade t WHERE t.session_id = fs.session_id) AS pnl_total
+                   FROM forward_session fs
+                   LEFT JOIN strategy s ON fs.strategy_id = s.strategy_id
+                   ORDER BY fs.inicio DESC"""
+            ).fetchall()
+            out = []
+            for row in rows:
+                d = dict(row)
+                familia = d.get("familia")
+                strategy_name = d.get("strategy_name")
+                display_name = (
+                    f"{familia} · {strategy_name}" if familia else (d.get("perfil") or d["session_id"])
+                )
+                out.append({
+                    "session_id": d["session_id"],
+                    "display_name": display_name,
+                    "color_idx": d.get("color_idx"),
+                    "cuenta": d.get("cuenta"),
+                    "perfil": d.get("perfil"),
+                    "inicio": d.get("inicio"),
+                    "fin": d.get("fin"),
+                    "estado": d.get("estado"),
+                    "n_trades": d.get("n_trades", 0),
+                    "pnl_total": d.get("pnl_total", 0),
+                })
+            return out
+        finally:
+            conn.close()
+
+    def get_trades_for_session(self, session_id: str) -> list[dict[str, Any]]:
+        """`trade` rows for one forward session, ordered `ts_in` asc, incl.
+        `origin` — shape for `GET /api/forward/{id}/trades` (D.6)."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            rows = conn.execute(
+                "SELECT * FROM trade WHERE session_id=? ORDER BY ts_in ASC", (session_id,)
+            ).fetchall()
+            return [dict(r) for r in rows]
+        finally:
+            conn.close()
+
     # ------------------------------------------------------------------
     # magic allocation
     # ------------------------------------------------------------------

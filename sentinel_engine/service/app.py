@@ -37,12 +37,25 @@ from sentinel_engine.config import InstrumentConfig, config_hash, load_instrumen
 from sentinel_engine.engine import Engine, Snapshot
 from sentinel_engine.feed import Feed
 from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
+from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
 
 from .chat import answer_chat
 from .stream import Broadcaster
 
 DEFAULT_INSTRUMENTS: tuple[str, ...] = ("usdclp", "gold", "nasdaq")
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
+DEFAULT_RESEARCH_DB = Path("data/research.db")
+
+
+def _display_color(color_idx: int | None) -> str | None:
+    if color_idx is None:
+        return None
+    return STRATEGY_PALETTE[color_idx % len(STRATEGY_PALETTE)]
+
+
+def _api_error(status_code: int, code: str, message: str) -> JSONResponse:
+    """Normative error envelope (plan §D.6): `{"error":{"code","message"}}`."""
+    return JSONResponse(status_code=status_code, content={"error": {"code": code, "message": message}})
 
 
 class ChatRequest(BaseModel):
@@ -122,6 +135,7 @@ def create_app(
     instruments: tuple[str, ...] = DEFAULT_INSTRUMENTS,
     loop_interval: float = 1.0,
     autostart_loop: bool = True,
+    registry: ResearchRegistry | None = None,
 ) -> FastAPI:
     """Build the SENTINEL FastAPI service.
 
@@ -130,7 +144,15 @@ def create_app(
     `FakeFeed`). `autostart_loop=False` disables the periodic background
     compute loop (useful for HTTP-only tests that don't want a ticking
     background task).
+
+    `registry` (M0.3): the `ResearchRegistry` backing `/api/strategies`,
+    `/api/runs*`, `/api/forward/*` and `POST /api/ingest/tokata`. Tests
+    inject a `tmp_path`-backed registry; production defaults to
+    `data/research.db` (created lazily on first use, same DDL as M0.1).
     """
+    if registry is None:
+        registry = ResearchRegistry(DEFAULT_RESEARCH_DB)
+
     runners: dict[str, InstrumentRunner] = {}
     for name in instruments:
         cfg = load_instrument(name)
@@ -168,6 +190,7 @@ def create_app(
     # `sentinel.ai_chat.SentinelAI()`, which mock-answers offline when no
     # ANTHROPIC_API_KEY is set. See `.chat.answer_chat`.
     app.state.chat_client = None
+    app.state.registry = registry
 
     def _resolve(instrument: str | None) -> InstrumentRunner:
         name = instrument or next(iter(runners))
@@ -260,6 +283,84 @@ def create_app(
             pass
         finally:
             broadcaster.disconnect(websocket, name)
+
+    # ------------------------------------------------------------------
+    # Research data endpoints (M0.3, plan §D.6)
+    # ------------------------------------------------------------------
+    @app.get("/api/strategies")
+    def get_strategies() -> dict[str, Any]:
+        rows = registry.query_strategies()
+        for row in rows:
+            row["display_color"] = _display_color(row.get("color_idx"))
+        return {"strategies": rows}
+
+    @app.get("/api/runs")
+    def get_runs(
+        strategy_id: str | None = None,
+        variant_id: str | None = None,
+        instrumento: str | None = None,
+        engine: str | None = None,
+        fidelity: str | None = None,
+        desde: str | None = None,
+        hasta: str | None = None,
+        order_by: str = "fecha_corrida",
+        dir: str = "desc",
+        limit: int = 100,
+        offset: int = 0,
+    ) -> dict[str, Any]:
+        return registry.query_runs(
+            strategy_id=strategy_id,
+            variant_id=variant_id,
+            instrumento=instrumento,
+            engine=engine,
+            fidelity=fidelity,
+            desde=desde,
+            hasta=hasta,
+            order_by=order_by,
+            dir=dir,
+            limit=limit,
+            offset=offset,
+        )
+
+    @app.get("/api/runs/{run_id}")
+    def get_run(run_id: str):
+        row = registry.get_run(run_id)
+        if row is None:
+            return _api_error(404, "run_not_found", f"unknown run_id: {run_id}")
+        row["display_color"] = _display_color(row.get("color_idx"))
+        return row
+
+    @app.get("/api/runs/{run_id}/trades")
+    def get_run_trades(run_id: str) -> dict[str, Any]:
+        return {"trades": registry.get_trades_for_run(run_id)}
+
+    @app.get("/api/forward/sessions")
+    def get_forward_sessions() -> dict[str, Any]:
+        return {"sessions": registry.query_forward_sessions()}
+
+    @app.get("/api/forward/{session_id}/trades")
+    def get_forward_session_trades(session_id: str) -> dict[str, Any]:
+        return {"trades": registry.get_trades_for_session(session_id)}
+
+    @app.post("/api/ingest/tokata")
+    def post_ingest_tokata(payload: dict[str, Any] | None = None):
+        from sentinel_engine.ingest_tokata.runner import import_all
+
+        payload = payload or {}
+        root_raw = payload.get("tokata_root") or "D:/WebDev/TOKATA"
+        root = Path(root_raw)
+        if not root.exists() or not root.is_dir():
+            return _api_error(404, "tokata_root_not_found", f"tokata_root does not exist: {root}")
+        try:
+            report = import_all(root, registry)
+        except Exception as exc:  # noqa: BLE001 - never leak a traceback to the client
+            return _api_error(500, "ingest_failed", str(exc))
+        return {
+            "files": report.files,
+            "rows_new": report.rows_new,
+            "rows_skipped": report.rows_skipped,
+            "errors": report.errors,
+        }
 
     def _gated(capability: str) -> JSONResponse:
         """Every gated route (spec §6) — replay/variant-registry/study/fleet/
