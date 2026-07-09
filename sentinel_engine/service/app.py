@@ -23,6 +23,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import uuid
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
@@ -30,7 +31,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
-from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
@@ -40,6 +41,8 @@ from sentinel_engine.engine import Engine, Snapshot
 from sentinel_engine.feed import Feed
 from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
 from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
+from sentinel_engine.sim.lite import run_backtest_lite
+from sentinel_engine.strategies.emasar import EmasarPolicy
 
 from .bars import BarsError, bars_payload
 from .chat import answer_chat
@@ -99,6 +102,14 @@ class VariantCreateRequest(BaseModel):
 
 class StrategyEstadoRequest(BaseModel):
     estado: str
+
+
+class BacktestRequest(BaseModel):
+    variant_id: str
+    symbol: str
+    tf: str = "M5"
+    desde: str | None = None
+    hasta: str | None = None
 
 
 def _snapshot_to_json(snap_dict: dict) -> dict:
@@ -245,6 +256,12 @@ def create_app(
     app.state.registry = registry
     app.state.lake_root = lake_root
     app.state.tick_hub = tick_hub
+    # POST /api/backtest job bookkeeping (M2.5): a plain dict of
+    # job_id -> {"status","run_id"} plus a lock that serializes the actual
+    # sim runs — "single-worker sequential queue" per plan §M2.5, backed by
+    # FastAPI BackgroundTasks rather than a separate worker process/task.
+    app.state.jobs = {}
+    app.state.backtest_lock = asyncio.Lock()
 
     def _resolve(instrument: str | None) -> InstrumentRunner:
         name = instrument or next(iter(runners))
@@ -507,6 +524,77 @@ def create_app(
             "strategy_id": strategy_id, "estado": payload.estado,
         })
         return {"strategy_id": strategy_id, "estado": payload.estado}
+
+    # ------------------------------------------------------------------
+    # Backtest-lite job endpoints (M2.5, plan §D.6/§B1 minimal slice)
+    # ------------------------------------------------------------------
+    def _build_policy(variant: dict[str, Any]):
+        """Policy dispatch by `familia` — only EMASAR exists in this lean
+        M2.5 slice; other families are rejected with a clear error rather
+        than silently defaulting to the wrong strategy."""
+        familia = (variant.get("familia") or "").lower()
+        if familia != "emasar":
+            raise ValueError(f"no backtest-lite policy registered for familia: {familia!r}")
+        return EmasarPolicy(variant.get("params_delta") or {})
+
+    def _run_backtest_job(job_id: str, variant_id: str, symbol: str, tf: str,
+                           desde: str | None, hasta: str | None) -> None:
+        jobs = app.state.jobs
+        jobs[job_id]["status"] = "running"
+        try:
+            variant = registry.get_variant(variant_id)
+            if variant is None:
+                raise ValueError(f"unknown variant_id: {variant_id}")
+            policy = _build_policy(variant)
+            run, trades = run_backtest_lite(
+                policy, symbol, tf, desde, hasta, lake_root=lake_root,
+            )
+            run_id = f"sim-{uuid.uuid4().hex[:16]}"
+            run["run_id"] = run_id
+            run["variant_id"] = variant_id
+            for t in trades:
+                t["trade_id"] = f"simtr-{uuid.uuid4().hex[:16]}"
+            registry.insert_run(run)
+            registry.insert_trades(run_id, trades)
+            registry.audit("api", "backtest_done", {
+                "job_id": job_id, "variant_id": variant_id, "run_id": run_id,
+                "trades": len(trades),
+            })
+            jobs[job_id]["status"] = "done"
+            jobs[job_id]["run_id"] = run_id
+        except Exception as exc:  # noqa: BLE001 - job errors are reported via GET /api/jobs, never raised
+            jobs[job_id]["status"] = "error"
+            jobs[job_id]["error"] = str(exc)
+            registry.audit("api", "backtest_failed", {"job_id": job_id, "variant_id": variant_id, "error": str(exc)})
+
+    async def _run_backtest_job_locked(job_id: str, variant_id: str, symbol: str, tf: str,
+                                        desde: str | None, hasta: str | None) -> None:
+        async with app.state.backtest_lock:
+            await asyncio.to_thread(_run_backtest_job, job_id, variant_id, symbol, tf, desde, hasta)
+
+    @app.post("/api/backtest")
+    def post_backtest(payload: BacktestRequest, background_tasks: BackgroundTasks):
+        if registry.get_variant(payload.variant_id) is None:
+            return _api_error(404, "variant_not_found", f"unknown variant_id: {payload.variant_id}")
+        job_id = f"job-{uuid.uuid4().hex[:16]}"
+        app.state.jobs[job_id] = {"status": "queued", "run_id": None}
+        background_tasks.add_task(
+            _run_backtest_job_locked, job_id, payload.variant_id, payload.symbol,
+            payload.tf, payload.desde, payload.hasta,
+        )
+        return {"job_id": job_id, "status": "queued"}
+
+    @app.get("/api/jobs/{job_id}")
+    def get_job(job_id: str):
+        job = app.state.jobs.get(job_id)
+        if job is None:
+            return _api_error(404, "job_not_found", f"unknown job_id: {job_id}")
+        out = {"status": job["status"]}
+        if job.get("run_id"):
+            out["run_id"] = job["run_id"]
+        if job.get("error"):
+            out["error"] = job["error"]
+        return out
 
     @app.post("/api/ingest/tokata")
     def post_ingest_tokata(payload: dict[str, Any] | None = None):

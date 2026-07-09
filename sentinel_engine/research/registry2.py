@@ -597,6 +597,28 @@ class ResearchRegistry:
         finally:
             conn.close()
 
+    def get_variant(self, variant_id: str) -> dict[str, Any] | None:
+        """`variant` row joined with its parent `strategy` (familia, name,
+        platform) — used by `POST /api/backtest` (M2.5) to pick a policy
+        and pull `params_delta_json`."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                """SELECT v.*, s.name AS strategy_name, s.familia AS familia,
+                          s.platform AS platform
+                   FROM variant v LEFT JOIN strategy s ON v.strategy_id = s.strategy_id
+                   WHERE v.variant_id=?""",
+                (variant_id,),
+            ).fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            d["params_delta"] = json.loads(d.get("params_delta_json") or "{}")
+            return d
+        finally:
+            conn.close()
+
     def variant_exists(self, variant_id: str) -> bool:
         conn = self._connect()
         try:
