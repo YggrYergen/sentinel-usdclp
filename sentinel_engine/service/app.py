@@ -28,7 +28,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
-from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
+import pandas as pd
+from fastapi import FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
 from starlette.staticfiles import StaticFiles
@@ -39,12 +40,30 @@ from sentinel_engine.feed import Feed
 from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
 from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
 
+from .bars import BarsError, bars_payload
 from .chat import answer_chat
-from .stream import Broadcaster
+from .stream import Broadcaster, TickHub
 
 DEFAULT_INSTRUMENTS: tuple[str, ...] = ("usdclp", "gold", "nasdaq")
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 DEFAULT_RESEARCH_DB = Path("data/research.db")
+DEFAULT_LAKE_ROOT = Path("data/lake")
+
+
+def _default_tick_source(symbol: str) -> tuple[float, float] | None:
+    """Read-only MT5 tick source for production (`ticks:{SYMBOL}`, plan
+    §D.6): `mt5.symbol_info_tick` ONLY — never any order-side function.
+    Returns `None` (no push) if MT5 isn't available/initialized or the
+    symbol has no tick yet; imported lazily so this module has no hard MT5
+    dependency (tests inject a fake `tick_source` instead)."""
+    try:
+        import MetaTrader5 as mt5  # noqa: N813 - matches package's own casing
+    except ImportError:
+        return None
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        return None
+    return float(tick.bid), float(tick.ask)
 
 
 def _display_color(color_idx: int | None) -> str | None:
@@ -136,6 +155,9 @@ def create_app(
     loop_interval: float = 1.0,
     autostart_loop: bool = True,
     registry: ResearchRegistry | None = None,
+    lake_root: Path | None = None,
+    tick_source: Callable[[str], tuple[float, float] | None] | None = None,
+    tick_poll_interval: float = 0.25,
 ) -> FastAPI:
     """Build the SENTINEL FastAPI service.
 
@@ -149,9 +171,22 @@ def create_app(
     `/api/runs*`, `/api/forward/*` and `POST /api/ingest/tokata`. Tests
     inject a `tmp_path`-backed registry; production defaults to
     `data/research.db` (created lazily on first use, same DDL as M0.1).
+
+    `lake_root` (M1.2): Parquet lake root backing `GET /api/bars`; defaults
+    to `data/lake` (see `sentinel_engine.lake.store`).
+
+    `tick_source` (M1.2): read-only `symbol -> (bid, ask) | None` callable
+    backing the `ticks:{SYMBOL}` WS channel; defaults to
+    `_default_tick_source` (lazy MT5 import, never any order function).
+    Tests inject a fake for plumbing without an MT5 dependency.
     """
     if registry is None:
         registry = ResearchRegistry(DEFAULT_RESEARCH_DB)
+    if lake_root is None:
+        lake_root = DEFAULT_LAKE_ROOT
+    lake_root = Path(lake_root)
+    if tick_source is None:
+        tick_source = _default_tick_source
 
     runners: dict[str, InstrumentRunner] = {}
     for name in instruments:
@@ -160,6 +195,7 @@ def create_app(
         runners[name].compute()  # seed seq=0 so GET /snapshot works pre-loop
 
     broadcaster = Broadcaster()
+    tick_hub = TickHub(tick_source, poll_interval=tick_poll_interval)
 
     async def _compute_and_broadcast_once(name: str) -> dict:
         runner = runners[name]
@@ -181,6 +217,8 @@ def create_app(
         finally:
             if task is not None:
                 task.cancel()
+            for sym_task in list(tick_hub._tasks.values()):  # noqa: SLF001 - shutdown-only cleanup
+                sym_task.cancel()
 
     app = FastAPI(title="SENTINEL", lifespan=lifespan)
     app.state.runners = runners
@@ -191,6 +229,8 @@ def create_app(
     # ANTHROPIC_API_KEY is set. See `.chat.answer_chat`.
     app.state.chat_client = None
     app.state.registry = registry
+    app.state.lake_root = lake_root
+    app.state.tick_hub = tick_hub
 
     def _resolve(instrument: str | None) -> InstrumentRunner:
         name = instrument or next(iter(runners))
@@ -283,6 +323,58 @@ def create_app(
             pass
         finally:
             broadcaster.disconnect(websocket, name)
+
+    # ------------------------------------------------------------------
+    # /api/bars + ticks:{SYMBOL} WS channel (M1.2, plan §D.6)
+    # ------------------------------------------------------------------
+    @app.get("/api/bars")
+    def get_bars(
+        symbol: str,
+        tf: str = "M1",
+        from_: str | None = Query(default=None, alias="from"),
+        to: str | None = None,
+        max_points: int = 3000,
+    ) -> Any:
+        try:
+            ts_from = pd.Timestamp(from_, tz="UTC") if from_ else None
+            ts_to = pd.Timestamp(to, tz="UTC") if to else None
+        except (ValueError, TypeError) as exc:
+            return _api_error(400, "bad_range", f"invalid from/to: {exc}")
+        try:
+            payload = bars_payload(lake_root, symbol, tf, ts_from, ts_to, max_points)
+        except BarsError as exc:
+            return _api_error(400, "bad_tf", str(exc))
+        except Exception as exc:  # noqa: BLE001 - never leak a traceback to the client
+            return _api_error(500, "bars_failed", str(exc))
+        return payload
+
+    @app.websocket("/ws/ticks")
+    async def ticks_ws(websocket: WebSocket) -> None:
+        """`ticks:{SYMBOL}` channel (plan §D.6): client sends
+        `{"sub":"ticks:XAUUSD"}` / `{"unsub":"ticks:XAUUSD"}`; server pushes
+        `{"ch":"ticks:XAUUSD","t":epoch_ms,"bid","ask"}` on-change ~250ms,
+        only while this socket (or another) is subscribed to that symbol.
+        Subscribing to a second symbol on the same socket is additive."""
+        await websocket.accept()
+        subscribed: set[str] = set()
+        try:
+            while True:
+                msg = await websocket.receive_json()
+                sub = msg.get("sub")
+                unsub = msg.get("unsub")
+                if isinstance(sub, str) and sub.startswith("ticks:"):
+                    symbol = sub[len("ticks:"):]
+                    await tick_hub.subscribe(websocket, symbol)
+                    subscribed.add(symbol)
+                if isinstance(unsub, str) and unsub.startswith("ticks:"):
+                    symbol = unsub[len("ticks:"):]
+                    await tick_hub.unsubscribe(websocket, symbol)
+                    subscribed.discard(symbol)
+        except WebSocketDisconnect:
+            pass
+        finally:
+            for symbol in list(subscribed):
+                await tick_hub.unsubscribe(websocket, symbol)
 
     # ------------------------------------------------------------------
     # Research data endpoints (M0.3, plan §D.6)
