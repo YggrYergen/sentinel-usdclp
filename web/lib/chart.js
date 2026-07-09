@@ -15,6 +15,19 @@
 //   inst.removeOverlay(id)
 //   inst.destroy()
 //
+// Playback API (Task M2.6, plan §D.7/§D.4 forward-walk variable-speed):
+//   inst.startPlayback({speed})  -> speed in PLAYBACK_SPEEDS (1,5,20,60,"MAX")
+//   inst.pausePlayback()
+//   inst.seekPlayback(tsEpochSec)
+//   inst.stopPlayback()          -> restores full view (all bars + all trades)
+//   inst.isPlaying()             -> bool
+//   inst.PLAYBACK_SPEEDS         -> [1,5,20,60,"MAX"]
+// Playback reveals the already-fetched `bars` sequentially via ONE timer
+// (setInterval), cleared on pause/stop/destroy. As the cursor advances,
+// trade markers appear at ts_in and gain their exit+connector once
+// ts_out <= cursor (reusing addTradeMarkers/buildMarkers/drawConnector).
+// Mutually exclusive with live-ticks: starting one disables the other.
+//
 // Candle colors = long/short design tokens (D.2): --long #26a69a / --short #ef5350.
 (function () {
   "use strict";
@@ -117,6 +130,16 @@
     let winTo = null;
     let fetchingPrev = false;
     let destroyed = false;
+
+    // ---- playback (Task M2.6) ----
+    const PLAYBACK_SPEEDS = [1, 5, 20, 60, "MAX"];
+    let playbackCursor = null; // epoch seconds; null = not in playback (full view)
+    let playbackTimerId = null;
+    let playbackBars = null; // full bar set captured at playback start
+    let playbackIdx = 0; // index into playbackBars of next bar to reveal
+    let playbackSpeed = 1;
+    let playbackPlaying = false;
+    const TICK_MS = 200; // one timer tick every 200ms; speed scales bars-per-tick
 
     // ---- data loading ----
     function barsUrl(params) {
@@ -308,12 +331,13 @@
 
     function buildMarkers() {
       const markers = [];
+      const cursor = playbackCursor; // null when not in playback -> show everything
       allTrades.forEach(({ trade, colorHex, dim }) => {
         const isSelected = selectedTradeId && trade.trade_id === selectedTradeId;
-        const alpha = isSelected ? 1 : dim ? 0.4 : 1;
         const color = tradeMarkerColor(colorHex);
-        const size = isSelected ? 2 : 1; // lightweight-charts marker "size" is relative; scale via shape/size below
         const long = (trade.side || "").toUpperCase() === "LONG";
+        const tIn = epochOf(trade.ts_in);
+        if (cursor !== null && tIn > cursor) return; // not revealed yet
         markers.push({
           time: tsSec(new Date(trade.ts_in).getTime() / 1000 || trade.ts_in),
           position: long ? "belowBar" : "aboveBar",
@@ -323,14 +347,17 @@
           text: "",
         });
         if (trade.ts_out) {
-          markers.push({
-            time: tsSec(new Date(trade.ts_out).getTime() / 1000 || trade.ts_out),
-            position: "inBar",
-            color,
-            shape: "square",
-            size: isSelected ? 1.6 : 1,
-            text: "",
-          });
+          const tOut = epochOf(trade.ts_out);
+          if (cursor === null || tOut <= cursor) {
+            markers.push({
+              time: tsSec(new Date(trade.ts_out).getTime() / 1000 || trade.ts_out),
+              position: "inBar",
+              color,
+              shape: "square",
+              size: isSelected ? 1.6 : 1,
+              text: "",
+            });
+          }
         }
       });
       markers.sort((a, b) => a.time - b.time);
@@ -374,6 +401,20 @@
       return `rgba(${r},${g},${b},${alpha})`;
     }
 
+    function redrawConnectors() {
+      clearConnectors();
+      const cursor = playbackCursor;
+      allTrades.forEach(({ trade, colorHex: c, dim: d }) => {
+        if (cursor !== null) {
+          if (!trade.ts_out) return; // no exit yet -> no connector during playback
+          if (epochOf(trade.ts_out) > cursor) return; // exit not reached yet
+        }
+        const isSelected = selectedTradeId && trade.trade_id === selectedTradeId;
+        const alpha = isSelected ? 0.9 : d ? 0.25 : 0.6;
+        drawConnector(trade, c, alpha);
+      });
+    }
+
     function addTradeMarkers(trades, colorHex, options) {
       options = options || {};
       const dim = !!options.dim;
@@ -381,12 +422,7 @@
         allTrades.push({ trade, colorHex, dim });
       });
       buildMarkers();
-      clearConnectors();
-      allTrades.forEach(({ trade, colorHex: c, dim: d }) => {
-        const isSelected = selectedTradeId && trade.trade_id === selectedTradeId;
-        const alpha = isSelected ? 0.9 : d ? 0.25 : 0.6;
-        drawConnector(trade, c, alpha);
-      });
+      redrawConnectors();
     }
 
     function clearSlTpLines() {
@@ -409,12 +445,7 @@
       selectedTradeId = trade.trade_id;
       buildMarkers();
       // rebuild connectors with the new selection's alpha
-      clearConnectors();
-      allTrades.forEach(({ trade: t, colorHex: c, dim: d }) => {
-        const isSelected = selectedTradeId && t.trade_id === selectedTradeId;
-        const alpha = isSelected ? 0.9 : d ? 0.25 : 0.6;
-        drawConnector(t, c, alpha);
-      });
+      redrawConnectors();
 
       if (trade.sl) {
         const line = candleSeries.createPriceLine({
@@ -462,6 +493,10 @@
 
     async function setTF(newTf) {
       if (!TF_LIST.includes(newTf)) return;
+      pausePlayback();
+      playbackBars = null;
+      playbackIdx = 0;
+      playbackCursor = null;
       tf = newTf;
       await loadInitial();
     }
@@ -471,6 +506,7 @@
     let tickSymbol = null;
 
     function enableTicks(sym) {
+      stopPlayback(); // mutually exclusive with playback
       disableTicks();
       tickSymbol = sym || symbol;
       ws = new WebSocket(wsUrl());
@@ -521,8 +557,114 @@
       // bucketStart < last[0]: stale tick, ignore.
     }
 
+    // ---- playback engine (Task M2.6, plan §D.7/§D.4) ----
+    // Reveals the already-fetched `bars` sequentially over ONE timer.
+    // Speeds 1x/5x/20x/60x scale bars-per-tick; MAX reveals all remaining
+    // bars on the next tick (fast-forward). Trade markers/connectors are
+    // recomputed via buildMarkers()/redrawConnectors() against the cursor.
+    function barsPerTick(speed) {
+      if (speed === "MAX") return Infinity;
+      const n = Number(speed) || 1;
+      return Math.max(1, Math.round(n));
+    }
+
+    function clearPlaybackTimer() {
+      if (playbackTimerId !== null) {
+        clearInterval(playbackTimerId);
+        playbackTimerId = null;
+      }
+    }
+
+    function playbackTick() {
+      if (!playbackBars || !playbackBars.length) {
+        pausePlayback();
+        return;
+      }
+      const step = barsPerTick(playbackSpeed);
+      const nextIdx = step === Infinity ? playbackBars.length : Math.min(playbackBars.length, playbackIdx + step);
+      revealTo(nextIdx);
+      if (playbackIdx >= playbackBars.length) {
+        pausePlayback(); // reached the end; stay paused at full reveal
+      }
+    }
+
+    function revealTo(idx) {
+      if (!playbackBars) return;
+      playbackIdx = Math.max(0, Math.min(playbackBars.length, idx));
+      const visible = playbackBars.slice(0, playbackIdx);
+      bars = visible.slice();
+      candleSeries.setData(visible.map(barToCandle));
+      volumeSeries.setData(visible.map((b) => barToVolume(b, b[4] >= b[1])));
+      recomputeOverlays();
+      playbackCursor = visible.length ? visible[visible.length - 1][0] : (playbackBars[0] ? playbackBars[0][0] : null);
+      buildMarkers();
+      redrawConnectors();
+    }
+
+    function startPlayback(options) {
+      options = options || {};
+      disableTicks(); // mutually exclusive with live-ticks
+      const speed = options.speed !== undefined ? options.speed : playbackSpeed;
+      playbackSpeed = PLAYBACK_SPEEDS.includes(speed) ? speed : 1;
+      if (!playbackBars) {
+        playbackBars = bars.slice(); // snapshot of already-fetched bars
+        playbackIdx = 0;
+      }
+      clearPlaybackTimer();
+      playbackPlaying = true;
+      playbackTimerId = setInterval(playbackTick, TICK_MS);
+    }
+
+    function pausePlayback() {
+      playbackPlaying = false;
+      clearPlaybackTimer();
+    }
+
+    function seekPlayback(ts) {
+      if (!playbackBars) {
+        playbackBars = bars.slice();
+        playbackIdx = 0;
+      }
+      const target = tsSec(ts);
+      let idx = 0;
+      while (idx < playbackBars.length && playbackBars[idx][0] <= target) idx++;
+      revealTo(idx);
+    }
+
+    function stopPlayback() {
+      pausePlayback();
+      const hadPlayback = playbackBars !== null;
+      const fullBars = playbackBars;
+      playbackBars = null;
+      playbackIdx = 0;
+      playbackCursor = null;
+      if (hadPlayback && fullBars) {
+        // restore full view: re-apply the full bar set + full markers.
+        applyBars(fullBars);
+        buildMarkers();
+        redrawConnectors();
+      }
+    }
+
+    function isPlaying() {
+      return playbackPlaying;
+    }
+
+    // UI polling helper (playback bar in charts.js/review.js): current
+    // cursor ts, progress pct within the snapshot, and playing flag.
+    function getPlaybackState() {
+      if (!playbackBars || !playbackBars.length) {
+        return { active: false, playing: false, cursor: null, pct: 0, from: null, to: null };
+      }
+      const from = playbackBars[0][0];
+      const to = playbackBars[playbackBars.length - 1][0];
+      const pct = to > from ? Math.max(0, Math.min(1, ((playbackCursor || from) - from) / (to - from))) : 0;
+      return { active: true, playing: playbackPlaying, cursor: playbackCursor, pct, from, to };
+    }
+
     function destroy() {
       destroyed = true;
+      stopPlayback();
       disableTicks();
       try { chart.remove(); } catch (e) { /* noop */ }
       el.innerHTML = "";
@@ -540,6 +682,13 @@
       disableTicks,
       addOverlay,
       removeOverlay,
+      startPlayback,
+      pausePlayback,
+      seekPlayback,
+      stopPlayback,
+      isPlaying,
+      getPlaybackState,
+      PLAYBACK_SPEEDS,
       destroy,
       get symbol() { return symbol; },
       get tf() { return tf; },

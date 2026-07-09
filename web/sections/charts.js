@@ -14,6 +14,76 @@
   const TF_LIST = ["M1", "M2", "M5", "M10", "M15"];
   const OVERLAYS = ["EMA9", "EMA21", "EMA50", "BB"];
   const OVERLAY_COLORS = { EMA9: "#00bfff", EMA21: "#ffb020", EMA50: "#7c4dff", BB: "#4d9fff" };
+  const PLAYBACK_SPEEDS = [1, 5, 20, 60, "MAX"];
+
+  // ---- playback UI bar (Task M2.6, plan §D.7/§D.4) — shared pattern used
+  // by both CHARTS (no trades) and REVIEW (with the run's trades). Renders
+  // ▶/⏸ + speed selector 1x/5x/20x/60x/MAX + scrub slider + current-ts label.
+  // Polls chartInst.getPlaybackState() on ONE interval to drive the ts
+  // label + slider. ESC or leaving the section stops playback (caller wires
+  // stopPlayback() + this.destroy() on teardown).
+  function renderPlaybackBar(host, getChartInst) {
+    const bar = el("div", { class: "playback-bar" });
+    const playBtn = el("button", { type: "button", class: "playback-play-btn", text: "▶" });
+    const speedSel = el("select", { class: "playback-speed-select" },
+      PLAYBACK_SPEEDS.map((s) => el("option", { value: String(s), text: `${s}${s === "MAX" ? "" : "x"}` })));
+    const slider = el("input", { type: "range", class: "playback-scrub", min: "0", max: "1000", value: "0" });
+    const tsLabel = el("span", { class: "playback-ts-label mono", text: "--" });
+
+    let scrubbing = false;
+
+    playBtn.addEventListener("click", () => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      if (st.active && st.playing) {
+        inst.pausePlayback();
+      } else {
+        const speed = speedSel.value === "MAX" ? "MAX" : Number(speedSel.value);
+        inst.startPlayback({ speed });
+      }
+    });
+
+    speedSel.addEventListener("change", () => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      const speed = speedSel.value === "MAX" ? "MAX" : Number(speedSel.value);
+      if (st.active && st.playing) inst.startPlayback({ speed });
+    });
+
+    slider.addEventListener("input", () => { scrubbing = true; });
+    slider.addEventListener("change", () => {
+      const inst = getChartInst();
+      scrubbing = false;
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      if (!st.active || st.from === null) return;
+      const pct = Number(slider.value) / 1000;
+      inst.seekPlayback(st.from + pct * (st.to - st.from));
+    });
+
+    bar.appendChild(playBtn);
+    bar.appendChild(speedSel);
+    bar.appendChild(slider);
+    bar.appendChild(tsLabel);
+    host.appendChild(bar);
+
+    const fmt = window.SENTINEL.fmt;
+    const pollId = setInterval(() => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      playBtn.textContent = st.active && st.playing ? "⏸" : "▶";
+      tsLabel.textContent = st.cursor ? fmt.ts(st.cursor) : "--";
+      if (!scrubbing) slider.value = String(Math.round((st.pct || 0) * 1000));
+    }, 250);
+
+    return {
+      el: bar,
+      destroy: () => clearInterval(pollId),
+    };
+  }
 
   let state = null;
 
@@ -210,11 +280,23 @@
 
     chartInst = window.SENTINEL.chart.create(chartHost, { symbol: initial.symbol, tf: initial.tf });
 
-    state = { root, chartInst, teardownFns: [] };
+    const playbackHost = el("div", { class: "playback-host" });
+    root.appendChild(playbackHost);
+    const playbackBar = renderPlaybackBar(playbackHost, () => chartInst);
+
+    function escHandler(evt) {
+      if (evt.key === "Escape" && chartInst) chartInst.stopPlayback();
+    }
+    document.addEventListener("keydown", escHandler);
+
+    state = { root, chartInst, playbackBar, escHandler };
   }
 
   function teardown() {
+    if (state && state.escHandler) document.removeEventListener("keydown", state.escHandler);
+    if (state && state.playbackBar) { try { state.playbackBar.destroy(); } catch (e) { /* noop */ } }
     if (state && state.chartInst) {
+      try { state.chartInst.stopPlayback(); } catch (e) { /* noop */ }
       try { state.chartInst.destroy(); } catch (e) { /* noop */ }
     }
     if (state && state.root) state.root.innerHTML = "";

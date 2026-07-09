@@ -13,6 +13,9 @@
 
   let state = null; // per-mount state, rebuilt on render()
 
+  const TF_LIST = ["M1", "M2", "M5", "M10", "M15"];
+  const PLAYBACK_SPEEDS = [1, 5, 20, 60, "MAX"];
+
   function el(tag, attrs, children) {
     const e = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -189,6 +192,95 @@
       </div>`;
   }
 
+  // ---- REVIEW TF-switcher (folded-in fix, closes M2.2 hito gap: recorrer
+  // una corrida en M1 y M5) — exclusive M1/M2/M5/M10/M15 buttons, same
+  // pattern as charts.js .charts-tf-btn. On switch: chartInst.setTF(tf)
+  // then re-selectTrade(currentTrade) so the anchor trade stays centered
+  // by timestamp across TFs. ----
+  function renderTfButtons(host, initialTf, onTF) {
+    const group = el("div", { class: "review-tf-buttons" });
+    TF_LIST.forEach((tfName) => {
+      const btn = el("button", { type: "button", class: "review-tf-btn", text: tfName });
+      if (tfName === initialTf) btn.classList.add("active");
+      btn.addEventListener("click", () => {
+        group.querySelectorAll(".review-tf-btn").forEach((b) => b.classList.remove("active"));
+        btn.classList.add("active");
+        onTF(tfName);
+      });
+      group.appendChild(btn);
+    });
+    host.appendChild(group);
+    return group;
+  }
+
+  // ---- playback UI bar (Task M2.6) — same pattern as charts.js:
+  // ▶/⏸ + speed selector + scrub slider + ts label, polling
+  // chartInst.getPlaybackState() on ONE interval. REVIEW plays back the
+  // selected run's window WITH its trades appearing/closing (handled
+  // inside lib/chart.js against the already-loaded trade markers).
+  function renderPlaybackBar(host, getChartInst) {
+    const bar = el("div", { class: "playback-bar" });
+    const playBtn = el("button", { type: "button", class: "playback-play-btn", text: "▶" });
+    const speedSel = el("select", { class: "playback-speed-select" },
+      PLAYBACK_SPEEDS.map((s) => el("option", { value: String(s), text: `${s}${s === "MAX" ? "" : "x"}` })));
+    const slider = el("input", { type: "range", class: "playback-scrub", min: "0", max: "1000", value: "0" });
+    const tsLabel = el("span", { class: "playback-ts-label mono", text: "--" });
+
+    let scrubbing = false;
+
+    playBtn.addEventListener("click", () => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      if (st.active && st.playing) {
+        inst.pausePlayback();
+      } else {
+        const speed = speedSel.value === "MAX" ? "MAX" : Number(speedSel.value);
+        inst.startPlayback({ speed });
+      }
+    });
+
+    speedSel.addEventListener("change", () => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      const speed = speedSel.value === "MAX" ? "MAX" : Number(speedSel.value);
+      if (st.active && st.playing) inst.startPlayback({ speed });
+    });
+
+    slider.addEventListener("input", () => { scrubbing = true; });
+    slider.addEventListener("change", () => {
+      const inst = getChartInst();
+      scrubbing = false;
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      if (!st.active || st.from === null) return;
+      const pct = Number(slider.value) / 1000;
+      inst.seekPlayback(st.from + pct * (st.to - st.from));
+    });
+
+    bar.appendChild(playBtn);
+    bar.appendChild(speedSel);
+    bar.appendChild(slider);
+    bar.appendChild(tsLabel);
+    host.appendChild(bar);
+
+    const fmt = window.SENTINEL.fmt;
+    const pollId = setInterval(() => {
+      const inst = getChartInst();
+      if (!inst) return;
+      const st = inst.getPlaybackState();
+      playBtn.textContent = st.active && st.playing ? "⏸" : "▶";
+      tsLabel.textContent = st.cursor ? fmt.ts(st.cursor) : "--";
+      if (!scrubbing) slider.value = String(Math.round((st.pct || 0) * 1000));
+    }, 250);
+
+    return {
+      el: bar,
+      destroy: () => clearInterval(pollId),
+    };
+  }
+
   // ---- main render ----
   function render(mountEl) {
     mountEl.innerHTML = "";
@@ -204,10 +296,14 @@
     left.appendChild(selectorHost);
     left.appendChild(tradeListHost);
 
+    const reviewToolbar = el("div", { class: "review-toolbar" });
     const headerHost = el("div", { class: "review-header-host" });
     const chartHost = el("div", { class: "review-chart-host" });
+    const playbackHost = el("div", { class: "playback-host" });
+    right.appendChild(reviewToolbar);
     right.appendChild(headerHost);
     right.appendChild(chartHost);
+    right.appendChild(playbackHost);
 
     const appState = (window.SENTINEL.appState = window.SENTINEL.appState || {});
 
@@ -221,7 +317,24 @@
     let runsById = {};
     let selectorApi = null;
 
+    // folded-in fix: TF switcher keeps the selected trade anchored by
+    // timestamp across TFs (setTF then re-selectTrade(currentTrade)).
+    renderTfButtons(reviewToolbar, appState.tf || "M1", (tf) => {
+      appState.tf = tf;
+      if (!chartInst) return;
+      const anchorTrade = currentTrades[selectedIndex] || null;
+      chartInst.setTF(tf).then(() => {
+        if (anchorTrade) chartInst.selectTrade(anchorTrade);
+      });
+    });
+
+    const playbackBar = renderPlaybackBar(playbackHost, () => chartInst);
+
     function keyHandler(evt) {
+      if (evt.key === "Escape") {
+        if (chartInst) chartInst.stopPlayback();
+        return;
+      }
       if (evt.target && /^(input|textarea|select)$/i.test(evt.target.tagName)) return;
       if (evt.key === "j" || evt.key === "J") {
         evt.preventDefault();
@@ -377,7 +490,11 @@
       root,
       teardown: () => {
         document.removeEventListener("keydown", keyHandler);
-        if (chartInst) { try { chartInst.destroy(); } catch (e) { /* noop */ } }
+        if (playbackBar) { try { playbackBar.destroy(); } catch (e) { /* noop */ } }
+        if (chartInst) {
+          try { chartInst.stopPlayback(); } catch (e) { /* noop */ }
+          try { chartInst.destroy(); } catch (e) { /* noop */ }
+        }
         if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } }
       },
     };

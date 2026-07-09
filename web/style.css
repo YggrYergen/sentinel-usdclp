@@ -913,4 +913,73 @@ html, body {
 .review-header-summary { display: flex; gap: var(--sp-4); font-size: 0.78rem; color: var(--text-0); }
 .review-header-loading, .review-header-empty, .review-header-error { color: var(--text-1); }
 
+/* ============================================================
+   M2.6 — variable-speed forward-walk playback (CHARTS + REVIEW)
+   + folded-in REVIEW TF-switcher fix. Celeste accent, mono
+   tabular ts label (D.2 hard rule).
+   ============================================================ */
+.review-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex: 0 0 auto; }
+.review-tf-buttons { display: flex; gap: 2px; }
+.review-tf-btn {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.review-tf-btn:hover { color: var(--accent-celeste); }
+.review-tf-btn.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.review-tf-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+.playback-host { flex: 0 0 auto; }
+.playback-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.playback-play-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 2px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 32px;
+}
+.playback-play-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.3); }
+.playback-play-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.playback-speed-select {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+.playback-speed-select:focus-visible { outline: 1px solid var(--accent-celeste); }
+.playback-scrub {
+  flex: 1;
+  accent-color: var(--accent-celeste);
+}
+.playback-ts-label {
+  color: var(--text-1);
+  font-size: 0.75rem;
+  min-width: 140px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
 .review-chart-host { flex: 1; min-height: 380px; }
