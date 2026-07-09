@@ -22,6 +22,7 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from dataclasses import asdict, replace
 from datetime import datetime, timezone
@@ -85,6 +86,19 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     content: str
     error: str | None = None
+
+
+class VariantCreateRequest(BaseModel):
+    strategy_id: str
+    variant_suffix: str
+    params_delta: dict[str, Any] = {}
+    tf: str | None = None
+    instrumento: str | None = None
+    modo_salida: str | None = None
+
+
+class StrategyEstadoRequest(BaseModel):
+    estado: str
 
 
 def _snapshot_to_json(snap_dict: dict) -> dict:
@@ -433,6 +447,66 @@ def create_app(
     @app.get("/api/forward/{session_id}/trades")
     def get_forward_session_trades(session_id: str) -> dict[str, Any]:
         return {"trades": registry.get_trades_for_session(session_id)}
+
+    # ------------------------------------------------------------------
+    # Management endpoints (M2.4, plan §D.5/§D.6): create variants, flip
+    # strategy estado. Minimal validation only — no full param-schema
+    # engine, just a key-set check against `param_schema_json` if present.
+    # ------------------------------------------------------------------
+    @app.post("/api/variants")
+    def post_variant_create(payload: VariantCreateRequest):
+        strategy = registry.get_strategy(payload.strategy_id)
+        if strategy is None:
+            return _api_error(404, "strategy_not_found", f"unknown strategy_id: {payload.strategy_id}")
+
+        schema_json = strategy.get("param_schema_json") or "{}"
+        try:
+            schema = json.loads(schema_json)
+        except (TypeError, ValueError):
+            schema = {}
+        if schema:
+            unknown = [k for k in payload.params_delta if k not in schema]
+            if unknown:
+                return _api_error(
+                    400, "invalid_params_delta",
+                    f"params_delta has keys not in param_schema: {unknown}",
+                )
+
+        instrumento = payload.instrumento or ""
+        variant_id = f"{strategy['familia']}_{instrumento}_{payload.variant_suffix}"
+        if registry.variant_exists(variant_id):
+            return _api_error(409, "variant_exists", f"variant already exists: {variant_id}")
+
+        registry.insert_variant(
+            payload.strategy_id, variant_id, payload.params_delta,
+            payload.tf, payload.instrumento, payload.modo_salida,
+        )
+        try:
+            registry.allocate_magic(payload.strategy_id, variant_id)
+        except ValueError as exc:
+            return _api_error(400, "magic_allocation_failed", str(exc))
+        registry.audit("api", "variant_created", {
+            "strategy_id": payload.strategy_id, "variant_id": variant_id,
+            "params_delta": payload.params_delta,
+        })
+        return {"variant_id": variant_id}
+
+    _VALID_ESTADOS = {"activa", "pausada", "graduada"}
+
+    @app.post("/api/strategies/{strategy_id}/estado")
+    def post_strategy_estado(strategy_id: str, payload: StrategyEstadoRequest):
+        if registry.get_strategy(strategy_id) is None:
+            return _api_error(404, "strategy_not_found", f"unknown strategy_id: {strategy_id}")
+        if payload.estado not in _VALID_ESTADOS:
+            return _api_error(
+                400, "invalid_estado",
+                f"estado must be one of {sorted(_VALID_ESTADOS)}: got {payload.estado!r}",
+            )
+        registry.set_strategy_estado(strategy_id, payload.estado)
+        registry.audit("api", "strategy_estado_changed", {
+            "strategy_id": strategy_id, "estado": payload.estado,
+        })
+        return {"strategy_id": strategy_id, "estado": payload.estado}
 
     @app.post("/api/ingest/tokata")
     def post_ingest_tokata(payload: dict[str, Any] | None = None):

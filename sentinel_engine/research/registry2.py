@@ -120,8 +120,18 @@ class ResearchRegistry:
         try:
             conn.executescript(_DDL)
             conn.commit()
+            self._migrate_additive(conn)
         finally:
             conn.close()
+
+    def _migrate_additive(self, conn: sqlite3.Connection) -> None:
+        """Additive-only schema evolution (never rewrites D.5's DDL): adds
+        `strategy.estado` (M2.4 — activa|pausada|graduada, alongside the
+        pre-existing `graduated` bool) if the column isn't there yet."""
+        cols = {row[1] for row in conn.execute("PRAGMA table_info(strategy)").fetchall()}
+        if "estado" not in cols:
+            conn.execute("ALTER TABLE strategy ADD COLUMN estado TEXT NOT NULL DEFAULT 'activa'")
+            conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
@@ -292,6 +302,7 @@ class ResearchRegistry:
                 d["display_color"] = STRATEGY_PALETTE[d["color_idx"] % len(STRATEGY_PALETTE)]
                 d["sweepable"] = bool(d["sweepable"])
                 d["graduated"] = bool(d["graduated"])
+                d.setdefault("estado", "activa")
                 out.append(d)
             return out
         finally:
@@ -562,6 +573,68 @@ class ResearchRegistry:
             conn.execute(
                 "INSERT INTO audit_log(ts, actor, accion, detalle_json) VALUES (?, ?, ?, ?)",
                 (_utcnow_iso(), actor, accion, json.dumps(detalle or {}, ensure_ascii=False)),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # M2.4 — variant/strategy management helpers
+    # ------------------------------------------------------------------
+    def get_strategy(self, strategy_id: str) -> dict[str, Any] | None:
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT * FROM strategy WHERE strategy_id=?", (strategy_id,)
+            ).fetchone()
+            if row is None:
+                return None
+            d = dict(row)
+            d["sweepable"] = bool(d["sweepable"])
+            d["graduated"] = bool(d["graduated"])
+            return d
+        finally:
+            conn.close()
+
+    def variant_exists(self, variant_id: str) -> bool:
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT 1 FROM variant WHERE variant_id=?", (variant_id,)
+            ).fetchone()
+            return row is not None
+        finally:
+            conn.close()
+
+    def insert_variant(
+        self,
+        strategy_id: str,
+        variant_id: str,
+        params_delta: dict[str, Any] | None,
+        tf: str | None,
+        instrumento: str | None,
+        modo_salida: str | None,
+    ) -> str:
+        """Strict create (M2.4 `POST /api/variants`): raises `ValueError` if
+        `variant_id` already exists — unlike `upsert_variant`, which is
+        idempotent for the importer's use case."""
+        if self.variant_exists(variant_id):
+            raise ValueError(f"variant already exists: {variant_id}")
+        return self.upsert_variant(strategy_id, variant_id, params_delta, tf, instrumento, modo_salida)
+
+    def set_strategy_estado(self, strategy_id: str, estado: str) -> None:
+        """`estado` in {'activa','pausada','graduada'} (M2.4). Keeps the
+        pre-existing `graduated` bool column in sync (`graduated=1` iff
+        `estado='graduada'`) so older readers of that flag stay correct."""
+        if self.get_strategy(strategy_id) is None:
+            raise ValueError(f"unknown strategy_id: {strategy_id}")
+        graduated = 1 if estado == "graduada" else 0
+        conn = self._connect()
+        try:
+            conn.execute(
+                "UPDATE strategy SET estado=?, graduated=? WHERE strategy_id=?",
+                (estado, graduated, strategy_id),
             )
             conn.commit()
         finally:
