@@ -27,16 +27,16 @@
 |---|---|---|---|---|
 | W0.1 routers split | A | — | [x] | 3833280+d1e202e |
 | W0.2 asset versioning | B | — | [x] | 17aea47 |
-| A1 lake TF tiers | C | — | [ ] | |
+| A1 lake TF tiers | C | — | [x] | b776ed0 |
 | A2 /api/coverage | A | W0.1, A1 | [ ] | |
 | A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [ ] | |
 | A4 chart data controller | B | A3 contract | [ ] | |
 | A5a adapters + windowed markers | B | A4 | [ ] | |
 | A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
 | A6a TV split-pane + TF dot | B | W0.2 | [x] | 3ba0f14 |
-| A6b vlist util + TV lists virtualized | B | A6a | [ ] | |
+| A6b vlist util + TV lists virtualized | B | A6a | [x] | 1cda6d2 |
 | A7 goto-date (Charts+TV) | B | A2, A4 | [ ] | |
-| A8 models/gate/cost endpoints | A | W0.1 | [ ] | |
+| A8 models/gate/cost endpoints | A | W0.1 | [x] | 1a6f9e5 |
 | A9 chat UI catalog+unlock+meter | B | A8 | [ ] | |
 | A10 live tail service (tick→last bar) | A | W0.1 | [ ] | |
 | A11 live-tail adapter (Charts) | B | A5a, A10 | [ ] | |
