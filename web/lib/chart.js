@@ -221,6 +221,15 @@
     let winTo = null;
     let fetchingPrev = false;
     let destroyed = false;
+
+    // ---- barSource (Task A4 wiring): chunked/LRU data controller feeding
+    // ensureRange() calls off the visible-range-change debounce below. This
+    // is ADDITIVE wiring only -- existing loadInitial/setWindow/fetchPreviousBlock
+    // paths (and the loadSeq token) are untouched.
+    const barSource = (window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource)
+      ? window.SENTINEL.chartData.createBarSource({ symbol, tf })
+      : null;
+    let rangeDebounceTimer = null;
     // Load-sequence token (Wave-3 race fix): the chart constructor kicks off
     // loadInitial() (the TAIL) while review.js immediately calls
     // selectTrade()->setWindow() (the selected trade's window). Both fetch
@@ -363,6 +372,20 @@
       if (!range || destroyed) return;
       if (range.from !== null && range.from < 5) {
         fetchPreviousBlock();
+      }
+      // Task A4 wiring: debounce 150ms -> ensureRange(view.from - 300*tf,
+      // view.to + 50*tf) via the chunked barSource controller. Independent
+      // of fetchPreviousBlock/loadSeq above -- purely additive prefetch.
+      if (barSource) {
+        if (rangeDebounceTimer !== null) clearTimeout(rangeDebounceTimer);
+        rangeDebounceTimer = setTimeout(() => {
+          rangeDebounceTimer = null;
+          if (destroyed) return;
+          const visible = chart.timeScale().getVisibleRange();
+          if (!visible) return;
+          const barSec = secPerBar();
+          barSource.ensureRange(visible.from - 300 * barSec, visible.to + 50 * barSec);
+        }, 150);
       }
     });
 
@@ -901,6 +924,7 @@
       playbackIdx = 0;
       playbackCursor = null;
       tf = newTf;
+      if (barSource) barSource.setTf(newTf);
       await loadInitial();
       // Task 2.1 (Wave-3 Stage 2): loadInitial() only fetches the TAIL of
       // the new tf, which may be months away from the currently-selected
@@ -1086,6 +1110,10 @@
 
     function destroy() {
       destroyed = true;
+      if (rangeDebounceTimer !== null) {
+        clearTimeout(rangeDebounceTimer);
+        rangeDebounceTimer = null;
+      }
       stopPlayback();
       disableTicks();
       try { chart.remove(); } catch (e) { /* noop */ }
