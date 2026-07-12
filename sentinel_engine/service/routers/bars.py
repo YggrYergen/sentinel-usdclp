@@ -207,8 +207,29 @@ def build_router(lake_root, tick_hub: TickHub) -> APIRouter:
         except BarsSourceError as exc:
             return _api_error(400, "bad_tf", str(exc))
 
-        from_epoch = int(ts_from.timestamp()) if ts_from is not None else 0
-        to_epoch = int(ts_to.timestamp()) if ts_to is not None else from_epoch
+        from_epoch = int(ts_from.timestamp()) if ts_from is not None else None
+        to_epoch = int(ts_to.timestamp()) if ts_to is not None else None
+        if from_epoch is None or to_epoch is None:
+            # Legacy /api/bars ergonomics: sections (charts.js fetchLastBars)
+            # call with symbol/tf/max_points only and expect the MOST RECENT
+            # bars. Default the window to the coverage tail instead of an
+            # empty [0, 0] range: to = manifest last for (symbol, tf) — or
+            # the max last across valid TF entries — and
+            # from = to - max_points * tf_seconds(tf).
+            sym_cov = _load_manifest(lake_root).get(symbol, {})
+            entry = sym_cov.get(tf)
+            last = entry.get("last") if isinstance(entry, dict) else None
+            if last is None:
+                candidates = [
+                    e.get("last")
+                    for k, e in sym_cov.items()
+                    if k in _VALID_TF_NAMES and isinstance(e, dict) and e.get("last") is not None
+                ]
+                last = max(candidates) if candidates else None
+            if to_epoch is None:
+                to_epoch = int(last) if last is not None else (from_epoch or 0)
+            if from_epoch is None:
+                from_epoch = to_epoch - max_points * tf_seconds(tf)
 
         try:
             served_tf = choose_served_tf(tf, from_epoch, to_epoch, max_points)

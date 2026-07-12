@@ -372,3 +372,24 @@ def test_overlays_unsupported_name_ignored(client):
     assert resp.status_code == 200
     body = resp.json()
     assert set(body["overlays"].keys()) == {"ema8"}
+
+
+# ---------------------------------------------------------------------
+# Default window (no from/to): legacy ergonomics — serve the tail
+# (charts.js fetchLastBars calls with symbol/tf/max_points only)
+# ---------------------------------------------------------------------
+
+def test_rangeless_request_serves_most_recent_window(client):
+    resp = client.get("/api/bars", params={"symbol": "XAUUSD", "tf": "M1", "max_points": 50})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["bars"], "rangeless call must serve the coverage tail, not an empty window"
+    assert len(body["bars"]) <= 50
+    # the returned window must END at the lake's last M1 bar
+    assert body["bars"][-1]["t"] == BASE_EPOCH + 119 * 60
+
+
+def test_rangeless_request_unknown_symbol_still_empty(client):
+    resp = client.get("/api/bars", params={"symbol": "NOPE", "tf": "M1"})
+    assert resp.status_code == 200
+    assert resp.json()["bars"] == []
