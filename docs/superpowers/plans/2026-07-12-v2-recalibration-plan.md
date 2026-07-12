@@ -33,7 +33,7 @@
 | A4 chart data controller | B | A3 contract | [ ] | |
 | A5a adapters + windowed markers | B | A4 | [ ] | |
 | A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
-| A6a TV split-pane + TF dot | B | W0.2 | [ ] | |
+| A6a TV split-pane + TF dot | B | W0.2 | [x] | 3ba0f14 |
 | A6b vlist util + TV lists virtualized | B | A6a | [ ] | |
 | A7 goto-date (Charts+TV) | B | A2, A4 | [ ] | |
 | A8 models/gate/cost endpoints | A | W0.1 | [ ] | |
