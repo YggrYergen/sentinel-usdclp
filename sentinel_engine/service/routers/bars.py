@@ -33,18 +33,25 @@ top-level to register the router.
 """
 from __future__ import annotations
 
+import asyncio
 import json
+import time
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from starlette.responses import JSONResponse, StreamingResponse
 
 from ..bars_source import BarsSourceError, choose_served_tf, read_window, tf_seconds
+from ..live_tail import LiveTailHub
 from ..stream import TickHub
 from ...lake.tiers import TF_SECONDS as _VALID_TF_NAMES
 from ...strategies._supertrend_ref import supertrend as _supertrend_series
 from ...strategies.emasar import ema_series, sar_series
 from ...strategies.emasar_ref import _atr_wilder
+
+# CT-9 SSE convention: heartbeat comment cadence (seconds).
+_SSE_HEARTBEAT_SECONDS = 15.0
 
 router = APIRouter()
 
@@ -291,5 +298,67 @@ def build_router(lake_root, tick_hub: TickHub) -> APIRouter:
         finally:
             for symbol in list(subscribed):
                 await tick_hub.unsubscribe(websocket, symbol)
+
+    # A10: live tail (in-formation bars per TF, memory-only) SSE broadcaster.
+    # Reuses the SAME `tick_hub` that powers /ws/ticks (no second tick
+    # source, no MT5 import here). One `LiveTailHub` per process, shared
+    # across all /api/bars/tail requests, keyed by symbol via its own
+    # per-(symbol,tf) state.
+    live_tail_hub = LiveTailHub()
+
+    class _TickHubTap:
+        """Mimics the minimal `WebSocket`-shaped interface `TickHub` expects
+        (`send_json`) so a plain SSE request can subscribe to the hub's
+        existing per-symbol poll loop WITHOUT extending `TickHub`'s public
+        surface or touching `/ws/ticks`. Each `(bid, ask)` push from the hub
+        is treated as a synthetic tick: price = mid, volume = 0 (tick feeds
+        carry no volume; the maintainer's `+v` accumulation degrades to a
+        no-op, which is correct — there is no real volume to attribute)."""
+
+        def __init__(self, symbol: str, queue: "asyncio.Queue[dict]") -> None:
+            self._symbol = symbol
+            self._queue = queue
+
+        async def send_json(self, payload: dict) -> None:
+            bid = payload.get("bid")
+            ask = payload.get("ask")
+            if bid is None or ask is None:
+                return
+            price = (float(bid) + float(ask)) / 2.0
+            ts = int(payload.get("t", time.time() * 1000)) // 1000
+            events = live_tail_hub.push_tick(self._symbol, price, 0.0, ts)
+            for ev in events:
+                await self._queue.put(ev)
+
+    @r.get("/api/bars/tail")
+    async def get_bars_tail(symbol: str) -> Any:
+        """CT-9 SSE: `bar_tail` events for every maintained TF (M1/M2/M5/M15)
+        of `symbol`, sourced from the SAME tick plumbing as `/ws/ticks`
+        (`tick_hub`). Degrades to 503 `{"live": false}` (JSON, not SSE) when
+        the underlying tick source has nothing to offer (e.g. MT5 not
+        attached) — never calls `mt5.initialize()`; purely reuses the
+        existing read-only tick_source callable already wired into
+        `tick_hub`."""
+        probe = tick_hub._tick_source(symbol)  # noqa: SLF001 - read-only liveness probe, same callable /ws/ticks already uses
+        if probe is None:
+            return JSONResponse(status_code=503, content={"live": False})
+
+        async def event_stream():
+            queue: "asyncio.Queue[dict]" = asyncio.Queue()
+            tap = _TickHubTap(symbol, queue)
+            await tick_hub.subscribe(tap, symbol)
+            yield "retry: 3000\n\n"
+            try:
+                while True:
+                    try:
+                        ev = await asyncio.wait_for(queue.get(), timeout=_SSE_HEARTBEAT_SECONDS)
+                        data = json.dumps(ev)
+                        yield f"event: bar_tail\ndata: {data}\n\n"
+                    except asyncio.TimeoutError:
+                        yield ": hb\n\n"
+            finally:
+                await tick_hub.unsubscribe(tap, symbol)
+
+        return StreamingResponse(event_stream(), media_type="text/event-stream")
 
     return r
