@@ -67,7 +67,7 @@
 | E3 monitor subagent runner | A | E2 | [ ] | |
 | E4 gateway demo-only + CI import test | C | E1 | [ ] | |
 | E5 chat propose_position tool | B | E1, C4 | [ ] | |
-| ORC-1 R1–R36 map appendix | ORC | — | [ ] | |
+| ORC-1 R1–R36 map appendix | ORC | — | [x] | fb93b62 |
 | ORC-2 Study frontend-design session | ORC+user | — | [ ] | |
 | ORC-3 Lab tooltips content (+user review) | ORC+user | — | [ ] | |
 | ORC-4 wave-boundary review+commit batches | ORC | continuous | [ ] | |
