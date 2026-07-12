@@ -237,7 +237,12 @@ class EmasarPolicy:
 
     def _indicators(self, bars: list[dict]) -> dict[str, list]:
         key = id(bars)
-        if self._cache_key == key and len(self._cache.get("closes", [])) == len(bars):
+        # Validity check must reference a key the cache actually stores
+        # ("bars"), not "closes" (never stored) — the old "closes" check
+        # ALWAYS missed, so the sim recomputed every indicator series on every
+        # bar (O(n²), minutes-to-hours for a full-window M2 backtest instead
+        # of O(n) seconds).
+        if self._cache_key == key and len(self._cache.get("bars", [])) == len(bars):
             return self._cache
         highs = [b["high"] for b in bars]
         lows = [b["low"] for b in bars]
