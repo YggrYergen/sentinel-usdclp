@@ -568,6 +568,16 @@
     // marks it against the actual run.tf below.
     markNativeTfButton(tfButtonsGroup, null);
 
+    // Task A7: goto-date control -- shared web/lib/goto.js helper, wired
+    // here (same reviewToolbar as the TF buttons above).
+    if (window.SENTINEL.goto) {
+      window.SENTINEL.goto.createGotoControl(reviewToolbar, {
+        getSymbol: () => appState.symbol,
+        getTf: () => appState.tf || DEFAULT_TF,
+        getChartInst: () => chartInst,
+      });
+    }
+
     function setActiveTfButton(tf) {
       if (!tfButtonsGroup) return;
       tfButtonsGroup.querySelectorAll(".review-tf-btn").forEach((b) => {

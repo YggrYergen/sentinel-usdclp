@@ -227,6 +227,13 @@
     bar.appendChild(tfGroup);
     bar.appendChild(liveGroup);
     bar.appendChild(overlayGroup);
+    if (window.SENTINEL.goto && callbacks.getChartInst) {
+      window.SENTINEL.goto.createGotoControl(bar, {
+        getSymbol: callbacks.getSymbol,
+        getTf: callbacks.getTf,
+        getChartInst: callbacks.getChartInst,
+      });
+    }
     root.appendChild(bar);
     return bar;
   }
@@ -274,6 +281,9 @@
         else activeOverlays.delete(name);
         if (chartInst) applyOverlays(chartInst, appState.symbol || initial.symbol, appState.tf || initial.tf, activeOverlays);
       },
+      getSymbol: () => appState.symbol || initial.symbol,
+      getTf: () => appState.tf || initial.tf,
+      getChartInst: () => chartInst,
     });
 
     root.appendChild(chartHost);
