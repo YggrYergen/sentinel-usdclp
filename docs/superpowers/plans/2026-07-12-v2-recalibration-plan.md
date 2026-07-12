@@ -31,14 +31,14 @@
 | A2 /api/coverage | A | W0.1, A1 | [x] | 9363f9a |
 | A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [x] | b3a3f3f |
 | A4 chart data controller | B | A3 contract | [x] | 49128e9 |
-| A5a adapters + windowed markers | B | A4 | [ ] | |
+| A5a adapters + windowed markers | B | A4 | [x] | 5ea9173 |
 | A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
 | A6a TV split-pane + TF dot | B | W0.2 | [x] | 3ba0f14 |
 | A6b vlist util + TV lists virtualized | B | A6a | [x] | 1cda6d2 |
 | A7 goto-date (Charts+TV) | B | A2, A4 | [ ] | |
 | A8 models/gate/cost endpoints | A | W0.1 | [x] | 1a6f9e5 |
 | A9 chat UI catalog+unlock+meter | B | A8 | [ ] | |
-| A10 live tail service (tick→last bar) | A | W0.1 | [ ] | |
+| A10 live tail service (tick→last bar) | A | W0.1 | [x] | 32a770a |
 | A11 live-tail adapter (Charts) | B | A5a, A10 | [ ] | |
 | B1a deals watcher core | C | — | [x] | 850860b+ce2c36c |
 | B1b position grouping (multi-lote/parciales) | C | B1a | [x] | 5da0947 |
