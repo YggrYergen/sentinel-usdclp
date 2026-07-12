@@ -33,12 +33,15 @@ top-level to register the router.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
 
 from ..bars_source import BarsSourceError, choose_served_tf, read_window, tf_seconds
 from ..stream import TickHub
+from ...lake.tiers import TF_SECONDS as _VALID_TF_NAMES
 from ...strategies._supertrend_ref import supertrend as _supertrend_series
 from ...strategies.emasar import ema_series, sar_series
 from ...strategies.emasar_ref import _atr_wilder
@@ -66,6 +69,36 @@ _ST_ATR_PERIOD = 10
 _ST_MULT = 3.0
 
 _SUPPORTED_OVERLAYS = ("ema8", "ema20", "sar", "supertrend")
+
+# A2: valid tier-TF names (matches sentinel_engine.lake.tiers.TF_SECONDS keys,
+# e.g. M1/M2/M5/M15/H1/D). Legacy manifest entries keyed by raw minute
+# strings (e.g. "5") are NOT in this set and must be ignored by /api/coverage.
+_VALID_TF_NAME_SET = frozenset(_VALID_TF_NAMES)
+
+# In-process manifest cache, invalidated by source file mtime (A2). Keyed by
+# the resolved manifest Path so multiple lake_roots (e.g. across tests) don't
+# collide.
+_manifest_cache: dict[Path, tuple[float, dict]] = {}
+
+
+def _load_manifest(lake_root) -> dict:
+    """Read `<lake_root>/manifest.json`, cached in-process and invalidated
+    by the file's mtime (re-read only when mtime changes since last load)."""
+    manifest_path = Path(lake_root) / "manifest.json"
+    try:
+        mtime = manifest_path.stat().st_mtime
+    except OSError:
+        _manifest_cache.pop(manifest_path, None)
+        return {}
+
+    cached = _manifest_cache.get(manifest_path)
+    if cached is not None and cached[0] == mtime:
+        return cached[1]
+
+    with manifest_path.open("r", encoding="utf-8") as f:
+        manifest = json.load(f)
+    _manifest_cache[manifest_path] = (mtime, manifest)
+    return manifest
 
 
 def _decimals_for(symbol: str) -> int:
@@ -208,6 +241,28 @@ def build_router(lake_root, tick_hub: TickHub) -> APIRouter:
             "bars": rounded_bars,
             "overlays": overlays_payload,
         }
+
+    @r.get("/api/coverage")
+    def get_coverage(symbol: str) -> Any:
+        """CT-1 (frozen contract): lake coverage per timeframe for `symbol`.
+
+        `{"symbol":..., "tfs":{"M1":{"first":..,"last":..}, ...}}` — only
+        tier-named TFs (M1/M2/M5/M15/H1/D) are included; legacy per-minute
+        manifest entries (e.g. key "5") are ignored. 404 if `symbol` is not
+        in the manifest at all."""
+        manifest = _load_manifest(lake_root)
+
+        symbol_entries = manifest.get(symbol)
+        if symbol_entries is None:
+            return _api_error(404, "unknown_symbol", f"symbol not in lake manifest: {symbol}")
+
+        tfs: dict[str, dict[str, int | None]] = {}
+        for tf_name, entry in symbol_entries.items():
+            if tf_name not in _VALID_TF_NAME_SET:
+                continue
+            tfs[tf_name] = {"first": entry.get("first"), "last": entry.get("last")}
+
+        return {"symbol": symbol, "tfs": tfs}
 
     @r.websocket("/ws/ticks")
     async def ticks_ws(websocket: WebSocket) -> None:
