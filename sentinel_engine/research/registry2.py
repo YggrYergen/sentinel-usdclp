@@ -16,9 +16,12 @@ any helper here that opens text files must specify it).
 from __future__ import annotations
 
 import json
+import re
 import sqlite3
 from pathlib import Path
 from typing import Any
+
+_TF_FROM_VARIANT_ID_RE = re.compile(r"_(M\d+)_")
 
 DEFAULT_DB_PATH = Path("data/research.db")
 
@@ -79,15 +82,40 @@ _RUN_COLUMNS = (
     "trades", "net", "pf", "wr", "payoff", "maxdd", "sharpe",
     "metrics_json", "preregistro_id", "report_path", "trades_path",
     "equity_path", "signal_history_path", "fecha_corrida", "seed",
-    "config_hash", "source_file", "source_row",
+    "config_hash", "source_file", "source_row", "fidelity_ref",
 )
 
 _TRADE_COLUMNS = (
     "trade_id", "run_id", "origin", "origin_id", "session_id", "ts_in",
     "ts_out", "px_in", "px_out", "side", "volume", "sl", "tp",
     "exit_reason", "exit_reason_source", "pnl", "mae", "mfe",
-    "snapshot_ref", "decision_trace_ref",
+    "snapshot_ref", "decision_trace_ref", "signal_id", "ficha",
 )
+
+def _normalize_ts_iso_utc(ts: str | None) -> str | None:
+    """Defect D (Wave-2 plan 2026-07-10): `/trades` must emit ts_in/ts_out
+    as unambiguous ISO-8601 UTC (`2026-01-11T20:00:00Z`), never an MT5
+    dotted string (`2026.01.11 20:00:00`) nor a bare ISO string with no
+    zone -- `new Date('2026.01.11 20:00:00')` parses as browser-LOCAL time
+    in JS, offsetting markers from the UTC candle axis. The MT5 tester
+    times matched lake bars byte-identically (Wave-1 fidelity work) -> the
+    source is effectively UTC already; this REFORMATS ONLY, never shifts
+    the clock (no tz conversion, just dotted/bare -> `...Z` string ops)."""
+    if not ts:
+        return ts
+    s = str(ts).strip()
+    if "." in s and ":" in s and "T" not in s:
+        # MT5 dotted: "2026.01.11 20:00:00" -> "2026-01-11T20:00:00"
+        date_part, _, time_part = s.partition(" ")
+        s = date_part.replace(".", "-") + "T" + time_part
+    if s.endswith("Z"):
+        return s
+    if "+" in s[10:] or s.count("-") > 2:
+        # already carries an explicit offset -- leave it alone (not
+        # expected in this codebase's data, but don't mangle it).
+        return s
+    return s + "Z"
+
 
 _PREREG_COLUMNS = (
     "preregistro_id", "variant_id", "hipotesis", "mecanismo",
@@ -127,10 +155,69 @@ class ResearchRegistry:
     def _migrate_additive(self, conn: sqlite3.Connection) -> None:
         """Additive-only schema evolution (never rewrites D.5's DDL): adds
         `strategy.estado` (M2.4 — activa|pausada|graduada, alongside the
-        pre-existing `graduated` bool) if the column isn't there yet."""
+        pre-existing `graduated` bool) if the column isn't there yet. Also
+        adds `trade.signal_id`/`trade.ficha` (EMASAR V1 MT5-fidelity
+        integration, design spec 2026-07-10, Component 4 — nullable, NULL
+        for pre-existing single-exit sim trades) and widens the `run.engine`
+        / `run.fidelity` CHECK constraints to admit 'mt5-import' /
+        'mt5-htm' (SQLite has no ALTER for CHECK constraints, so this one
+        rebuilds the `run` table: rename -> recreate with the D.5 DDL plus
+        the two new enum members -> copy rows -> drop the renamed table)."""
         cols = {row[1] for row in conn.execute("PRAGMA table_info(strategy)").fetchall()}
         if "estado" not in cols:
             conn.execute("ALTER TABLE strategy ADD COLUMN estado TEXT NOT NULL DEFAULT 'activa'")
+            conn.commit()
+
+        trade_cols = {row[1] for row in conn.execute("PRAGMA table_info(trade)").fetchall()}
+        if "signal_id" not in trade_cols:
+            conn.execute("ALTER TABLE trade ADD COLUMN signal_id TEXT")
+            conn.commit()
+        if "ficha" not in trade_cols:
+            conn.execute("ALTER TABLE trade ADD COLUMN ficha TEXT")
+            conn.commit()
+
+        run_engine_check = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='run'"
+        ).fetchone()[0]
+        if "mt5-import" not in run_engine_check:
+            # SQLite rewrites OTHER tables' FK-reference text (e.g.
+            # `trade.run_id REFERENCES run`) when `run` is renamed below --
+            # `trade`'s FK ends up pointing at the transient
+            # `run_pre_mt5import` name. Rebuild `trade` too (verbatim DDL,
+            # just re-pointed at `run`) right after so its FK is correct.
+            trade_sql = conn.execute(
+                "SELECT sql FROM sqlite_master WHERE type='table' AND name='trade'"
+            ).fetchone()[0]
+            conn.execute("PRAGMA foreign_keys = OFF")
+            conn.executescript(
+                f"""
+                ALTER TABLE run RENAME TO run_pre_mt5import;
+                CREATE TABLE run(
+                  run_id TEXT PRIMARY KEY, variant_id TEXT REFERENCES variant, params_hash TEXT REFERENCES param_set,
+                  engine TEXT NOT NULL CHECK(engine IN('sentinel-replay','sentinel-sim','mt5-tester','nt8-manual','mt5-import')),
+                  fidelity TEXT NOT NULL CHECK(fidelity IN('research','screening','real-tick','forward','live-demo','mt5-htm')),
+                  periodo_desde TEXT, periodo_hasta TEXT, modelo_sim TEXT, status TEXT,
+                  trades INTEGER, net REAL, pf REAL, wr REAL, payoff REAL, maxdd REAL, sharpe REAL,
+                  metrics_json TEXT NOT NULL DEFAULT '{{}}', preregistro_id TEXT,
+                  report_path TEXT, trades_path TEXT, equity_path TEXT, signal_history_path TEXT,
+                  fecha_corrida TEXT, seed INTEGER, config_hash TEXT, source_file TEXT, source_row INTEGER,
+                  fidelity_ref TEXT);
+                INSERT INTO run SELECT *, NULL FROM run_pre_mt5import;
+                ALTER TABLE trade RENAME TO trade_pre_mt5import;
+                {trade_sql.replace('"run_pre_mt5import"', "run").replace("run_pre_mt5import", "run")};
+                INSERT INTO trade SELECT * FROM trade_pre_mt5import;
+                DROP TABLE trade_pre_mt5import;
+                DROP TABLE run_pre_mt5import;
+                CREATE INDEX IF NOT EXISTS ix_run_variant ON run(variant_id);
+                CREATE INDEX IF NOT EXISTS ix_trade_run ON trade(run_id);
+                """
+            )
+            conn.commit()
+            conn.execute("PRAGMA foreign_keys = ON")
+
+        run_cols = {row[1] for row in conn.execute("PRAGMA table_info(run)").fetchall()}
+        if "fidelity_ref" not in run_cols:
+            conn.execute("ALTER TABLE run ADD COLUMN fidelity_ref TEXT")
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
@@ -208,6 +295,26 @@ class ResearchRegistry:
             )
             conn.commit()
             return params_hash
+        finally:
+            conn.close()
+
+    def get_param_set(self, params_hash: str) -> dict[str, Any] | None:
+        """`params_json` (parsed) for a given `params_hash`, or `None` if no
+        such param_set row exists — used to resolve a run's EXACT params for
+        parity (`GET /api/runs/{id}/indicators`), falling back to
+        `variant.params_delta` merged over strategy defaults when a run has
+        no `params_hash` (the common case today: `_run_backtest_job` doesn't
+        yet persist one per run)."""
+        if not params_hash:
+            return None
+        conn = self._connect()
+        try:
+            row = conn.execute(
+                "SELECT params_json FROM param_set WHERE params_hash=?", (params_hash,)
+            ).fetchone()
+            if row is None:
+                return None
+            return json.loads(row[0])
         finally:
             conn.close()
 
@@ -438,6 +545,15 @@ class ResearchRegistry:
             d["display_name"] = (
                 f"{familia} · {strategy_name} · {variant_suffix}" if familia else None
             )
+            # Task 1.2 (Wave-3 Stage 1): self-heal pre-existing rows ingested
+            # before `variant.tf` was populated -- fall back to the
+            # `_(M\d+)_` suffix on variant_id (e.g.
+            # "EMS_XAU_V1_M5_c2_sar3m3" -> "M5") so /api/runs/{id} never
+            # returns a null tf for these rows without needing a re-ingest.
+            if not d.get("tf"):
+                m = _TF_FROM_VARIANT_ID_RE.search(variant_suffix)
+                if m:
+                    d["tf"] = m.group(1)
 
             prereg = None
             preregistro_id = d.get("preregistro_id")
@@ -473,7 +589,13 @@ class ResearchRegistry:
             rows = conn.execute(
                 "SELECT * FROM trade WHERE run_id=? ORDER BY ts_in ASC", (run_id,)
             ).fetchall()
-            return [dict(r) for r in rows]
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["ts_in"] = _normalize_ts_iso_utc(d.get("ts_in"))
+                d["ts_out"] = _normalize_ts_iso_utc(d.get("ts_out"))
+                out.append(d)
+            return out
         finally:
             conn.close()
 
@@ -525,7 +647,13 @@ class ResearchRegistry:
             rows = conn.execute(
                 "SELECT * FROM trade WHERE session_id=? ORDER BY ts_in ASC", (session_id,)
             ).fetchall()
-            return [dict(r) for r in rows]
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["ts_in"] = _normalize_ts_iso_utc(d.get("ts_in"))
+                d["ts_out"] = _normalize_ts_iso_utc(d.get("ts_out"))
+                out.append(d)
+            return out
         finally:
             conn.close()
 

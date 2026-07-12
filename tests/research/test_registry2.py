@@ -298,3 +298,127 @@ def test_audit_writes_row(reg):
     finally:
         conn.close()
     assert row == ("importer", "import_skip")
+
+
+# ---------------------------------------------------------------------
+# EMASAR V1 MT5-fidelity integration (design spec 2026-07-10, Component 4):
+# additive/nullable trade.signal_id + trade.ficha, and widened run.engine /
+# run.fidelity CHECK constraints to admit 'mt5-import' / 'mt5-htm'.
+# ---------------------------------------------------------------------
+
+def test_trade_table_has_nullable_signal_id_and_ficha_columns(reg):
+    cols = {row[1] for row in reg._connect().execute("PRAGMA table_info(trade)").fetchall()}
+    assert "signal_id" in cols
+    assert "ficha" in cols
+
+
+def test_legacy_trade_insert_leaves_signal_id_and_ficha_null(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-legacy", {}, "M5", "XAUUSD", "original")
+    reg.insert_run({"run_id": "R-legacy", "variant_id": vid, "engine": "mt5-tester", "fidelity": "research"})
+    reg.insert_trades("R-legacy", [
+        {"trade_id": "TL1", "ts_in": "2026-07-01T00:00:00", "px_in": 100.0, "side": "LONG"},
+    ])
+    trades = reg.get_trades_for_run("R-legacy")
+    assert trades[0]["signal_id"] is None
+    assert trades[0]["ficha"] is None
+
+
+def test_trade_insert_can_carry_signal_id_and_ficha(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-v1", {}, "M5", "XAUUSD", "3ficha")
+    reg.insert_run({"run_id": "R-v1", "variant_id": vid, "engine": "mt5-import", "fidelity": "mt5-htm"})
+    reg.insert_trades("R-v1", [
+        {
+            "trade_id": "TV1", "ts_in": "2026-01-11T20:00:00", "px_in": 4511.96,
+            "side": "LONG", "signal_id": "sig-0001", "ficha": "F1",
+            "exit_reason": "EXIT_ENGULF", "exit_reason_source": "emasar_ref",
+        },
+    ])
+    trades = reg.get_trades_for_run("R-v1")
+    assert trades[0]["signal_id"] == "sig-0001"
+    assert trades[0]["ficha"] == "F1"
+    assert trades[0]["exit_reason"] == "EXIT_ENGULF"
+    assert trades[0]["exit_reason_source"] == "emasar_ref"
+
+
+# ---------------------------------------------------------------------
+# Defect D (Wave-2 plan 2026-07-10): `/trades` ts_in/ts_out must come back
+# ISO-8601 UTC (`...Z`), never MT5 dotted-string (`2026.01.11 20:00:00`).
+# `new Date('2026.01.11 20:00:00')` parses as browser-LOCAL time in JS ->
+# markers land offset from the UTC candle axis. Source is UTC already
+# (MT5 tester times matched lake bars byte-identically) -- reformat only,
+# never shift the clock. get_trades_for_run is the read-path serialization
+# point, so it normalizes regardless of how ts_in/ts_out were stored.
+# ---------------------------------------------------------------------
+
+def test_get_trades_for_run_normalizes_mt5_dotted_ts_to_iso_utc(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-mt5dotted", {}, "M5", "XAUUSD", "3ficha")
+    reg.insert_run({"run_id": "R-mt5dotted", "variant_id": vid, "engine": "mt5-import", "fidelity": "mt5-htm"})
+    reg.insert_trades("R-mt5dotted", [
+        {
+            "trade_id": "TD1", "ts_in": "2026.01.11 20:00:00", "ts_out": "2026.01.11 20:10:40",
+            "px_in": 4511.96, "side": "LONG",
+        },
+    ])
+    trades = reg.get_trades_for_run("R-mt5dotted")
+    assert trades[0]["ts_in"] == "2026-01-11T20:00:00Z"
+    assert trades[0]["ts_out"] == "2026-01-11T20:10:40Z"
+
+
+def test_get_trades_for_run_normalizes_already_iso_ts_to_z_suffix(reg):
+    """Non-MT5 ingest paths already store bare ISO (no `Z`/offset) -- the
+    normalizer must reformat those too (same UTC instant, `Z` appended),
+    not just the MT5-dotted format, so /trades emits ONE unambiguous shape
+    regardless of ingest origin."""
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-iso", {}, "M5", "XAUUSD", "original")
+    reg.insert_run({"run_id": "R-iso", "variant_id": vid, "engine": "mt5-tester", "fidelity": "research"})
+    reg.insert_trades("R-iso", [
+        {"trade_id": "TI1", "ts_in": "2026-07-01T00:00:00", "ts_out": "2026-07-01T01:00:00", "px_in": 100.0, "side": "LONG"},
+    ])
+    trades = reg.get_trades_for_run("R-iso")
+    assert trades[0]["ts_in"] == "2026-07-01T00:00:00Z"
+    assert trades[0]["ts_out"] == "2026-07-01T01:00:00Z"
+
+
+def test_get_trades_for_run_leaves_null_ts_out_alone(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-opentrade", {}, "M5", "XAUUSD", "3ficha")
+    reg.insert_run({"run_id": "R-opentrade", "variant_id": vid, "engine": "mt5-import", "fidelity": "mt5-htm"})
+    reg.insert_trades("R-opentrade", [
+        {"trade_id": "TO1", "ts_in": "2026.01.28 21:35:00", "px_in": 4500.0, "side": "LONG"},
+    ])
+    trades = reg.get_trades_for_run("R-opentrade")
+    assert trades[0]["ts_in"] == "2026-01-28T21:35:00Z"
+    assert trades[0]["ts_out"] is None
+
+
+def test_run_engine_admits_mt5_import(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V-mt5import", {}, "M5", "XAUUSD", "3ficha")
+    reg.insert_run({
+        "run_id": "R-mt5import", "variant_id": vid,
+        "engine": "mt5-import", "fidelity": "mt5-htm",
+    })
+    result = reg.query_runs()
+    row = next(r for r in result["rows"] if r["run_id"] == "R-mt5import")
+    assert row["engine"] == "mt5-import"
+    assert row["fidelity"] == "mt5-htm"
+
+
+def test_get_run_self_heals_null_tf_from_variant_id_suffix(reg):
+    """Task 1.2 (Wave-3 Stage 1): pre-existing rows ingested before `tf` was
+    populated on the variant row must self-heal at serialization time —
+    `get_run` falls back to a `_(M\\d+)_` regex on `variant_id` (e.g.
+    `EMS_XAU_V1_M5_c2_sar3m3` -> "M5") so `/api/runs/{id}` never returns a
+    null `tf` for an mt5-import run, without requiring a re-ingest."""
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "EMS_XAU_V1_M5_c2_sar3m3", {}, None, "XAUUSD", "3ficha")
+    reg.insert_run({
+        "run_id": "R-null-tf", "variant_id": vid,
+        "engine": "mt5-import", "fidelity": "mt5-htm",
+    })
+    run = reg.get_run("R-null-tf")
+    assert run["tf"] == "M5"
