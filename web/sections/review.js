@@ -133,6 +133,59 @@
     return `${label} · ${row.instrumento || "--"} · net ${fmt.signed(row.net)}`;
   }
 
+  // Flattens the {strategyId: [rows]} map into a single list of rows, one
+  // "group-header" row per strategy followed by its "run" rows -- same
+  // header+child flattening technique used by buildSignalRows() below, so
+  // the whole list (headers + runs, potentially hundreds of runs across
+  // many strategies) can be windowed by a single lib/vlist.js instance
+  // instead of rendering every row's DOM node up front.
+  const RUN_ROW_HEIGHT = 22; // px, must match .review-run-item/.review-run-group-header row height
+
+  function buildRunSelectorRows(runsByStrategy, strategiesById, filterText) {
+    const q = (filterText || "").trim().toLowerCase();
+    const flat = [];
+    Object.keys(runsByStrategy).forEach((strategyId) => {
+      const rows = runsByStrategy[strategyId].filter((r) => {
+        if (!q) return true;
+        return (
+          (r.run_id || "").toLowerCase().includes(q) ||
+          (r.variant_id || "").toLowerCase().includes(q) ||
+          (r.instrumento || "").toLowerCase().includes(q) ||
+          (r.display_name || "").toLowerCase().includes(q)
+        );
+      });
+      if (!rows.length) return;
+      const strat = strategiesById[strategyId] || {};
+      flat.push({ __kind: "group-header", __rowKey: `hdr::${strategyId}`, strategyId, strat });
+      rows.forEach((row) => {
+        flat.push({ __kind: "run", __rowKey: `run::${row.run_id}`, row });
+      });
+    });
+    return flat;
+  }
+
+  function renderRunSelectorRow(item, onPick) {
+    if (item.__kind === "group-header") {
+      const header = el("div", { class: "review-run-group-header" });
+      const strat = item.strat;
+      header.innerHTML = window.SENTINEL.badge.strategyBadge({
+        familia: strat.familia,
+        name: strat.familia && strat.familia.toLowerCase() === (strat.name || "").toLowerCase() ? "" : strat.name,
+        color_idx: strat.color_idx,
+        display_name: strat.name,
+      });
+      return header;
+    }
+    const row = item.row;
+    const btn = el("button", {
+      type: "button", class: "review-run-item", "data-run-id": row.run_id,
+      title: row.display_name || row.run_id,
+    });
+    btn.innerHTML = `<span class="mono">${escapeHtml(runOptionLabel(row))}</span>`;
+    btn.addEventListener("click", () => onPick(row));
+    return btn;
+  }
+
   function renderRunSelector(host, runsByStrategy, strategiesById, onPick) {
     host.innerHTML = "";
     const wrap = el("div", { class: "review-run-selector" });
@@ -144,52 +197,42 @@
     wrap.appendChild(listHost);
     host.appendChild(wrap);
 
-    function renderGroups(filterText) {
-      const q = (filterText || "").trim().toLowerCase();
-      listHost.innerHTML = "";
-      Object.keys(runsByStrategy).forEach((strategyId) => {
-        const rows = runsByStrategy[strategyId].filter((r) => {
-          if (!q) return true;
-          return (
-            (r.run_id || "").toLowerCase().includes(q) ||
-            (r.variant_id || "").toLowerCase().includes(q) ||
-            (r.instrumento || "").toLowerCase().includes(q) ||
-            (r.display_name || "").toLowerCase().includes(q)
-          );
-        });
-        if (!rows.length) return;
-        const strat = strategiesById[strategyId] || {};
-        const group = el("div", { class: "review-run-group" });
-        const header = el("div", { class: "review-run-group-header" });
-        header.innerHTML = window.SENTINEL.badge.strategyBadge({
-          familia: strat.familia,
-          name: strat.familia && strat.familia.toLowerCase() === (strat.name || "").toLowerCase() ? "" : strat.name,
-          color_idx: strat.color_idx,
-          display_name: strat.name,
-        });
-        group.appendChild(header);
-        rows.forEach((row) => {
-          const item = el("button", {
-            type: "button", class: "review-run-item", "data-run-id": row.run_id,
-            title: row.display_name || row.run_id,
-          });
-          item.innerHTML = `<span class="mono">${escapeHtml(runOptionLabel(row))}</span>`;
-          item.addEventListener("click", () => onPick(row));
-          group.appendChild(item);
-        });
-        listHost.appendChild(group);
+    let activeRunId = null;
+    let vlist = null;
+
+    function currentRows(filterText) {
+      return buildRunSelectorRows(runsByStrategy, strategiesById, filterText);
+    }
+
+    // windowed rendering (A6b, lib/vlist.js): only the rows visible in
+    // listHost's viewport (+-10 rows) are materialized -- the run selector
+    // can list hundreds of runs across many strategy groups.
+    vlist = window.SENTINEL.vlist.createVList(listHost, {
+      itemHeight: RUN_ROW_HEIGHT,
+      items: currentRows(""),
+      itemKey: (item) => item.__rowKey,
+      render: (item) => renderRunSelectorRow(item, onPick),
+    });
+    // re-apply the .active class to whichever run row is currently
+    // materialized -- selection is tracked by rowKey (vlist.setSelected),
+    // so it survives a row scrolling out of/back into the viewport.
+    function applyActiveClass() {
+      listHost.querySelectorAll(".review-run-item").forEach((btn) => {
+        btn.classList.toggle("active", btn.dataset.runId === activeRunId);
       });
-      if (!listHost.children.length) {
-        listHost.innerHTML = '<div class="review-run-empty">Sin corridas.</div>';
-      }
+    }
+    const origSetItems = vlist.setItems;
+    vlist.setItems = (items) => { origSetItems(items); applyActiveClass(); };
+
+    function renderGroups(filterText) {
+      vlist.setItems(currentRows(filterText));
     }
 
     searchInput.addEventListener("input", () => renderGroups(searchInput.value));
-    renderGroups("");
     return { markActive: (runId) => {
-      listHost.querySelectorAll(".review-run-item").forEach((btn) => {
-        btn.classList.toggle("active", btn.dataset.runId === runId);
-      });
+      activeRunId = runId;
+      vlist.setSelected([`run::${runId}`]);
+      applyActiveClass();
     } };
   }
 
