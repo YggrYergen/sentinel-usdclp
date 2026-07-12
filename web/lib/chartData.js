@@ -133,7 +133,11 @@
       let count = 0;
       entries.forEach(([, entry]) => {
         entry.bars.forEach((bar) => {
-          const t = bar[0];
+          // Backend serves CT-2 OBJECT bars {t,o,h,l,c,v}; tests/legacy paths
+          // may feed tuples [t,o,h,l,c,v]. Read t from either shape — the
+          // old bar[0]-only read made every object bar t=undefined, so all
+          // were discarded as "duplicates" and the merged cache was empty.
+          const t = Array.isArray(bar) ? bar[0] : bar.t;
           if (lastT !== null && t === lastT) {
             console.error(`chartData: duplicate bar t=${t} discarded during merge`);
             return;
