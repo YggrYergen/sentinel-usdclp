@@ -291,6 +291,160 @@
     };
   }
 
+  // ---- LiveAdapter ----
+  // LiveAdapter = HistAdapter + a `bar_tail` SSE subscription (CT-9,
+  // GET /api/bars/tail?symbol=...). Wraps a HistAdapter instance (same
+  // ensureWindow/applyOverlays/setSignals/setTf API, delegated straight
+  // through) and layers connect()/disconnect() on top:
+  //   - connect() opens an EventSource to /api/bars/tail and listens for the
+  //     named `bar_tail` event. Each event's `{symbol,tf,bar,closed}` is
+  //     filtered to this chart's symbol + CURRENT tf (the underlying
+  //     HistAdapter's tracked tf, which setTf() keeps in sync) -- events for
+  //     any other tf are ignored (a TF switch just naturally stops matching
+  //     until the user switches back).
+  //   - Updates are coalesced onto requestAnimationFrame: at most one
+  //     series.update() per animation frame, using the LATEST bar_tail event
+  //     received since the last frame (rAF throttle).
+  //   - Auto-scroll: series.update() is only allowed to move the viewport
+  //     when the chart's timeScale is already at (or very near) the right
+  //     edge (scrollPosition() ~ 0, lightweight-charts convention -- 0 is
+  //     "no bars scrolled past the latest"). If the user has panned left,
+  //     the update is SKIPPED entirely (no partial candle flicker, no
+  //     viewport yank while inspecting history) -- matches HistAdapter's
+  //     "never surprise the user's current view" ethos.
+  //   - Tab-hide: subscribes to `document.visibilitychange` and calls
+  //     disconnect() when `document.hidden` becomes true (laptop battery /
+  //     backgrounded-tab hygiene) -- does NOT auto-reconnect on visible
+  //     again; the caller (chart.js/charts.js wiring) decides whether to
+  //     call connect() again, matching the CT-9 contract of "the client
+  //     manages its own subscription lifecycle".
+  //   - 503 degrade: if the server has no live tick source attached (MT5 not
+  //     attached), GET /api/bars/tail responds 503 JSON {"live":false}
+  //     instead of opening an SSE stream. LiveAdapter treats this as an
+  //     expected, silent degrade to pure HistAdapter behaviour: logs via
+  //     console.info and returns without throwing or opening an
+  //     EventSource (EventSource itself is only constructed after a
+  //     successful liveness probe).
+  function LiveAdapter(chart, barSource, options) {
+    options = options || {};
+    const symbol = options.symbol || (chart && chart.symbol);
+    const hist = HistAdapter(chart, barSource);
+
+    let es = null;
+    let pendingBar = null;
+    let pendingTf = null;
+    let rafScheduled = false;
+    let currentTf = (chart && chart.tf) || "M1";
+
+    function isAtRightEdge() {
+      if (!chart || typeof chart.timeScale !== "function") return true;
+      const ts = chart.timeScale();
+      if (!ts || typeof ts.scrollPosition !== "function") return true;
+      const pos = ts.scrollPosition();
+      return Math.abs(pos) < 1e-6;
+    }
+
+    function flush() {
+      rafScheduled = false;
+      if (!pendingBar) return;
+      const bar = pendingBar;
+      pendingBar = null;
+      if (!isAtRightEdge()) return;
+      if (chart._candleSeries && typeof chart._candleSeries.update === "function") {
+        chart._candleSeries.update(ct2ToCandle(bar));
+      }
+    }
+
+    function scheduleFlush() {
+      if (rafScheduled) return;
+      rafScheduled = true;
+      requestAnimationFrame(flush);
+    }
+
+    function onBarTail(evt) {
+      let payload;
+      try {
+        payload = JSON.parse(evt.data);
+      } catch (e) {
+        return;
+      }
+      if (symbol && payload.symbol && payload.symbol !== symbol) return;
+      if (payload.tf && payload.tf !== currentTf) return;
+      pendingBar = normBar(payload.bar);
+      pendingTf = payload.tf;
+      scheduleFlush();
+    }
+
+    function onVisibilityChange() {
+      if (typeof document !== "undefined" && document.hidden) {
+        disconnect();
+      }
+    }
+
+    function connect() {
+      if (es) return; // already connected
+      const url = `/api/bars/tail?symbol=${encodeURIComponent(symbol || "")}`;
+      es = new EventSource(url);
+      es.addEventListener("bar_tail", onBarTail);
+      if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+        document.addEventListener("visibilitychange", onVisibilityChange);
+      }
+    }
+
+    function disconnect() {
+      if (es) {
+        try { es.close(); } catch (e) { /* noop */ }
+        es = null;
+      }
+      if (typeof document !== "undefined" && typeof document.removeEventListener === "function") {
+        document.removeEventListener("visibilitychange", onVisibilityChange);
+      }
+    }
+
+    async function ensureWindow(fromT, toT) {
+      return hist.ensureWindow(fromT, toT);
+    }
+
+    async function setTf(newTf, anchorT) {
+      currentTf = newTf;
+      return hist.setTf(newTf, anchorT);
+    }
+
+    return {
+      ensureWindow,
+      applyOverlays: hist.applyOverlays,
+      setSignals: hist.setSignals,
+      setTf,
+      connect,
+      disconnect,
+      get windowFrom() { return hist.windowFrom; },
+      get windowTo() { return hist.windowTo; },
+    };
+  }
+
+  // probeLiveTail: fire-and-forget liveness probe for /api/bars/tail --
+  // GET returns 503 JSON {"live":false} when no tick source is attached
+  // (e.g. MT5 not attached). Callers (chart.js/charts.js wiring) should
+  // check this BEFORE calling LiveAdapter.connect() so the 503 case never
+  // opens (and immediately fails) an EventSource; degrades silently via
+  // console.info, per CT-9 ("no error visible").
+  async function probeLiveTailAvailable(symbol) {
+    try {
+      const resp = await fetch(`/api/bars/tail?symbol=${encodeURIComponent(symbol)}`, { method: "HEAD" });
+      if (resp.status === 503) {
+        console.info("[LiveAdapter] live tail unavailable (503) -- degrading to HistAdapter-only", symbol);
+        return false;
+      }
+      return true;
+    } catch (e) {
+      console.info("[LiveAdapter] live tail probe failed -- degrading to HistAdapter-only", symbol, e);
+      return false;
+    }
+  }
+
   window.SENTINEL = window.SENTINEL || {};
-  window.SENTINEL.adapters = { HistAdapter, ReplayAdapter, ct2ToCandle, ct2ToVolume, ct2OverlayToPoints, bucketOf };
+  window.SENTINEL.adapters = {
+    HistAdapter, ReplayAdapter, LiveAdapter, ct2ToCandle, ct2ToVolume, ct2OverlayToPoints, bucketOf,
+    probeLiveTailAvailable,
+  };
 })();

@@ -253,6 +253,32 @@
     const activeOverlays = new Set();
     let liveOn = false;
     let chartInst = null;
+    // A11: liveAdapter wraps chartInst's own candle series/timeScale for the
+    // `bar_tail` SSE tail (CT-9). Independent from chartInst.enableTicks()
+    // (WS raw-tick live candle -- pre-existing), guarded behind
+    // window.SENTINEL.adapters.LiveAdapter so charts.js never crashes if
+    // adapters.js isn't loaded (same degrade pattern lib/chart.js uses for
+    // HistAdapter).
+    let liveAdapter = null;
+
+    function teardownLiveAdapter() {
+      if (liveAdapter) {
+        try { liveAdapter.disconnect(); } catch (e) { /* noop */ }
+        liveAdapter = null;
+      }
+    }
+
+    function setupLiveAdapter(sym) {
+      teardownLiveAdapter();
+      if (!chartInst || !window.SENTINEL.adapters || !window.SENTINEL.adapters.LiveAdapter) return;
+      const liveChart = {
+        _candleSeries: chartInst._candleSeries,
+        get tf() { return chartInst.tf; },
+        timeScale: () => chartInst._chart.timeScale(),
+      };
+      liveAdapter = window.SENTINEL.adapters.LiveAdapter(liveChart, null, { symbol: sym });
+      liveAdapter.connect();
+    }
 
     const toolbar = renderToolbar(root, initial, {
       onSymbol: (sym) => {
@@ -262,6 +288,7 @@
           chartInst.symbol = sym;
           applyOverlays(chartInst, sym, appState.tf || "M1", activeOverlays);
           if (liveOn) chartInst.enableTicks(sym);
+          if (liveAdapter) setupLiveAdapter(sym);
         }
       },
       onTF: (tf) => {
@@ -273,8 +300,13 @@
       onLiveToggle: (checked) => {
         liveOn = checked;
         if (!chartInst) return;
-        if (checked) chartInst.enableTicks(appState.symbol || initial.symbol);
-        else chartInst.disableTicks();
+        if (checked) {
+          chartInst.enableTicks(appState.symbol || initial.symbol);
+          setupLiveAdapter(appState.symbol || initial.symbol);
+        } else {
+          chartInst.disableTicks();
+          teardownLiveAdapter();
+        }
       },
       onOverlayToggle: (name, active) => {
         if (active) activeOverlays.add(name);
@@ -299,12 +331,13 @@
     }
     document.addEventListener("keydown", escHandler);
 
-    state = { root, chartInst, playbackBar, escHandler };
+    state = { root, chartInst, playbackBar, escHandler, teardownLiveAdapter };
   }
 
   function teardown() {
     if (state && state.escHandler) document.removeEventListener("keydown", state.escHandler);
     if (state && state.playbackBar) { try { state.playbackBar.destroy(); } catch (e) { /* noop */ } }
+    if (state && state.teardownLiveAdapter) { try { state.teardownLiveAdapter(); } catch (e) { /* noop */ } }
     if (state && state.chartInst) {
       try { state.chartInst.stopPlayback(); } catch (e) { /* noop */ }
       try { state.chartInst.destroy(); } catch (e) { /* noop */ }
