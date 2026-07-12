@@ -26,6 +26,8 @@ from typing import Any
 
 from fastapi import APIRouter
 
+from ...research import scorecard as scorecard_mod
+
 router = APIRouter()
 
 
@@ -100,5 +102,12 @@ def build_router(registry) -> APIRouter:
             "strategy_id": strategy_id, "estado": payload.estado,
         })
         return {"strategy_id": strategy_id, "estado": payload.estado}
+
+    @r.get("/api/strategies/{strategy_id}/scorecard")
+    def get_strategy_scorecard(strategy_id: str, tf: str = "M5"):
+        card = scorecard_mod.build_scorecard(registry, strategy_id, tf=tf)
+        if card is None:
+            return _api_error(404, "strategy_not_found", f"unknown strategy_id: {strategy_id}")
+        return card
 
     return r

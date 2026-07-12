@@ -247,6 +247,15 @@ class ResearchRegistry:
             conn.execute("ALTER TABLE deals_raw ADD COLUMN variant_id TEXT")
             conn.commit()
 
+        # B2: `strategy.baseline_ref` (nullable run_id) -- the CT-3 scorecard
+        # endpoint's `teorico` block reads metrics from this run ONLY, never
+        # from a best-run search. Additive, guarded by the same
+        # PRAGMA-table_info check pattern as every other migration above.
+        strategy_cols = {row[1] for row in conn.execute("PRAGMA table_info(strategy)").fetchall()}
+        if "baseline_ref" not in strategy_cols:
+            conn.execute("ALTER TABLE strategy ADD COLUMN baseline_ref TEXT")
+            conn.commit()
+
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
         conn.execute("PRAGMA foreign_keys=ON")
