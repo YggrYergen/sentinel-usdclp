@@ -22,27 +22,21 @@ Endpoints:
 from __future__ import annotations
 
 import asyncio
-import json
-import uuid
 from contextlib import asynccontextmanager
-from dataclasses import asdict, replace
+from dataclasses import replace
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
 
 import pandas as pd
-from fastapi import BackgroundTasks, FastAPI, HTTPException, Query, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from starlette.responses import JSONResponse
-from starlette.staticfiles import StaticFiles
 
-from sentinel_engine.config import InstrumentConfig, config_hash, load_instrument
+from sentinel_engine.config import InstrumentConfig, load_instrument
 from sentinel_engine.engine import Engine, Snapshot
 from sentinel_engine.feed import Feed
-from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
 from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
-from sentinel_engine.sim.lite import run_backtest_lite
-from sentinel_engine.strategies.emasar import EmasarPolicy, ema_series, sar_series
 
 
 def _parse_flexible_ts(value: str | None) -> "pd.Timestamp | None":
@@ -65,11 +59,8 @@ def _parse_flexible_ts(value: str | None) -> "pd.Timestamp | None":
         n = int(s)
         return pd.Timestamp(n, unit="ms" if abs(n) >= 1_000_000_000_000 else "s", tz="UTC")
     return pd.Timestamp(s, tz="UTC")
-from sentinel_engine.strategies._supertrend_ref import supertrend as _supertrend_series
-from sentinel_engine.strategies.emasar_ref import _atr_wilder
 
-from .bars import BarsError, bars_payload, load_tf_frame
-from .chat import answer_chat
+
 from .routers import bars as bars_router
 from .routers import chat as chat_router
 from .routers import jobs as jobs_router
@@ -278,14 +269,24 @@ def create_app(
                 sym_task.cancel()
 
     app = FastAPI(title="SENTINEL", lifespan=lifespan)
+    jobs: dict = {}
+    backtest_lock = asyncio.Lock()
+
+    def _resolve(instrument: str | None) -> InstrumentRunner:
+        name = instrument or next(iter(runners))
+        runner = runners.get(name)
+        if runner is None:
+            raise HTTPException(status_code=404, detail=f"unknown instrument: {name}")
+        return runner
+
     app.include_router(bars_router.build_router(lake_root, tick_hub))
     app.include_router(runs_router.build_router(registry, lake_root))
     app.include_router(strategies_router.build_router(registry))
     app.include_router(positions_router.router)
-    app.include_router(chat_router.router)
-    app.include_router(jobs_router.router)
+    app.include_router(chat_router.build_router(runners, _resolve, app.state))
+    app.include_router(jobs_router.build_router(registry, lake_root, jobs, backtest_lock))
     app.include_router(news_router.router)
-    app.include_router(system_router.router)
+    app.include_router(system_router.build_router(runners, broadcaster))
     app.state.runners = runners
     app.state.broadcaster = broadcaster
     app.state.compute_and_broadcast_once = _compute_and_broadcast_once
@@ -300,262 +301,9 @@ def create_app(
     # job_id -> {"status","run_id"} plus a lock that serializes the actual
     # sim runs — "single-worker sequential queue" per plan §M2.5, backed by
     # FastAPI BackgroundTasks rather than a separate worker process/task.
-    app.state.jobs = {}
-    app.state.backtest_lock = asyncio.Lock()
+    app.state.jobs = jobs
+    app.state.backtest_lock = backtest_lock
 
-    def _resolve(instrument: str | None) -> InstrumentRunner:
-        name = instrument or next(iter(runners))
-        runner = runners.get(name)
-        if runner is None:
-            raise HTTPException(status_code=404, detail=f"unknown instrument: {name}")
-        return runner
-
-    @app.get("/snapshot")
-    def get_snapshot(instrument: str | None = None) -> dict:
-        runner = _resolve(instrument)
-        if runner.latest is None:
-            raise HTTPException(status_code=503, detail="snapshot not ready")
-        return runner.latest
-
-    @app.get("/config")
-    def get_config(instrument: str | None = None) -> dict[str, Any]:
-        runner = _resolve(instrument)
-        return {
-            "instrument": runner.name,
-            "config_hash": config_hash(runner.cfg),
-            "config": asdict(runner.cfg),
-            "instruments": list(runners.keys()),
-        }
-
-    @app.get("/levers")
-    def get_levers(instrument: str | None = None) -> dict[str, Any]:
-        runner = _resolve(instrument)
-        priors = priors_for(runner.cfg)
-        groups = []
-        for group in LEVER_GROUPS:
-            params = []
-            for p in group.params:
-                params.append({
-                    "name": p.name,
-                    "lo": p.low,
-                    "hi": p.high,
-                    "is_int": p.is_int,
-                    "production_value": priors[group.name][p.name],
-                })
-            groups.append({"name": group.name, "params": params})
-        return {"instrument": runner.name, "groups": groups}
-
-    @app.get("/models")
-    def get_models() -> dict[str, Any]:
-        return {
-            "models": [
-                {"key": "sonnet", "label": "Claude Sonnet"},
-                {"key": "haiku", "label": "Claude Haiku"},
-            ],
-            "effort_levels": ["low", "medium", "high"],
-            "web_search_available": False,
-            "thinking_available": False,
-        }
-
-    @app.post("/chat", response_model=ChatResponse)
-    def post_chat(payload: ChatRequest) -> ChatResponse:
-        runner = _resolve(payload.instrument)
-        if runner.latest_snapshot is None:
-            raise HTTPException(status_code=503, detail="snapshot not ready")
-        positions_fn = getattr(runner.feed, "positions", None)
-        positions = positions_fn() if positions_fn is not None else []
-        reply = answer_chat(
-            payload.question,
-            runner.latest_snapshot,
-            runner.cfg,
-            positions,
-            client=app.state.chat_client,
-        )
-        return ChatResponse(content=reply.content, error=reply.error)
-
-    @app.websocket("/stream")
-    async def stream_ws(websocket: WebSocket, instrument: str | None = None) -> None:
-        name = instrument or next(iter(runners))
-        if name not in runners:
-            await websocket.close(code=4404)
-            return
-        await broadcaster.connect(websocket, name)
-        try:
-            runner = runners[name]
-            if runner.latest is not None:
-                await websocket.send_json(runner.latest)
-            while True:
-                # Keepalive: client need not send anything meaningful; this
-                # just parks the coroutine until disconnect. Broadcasts are
-                # pushed independently by the background loop via `send_json`
-                # inside Broadcaster.broadcast.
-                await websocket.receive_text()
-        except WebSocketDisconnect:
-            pass
-        finally:
-            broadcaster.disconnect(websocket, name)
-
-    # ------------------------------------------------------------------
-    # Backtest-lite job endpoints (M2.5, plan §D.6/§B1 minimal slice)
-    # ------------------------------------------------------------------
-    def _build_policy(variant: dict[str, Any]):
-        """Policy dispatch by `familia` — only EMASAR exists in this lean
-        M2.5 slice; other families are rejected with a clear error rather
-        than silently defaulting to the wrong strategy."""
-        familia = (variant.get("familia") or "").lower()
-        if familia != "emasar":
-            raise ValueError(f"no backtest-lite policy registered for familia: {familia!r}")
-        return EmasarPolicy(variant.get("params_delta") or {})
-
-    def _run_backtest_job(job_id: str, variant_id: str, symbol: str, tf: str,
-                           desde: str | None, hasta: str | None) -> None:
-        jobs = app.state.jobs
-        jobs[job_id]["status"] = "running"
-        try:
-            variant = registry.get_variant(variant_id)
-            if variant is None:
-                raise ValueError(f"unknown variant_id: {variant_id}")
-            policy = _build_policy(variant)
-            run, trades = run_backtest_lite(
-                policy, symbol, tf, desde, hasta, lake_root=lake_root,
-            )
-            run_id = f"sim-{uuid.uuid4().hex[:16]}"
-            run["run_id"] = run_id
-            run["variant_id"] = variant_id
-            for t in trades:
-                t["trade_id"] = f"simtr-{uuid.uuid4().hex[:16]}"
-            registry.insert_run(run)
-            registry.insert_trades(run_id, trades)
-            registry.audit("api", "backtest_done", {
-                "job_id": job_id, "variant_id": variant_id, "run_id": run_id,
-                "trades": len(trades),
-            })
-            jobs[job_id]["status"] = "done"
-            jobs[job_id]["run_id"] = run_id
-        except Exception as exc:  # noqa: BLE001 - job errors are reported via GET /api/jobs, never raised
-            jobs[job_id]["status"] = "error"
-            jobs[job_id]["error"] = str(exc)
-            registry.audit("api", "backtest_failed", {"job_id": job_id, "variant_id": variant_id, "error": str(exc)})
-
-    async def _run_backtest_job_locked(job_id: str, variant_id: str, symbol: str, tf: str,
-                                        desde: str | None, hasta: str | None) -> None:
-        async with app.state.backtest_lock:
-            await asyncio.to_thread(_run_backtest_job, job_id, variant_id, symbol, tf, desde, hasta)
-
-    @app.post("/api/backtest")
-    def post_backtest(payload: BacktestRequest, background_tasks: BackgroundTasks):
-        if registry.get_variant(payload.variant_id) is None:
-            return _api_error(404, "variant_not_found", f"unknown variant_id: {payload.variant_id}")
-        job_id = f"job-{uuid.uuid4().hex[:16]}"
-        app.state.jobs[job_id] = {"status": "queued", "run_id": None}
-        background_tasks.add_task(
-            _run_backtest_job_locked, job_id, payload.variant_id, payload.symbol,
-            payload.tf, payload.desde, payload.hasta,
-        )
-        return {"job_id": job_id, "status": "queued"}
-
-    @app.get("/api/jobs/{job_id}")
-    def get_job(job_id: str):
-        job = app.state.jobs.get(job_id)
-        if job is None:
-            return _api_error(404, "job_not_found", f"unknown job_id: {job_id}")
-        out = {"status": job["status"]}
-        if job.get("run_id"):
-            out["run_id"] = job["run_id"]
-        if job.get("error"):
-            out["error"] = job["error"]
-        return out
-
-    @app.post("/api/ingest/tokata")
-    def post_ingest_tokata(payload: dict[str, Any] | None = None):
-        from sentinel_engine.ingest_tokata.runner import import_all
-
-        payload = payload or {}
-        root_raw = payload.get("tokata_root") or "D:/WebDev/TOKATA"
-        root = Path(root_raw)
-        if not root.exists() or not root.is_dir():
-            return _api_error(404, "tokata_root_not_found", f"tokata_root does not exist: {root}")
-        try:
-            report = import_all(root, registry)
-        except Exception as exc:  # noqa: BLE001 - never leak a traceback to the client
-            return _api_error(500, "ingest_failed", str(exc))
-        return {
-            "files": report.files,
-            "rows_new": report.rows_new,
-            "rows_skipped": report.rows_skipped,
-            "errors": report.errors,
-        }
-
-    def _gated(capability: str) -> JSONResponse:
-        """Every gated route (spec §6) — replay/variant-registry/study/fleet/
-        calendar orchestration is future work (P2/P4/P6); this contract lets
-        the frontend's gating probes render a labeled placeholder instead of
-        a 404/blocked UI (spec §10 acceptance gate #6)."""
-        return JSONResponse(
-            status_code=501,
-            content={"error": "not_implemented", "capability": capability},
-        )
-
-    @app.get("/variants")
-    def get_variants() -> JSONResponse:
-        return _gated("variant_registry")
-
-    @app.get("/variant/diff")
-    def get_variant_diff(a: str | None = None, b: str | None = None) -> JSONResponse:
-        return _gated("variant_registry")
-
-    @app.get("/study/latest")
-    def get_study_latest(instrument: str | None = None) -> JSONResponse:
-        return _gated("study")
-
-    @app.get("/study/{study_id}")
-    def get_study(study_id: str) -> JSONResponse:
-        return _gated("study")
-
-    @app.get("/calendar")
-    def get_calendar(within: str | None = None) -> JSONResponse:
-        return _gated("calendar")
-
-    @app.post("/replay/control")
-    def post_replay_control(payload: dict) -> JSONResponse:
-        return _gated("replay")
-
-    @app.post("/variant")
-    def post_variant(payload: dict) -> JSONResponse:
-        return _gated("variant_registry")
-
-    @app.post("/variant/branch")
-    def post_variant_branch(payload: dict) -> JSONResponse:
-        return _gated("variant_registry")
-
-    @app.post("/study")
-    def post_study(payload: dict) -> JSONResponse:
-        return _gated("study")
-
-    @app.post("/fleet")
-    def post_fleet(payload: dict) -> JSONResponse:
-        return _gated("fleet")
-
-    @app.websocket("/replay")
-    async def replay_ws(websocket: WebSocket) -> None:
-        await websocket.accept()
-        await websocket.send_json({"error": "not_implemented", "capability": "replay"})
-        await websocket.close()
-
-    if WEB_DIR.exists():
-        # `no-cache` (revalidate every time), NOT `no-store`: the browser still
-        # keeps a copy but must revalidate via ETag/Last-Modified on each load,
-        # so StaticFiles returns 304 when unchanged and fresh 200 the moment a
-        # file is edited. Without this, StaticFiles sends no Cache-Control and
-        # browsers heuristically serve stale app.js/style.css from memory cache
-        # on a plain F5 — making edits appear to have "no effect" until a hard
-        # reload. This keeps local dev edits always visible.
-        class _NoCacheStatic(StaticFiles):
-            async def get_response(self, path, scope):
-                response = await super().get_response(path, scope)
-                response.headers["Cache-Control"] = "no-cache"
-                return response
-
-        app.mount("/", _NoCacheStatic(directory=str(WEB_DIR), html=True), name="web")
+    system_router.mount_static(app, WEB_DIR)
 
     return app
