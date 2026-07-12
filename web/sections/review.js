@@ -302,7 +302,7 @@
   function renderTfButtons(host, initialTf, onTF) {
     const group = el("div", { class: "review-tf-buttons" });
     TF_LIST.forEach((tfName) => {
-      const btn = el("button", { type: "button", class: "review-tf-btn", text: tfName });
+      const btn = el("button", { type: "button", class: "review-tf-btn", text: tfName, "data-tf": tfName });
       if (tfName === initialTf) btn.classList.add("active");
       btn.addEventListener("click", () => {
         group.querySelectorAll(".review-tf-btn").forEach((b) => b.classList.remove("active"));
@@ -313,6 +313,47 @@
     });
     host.appendChild(group);
     return group;
+  }
+
+  // TF dot: marks the button whose data-tf matches the loaded run's native
+  // tf (run.tf) with .native-tf -- CSS ::after draws a small accent dot,
+  // purely visual (no size/layout change to the button).
+  function markNativeTfButton(group, run) {
+    if (!group) return;
+    const nativeTf = run && run.tf;
+    group.querySelectorAll(".review-tf-btn").forEach((btn) => {
+      btn.classList.toggle("native-tf", !!nativeTf && btn.dataset.tf === nativeTf);
+    });
+  }
+
+  // ---- split-pane focus (left column: run-selector / trade-list) ----
+  // Click on either pane toggles it "focused" (grid-template-rows 3fr/1fr),
+  // click again on the already-focused pane restores the even 1fr/1fr
+  // split. State persists across reloads under localStorage "tv.paneFocus".
+  const PANE_FOCUS_KEY = "tv.paneFocus";
+
+  function applyPaneFocus(leftEl, focus) {
+    leftEl.classList.remove("focused-top", "focused-bottom");
+    if (focus === "top") leftEl.classList.add("focused-top");
+    else if (focus === "bottom") leftEl.classList.add("focused-bottom");
+  }
+
+  function setupPaneFocus(leftEl, topEl, bottomEl) {
+    let focus = "none";
+    try {
+      const stored = localStorage.getItem(PANE_FOCUS_KEY);
+      if (stored === "top" || stored === "bottom" || stored === "none") focus = stored;
+    } catch (e) { /* noop */ }
+    applyPaneFocus(leftEl, focus);
+
+    function toggle(which) {
+      focus = focus === which ? "none" : which;
+      applyPaneFocus(leftEl, focus);
+      try { localStorage.setItem(PANE_FOCUS_KEY, focus); } catch (e) { /* noop */ }
+    }
+
+    topEl.addEventListener("click", () => toggle("top"));
+    bottomEl.addEventListener("click", () => toggle("bottom"));
   }
 
   // ---- playback UI bar (Task M2.6) — same pattern as charts.js:
@@ -397,6 +438,13 @@
     const tradeListHost = el("div", { class: "review-tradelist-host" });
     left.appendChild(selectorHost);
     left.appendChild(tradeListHost);
+    // split-pane focus wiring: click on either sub-panel (run selector on
+    // top, trade list on bottom) toggles it "focused" (3fr/1fr), persisted
+    // under localStorage tv.paneFocus. selectorHost/tradeListHost are the
+    // real top/bottom children of .review-left (see appends above) -- click
+    // handlers on their inner buttons/rows still fire first (no
+    // stopPropagation anywhere in this file), so item selection is unaffected.
+    setupPaneFocus(left, selectorHost, tradeListHost);
 
     const reviewToolbar = el("div", { class: "review-toolbar" });
     const overlayChipsHost = el("div", { class: "review-overlay-chips-host" });
@@ -473,6 +521,9 @@
       const anchorTrade = anchorSignal ? anchorSignal.fichas[0] : null; // eslint-disable-line no-unused-vars
       chartInst.setTF(tf).then(refreshIndicators);
     });
+    // no run loaded yet at boot -- clears/no-ops the dot until loadRunTrades
+    // marks it against the actual run.tf below.
+    markNativeTfButton(tfButtonsGroup, null);
 
     function setActiveTfButton(tf) {
       if (!tfButtonsGroup) return;
@@ -600,6 +651,10 @@
       appState.symbol = symbol;
       appState.tf = tf;
       setActiveTfButton(tf);
+      // native-tf dot: mark the TF button matching this run's own native tf
+      // (runFull.tf, sourced from variant.tf) -- separate from the
+      // currently-ACTIVE tf button set just above.
+      markNativeTfButton(tfButtonsGroup, runFull);
 
       if (!chartInst) {
         chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf });

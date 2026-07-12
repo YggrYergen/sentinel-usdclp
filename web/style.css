@@ -694,12 +694,15 @@ html, body {
   min-height: 0;
 }
 .review-left {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  transition: grid-template-rows .25s ease;
   gap: var(--sp-3);
   min-height: 0;
   overflow: hidden;
 }
+.review-left.focused-top { grid-template-rows: 3fr 1fr; }
+.review-left.focused-bottom { grid-template-rows: 1fr 3fr; }
 .review-right {
   display: flex;
   flex-direction: column;
@@ -725,7 +728,8 @@ html, body {
 .review-run-search:focus-visible { outline: 1px solid var(--accent-celeste); }
 .review-run-groups {
   overflow-y: auto;
-  max-height: 240px;
+  flex: 1 1 auto;
+  min-height: 0;
   border: var(--border);
   border-radius: var(--radius);
   background: var(--bg-2);
@@ -973,6 +977,17 @@ html, body {
   box-shadow: var(--glow-sm) rgba(0,191,255,.35);
 }
 .review-tf-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-tf-btn.native-tf { position: relative; }
+.review-tf-btn.native-tf::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-celeste);
+}
 
 /* position nav bar (◀ Anterior / counter / Siguiente ▶) under the chart */
 .review-posnav {

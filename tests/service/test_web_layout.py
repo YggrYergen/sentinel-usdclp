@@ -146,6 +146,72 @@ def test_app_js_persists_and_restores_section():
     assert "restoreSection" in app_js
 
 
+def test_review_split_pane_focus_css():
+    """A6a: .review-left is a 2-row grid (top=run selector, bottom=trade
+    list) that can be "focused" 3fr/1fr in either direction, with a smooth
+    transition, and .review-run-groups is no longer height-capped at 240px
+    (it now flexes to fill its row instead)."""
+    import re
+
+    css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
+    stripped = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    m = re.search(r"\.review-left\s*\{([^}]*)\}", stripped)
+    assert m, ".review-left rule missing"
+    body = m.group(1)
+    assert "grid-template-rows" in body
+    assert "transition" in body
+    assert ".focused-top" in stripped
+    assert ".focused-bottom" in stripped
+    assert "max-height: 240px" not in stripped and "max-height:240px" not in stripped
+
+
+def test_review_js_wires_pane_focus_and_native_tf():
+    """A6a: the split-pane-focus and native-tf-dot helpers must actually be
+    CALLED from the render flow, not just defined (dead code)."""
+    import re
+
+    text = (WEB_DIR / "sections" / "review.js").read_text(encoding="utf-8")
+    assert "function setupPaneFocus(" in text
+    assert "function markNativeTfButton(" in text
+    assert "function applyPaneFocus(" in text
+    assert 'PANE_FOCUS_KEY = "tv.paneFocus"' in text
+    assert "tv.paneFocus" in text
+    assert "localStorage" in text
+
+    # helper DEFINITIONS use "function name(" -- calls use "name(" without
+    # the "function" keyword directly before it. Strip the definition lines
+    # and confirm at least one call-style occurrence remains for each.
+    calls_setup = re.findall(r"(?<!function )setupPaneFocus\(", text)
+    calls_mark = re.findall(r"(?<!function )markNativeTfButton\(", text)
+    assert calls_setup, "setupPaneFocus is defined but never called (dead code)"
+    assert calls_mark, "markNativeTfButton is defined but never called (dead code)"
+
+
+def test_native_tf_dot_css_and_js():
+    """A6a: the native-tf accent dot is a 5px cyan (celeste) pseudo-element,
+    and review.js sets/clears the .native-tf class by comparing the button's
+    data-tf against the loaded run's own tf."""
+    import re as _re
+
+    css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
+    stripped = _re.sub(r"/\*.*?\*/", "", css, flags=_re.DOTALL)
+    m = _re.search(r"\.native-tf::after\s*\{([^}]*)\}", stripped)
+    assert m, ".native-tf::after rule missing"
+    body = m.group(1)
+    assert "5px" in body
+    assert "--accent-celeste" in body
+
+    js = (WEB_DIR / "sections" / "review.js").read_text(encoding="utf-8")
+    assert "dataset.tf" in js
+    assert "native-tf" in js
+    assert "run.tf" in js or "run && run.tf" in js
+
+
+def test_review_tf_buttons_have_data_tf_attribute():
+    js = (WEB_DIR / "sections" / "review.js").read_text(encoding="utf-8")
+    assert '"data-tf"' in js
+
+
 def test_tokens_present_in_style_css():
     css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
     for token in (
