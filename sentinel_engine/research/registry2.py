@@ -74,6 +74,9 @@ CREATE TABLE IF NOT EXISTS magic_allocation(
 CREATE TABLE IF NOT EXISTS audit_log(
   id INTEGER PRIMARY KEY AUTOINCREMENT, ts TEXT NOT NULL, actor TEXT, accion TEXT, detalle_json TEXT);
 CREATE TABLE IF NOT EXISTS import_checksum(path TEXT PRIMARY KEY, sha256 TEXT NOT NULL, imported_at TEXT);
+CREATE TABLE IF NOT EXISTS deals_raw(
+  ticket INTEGER PRIMARY KEY, position_id INTEGER, symbol TEXT, side TEXT,
+  volume REAL, price REAL, profit REAL, magic INTEGER, time INTEGER, entry_type TEXT);
 """
 
 _RUN_COLUMNS = (
