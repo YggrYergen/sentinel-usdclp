@@ -1182,4 +1182,57 @@ html, body {
 .manage-estado-btn.active { color: var(--accent-celeste); border-color: var(--accent-celeste); }
 .manage-estado-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.25); }
 .manage-estado-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+/* CHAT — CT-6 model dropdown / gated-unlock prompt / usage meter (A9) */
+.llm-model-select {
+  background: var(--bg-1);
+  color: var(--text-0);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+}
+.llm-unlock-slot:empty { display: none; }
+.llm-unlock-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.llm-unlock-label { color: var(--text-2); font-size: 0.78rem; }
+.llm-unlock-input {
+  background: var(--bg-1);
+  color: var(--text-0);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+}
+.llm-unlock-btn {
+  background: transparent;
+  color: var(--accent-celeste);
+  border: 1px solid var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.llm-unlock-error { color: var(--accent-red); font-size: 0.75rem; }
+.llm-usage-meter {
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  margin-bottom: var(--sp-2);
+}
+
+@keyframes shake-error {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.shake-error { animation: shake-error 0.4s linear; border-color: var(--accent-red) !important; }
 .manage-estado-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
