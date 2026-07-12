@@ -323,5 +323,54 @@ def test_route_set_unchanged(client):
 - Study tab UI (post ORC-2 design session).
 - Deep P1 cutover review; P2 real exports; P4 real study (unchanged carryover).
 
-## Appendix — R1–R36 map
-(Deliverable of ORC-1: each R from `D:\WebDev\TOKATA\docs\REQUISITOS_WEBAPP_ANALISIS_ESTRATEGIAS.md` → estado {hecho|planificado(task)|backlog|gap} — appended here by orchestrator.)
+## Appendix — R1–R36 map (ORC-1, 2026-07-12)
+
+Source reqs: `D:\WebDev\TOKATA\docs\REQUISITOS_WEBAPP_ANALISIS_ESTRATEGIAS.md`. Strict count (one dominant state/R): **hecho 17 · planificado(task) 15 · backlog 2 · gap 2**.
+
+| R | Requisito (resumen) | Estado | Ref |
+|---|---|---|---|
+| R1 | Gráfico velas profesional | hecho | M1.3 `a3feafd`; recalibrado A3-A5 |
+| R2 | Cambio de TF en mismo gráfico | planificado | A3 (LOD ladder), A6a (TF dot) |
+| R3 | Paneo histórico | planificado | A4 (ensureRange chunked), A7 |
+| R4 | Zoom in/out | hecho | M1.3 `a3feafd` (librería nativa) |
+| R5 | Hover por elemento (OHLC/indic/marker) | planificado | Base `e0d3c2b`; A5b marcador intrabar+HH:MM:SS |
+| R6 | Indicadores propios por estrategia | planificado | EMA/SAR/SuperTrend `e0d3c2b`; A3 overlays server-side. **Ver GAP R6b** |
+| R7 | Todas las estrategias en un lugar | hecho | M2.1 `981d575`, M2.4 `88c50cf` |
+| R8 | Crear estrategias/variaciones desde UI | hecho | M2.7 `8435634` |
+| R9 | Ver parámetros | hecho | M2.4/M2.7 |
+| R10 | Modificar parámetros | hecho | M2.7 `8435634` |
+| R11 | Informes de desempeño | planificado | RUNS `981d575`; B2 metrics+scorecard (CT-3) |
+| R12 | Comparar estrategias/variantes | planificado | RUNS compare; B8 equity overlay |
+| R13 | Recorrer cada trade sobre gráfico | hecho | M2.2 `c449526`, Trade-View `e0d3c2b` |
+| R14 | Backtests personalizados desde UI | planificado | M2.5 `199d88d`; B6 jobs, B7 launcher |
+| R15 | Forward walk configurable desde UI | **backlog** | Sin tarea; solo monitoreo de forward en curso (B3/B4) |
+| R16 | Monitorear estrategias graduadas en vivo | planificado | M2.3 `2908047`; B3, B4 |
+| R17 | Tomar trades por varias vías (manual/paper/estrat/IA) | planificado | D1, D4, E1/E5, B1a/b |
+| R18 | Ejecución en vivo solo demo | hecho | CUENTAS.md/guard; E4 formaliza |
+| R19 | Ingerir artefactos actuales | hecho | M0.2 `ce750e8`, M0.3 `319a650`, `b4c7fbe` |
+| R20 | Importar estrategias afinadas + historial | hecho | M0.2/M0.3, `b4c7fbe` (EMASAR-V1) |
+| R21 | Trazabilidad → variante/parámetros | hecho | params_hash/variant_id; CT-3 baseline_ref |
+| R22 | Estrategia/variante entidades distintas | hecho | registry2.py + M2.4 |
+| R23 | Params efectivos por corrida (params_hash) | hecho | ledger/registry |
+| R24 | Parameter sweeps desde UI | **backlog** | Diferido explícitamente a ORC-2 (Study) |
+| R25 | Ventana+modelo explícitos por corrida | planificado | registry M0/M2; B7 detail "Ventana:" |
+| R26 | Multi-instrumento con escalas correctas | hecho (parcial) | CT-2 dp por instrumento; NQ100 sin datos reales en lake |
+| R27 | Motivo de salida por trade | hecho | Trade-View Wave-1 (exit_reason 69/69) |
+| R28 | Validez params según instrumento/bróker (stop mínimo) | **gap** | Sin mención de stop_level en plan ni specs |
+| R29 | Curvas equity + drawdown superpuestas | planificado | B8 equity; **curva DD sin cobertura (parcial gap)** |
+| R30 | Ranking/tabla ordenable+filtrable | hecho | M2.1 `981d575` |
+| R31 | Distinguir screening/validación/forward en reportería | planificado | CT-3 real/teorico; B7 badges; CT-4 exploratory |
+| R32 | Panel monitoreo forward/live | planificado | M2.3; B1a/b, B3, B4 |
+| R33 | Marcar estrategia graduada | hecho | M2.7 `8435634` (criterio formal por confirmar) |
+| R34 | Enforcement demo-only en toda ruta viva | planificado | E4 (gateway + CI grep-import test) |
+| R35 | Pre-registro (hipótesis antes de correr) + audit | planificado | CT-4 preregistro_id **opcional** — ver riesgo abajo |
+| R36 | Evidencia asociada a cada resultado | hecho | ledger report_path; CT-7 dossiers `<source>` |
+
+**GAPS / riesgos para decisión del usuario (no bloquean Waves 0/A/B):**
+- **R28 (gap duro):** validación de ejecutabilidad de parámetros vs bróker (distancia mínima de stop). Sin tarea. Candidato a tarea nueva o E-wave (relevante para AI-trader/gateway).
+- **R6b (gap):** overlays limitados a EMA/SAR/SuperTrend; AO/AC/Momentum/patrones-vela/ORB/ADX/Choppiness (Sapitos/Pedro) no en catálogo A3. Ampliar catálogo = tarea nueva si esas estrategias se revisan en Trade-View.
+- **R29 (parcial):** B8 cubre equity, no curva de drawdown superponible (solo escalar maxdd_pct).
+- **R15 / R24 (backlog):** forward-walk y sweeps configurables desde UI — sin task-id; R24 depende de ORC-2.
+- **R35 (riesgo de regresión):** `preregistro_id` es opcional en CT-4; el proceso Python actual lo exige. Decidir si B6/B7 deben hacerlo obligatorio para no relajar la disciplina.
+
+Full working notes: `scratchpad/orc1-rmap.md` (session-local).
