@@ -26,7 +26,7 @@
 | Task | Lane | Ready when | Status | Commit |
 |---|---|---|---|---|
 | W0.1 routers split | A | — | [x] | 3833280+d1e202e |
-| W0.2 asset versioning | B | — | [ ] | |
+| W0.2 asset versioning | B | — | [x] | 17aea47 |
 | A1 lake TF tiers | C | — | [ ] | |
 | A2 /api/coverage | A | W0.1, A1 | [ ] | |
 | A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [ ] | |
