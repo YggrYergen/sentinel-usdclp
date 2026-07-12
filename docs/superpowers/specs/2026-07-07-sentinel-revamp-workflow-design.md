@@ -1,8 +1,8 @@
 # SENTINEL Revamp — Implementation Workflow & Governance
 
 > Date: 2026-07-07 | Status: approved | Owner: user (YggrYergen)
-> Companion design (technical): `/mnt/d/FOREX/FABLE5_RESPONSE_SENTINEL_REVAMP.md`
-> Briefing: `/mnt/d/FOREX/BRIEFING_SENTINEL_REVAMP.md`
+> Companion design (technical): `FABLE5_RESPONSE_SENTINEL_REVAMP.md`
+> Briefing: `BRIEFING_SENTINEL_REVAMP.md`
 > This document governs HOW the revamp is implemented (model routing, agent
 > protocol, escalation, tracker rules, OS requirements). The WHAT lives in the
 > phased plan produced by writing-plans and in the brain project ledger.
@@ -101,7 +101,7 @@ direction locked so implementer agents never have to analyze — only implement.
 
 ## 8. Tracker shape ("brief but complete, respected")
 
-One dedicated brain ledger (`brains/-mnt-d-FOREX/project/`). Per phase:
+One dedicated brain ledger (`brains/D--FOREX/project/`). Per phase:
 `goal · closed task list (exact files / signatures / acceptance check) ·
 model assignment · dependency · exit gate`. Brief enough to keep interaction
 cost low; complete enough that an implementer never reasons about *what* — only

@@ -2,7 +2,7 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 > **Governance:** `docs/superpowers/specs/2026-07-07-sentinel-revamp-workflow-design.md` (model routing, 2-strikes rule, Fable gate, brain protocol). Read it before executing.
-> **Technical design source of truth:** `/mnt/d/FOREX/FABLE5_RESPONSE_SENTINEL_REVAMP.md` (sections referenced inline as §n). When a task says "per §2.6", open that section for the exact algorithm.
+> **Technical design source of truth:** `FABLE5_RESPONSE_SENTINEL_REVAMP.md` (sections referenced inline as §n). When a task says "per §2.6", open that section for the exact algorithm.
 
 **Goal:** Turn SENTINEL into a headless-core-driven system with a real backtesting/optimization engine, a lightweight UI, restored AI, and replay/logging — without changing what/how it recommends and without getting slower.
 
