@@ -28,9 +28,9 @@
 | W0.1 routers split | A | — | [x] | 3833280+d1e202e |
 | W0.2 asset versioning | B | — | [x] | 17aea47 |
 | A1 lake TF tiers | C | — | [x] | b776ed0 |
-| A2 /api/coverage | A | W0.1, A1 | [ ] | |
+| A2 /api/coverage | A | W0.1, A1 | [x] | 9363f9a |
 | A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [x] | b3a3f3f |
-| A4 chart data controller | B | A3 contract | [ ] | |
+| A4 chart data controller | B | A3 contract | [x] | 49128e9 |
 | A5a adapters + windowed markers | B | A4 | [ ] | |
 | A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
 | A6a TV split-pane + TF dot | B | W0.2 | [x] | 3ba0f14 |
