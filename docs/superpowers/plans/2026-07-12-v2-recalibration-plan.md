@@ -1,0 +1,327 @@
+# SENTINEL V2 Recalibration Implementation Plan (Waves 0–E)
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking. **Execution rules (Capa-4, OBLIGATORIAS): `docs/superpowers/specs/2026-07-12-agentic-workflow-rules.md`** — incl. task time budget (≤10 min target / 12 min problem / 20 min grave / 35 min discard), lane ownership, no-commit-by-implementers.
+
+**Goal:** Implement the per-tab UI requirements (2026-07-12 brief) on the ALL-LOCAL v1 architecture: windowed/LOD data plane, unified chart, Positions (HUMANO/ESTRATEGIA/IA/TRAINING), Runs launcher, News, assistant v1, paper engine, AI-trader foundations.
+
+**Architecture:** FastAPI service (routers split) + parquet lake with precomputed TF tiers + one chart component (3 adapters) in vanilla JS + lightweight-charts. LLM configures / code monitors (intent DSL). Design rationale: `docs/superpowers/specs/2026-07-12-v2-ui-recalibration-design.md`.
+
+**Tech Stack:** Python 3.11, FastAPI, pyarrow/parquet, SQLite (registry2), MetaTrader5 pkg (attach-only), lightweight-charts (vendored), SSE, Anthropic API (opus-4-8 gated / sonnet-5 / haiku-4-5).
+
+## Global Constraints (apply to EVERY task)
+
+- Windows 10 AND 11; `pathlib` only; `encoding="utf-8"` explicit on every file open; no OS-version APIs.
+- Fast gate (run subset relevant to your files; NEVER full suite): `PYTHONPATH=/d/FOREX python -m pytest -q tests/golden/test_parity.py tests/service tests/research tests/strategies`
+- Golden parity (`tests/golden/test_parity.py`) must stay green in every task; scoring outputs byte-identical.
+- No new pip/npm dependencies without ORC approval. No CDN; vendored libs only.
+- Determinism: lake ONLY from broker history (`copy_rates_range`); forming bar never persisted; manifest content-hash recorded.
+- Real accounts READ-ONLY; no `order_send` anywhere except gateway (E4 adds CI import test). MT5 attach-only: check `terminal64.exe` process exists BEFORE `MetaTrader5.initialize()`; never launch terminals.
+- Perf budgets: /api/bars ≤5000 points per response (server-enforced); JS heap ≤60MB/chart tab; lists >200 rows virtualized; no pandas whole-file loads in request paths (pyarrow row-group reads, row_group_size=8192, monthly partitions).
+- Implementers: only YOUR task's files; no commits; no writes to tracker/brain/memory; TDD (failing test → minimal impl → pass); report format per workflow rules.
+
+---
+
+## Progress Ledger (ORCHESTRATOR ticks; implementers never edit this file)
+
+| Task | Lane | Ready when | Status | Commit |
+|---|---|---|---|---|
+| W0.1 routers split | A | — | [ ] | |
+| W0.2 asset versioning | B | — | [ ] | |
+| A1 lake TF tiers | C | — | [ ] | |
+| A2 /api/coverage | A | W0.1, A1 | [ ] | |
+| A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [ ] | |
+| A4 chart data controller | B | A3 contract | [ ] | |
+| A5a adapters + windowed markers | B | A4 | [ ] | |
+| A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
+| A6a TV split-pane + TF dot | B | W0.2 | [ ] | |
+| A6b vlist util + TV lists virtualized | B | A6a | [ ] | |
+| A7 goto-date (Charts+TV) | B | A2, A4 | [ ] | |
+| A8 models/gate/cost endpoints | A | W0.1 | [ ] | |
+| A9 chat UI catalog+unlock+meter | B | A8 | [ ] | |
+| A10 live tail service (tick→last bar) | A | W0.1 | [ ] | |
+| A11 live-tail adapter (Charts) | B | A5a, A10 | [ ] | |
+| B1a deals watcher core | C | — | [ ] | |
+| B1b position grouping (multi-lote/parciales) | C | B1a | [ ] | |
+| B2 metrics.py + scorecard endpoint | A | W0.1 | [ ] | |
+| B3 Positions HUMANO UI | B | A5a, B1b, B2 | [ ] | |
+| B4 ESTRATEGIA two-floor + sesiones label | B | B2 | [ ] | |
+| B5 IA selector UI (empty-state) | B | B4 | [ ] | |
+| B6 jobs queue + SSE | A | W0.1, A2 | [ ] | |
+| B7 Runs launcher UI + detail dates | B | B6, A2 | [ ] | |
+| B8 /api/runs/{id}/equity | A | W0.1 | [ ] | |
+| B9 Lab tooltips render | B | ORC-3 content | [ ] | |
+| C1 news poller + API | A | W0.1 | [ ] | |
+| C2 News tab UI | B | C1 | [ ] | |
+| C3 dossier builders | A | B2 | [ ] | |
+| C4 tool registry + manual loop | A | C3 | [ ] | |
+| C5 Analizar wiring | B | C4, B3 | [ ] | |
+| C6 mini-eval runner | A | C3 | [ ] | |
+| C7 strategy-review chat v2 | A+B | C4, B4 | [ ] | |
+| D1 paper engine | C | A10 | [ ] | |
+| D2 TRAINING tab + Positions selector | B | D1, B3 | [ ] | |
+| D3 coach v1 | A | C3, D1 | [ ] | |
+| D4 paper-AI executor | C | D1 | [ ] | |
+| E0 🗣️ DISCUSSION GATE (user+ORC) | ORC | — | [ ] | |
+| E1 intent DSL + rules engine | C | E0 | [ ] | |
+| E2 reviewer service (activators→Opus) | A | E0, E1, C3 | [ ] | |
+| E3 monitor subagent runner | A | E2 | [ ] | |
+| E4 gateway demo-only + CI import test | C | E1 | [ ] | |
+| E5 chat propose_position tool | B | E1, C4 | [ ] | |
+| ORC-1 R1–R36 map appendix | ORC | — | [ ] | |
+| ORC-2 Study frontend-design session | ORC+user | — | [ ] | |
+| ORC-3 Lab tooltips content (+user review) | ORC+user | — | [ ] | |
+| ORC-4 wave-boundary review+commit batches | ORC | continuous | [ ] | |
+| ORC-5 e2e headless browser checklist | ORC | Wave A+B done | [ ] | |
+
+Concurrency: max 3 in flight, one per lane. Waves C/D/E: ORC expands each task to full TDD steps at wave start (contracts here are already frozen).
+
+---
+
+## Frozen Contracts (changes ONLY via ORC plan-amendment; implementers may not deviate)
+
+### CT-1 `GET /api/coverage?symbol=XAUUSD`
+```json
+{"symbol":"XAUUSD","tfs":{"M1":{"first":1774396800,"last":1783382400},"M5":{"first":...,"last":...}}}
+```
+Epoch seconds UTC; TF absent from lake ⇒ key absent. 404 unknown symbol.
+
+### CT-2 `GET /api/bars?symbol&tf&from&to&max_points=5000&overlays=ema8,ema20,sar,supertrend`
+```json
+{"symbol":"XAUUSD","tf_requested":"M1","served_tf":"M5","clipped":false,
+ "bars":[{"t":1774396800,"o":4669.1,"h":4670.2,"l":4668.8,"c":4670.0,"v":123}],
+ "overlays":{"ema8":[{"t":1774396800,"v":4669.4}]}}
+```
+Rules: `from`/`to` epoch-s or ISO (`_parse_flexible_ts`). Bars strictly ascending, unique `t`, CLOSED bars only, no rows for empty buckets. If span at `tf_requested` > max_points ⇒ serve next coarser tier (M1→M2→M5→M15→H1→D), set `served_tf`. Overlays computed SERVER-side with warmup: read 200 extra bars before `from`, compute, slice to window; overlay `t` values ⊆ bars `t` values (test-enforced). Numbers rounded to instrument dp (XAUUSD=2).
+
+### CT-3 `GET /api/strategies/{id}/scorecard`
+```json
+{"strategy_id":"...","tf":"M5","metrics_contract":"v1","baseline_ref":"run_id|null",
+ "floors":{"real":{"trades":12,"net":103.5,"pf":1.8,"wr":0.58,"payoff":1.4,
+   "expectancy_r":0.31,"expectancy_r_flag":"ok|no_sl_fallback_ccy",
+   "net_per_day":8.6,"trades_per_day":1.0,"maxdd_pct":4.2,"sharpe_d":1.1,
+   "window":{"from":...,"to":...},"source":{"runs":[],"sessions":["fwd39"]}},
+  "teorico":{...same fields, "source":{"runs":["run_id"]}}}}
+```
+`teorico` from `baseline_ref` run ONLY (never best-run). Fields null when insufficient data; never invented.
+
+### CT-4 Jobs
+`POST /api/jobs/backtest {"variant_id","symbol","tf","from","to","preregistro_id"?:str,"exploratory":bool}` → `{"job_id"}`; 422 if window outside CT-1 coverage. `GET /api/jobs/{id}` → `{"status":"queued|running|done|error","progress":0.0-1.0,"run_id":null|str,"error":null|str}`. `GET /api/jobs/stream` = SSE, events `job_update` with same body. Worker pool size 1.
+
+### CT-5 News
+`GET /api/news?symbol=&impact=&kind=&limit=100` → `{"items":[{"id","ts","source","title","url","symbols":["XAUUSD"],"kind":"news|calendar","impact":"high|medium|low|null"}]}`; `GET /api/news/stream` SSE event `news_item`. id = sha1(canonical url) or sha1(calendar event key).
+
+### CT-6 LLM
+`GET /api/llm/models` → `[{"id":"claude-opus-4-8","label":"Opus 4.8","gated":true},{"id":"claude-sonnet-5","label":"Sonnet 5","gated":false,"default":true},{"id":"claude-haiku-4-5","label":"Haiku 4.5","gated":false}]`. `POST /api/llm/unlock {"code"}` → `{"ok":bool}`; code compared server-side vs env `SENTINEL_OPUS_GATE` (default "abc123"); on ok set server session flag. Gated model without unlocked session ⇒ 403. `GET /api/llm/usage` → `{"session_tokens_in","session_tokens_out","est_usd"}`.
+
+### CT-7 Dossier builders (module `sentinel_engine/ai/dossier.py`)
+`build_position_dossier(trade_id: str, tfs: list[str] = ["M5"]) -> Dossier` and `build_strategy_dossier(strategy_id: str) -> Dossier` where `Dossier = {"xml": str, "token_estimate": int, "sections": dict[str,int]}`. Format = LITERAL templates §3–§4 of `2026-07-12-llm-timeseries-context-research.md` (markdown tables, fixed dp, `<document><source>…<document_content>` wrappers, stats server-computed, question NOT included — caller appends it last). Budgets: position ≤8K tok, strategy ≤10K + tools.
+
+### CT-8 Intent DSL — frozen at E1 from design spec §4.1 (fields as sketched; `fulfillment ∈ {first_of, two_of}`; states `pending→armed→active→closed|cancelled|expired`).
+
+### CT-9 SSE convention: `text/event-stream`, named events, JSON data, retry 3000, heartbeat comment every 15s.
+
+---
+
+## Ownership Matrix
+
+| Lane | Owns | Notes |
+|---|---|---|
+| A (service) | `sentinel_engine/service/**` (post W0.1 routers), `sentinel_engine/research/metrics.py`, `scorecard.py`, `sentinel_engine/ai/**`, their tests | `registry2.py` migrations: lane A, one task in flight |
+| B (web) | `web/**` + `tests/service/test_web_*` | CHOKE: `web/index.html`, `web/style.css`, `web/app.js`, `web/lib/chart.js` — max ONE in-flight task may declare each |
+| C (data/engines) | `sentinel_engine/lake/**`, `sentinel_engine/live/**`, `sentinel_engine/paper/**`, `sentinel_engine/exec/**`, `scripts/**`, their tests | |
+
+---
+
+## Wave 0 (SERIAL — nothing else runs until both done)
+
+### Task W0.1: Split app.py into routers
+**Files:** Create `sentinel_engine/service/routers/{__init__,bars,runs,strategies,positions,chat,jobs,news,system}.py`; Modify `sentinel_engine/service/app.py`; Test: existing `tests/service/**` unchanged must pass.
+**Interfaces:** Produces `create_app()` unchanged externally; each router = `APIRouter` with current prefixes preserved EXACTLY (no URL changes).
+**Steps:** (1) create empty routers + include in app factory; run fast gate (green, proves scaffold inert). (2) Move endpoint groups one router at a time — bars/ticks → `bars.py`; runs/registry → `runs.py`; strategies/variants/graduate → `strategies.py`; positions/forward → `positions.py`; chat/models → `chat.py`; leftovers (health, static, version) → `system.py`. Move code VERBATIM (imports adjusted only). (3) After each move: fast gate. (4) `app.py` ends ≤120 lines (factory + includes + middleware). No behavior change: assert route table equality — add `tests/service/test_router_parity.py`:
+```python
+def test_route_set_unchanged(client):
+    paths = {r.path for r in client.app.routes}
+    for p in ["/api/bars","/api/runs","/chat"]:  # extend with full current list at impl time from git show HEAD:app.py
+        assert p in paths
+```
+**Budget:** 2 dispatches if needed (scaffold+2 routers / rest). Gate: fast gate green ×2.
+
+### Task W0.2: Asset versioning (kill hand-bumped `?v=`)
+**Files:** Modify `sentinel_engine/service/routers/system.py` (post W0.1 — serial anyway), `web/index.html`; Create `tests/service/test_asset_version.py`.
+**Spec:** At startup compute `APP_ASSET_VERSION = sha1 of max(mtime of web/**/*.{js,css}))[:10]`. Service serves `index.html` replacing literal token `__ASSET_V__` in all `src=`/`href=` query strings (`app.js?v=__ASSET_V__` etc.). Replace ALL existing hardcoded `?v=2026…` with the token. Test: GET / contains no `__ASSET_V__` and same version on both assets; touching a file changes version (monkeypatch mtime).
+**Budget:** 1 dispatch.
+
+---
+
+## Wave A — Data plane + chart core
+
+### Task A1: Lake TF tiers builder
+**Files:** Create `sentinel_engine/lake/tiers.py`, `scripts/build_tiers.py`, `tests/lake/test_tiers.py` (+`tests/lake/__init__.py`).
+**Interfaces:** Produces `build_tiers(symbol: str, lake_root: Path) -> TierReport` and per-TF parquet at `data/lake/{SYMBOL}/{TF}/{YYYY-MM}.parquet` + updated `data/lake/manifest.json` entries `{symbol,tf,first,last,rows,content_sha}`.
+**Spec:** Source of truth per TF: native file if present (M5 native exists), else derive from finest available native. Resample rules (deterministic): bucket = `t - (t % tf_seconds)`; o=first,h=max,l=min,c=last,v=sum; **skip empty buckets** (no rows emitted); input sorted+dedup by t; drop any bar with `t > now - tf_seconds` (forming-bar guard). Write parquet `row_group_size=8192`, monthly files, stable column order `t,o,h,l,c,v` (int64 epoch-s, float64, int64). `content_sha` = sha1 over concatenated per-file sha1s (stable order).
+**Tests:** golden resample fixture (13 M1 bars incl. a 3-bucket gap → expected M5 rows exactly); forming-bar excluded; idempotent (run twice ⇒ identical shas); manifest updated.
+**Gate:** `pytest -q tests/lake` + fast gate. **Budget:** 1 dispatch.
+
+### Task A2: Coverage endpoint
+**Files:** Modify `sentinel_engine/service/routers/bars.py`; Create `tests/service/test_coverage.py`.
+**Spec:** Implement CT-1 reading `data/lake/manifest.json` (cached in-process, invalidated by mtime). 404 unknown symbol. Tests: known symbol shape, unknown 404, manifest reload on mtime change.
+**Budget:** 1 dispatch.
+
+### Task A3: /api/bars v2 (windowed + LOD + aligned overlays)
+**Files:** Modify `sentinel_engine/service/routers/bars.py`; Create `sentinel_engine/service/bars_source.py`, `tests/service/test_bars_v2.py`.
+**Interfaces:** Consumes A1 parquet layout + existing indicator functions (the code behind current `/indicators` — reuse, do not duplicate math). Produces CT-2 exactly.
+**Spec:** `read_window(symbol, tf, from_, to_) -> list[Bar]` via pyarrow: prune monthly files by name, `parquet.read_table(path, filters=[("t",">=",from_),("t","<=",to_)], columns=[...])` — no pandas. LOD: `estimate = (to-from)/tf_seconds`; while estimate > max_points: step tf up the ladder; set served_tf. Overlays: fetch `from_ - 200*tf_s` extra, compute with existing catalog functions, slice, round to dp. Keep old `/indicators` endpoint intact (deprecation later).
+**Tests:** ascending+unique t; ≤max_points enforced ⇒ served_tf set; overlay t-subset-of-bars invariant; warmup correctness (EMA at window edge equals EMA computed from full series — fixture); epoch and ISO both accepted; payload of 5000-bar response < 1.5MB (`len(resp.content)`).
+**Budget:** 2 dispatches (A3a reader+LOD; A3b overlays+tests) if first exceeds 10 min.
+
+### Task A4: Chart data controller (web)
+**Files:** Create `web/lib/chartData.js`, `tests/service/test_web_chartdata.py` (serve-and-assert pattern used by existing web tests); Modify `web/lib/chart.js` (wire only).
+**Interfaces:** Produces `createBarSource({symbol, tf, api}) → {ensureRange(fromT,toT):Promise, onData(cb), setTf(tf), coverage()}`.
+**Spec:** chunked fetch (1500 bars/chunk aligned to chunk grid), in-flight dedupe, LRU cap 60000 bars (evict farthest-from-view chunk), merge strictly ascending (throw on duplicate t — surface as console.error not crash), `served_tf` propagated to a notice callback. chart.js: on `subscribeVisibleLogicalRangeChange` debounce 150ms → `ensureRange(view.from - 300*tf, view.to + 50*tf)`. Existing `loadSeq` token pattern preserved.
+**Tests:** unit-style via existing headless harness: chunk math, LRU eviction, no duplicate t after overlapping fetches.
+**Budget:** 2 dispatches (source module / wiring).
+
+### Task A5a: Adapters + windowed markers
+**Files:** Modify `web/lib/chart.js`; Create `web/lib/adapters.js`, test `tests/service/test_web_adapters.py`.
+**Interfaces:** Produces `HistAdapter(chart, barSource)`, `ReplayAdapter(chart, barSource, {fromT,toT,speed,pauseAfterBars})` with `play/pause/seek(t)`; markers API `setSignals(signals)` renders ONLY signals within loaded window (re-filter on range change), preserving existing grouping/connector/halo behavior (`hoveredSignalId`, `findSignalNearConnector` untouched semantics).
+**Spec:** Replay steps bars AND overlay points in lockstep from the already-fetched window (no per-step fetch). TF switch: `setTf` → re-fetch window around anchor timestamp (keep center bar time constant), re-anchor markers by `t` (position markers on the bar whose bucket contains signal t).
+**Budget:** 2 dispatches.
+
+### Task A5b: Precise intrabar marker + connector re-anchor
+**Files:** Modify `web/lib/chart.js` (`web/lib/adapters.js` if cleaner); test `tests/service/test_web_precise_marker.py`.
+**Spec:** Custom series-primitive drawing entry/exit ticks at fractional x: `x = barX + barWidth * ((signal_t - bucket_t)/tf_seconds)`, clamped [0,1]. Tooltip shows exact HH:MM:SS. FALLBACK (if primitive API blocks >2 attempts): bar-anchored marker + 1px vertical hairline at fractional x via overlay canvas + exact time in tooltip — this fallback is ACCEPTABLE, decided (design §6 ASSUMPTION). Connectors use same fractional x.
+**Budget:** 1-2 dispatches.
+
+### Task A6a: Trade View split-pane + native-TF dot
+**Files:** Modify `web/sections/review.js`, `web/style.css` (CHOKE — exclusive), `web/index.html` if container change needed (CHOKE — exclusive).
+**Spec:** Left column = CSS grid `grid-template-rows: 1fr 1fr; transition: grid-template-rows .25s ease`. Click a list header/card area toggles `.focused-top`/`.focused-bottom` → `3fr 1fr` / `1fr 3fr`; clicking focused one returns 1fr 1fr. Persist in localStorage key `tv.paneFocus`. Kill `.review-run-groups{max-height:240px}` → flex growth (W3-Stage3.1). TF dot: on selector buttons, when `btn.dataset.tf === run.tf` add class `native-tf` → CSS `::after` 5px dot top-left, accent cian, NO size/layout change to buttons.
+**Tests:** extend `tests/service/test_web_layout.py`: focus classes toggle, localStorage persisted, dot present only on native TF.
+**Budget:** 1 dispatch.
+
+### Task A6b: Virtualized lists
+**Files:** Create `web/lib/vlist.js`; Modify `web/sections/review.js`; test `tests/service/test_web_vlist.py`.
+**Spec:** `createVList(container, {itemHeight, render(item)→node, items})` windowed rendering (viewport ±10 rows, absolute-positioned spacer). Apply to TV runs-list and positions-list. Keyboard/scroll intact; selection state survives re-render.
+**Budget:** 1 dispatch.
+
+### Task A7: Goto-date control
+**Files:** Modify `web/sections/review.js`, `web/app.js` (CHOKE — exclusive) or charts section file; test `tests/service/test_web_goto.py`.
+**Spec:** `datetime-local` input + "Ir" button in chart toolbar (Charts + TV). On go: clamp to coverage (CT-1, fetched once per symbol/tf; out-of-range ⇒ clamp + toast "Sin datos antes de {first} en {tf}"), `ensureRange(target−150*tf, target+150*tf)` then `setVisibleRange`.
+**Budget:** 1 dispatch.
+
+### Task A8: Models catalog + gate + usage
+**Files:** Modify `sentinel_engine/service/routers/chat.py`, `models.yaml`; Create `tests/service/test_llm_gate.py`.
+**Spec:** CT-6 exactly. models.yaml gains `gated: true` for opus. Session flag in existing session store (or module-level dict keyed by session cookie — match current chat session mechanism). 403 body `{"error":"gated_model_locked"}`. Usage counters accumulated per session from API responses' usage fields.
+**Tests:** locked 403 → unlock wrong code → still 403 → right code → 200; usage accumulates.
+**Budget:** 1 dispatch.
+
+### Task A9: Chat UI catalog + unlock + meter
+**Files:** Modify `web/sections/` chat section file (identify at impl; exclusive), `web/style.css` if needed (CHOKE).
+**Spec:** Model dropdown from CT-6 (default=default flag). Selecting gated → inline passcode prompt → POST unlock → error shake on fail. Usage meter (tokens + est USD) polled after each message. NO passcode string in JS ever.
+**Tests:** extend web tests: dropdown options, gated flow (mock 403→unlock→200), meter renders.
+**Budget:** 1 dispatch.
+
+### Task A10: Live tail service
+**Files:** Modify `sentinel_engine/service/routers/bars.py` or create `sentinel_engine/service/live_tail.py`; test `tests/service/test_live_tail.py`.
+**Spec:** Reuse existing WS/tick plumbing (P3): background task per subscribed symbol: on tick, update in-memory forming bar per TF (M1..M15) and broadcast SSE/WS event `bar_tail {"symbol","tf","bar":{t,o,h,l,c,v},"closed":false}`; on bucket rollover broadcast `closed:true` (client then treats as final; lake persistence stays with A1 backfill — forming bars NEVER written to lake). Degrade: if MT5 not attached, endpoint returns 503 `{"live":false}` and UI stays historical.
+**Budget:** 2 dispatches.
+
+### Task A11: Live-tail adapter (Charts)
+**Files:** Modify `web/lib/adapters.js` + charts section wiring.
+**Spec:** `LiveAdapter = HistAdapter + subscribe bar_tail` → `series.update(bar)` throttled to rAF; only when viewport at right edge auto-scroll; disconnect on tab hide (visibilitychange) to save laptop resources.
+**Budget:** 1 dispatch.
+
+---
+
+## Wave B — Positions & Runs systems
+
+### Task B1a: Deals watcher core
+**Files:** Create `sentinel_engine/live/__init__.py`, `sentinel_engine/live/deals_watcher.py`, `tests/live/test_deals_watcher.py`.
+**Interfaces:** Produces `class DealsWatcher(registry, mt5_client, poll_s=5)` with `poll_once() -> WatchReport`; service flag `--watch-deals` starts it.
+**Spec:** ATTACH GUARD (mandatory, verbatim behavior): psutil-free check via `subprocess`-less: use `MetaTrader5.terminal_info()` — call `initialize()` ONLY if a prior `terminal_info()` on an existing connection… (MT5 pkg requires initialize first) ⇒ implement as: enumerate processes via `ctypes`/`tasklist` fallback: run guard `any('terminal64.exe' in line for line in os.popen('tasklist /FI "IMAGENAME eq terminal64.exe"'))`; if absent: log + skip cycle, NEVER initialize. Poll `history_deals_get(last_sync - 3600, now)`; map deal→row {ticket(pk), position_id, symbol, side, volume, price, profit, magic, time, entry_type}; attribution: magic in magic_allocation→strategy; 900000-900999→ia; else→human; upsert idempotent by ticket into registry (new table `deals_raw` + view into trades on close). Persist `last_sync` in registry meta.
+**Tests:** synthetic mt5 stub client (fixtures list of deal dicts): attribution matrix, idempotency (poll twice ⇒ no dup), attach-guard skip path.
+**Budget:** 2 dispatches (guard+poll / attribution+persist).
+
+### Task B1b: Position grouping (multi-lote + parciales)
+**Files:** Modify `sentinel_engine/live/deals_watcher.py`; Create `sentinel_engine/live/grouping.py`, tests.
+**Spec:** `group_positions(deals) -> list[PositionGroup]`. Position = deals sharing `position_id` (IN + ≥1 OUT; partial closes = multiple OUT → position has fills list, aggregate exit = vwap, pnl=sum). GROUP (multi-lote, patrón 3-fichas): positions sharing symbol+direction+magic with entry times within 90s ⇒ `group_id = f"{magic}-{first_entry_t}"`; group row aggregates (net, lots, first-in, last-out) + children detail. Per-position MAE/MFE: computed later from bars (B2 helper `mae_mfe(bars, position)`) — here store nulls, flag `needs_excursions`.
+**Tests:** fixtures: simple in/out; partial close 2 OUTs; 3-lote group ≤90s grouped, >90s not grouped.
+**Budget:** 1-2 dispatches.
+
+### Task B2: metrics.py + scorecard
+**Files:** Create `sentinel_engine/research/metrics.py`, `sentinel_engine/research/scorecard.py`; Modify `sentinel_engine/service/routers/strategies.py`, `sentinel_engine/research/registry2.py` (migration: `ALTER TABLE strategy ADD COLUMN baseline_ref TEXT` guarded by pragma check); tests `tests/research/test_metrics.py`, `tests/service/test_scorecard.py`.
+**Spec:** Pure functions, each with docstring formula: `pf(wins,losses)`, `wr`, `payoff`, `expectancy_r(trades)` (needs sl: r = pnl / (risk_per_unit*volume); if any trade lacks sl ⇒ return (value_ccy, flag="no_sl_fallback_ccy")), `net_per_day` (active days = distinct trade dates), `trades_per_day`, `maxdd_pct` (peak-to-trough on cumulative pnl over start equity or notional base param), `sharpe_d` (daily pnl mean/std*sqrt(252), None if <10 days), `mae_mfe(bars, entry_t, exit_t, side, entry_px)`. Scorecard endpoint per CT-3: real = deals origin=strategy(magic-matched) + forward sessions; teorico = baseline_ref run metrics from registry. Cache 60s in-process.
+**Tests:** each formula against hand-computed fixture; endpoint shape; teorico=null when baseline_ref null.
+**Budget:** 2 dispatches (metrics / endpoint).
+
+### Task B3: Positions HUMANO UI
+**Files:** Modify `web/sections/` positions file (exclusive), `web/index.html` (CHOKE: tooltip fix `title="Positions"`), styles via section-scoped CSS.
+**Spec:** Card list (vlist) fields: asset, fecha/hora in→out, entry, exit, PnL, `pct = profit / margin` where `margin = volume*contract_size*open_price/leverage` (leverage+contract_size from account/symbol info captured by watcher), lot, MAE, MFE. Group cards: chevron expands children (per-lote SL/TP/exit). Click card → expanded panel: top = chart (HistAdapter, window entry−30/exit+30 bars, markers entry/exit precise) interactive zoom/pan; bottom = full detail table; buttons bottom-right: **Replay** (ReplayAdapter fromT=entry−4*tf, toT=exit+4*tf, pauseAfterBars=4) & **Analizar** (disabled hasta C5, tooltip "Análisis IA — próximamente").
+**Tests:** extend web tests: card fields render from fixture API, group expand, replay invoked with correct window args (spy).
+**Budget:** 2-3 dispatches (list/card / expanded+replay).
+
+### Task B4: ESTRATEGIA two-floor + labels
+**Files:** Modify positions section file (exclusive after B3 merged).
+**Spec:** Strategy cards: two floors — top REAL (bold/nítido) bottom TEÓRICO (dimmed) from CT-3; TF badge; estado activa/pausada/graduada existing buttons kept. Second list header renamed **"Sesiones forward"**; click session → its positions right (existing M2.3 flow, labeled).
+**Budget:** 1 dispatch.
+
+### Task B5: IA selector UI
+**Files:** positions section file (exclusive slot).
+**Spec:** Top: big aggregate card = CT-3-style aggregate for origin=ia (endpoint param `?origin=ia` added in B2 scorecard aggregate mode `GET /api/positions/scorecard?origin=ia` — B2 produces it; if data empty ⇒ estado "Sin posiciones IA aún — se activa con el motor paper (Wave D)"). Bottom: HUMANO list component reused with origin=ia.
+**Budget:** 1 dispatch.
+
+### Task B6: Jobs queue
+**Files:** Create `sentinel_engine/service/jobs.py`; Modify `sentinel_engine/service/routers/jobs.py`, registry migration `jobs` table (id TEXT pk, kind, params_json, status, progress REAL, run_id, error, created_at, updated_at); tests `tests/service/test_jobs.py`.
+**Spec:** CT-4. Worker = single background thread consuming queue; backtest kind calls existing backtest-lite entry (M2.7 path) reporting progress callback → row update + SSE broadcast. 422 window-vs-coverage validation. Job survives restart as `error:"interrupted"` (mark on boot).
+**Tests:** happy path with stub runner, 422 no-data window, SSE event emitted (test client).
+**Budget:** 2 dispatches.
+
+### Task B7: Runs launcher UI + detail dates
+**Files:** Modify `web/sections/` runs file (exclusive).
+**Spec:** Panel "Nueva corrida": variant select (existing endpoint), symbol select, TF select, period pickers **bounded by CT-1** (min/max attrs set from coverage; out-of-range impossible), exploratory toggle (default ON, label "Exploratoria (no cuenta para graduación)"), submit → CT-4 POST → progress bar via SSE → on done link to run. Detail pane: add rows "Ventana: {desde} → {hasta}" (from registry fields) + label existing date "Creada". Badges engine/fidelity/origin on list rows (fields exist).
+**Budget:** 2 dispatches.
+
+### Task B9: Lab tooltips render
+**Files:** Modify `web/sections/` lab file (exclusive); Create `web/lib/tooltips.js` if no shared tooltip util exists.
+**Spec:** Every Lab lever/control gains `data-help` attribute populated from `web/help/lab_tooltips.json` (file authored in ORC-3, reviewed by user; keys = control ids). Hover ≥400ms → rich tooltip (title + 2-4 line explanation + "afecta a:" line); keyboard-focus shows too; Esc closes. Missing key ⇒ no tooltip, console.warn (never broken UI). Tests: tooltip renders for known key, absent for missing, dismiss on Esc.
+**Budget:** 1 dispatch (content JSON arrives from ORC-3; do not invent copy — placeholder keys get "(pendiente ORC-3)" only if JSON missing at impl time).
+
+### Task B8: Equity endpoint
+**Files:** Modify `sentinel_engine/service/routers/runs.py`; test.
+**Spec:** `GET /api/runs/{id}/equity` → `{"points":[{"t","v"}]}` from equity artifact if exists else cumulative pnl over trades (sorted by ts_out). 404 unknown run.
+**Budget:** 1 dispatch.
+
+---
+
+## Wave C — News + Assistant v1 (ORC expands to TDD steps at wave start)
+
+- **C1** news poller: `sentinel_engine/service/news.py` + router. Sources config `news.yaml`: rss list (forexlive, fxstreet, investing), ff_calendar url (faireconomy weekly json). Poll 90s async, conditional GET (ETag/Last-Modified), stdlib-only parse (xml.etree; NO new deps), dedupe sha1(url) + `difflib.SequenceMatcher(None,a,b).ratio()>0.9` title match window 48h, symbol keyword map in yaml (XAUUSD: gold, oro, xau…; refs DXY/VIX). Registry table `news_items`. CT-5.
+- **C2** News tab: vlist + filters (symbol/impact/kind) + freshness label ("hace N min") + link-out `target=_blank` + SSE append.
+- **C3** dossier builders per CT-7 — implement research templates LITERALLY; golden snapshot tests (fixture trade → expected xml hash) + token estimate via chars/3.5 heuristic (documented).
+- **C4** tool registry + manual loop in chat service: tools `get_bars(symbol,tf,from,to)` (CT-2 passthrough, cap 25K tok), `get_trade_detail(trade_id)`, `query_registry(filters)`, `get_scorecard(strategy_id)`; loop: while stop_reason==tool_use execute+append; max 8 iterations; stream text SSE. Model from session (CT-6 gate respected). System prompt stable-first for caching; dossier docs then question LAST.
+- **C5** Analizar: enable button → `POST /api/ai/analyze_position {trade_id}` → C4 loop with position dossier → SSE into card panel.
+- **C6** mini-eval: `scripts/llm_format_eval.py` per research §6 (8 preguntas × 4 formatos × {sonnet,haiku}; output md report `docs/superpowers/specs/2026-07-12-format-eval-results.md`). ORC reviews → may flip dossier default (plan amendment).
+- **C7** strategy review: ESTRATEGIA card button "Revisar con IA" → strategy dossier + tools chat panel.
+
+## Wave D — Paper engine + TRAINING (expand at wave start)
+
+- **D1** `sentinel_engine/paper/engine.py`: subscribes live tail (A10) or M1-close fallback; market fills at current bid/ask ± slippage cfg (default 0.5 pip); virtual balance per profile (registry tables `paper_accounts`, `paper_positions` origin `practice|ia`); SL/TP static eval per tick; close writes position row (reuses B1b shapes).
+- **D2** TRAINING tab: order ticket (symbol/side/lot/SL/TP), open-positions panel (live pnl via tail), close button; Positions tab gains 4th selector `TRAINING` = HUMANO component with origin=practice.
+- **D3** coach v1: on paper position open/close → position dossier → sonnet commentary streamed to Training chat panel; throttle 1 comment/position/event.
+- **D4** paper-AI executor: flag-gated listener on semáforo composite (existing signal panel state) → paper positions origin=ia with provenance (activator="semaforo_v1").
+
+## Wave E — AI-trader (E0 GATE FIRST; expand after)
+
+- **E0** 🗣️ user+ORC discussion: freeze activator strategy set + thresholds, Opus invocation budget/frequency, kill-switch UX, reviewer dossier contents, paper-vs-demo rollout criteria. OUTPUT: amendment to spec §4 + expanded E1-E5 tasks.
+- **E1** intent DSL (CT-8) + `sentinel_engine/exec/intent_engine.py`: rule evaluators `pip_distance`, `indicator_cross`, `indicator_reversal`, `price_band` entry (tolerance+confirm_bars+expiry); m-of-n fulfillment; state machine + audit rows; evaluated on live tail events; executes v1 → paper engine.
+- **E2** reviewer service: activator triggers (proximity % | fire) → dossier → Opus 4.8 `effort:medium` structured verdict `{decision: seconds|veto|modify, sl?, tp?, notes}` (output_config json_schema) → intent.
+- **E3** monitor runner: per-active-intent optional Haiku check (single question, watch list from intent.monitor), cadence cfg, result → audit + optional intent cancel proposal (never auto-close without rule).
+- **E4** gateway demo-only (design §4.4) + `guard_cuenta.assert_demo()` + CI test: grep-import test asserting `order_send` referenced ONLY in `sentinel_engine/exec/gateway.py`.
+- **E5** chat tool `propose_position(intent_draft)` → draft card in chat UI → user confirm button → engine (paper v1).
+
+## Deferred slots (not in these waves)
+- Regime tab (post signal-history S2/S3 — placeholder honesto ya presente).
+- Study tab UI (post ORC-2 design session).
+- Deep P1 cutover review; P2 real exports; P4 real study (unchanged carryover).
+
+## Appendix — R1–R36 map
+(Deliverable of ORC-1: each R from `D:\WebDev\TOKATA\docs\REQUISITOS_WEBAPP_ANALISIS_ESTRATEGIAS.md` → estado {hecho|planificado(task)|backlog|gap} — appended here by orchestrator.)
