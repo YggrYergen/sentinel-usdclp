@@ -83,6 +83,15 @@ _META_DDL = """
 CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
 """
 
+# B6: `jobs` table (CT-4 backtest job queue). Additive, own CREATE TABLE IF
+# NOT EXISTS since it didn't exist before B6 -- same pattern as `_META_DDL`.
+_JOBS_DDL = """
+CREATE TABLE IF NOT EXISTS jobs(
+  id TEXT PRIMARY KEY, kind TEXT NOT NULL, params_json TEXT NOT NULL,
+  status TEXT NOT NULL, progress REAL NOT NULL DEFAULT 0.0,
+  run_id TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
+"""
+
 _RUN_COLUMNS = (
     "run_id", "variant_id", "params_hash", "engine", "fidelity",
     "periodo_desde", "periodo_hasta", "modelo_sim", "status",
@@ -255,6 +264,21 @@ class ResearchRegistry:
         if "baseline_ref" not in strategy_cols:
             conn.execute("ALTER TABLE strategy ADD COLUMN baseline_ref TEXT")
             conn.commit()
+
+        # B6: `jobs` table (CT-4). Additive, own CREATE TABLE IF NOT EXISTS.
+        conn.executescript(_JOBS_DDL)
+        conn.commit()
+
+        # B6: any job left `queued`/`running` from a prior process (crash or
+        # restart) can never be resumed -- mark it `error:"interrupted"` on
+        # boot so `GET /api/jobs/{id}` never reports a job as perpetually
+        # in-flight when nothing is actually running it.
+        conn.execute(
+            "UPDATE jobs SET status='error', error='interrupted', updated_at=? "
+            "WHERE status IN ('queued','running')",
+            (_utcnow_iso(),),
+        )
+        conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
         conn = sqlite3.connect(str(self.db_path))
