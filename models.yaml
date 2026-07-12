@@ -1,0 +1,35 @@
+# models.yaml — LLM catalog for the chat service (Wave A / Task A8, CT-6).
+#
+# Consumed by `sentinel_engine/service/routers/chat.py::build_router` to
+# derive GET /api/llm/models. Each entry maps 1:1 onto the CT-6 response
+# shape: {"id", "label", "gated", "default"(optional)}.
+#
+# `gated: true` means the model requires a server-side unlock (POST
+# /api/llm/unlock with the SENTINEL_OPUS_GATE passcode) before /chat will
+# run it — see CT-6. Exactly one model should carry `default: true`.
+models:
+  - id: claude-opus-4-8
+    label: "Opus 4.8"
+    gated: true
+  - id: claude-sonnet-5
+    label: "Sonnet 5"
+    gated: false
+    default: true
+  - id: claude-haiku-4-5
+    label: "Haiku 4.5"
+    gated: false
+
+# Simple per-model USD pricing used only to estimate session cost for
+# GET /api/llm/usage (est_usd). Source: Anthropic pricing as of this file's
+# creation date — $/1M tokens, input/output. Update alongside the catalog
+# above if pricing changes; this is a rough estimate, not a billing record.
+pricing:
+  claude-opus-4-8:
+    input_per_mtok: 5.0
+    output_per_mtok: 25.0
+  claude-sonnet-5:
+    input_per_mtok: 3.0
+    output_per_mtok: 15.0
+  claude-haiku-4-5:
+    input_per_mtok: 1.0
+    output_per_mtok: 5.0
