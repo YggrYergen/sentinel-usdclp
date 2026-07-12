@@ -7,6 +7,18 @@ Uses a temp Parquet lake (`sentinel_engine.lake.store.write_bars`) — never
 touches the real `data/lake`. MT5-only behavior (`_default_tick_source`) is
 gated behind `@pytest.mark.requires_mt5`; plumbing (subscribe/push/unsub) is
 exercised via an injected fake `tick_source`.
+
+A3a/A3b reconciliation: `/api/bars` now serves the CT-2 shape (`symbol`,
+`tf_requested`, `served_tf`, `clipped`, `bars`:[{t,o,h,l,c,v}], `overlays`)
+via `sentinel_engine.service.bars_source` (pre-built lake tiers), not the
+old per-minute list-of-lists/`decimated`/`tf` shape. The `/api/bars`-shape
+tests below were updated in place to assert CT-2 fields instead (LOD
+`served_tf` replaces the old ad-hoc `decimated` flag: `clipped=True` +
+`served_tf` possibly escalated is the CT-2 equivalent capability). The
+`load_tf_frame`/`decimate_ohlc`/`bars_payload` direct-helper tests and every
+`/ws/ticks` test are untouched — those exercise `sentinel_engine.service.bars`
+helpers or the WS channel directly, not this route, and are unaffected by
+the CT-2 contract change.
 """
 from __future__ import annotations
 
@@ -15,6 +27,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from sentinel_engine.lake.store import write_bars
+from sentinel_engine.lake.tiers import build_tiers
 from sentinel_engine.service.app import create_app
 from sentinel_engine.service.bars import bars_payload, decimate_ohlc, load_tf_frame
 from tests.golden.fake_feed import FakeFeed
@@ -33,10 +46,18 @@ def _m1_frame(n: int, start="2026-01-01T00:00:00Z", freq="1min") -> pd.DataFrame
     return df
 
 
+FAR_FUTURE_NOW = int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp()) + 400 * 86400
+
+
 @pytest.fixture
 def lake_root(tmp_path):
     root = tmp_path / "lake"
     write_bars(root, "XAUUSD", 1, _m1_frame(120))
+    # A3a/A3b: /api/bars now reads pre-built lake tiers (CT-2), not the
+    # legacy per-minute file directly -> the route-level tests below need
+    # tiers built here too (the `load_tf_frame`/`bars_payload` direct-helper
+    # tests still read the legacy per-minute file and don't need this).
+    build_tiers("XAUUSD", root, now_epoch=FAR_FUTURE_NOW)
     return root
 
 
@@ -67,22 +88,26 @@ def client(app_factory):
 # ---------------------------------------------------------------------
 
 def test_bars_shape_native_tf(client):
-    resp = client.get("/api/bars", params={"symbol": "XAUUSD", "tf": "M1"})
+    resp = client.get("/api/bars", params={
+        "symbol": "XAUUSD", "tf": "M1",
+        "from": int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp()),
+        "to": int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp()) + 119 * 60,
+    })
     assert resp.status_code == 200
     body = resp.json()
     assert body["symbol"] == "XAUUSD"
-    assert body["tf"] == "M1"
-    assert body["decimated"] is False
+    assert body["tf_requested"] == "M1"
+    assert body["served_tf"] == "M1"
+    assert body["clipped"] is False
     assert isinstance(body["bars"], list)
     assert len(body["bars"]) == 120
     bar0 = body["bars"][0]
-    assert len(bar0) == 6
-    ts, o, h, l, c, v = bar0
-    assert isinstance(ts, int)
-    assert ts == int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp())
-    assert o == pytest.approx(100.0)
-    assert c == pytest.approx(100.2)
-    assert v == pytest.approx(10.0)
+    assert set(bar0.keys()) == {"t", "o", "h", "l", "c", "v"}
+    assert isinstance(bar0["t"], int)
+    assert bar0["t"] == int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp())
+    assert bar0["o"] == pytest.approx(100.0)
+    assert bar0["c"] == pytest.approx(100.2)
+    assert bar0["v"] == 10
 
 
 def test_bars_unknown_tf_error_shape(client):
@@ -98,7 +123,7 @@ def test_bars_unknown_symbol_returns_empty(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["bars"] == []
-    assert body["decimated"] is False
+    assert body["clipped"] is False
 
 
 def test_bars_m10_resample_ohlc_and_volume_sum(lake_root):
@@ -116,33 +141,52 @@ def test_bars_m10_resample_ohlc_and_volume_sum(lake_root):
 
 
 def test_bars_m10_via_api(client):
-    resp = client.get("/api/bars", params={"symbol": "XAUUSD", "tf": "M10"})
+    # A3a/A3b: CT-2's LOD tier ladder is M1/M2/M5/M15/H1/D (no M10 tier) --
+    # "M10" is no longer a valid `tf`. Reconciled to M5 (still exercises
+    # non-native-tf resample-tier serving via the CT-2 route).
+    base = int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp())
+    resp = client.get("/api/bars", params={
+        "symbol": "XAUUSD", "tf": "M5", "from": base, "to": base + 119 * 60,
+    })
     assert resp.status_code == 200
     body = resp.json()
-    assert body["tf"] == "M10"
-    # 120 M1 bars -> 12 whole M10 buckets
-    assert len(body["bars"]) == 12
-    ts, o, h, l, c, v = body["bars"][0]
-    assert o == pytest.approx(100.0)
-    assert v == pytest.approx(sum(10.0 + i for i in range(10)))
+    assert body["tf_requested"] == "M5"
+    assert body["served_tf"] == "M5"
+    # 120 M1 bars -> 24 whole M5 buckets
+    assert len(body["bars"]) == 24
+    bar0 = body["bars"][0]
+    assert bar0["o"] == pytest.approx(100.0)
+    assert bar0["v"] == pytest.approx(sum(10.0 + i for i in range(5)))
 
 
 def test_bars_decimation_when_over_max_points(client):
-    resp = client.get("/api/bars", params={"symbol": "XAUUSD", "tf": "M1", "max_points": 10})
+    # A3a/A3b: the old ad-hoc `decimated` flag + tail-decimation is replaced
+    # by CT-2's LOD ladder: instead of returning up to max_points bars of the
+    # REQUESTED tf (old tail-decimation), the route escalates `served_tf` to
+    # a coarser tier until the bar count already fits under max_points, so
+    # `clipped` need not fire. Equivalent capability: fewer bars come back
+    # than the full 120 M1 bars, and the response says which tier it used.
+    base = int(pd.Timestamp("2026-01-01T00:00:00Z").timestamp())
+    resp = client.get("/api/bars", params={
+        "symbol": "XAUUSD", "tf": "M1",
+        "from": base, "to": base + 119 * 60,
+        "max_points": 10,
+    })
     assert resp.status_code == 200
     body = resp.json()
-    assert body["decimated"] is True
+    assert body["served_tf"] != "M1"  # LOD ladder escalated
     assert len(body["bars"]) <= 10
     assert len(body["bars"]) > 0
 
 
 def test_bars_causal_to_filter_excludes_future_bars(client):
+    base = pd.Timestamp("2026-01-01T00:00:00Z")
     cutoff = pd.Timestamp("2026-01-01T00:30:00Z")  # bar index 30 is the last allowed
     resp = client.get("/api/bars", params={
-        "symbol": "XAUUSD", "tf": "M1", "to": cutoff.isoformat(),
+        "symbol": "XAUUSD", "tf": "M1", "from": base.isoformat(), "to": cutoff.isoformat(),
     })
     body = resp.json()
-    assert all(bar[0] <= int(cutoff.timestamp()) for bar in body["bars"])
+    assert all(bar["t"] <= int(cutoff.timestamp()) for bar in body["bars"])
     assert len(body["bars"]) == 31  # bars 0..30 inclusive
 
 
@@ -151,22 +195,25 @@ def test_bars_accepts_epoch_seconds_from_to(client):
     # (e.g. to=oldestTs-1). Parsing it as an ISO string mis-read it as a
     # calendar YEAR -> HTTP 400 "year ... is out of range" -> candles never
     # loaded. A bare epoch must now be accepted and behave like the ISO form.
+    base = pd.Timestamp("2026-01-01T00:00:00Z")
     cutoff = pd.Timestamp("2026-01-01T00:30:00Z")
     epoch_resp = client.get("/api/bars", params={
-        "symbol": "XAUUSD", "tf": "M1", "to": int(cutoff.timestamp()),
+        "symbol": "XAUUSD", "tf": "M1", "from": int(base.timestamp()), "to": int(cutoff.timestamp()),
     })
     assert epoch_resp.status_code == 200
     body = epoch_resp.json()
     assert "error" not in body
-    assert all(bar[0] <= int(cutoff.timestamp()) for bar in body["bars"])
+    assert all(bar["t"] <= int(cutoff.timestamp()) for bar in body["bars"])
     assert len(body["bars"]) == 31  # identical to the ISO-`to` causal test
 
 
 def test_bars_epoch_milliseconds_from_to(client):
     # Belt-and-suspenders: a 13-digit epoch is milliseconds, not seconds.
+    base = pd.Timestamp("2026-01-01T00:00:00Z")
     cutoff = pd.Timestamp("2026-01-01T00:30:00Z")
     resp = client.get("/api/bars", params={
-        "symbol": "XAUUSD", "tf": "M1", "to": int(cutoff.timestamp() * 1000),
+        "symbol": "XAUUSD", "tf": "M1",
+        "from": int(base.timestamp()), "to": int(cutoff.timestamp() * 1000),
     })
     assert resp.status_code == 200
     body = resp.json()
