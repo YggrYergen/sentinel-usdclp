@@ -25,11 +25,24 @@ Thumbs.db
 *.exe
 MT5_Portable/
 
-# Data files (generated — real market data lake, regenerable via scripts/mt5_dump_history.py)
-data/*.csv
-data/raw/
-data/lake/
+# Data files (generated — real market data lake + research.db, regenerable via scripts/mt5_dump_history.py)
+# Whole dir ignored: lake/ (150M), raw/ (378M), research.db (5.8M) are all regenerable.
+data/
 sentinel_log.txt
+
+# MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
+MT5_Tester/
+MT5_Tester_2/
+MT5_Tester*/
+
+# graphify knowledge-graph outputs (regenerable via /graphify; ~18M incl. cache)
+graphify-out/
+
+# Dev/diagnostic scratch dir (per-machine logs)
+temp/
+
+# MT5 account source-of-truth (Capa-4) — contains DEMO master password in cleartext. NEVER commit.
+CUENTAS.md
 
 # Runtime tick logs (Task 0.6 — generated, never committed)
 logs/
@@ -56,6 +69,8 @@ INICIAR_SENTINEL.bat
 ACTUALIZAR_SENTINEL.bat
 INSTALAR_SENTINEL.bat
 
-# MT5 personal launchers (local paths)
+# MT5 personal launchers (local paths + account context — Capa-4 safety, never committed)
 MT5_PAPA_SOLO_LECTURA.bat
 MT5_DEMO_TRADING.bat
+MT5_DEMO_TOMAS.bat
+MT5_REAL_PAPA_SOLO_LECTURA.bat
