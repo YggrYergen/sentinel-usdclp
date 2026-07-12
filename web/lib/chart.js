@@ -59,6 +59,19 @@
     return { time: tsSec(ts), value: v || 0, color: up ? LONG_COLOR : SHORT_COLOR };
   }
 
+  // CT-2 wire shape (A3a: `/api/bars` -> {bars:[{t,o,h,l,c,v}],...}) -> the
+  // internal tuple shape [ts,o,h,l,c,v] every function below already
+  // operates on (buildMarkers/connectors/playback/applyBars/barToCandle all
+  // destructure tuples by POSITION). ROOT-CAUSE FIX: before this task, the
+  // raw CT-2 bar OBJECTS were handed straight to applyBars(), which fed them
+  // to barToCandle's `const [ts,o,h,l,c] = bar` array-destructure --
+  // destructuring an object as an array yields every field `undefined`, so
+  // candleSeries.setData() received all-undefined points and painted
+  // nothing. Every bars-array entering this module now passes through here.
+  function ct2BarsToTuples(ct2Bars) {
+    return (ct2Bars || []).map((b) => (Array.isArray(b) ? b : [b.t, b.o, b.h, b.l, b.c, b.v]));
+  }
+
   function wsUrl() {
     const proto = location.protocol === "https:" ? "wss:" : "ws:";
     return `${proto}//${location.host}/ws/ticks`;
@@ -223,12 +236,37 @@
     let destroyed = false;
 
     // ---- barSource (Task A4 wiring): chunked/LRU data controller feeding
-    // ensureRange() calls off the visible-range-change debounce below. This
-    // is ADDITIVE wiring only -- existing loadInitial/setWindow/fetchPreviousBlock
-    // paths (and the loadSeq token) are untouched.
+    // ensureRange() calls off the visible-range-change debounce below.
     const barSource = (window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource)
       ? window.SENTINEL.chartData.createBarSource({ symbol, tf })
       : null;
+
+    // ---- HistAdapter (Task A5a): CT-2 window-fetch helper (adapters.js).
+    // Used by setTF's re-anchor path (barSource-driven re-fetch centered on
+    // the anchor bar) -- degrades to null (no-op) if adapters.js isn't
+    // loaded, so chart.js never crashes on a missing include.
+    const histAdapterCandle = {
+      _candleSeries: candleSeries,
+      get tf() { return tf; },
+      addOverlay,
+      addSarDots,
+      addTradeMarkers: () => { /* markers stay owned by buildMarkers/allTrades below */ },
+    };
+    const histAdapter = (barSource && window.SENTINEL.adapters && window.SENTINEL.adapters.HistAdapter)
+      ? window.SENTINEL.adapters.HistAdapter(histAdapterCandle, barSource)
+      : null;
+    // barSource.onData fires on every ensureRange() merge-commit (initial
+    // load's debounced prefetch AND every pan-triggered prefetch below);
+    // painting here is what makes the chart draw from CT-2 via barSource
+    // (not just the direct fetchBars() path), while ct2BarsToTuples keeps
+    // the existing tuple-shaped applyBars() pipeline (markers/connectors/
+    // playback) working unmodified.
+    if (barSource) {
+      barSource.onData((ct2Bars) => {
+        if (destroyed || !ct2Bars || !ct2Bars.length) return;
+        applyBars(ct2BarsToTuples(ct2Bars));
+      });
+    }
     let rangeDebounceTimer = null;
     // Load-sequence token (Wave-3 race fix): the chart constructor kicks off
     // loadInitial() (the TAIL) while review.js immediately calls
@@ -283,7 +321,14 @@
     async function fetchBars(params) {
       const resp = await fetch(barsUrl(params));
       if (!resp.ok) throw new Error(`GET /api/bars failed: ${resp.status}`);
-      return resp.json();
+      const body = await resp.json();
+      // CT-2 fix: normalize the CT-2 bar OBJECTS ({t,o,h,l,c,v}) to this
+      // module's internal tuple shape [t,o,h,l,c,v] right at the fetch
+      // boundary, so every downstream consumer (applyBars, barToCandle,
+      // barToVolume, buildMarkers/connectors, playback) keeps working
+      // unmodified against the tuple shape it already expects.
+      if (body && body.bars) body.bars = ct2BarsToTuples(body.bars);
+      return body;
     }
 
     function applyBars(newBars) {
