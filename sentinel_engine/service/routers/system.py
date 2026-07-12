@@ -12,17 +12,53 @@ mount (kept as a separate helper since a `StaticFiles` mount isn't an
 """
 from __future__ import annotations
 
+import hashlib
 from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, WebSocket, WebSocketDisconnect
-from starlette.responses import JSONResponse
+from starlette.responses import HTMLResponse, JSONResponse
 from starlette.staticfiles import StaticFiles
 
 from sentinel_engine.config import config_hash
 from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
 
 router = APIRouter()
+
+# Asset-version token (W0.2): index.html ships with the literal `__ASSET_V__`
+# in every `?v=...` query string instead of a hand-bumped date string.
+# `mount_static()` intercepts `/` and `/index.html` (added to the router
+# *before* the StaticFiles catch-all mount, so Starlette matches it first),
+# reads index.html fresh off disk on every request (no disk mutation),
+# and substitutes the token for `compute_asset_version(web_dir)` before
+# returning the response. Cache is lazy + per-process: the version is
+# computed on the first request that needs it and reused after that (an app
+# restart is what "bumps" the version in production; tests call
+# `compute_asset_version()` directly to sidestep the cache).
+ASSET_VERSION_TOKEN = "__ASSET_V__"
+
+_asset_version_cache: dict[Path, str] = {}
+
+
+def compute_asset_version(web_dir: Path) -> str:
+    """First 10 hex chars of sha1(str(max mtime of web/**/*.js + web/**/*.css)).
+
+    Recomputes every call (no caching here) so tests can monkeypatch mtimes
+    and observe a changed version without reimporting the module.
+    """
+    mtimes = [p.stat().st_mtime for p in web_dir.rglob("*.js")]
+    mtimes += [p.stat().st_mtime for p in web_dir.rglob("*.css")]
+    latest = max(mtimes) if mtimes else 0.0
+    digest = hashlib.sha1(str(latest).encode("utf-8")).hexdigest()
+    return digest[:10]
+
+
+def _cached_asset_version(web_dir: Path) -> str:
+    version = _asset_version_cache.get(web_dir)
+    if version is None:
+        version = compute_asset_version(web_dir)
+        _asset_version_cache[web_dir] = version
+    return version
 
 
 def _gated(capability: str) -> JSONResponse:
@@ -169,6 +205,23 @@ def mount_static(app, web_dir: Path) -> None:
     keeps local dev edits always visible."""
     if not web_dir.exists():
         return
+
+    index_path = web_dir / "index.html"
+
+    def _serve_index() -> HTMLResponse:
+        html = index_path.read_text(encoding="utf-8")
+        version = _cached_asset_version(web_dir)
+        html = html.replace(ASSET_VERSION_TOKEN, version)
+        return HTMLResponse(content=html, headers={"Cache-Control": "no-cache"})
+
+    if index_path.exists():
+        @app.get("/", include_in_schema=False)
+        def _get_root() -> HTMLResponse:
+            return _serve_index()
+
+        @app.get("/index.html", include_in_schema=False)
+        def _get_index_html() -> HTMLResponse:
+            return _serve_index()
 
     class _NoCacheStatic(StaticFiles):
         async def get_response(self, path, scope):
