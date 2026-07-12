@@ -77,10 +77,60 @@
     return resp.json();
   }
 
+  // ---- indicator overlays (EMA-fast/EMA-slow/SAR, backend-computed for
+  // parity — spec 2026-07-09-trade-view-indicator-overlays) ----
+  async function fetchIndicators(runId, tf, windowFrom, windowTo) {
+    const usp = new URLSearchParams({ tf });
+    // Defect B fix (Wave-2 plan 2026-07-10, candle-killer): bound the
+    // request to the chart's CURRENT candle window so the overlay
+    // time-range stays a subset of the candle time-range -- omitting
+    // from/to (no window yet) falls back to the endpoint's full-frame
+    // behavior.
+    if (windowFrom !== undefined && windowFrom !== null) {
+      usp.set("from", new Date(windowFrom * 1000).toISOString());
+    }
+    if (windowTo !== undefined && windowTo !== null) {
+      usp.set("to", new Date(windowTo * 1000).toISOString());
+    }
+    const resp = await fetch(`/api/runs/${encodeURIComponent(runId)}/indicators?${usp.toString()}`);
+    if (!resp.ok) throw new Error(`GET /api/runs/${runId}/indicators failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  const OVERLAY_COLORS = { ema_fast: "#00bfff", ema_slow: "#ffb020", sar: "#ff6e40", supertrend: "#7e57c2" };
+
+  function renderOverlayChips(host, indicators, activeIds, onToggle) {
+    host.innerHTML = "";
+    const group = el("div", { class: "charts-overlay-chips review-overlay-chips" });
+    indicators.forEach((ind) => {
+      const chip = el("button", {
+        type: "button", class: "charts-overlay-chip", text: ind.label, "data-indicator-id": ind.id,
+      });
+      if (activeIds.has(ind.id)) chip.classList.add("active");
+      chip.addEventListener("click", () => {
+        chip.classList.toggle("active");
+        onToggle(ind, chip.classList.contains("active"));
+      });
+      group.appendChild(chip);
+    });
+    host.appendChild(group);
+    return group;
+  }
+
+  function applyIndicator(chartInst, ind) {
+    const color = OVERLAY_COLORS[ind.id] || "#00bfff";
+    if (ind.kind === "dots") {
+      chartInst.addSarDots(ind.id, ind.points, color);
+    } else {
+      chartInst.addOverlay(ind.id, ind.points, color);
+    }
+  }
+
   // ---- run selector (searchable, grouped by strategy w/ badge D.3) ----
   function runOptionLabel(row) {
     const fmt = window.SENTINEL.fmt;
-    return `${row.run_id} · ${row.instrumento || "--"} · net ${fmt.signed(row.net)}`;
+    const label = row.variant_id || row.run_id;
+    return `${label} · ${row.instrumento || "--"} · net ${fmt.signed(row.net)}`;
   }
 
   function renderRunSelector(host, runsByStrategy, strategiesById, onPick) {
@@ -102,6 +152,7 @@
           if (!q) return true;
           return (
             (r.run_id || "").toLowerCase().includes(q) ||
+            (r.variant_id || "").toLowerCase().includes(q) ||
             (r.instrumento || "").toLowerCase().includes(q) ||
             (r.display_name || "").toLowerCase().includes(q)
           );
@@ -143,16 +194,67 @@
   }
 
   // ---- trade list (virtualized, lib/vtable.js) ----
+  // Wave-2b req 7: group the 3 fichas (F1/F2/F3) under each SIGNAL. vtable
+  // is a flat virtualized list, so the grouping is expressed as a flat row
+  // model: one "header" row per signal (side, entry ts, px_in, signal total
+  // pnl) followed by its 3 "ficha" sub-rows (ficha label, exit_reason,
+  // px_out, per-ficha pnl), styled distinctly via a shared row-key so a
+  // click on ANY row (header or ficha) selects the whole signal. Derived
+  // purely from signal_id/ficha (req 8) -- no hardcoded run/signal ids.
+  function groupBySignal(trades) {
+    const order = [];
+    const bySignal = new Map();
+    (trades || []).forEach((t) => {
+      const sid = t.signal_id || t.trade_id;
+      let g = bySignal.get(sid);
+      if (!g) {
+        g = { signal_id: sid, side: t.side, ts_in: t.ts_in, px_in: t.px_in, fichas: [], pnl_total: 0 };
+        bySignal.set(sid, g);
+        order.push(g);
+      }
+      g.fichas.push(t);
+      g.pnl_total += Number(t.pnl) || 0;
+    });
+    order.forEach((g) => g.fichas.sort((a, b) => (a.ficha || "").localeCompare(b.ficha || "")));
+    return order;
+  }
+
+  // Flattens signals into vtable rows: 1 header row + N ficha rows/signal.
+  // rowKey is the signal_id for EVERY row in the group (header + fichas) so
+  // vtable's onRowClick can resolve straight back to the signal.
+  function buildSignalRows(signals) {
+    const rows = [];
+    signals.forEach((sig, i) => {
+      rows.push(Object.assign({ __kind: "header", __n: i + 1, __rowKey: `${sig.signal_id}::hdr` }, sig));
+      sig.fichas.forEach((t) => {
+        rows.push(Object.assign({ __kind: "ficha", __rowKey: `${sig.signal_id}::${t.ficha || t.trade_id}` }, t, { __signalId: sig.signal_id }));
+      });
+    });
+    return rows;
+  }
+
   function tradeRowColumns() {
     const fmt = window.SENTINEL.fmt;
     return [
-      { key: "n", label: "#", width: "34px", render: (r) => `<span class="mono">${r.__n}</span>` },
+      { key: "n", label: "#", width: "34px",
+        render: (r) => (r.__kind === "header" ? `<span class="mono">${r.__n}</span>` : "") },
       { key: "side", label: "Lado", width: "56px",
-        render: (r) => `<span class="${(r.side || "").toUpperCase() === "LONG" ? "sentinel-sign-pos" : "sentinel-sign-neg"}">${escapeHtml(r.side || "--")}</span>` },
-      { key: "ts_in", label: "Entrada", width: "1fr", render: (r) => `<span class="mono">${fmt.tsShort(epochOf(r.ts_in))}</span>` },
+        render: (r) => {
+          if (r.__kind !== "header") return `<span class="review-ficha-label mono">${escapeHtml(r.ficha || "--")}</span>`;
+          return `<span class="${(r.side || "").toUpperCase() === "LONG" ? "sentinel-sign-pos" : "sentinel-sign-neg"}">${escapeHtml(r.side || "--")}</span>`;
+        } },
+      { key: "ts_in", label: "Entrada", width: "1fr",
+        render: (r) => {
+          if (r.__kind === "header") return `<span class="mono">${fmt.tsShort(epochOf(r.ts_in))}</span>`;
+          return `<span class="mono review-ficha-exit-reason" title="${escapeHtml(r.exit_reason || "")}">${escapeHtml(exitReasonAbbrev(r.exit_reason))} &middot; ${fmt.price(r.px_out, 2)}</span>`;
+        } },
       { key: "pnl", label: "PnL", width: "80px", numeric: true,
-        render: (r) => `<span class="${signClass(r.pnl)} mono">${fmt.signed(r.pnl)}</span>` },
-      { key: "exit_reason", label: "Exit", width: "56px", render: (r) => `<span class="mono" title="${escapeHtml(r.exit_reason || "")}">${escapeHtml(exitReasonAbbrev(r.exit_reason))}</span>` },
+        render: (r) => {
+          const val = r.__kind === "header" ? r.pnl_total : r.pnl;
+          return `<span class="${signClass(val)} mono">${fmt.signed(val)}</span>`;
+        } },
+      { key: "exit_reason", label: "Exit", width: "56px",
+        render: (r) => (r.__kind === "header" ? "" : `<span class="mono" title="${escapeHtml(r.exit_reason || "")}">${escapeHtml(exitReasonAbbrev(r.exit_reason))}</span>`) },
     ];
   }
 
@@ -297,36 +399,114 @@
     left.appendChild(tradeListHost);
 
     const reviewToolbar = el("div", { class: "review-toolbar" });
+    const overlayChipsHost = el("div", { class: "review-overlay-chips-host" });
     const headerHost = el("div", { class: "review-header-host" });
     const chartHost = el("div", { class: "review-chart-host" });
+    const posNavHost = el("div", { class: "review-posnav" });
     const playbackHost = el("div", { class: "playback-host" });
     right.appendChild(reviewToolbar);
+    right.appendChild(overlayChipsHost);
     right.appendChild(headerHost);
     right.appendChild(chartHost);
+    right.appendChild(posNavHost);
     right.appendChild(playbackHost);
+
+    // Position nav bar (◀ / counter / ▶): step through trades in order, each
+    // centered on the chart with its entry+exit visible. Mirrors the j/k keys.
+    const posPrevBtn = el("button", { type: "button", class: "review-posnav-btn", title: "Posición anterior (k)", text: "◀ Anterior" });
+    const posCounter = el("span", { class: "review-posnav-counter mono", text: "-- / --" });
+    const posNextBtn = el("button", { type: "button", class: "review-posnav-btn", title: "Posición siguiente (j)", text: "Siguiente ▶" });
+    posNavHost.appendChild(posPrevBtn);
+    posNavHost.appendChild(posCounter);
+    posNavHost.appendChild(posNextBtn);
+    posPrevBtn.addEventListener("click", () => moveSelection(-1));
+    posNextBtn.addEventListener("click", () => moveSelection(1));
+
+    function updatePosCounter() {
+      // Wave-2b req 3/7: j/k and the ◀/▶ nav bar step through SIGNALS (23),
+      // not raw ficha trade rows (69).
+      const total = currentSignals.length;
+      const cur = selectedIndex >= 0 ? selectedIndex + 1 : 0;
+      posCounter.textContent = total ? `${cur} / ${total}` : "-- / --";
+      posPrevBtn.disabled = !total || selectedIndex <= 0;
+      posNextBtn.disabled = !total || selectedIndex >= total - 1;
+    }
 
     const appState = (window.SENTINEL.appState = window.SENTINEL.appState || {});
 
     let chartInst = null;
     let vt = null;
-    let currentTrades = [];
+    let currentTrades = [];  // flat ficha trades (chart markers need every ficha)
+    let currentSignals = []; // grouped {signal_id, side, ts_in, px_in, fichas:[...], pnl_total} -- req 7/3 nav unit
     let currentRunId = null;
     let currentColor = "#00bfff";
     let selectedIndex = -1;
     let strategiesById = {};
     let runsById = {};
     let selectorApi = null;
+    let activeOverlayIds = new Set(); // persists across tf switches/runs
+    let tfButtonsGroup = null;
+    let userPickedTf = false; // true once the user clicks a TF button explicitly
 
     // folded-in fix: TF switcher keeps the selected trade anchored by
-    // timestamp across TFs (setTF then re-selectTrade(currentTrade)).
-    renderTfButtons(reviewToolbar, appState.tf || "M1", (tf) => {
+    // timestamp across TFs (setTF then re-selectTrade(currentTrade)); also
+    // refreshes indicator overlays for the new tf (native-tf default fix +
+    // indicator-overlays spec). Initial highlight before any run is picked
+    // has no "native tf" to fall back to yet, so it uses the last-known
+    // appState.tf (from a previous section visit) or the DEFAULT_TF
+    // constant — never a hardcoded "M1" literal (that literal is what
+    // caused the "Sin barras para XAUUSD M1" bug for M2-native runs).
+    const DEFAULT_TF = "M5";
+    tfButtonsGroup = renderTfButtons(reviewToolbar, appState.tf || DEFAULT_TF, (tf) => {
+      userPickedTf = true;
       appState.tf = tf;
       if (!chartInst) return;
-      const anchorTrade = currentTrades[selectedIndex] || null;
-      chartInst.setTF(tf).then(() => {
-        if (anchorTrade) chartInst.selectTrade(anchorTrade);
-      });
+      // Task 2.1 (Wave-3 Stage 2): chart.js setTF() now self-anchors to the
+      // selected trade (re-runs selectTrade internally when one is
+      // selected -- the anchorTrade is whichever ficha of currentSignals
+      // is currently selected), so this handler no longer calls
+      // selectTrade itself -- doing so here too would cause a redundant
+      // double window fetch. setTF()'s returned promise already resolves
+      // AFTER the anchored selectTrade's setWindow settles, so
+      // refreshIndicators() below sees the NEW (post-selection) window.
+      const anchorSignal = currentSignals[selectedIndex] || null;
+      const anchorTrade = anchorSignal ? anchorSignal.fichas[0] : null; // eslint-disable-line no-unused-vars
+      chartInst.setTF(tf).then(refreshIndicators);
     });
+
+    function setActiveTfButton(tf) {
+      if (!tfButtonsGroup) return;
+      tfButtonsGroup.querySelectorAll(".review-tf-btn").forEach((b) => {
+        b.classList.toggle("active", b.textContent === tf);
+      });
+    }
+
+    async function refreshIndicators() {
+      if (!chartInst || !currentRunId) return;
+      let body;
+      try {
+        body = await fetchIndicators(
+          currentRunId, appState.tf || DEFAULT_TF,
+          chartInst.windowFrom, chartInst.windowTo,
+        );
+      } catch (e) {
+        return;
+      }
+      const indicators = body.indicators || [];
+      renderOverlayChips(overlayChipsHost, indicators, activeOverlayIds, (ind, active) => {
+        if (active) {
+          activeOverlayIds.add(ind.id);
+          applyIndicator(chartInst, ind);
+        } else {
+          activeOverlayIds.delete(ind.id);
+          chartInst.removeOverlay(ind.id);
+        }
+      });
+      indicators.forEach((ind) => {
+        if (activeOverlayIds.has(ind.id)) applyIndicator(chartInst, ind);
+        else chartInst.removeOverlay(ind.id);
+      });
+    }
 
     const playbackBar = renderPlaybackBar(playbackHost, () => chartInst);
 
@@ -347,36 +527,51 @@
     document.addEventListener("keydown", keyHandler);
 
     function moveSelection(delta) {
-      if (!currentTrades.length) return;
+      // Wave-2b req 3/7: step through SIGNALS in order (not raw ficha rows).
+      if (!currentSignals.length) return;
       let next = selectedIndex + delta;
       if (next < 0) next = 0;
-      if (next >= currentTrades.length) next = currentTrades.length - 1;
+      if (next >= currentSignals.length) next = currentSignals.length - 1;
       selectTradeAt(next);
     }
 
     function highlightRow(idx) {
+      // Highlights EVERY row (header + all 3 ficha sub-rows) belonging to
+      // the selected signal -- req 3/7: the whole signal group is bright.
       if (!left.querySelectorAll) return;
       tradeListHost.querySelectorAll(".vtable-row").forEach((rowEl) => {
         rowEl.classList.remove("review-row-selected");
       });
-      const trade = currentTrades[idx];
-      if (!trade) return;
-      const rowEl = tradeListHost.querySelector(`.vtable-row[data-key="${CSS.escape(String(trade.trade_id))}"]`);
-      if (rowEl) rowEl.classList.add("review-row-selected");
+      const signal = currentSignals[idx];
+      if (!signal) return;
+      tradeListHost.querySelectorAll(`.vtable-row[data-key^="${CSS.escape(String(signal.signal_id))}::"]`).forEach((rowEl) => {
+        rowEl.classList.add("review-row-selected");
+      });
     }
 
     function selectTradeAt(idx) {
-      const trade = currentTrades[idx];
+      // Selects the SIGNAL at `idx` (any of its fichas may be passed to
+      // chart.selectTrade -- lib/chart.js resolves the whole signal group
+      // from signal_id internally, per Wave-2b req 3).
+      const signal = currentSignals[idx];
+      const trade = signal ? signal.fichas[0] : null;
       if (!trade || !chartInst) return;
       selectedIndex = idx;
-      chartInst.selectTrade(trade);
+      // Defect B fix: await selectTrade's returned setWindow promise
+      // before refreshIndicators() so /indicators?from&to is requested
+      // for the trade's SETTLED (recentered) window, never the stale one.
+      Promise.resolve(chartInst.selectTrade(trade)).then(refreshIndicators);
       highlightRow(idx);
+      updatePosCounter();
     }
 
     async function loadRunTrades(row) {
       currentRunId = row.run_id;
       if (selectorApi) selectorApi.markActive(row.run_id);
       appState.selectedRun = row.run_id;
+      try {
+        localStorage.setItem("sentinel.ui.review", JSON.stringify({ runId: row.run_id, tf: appState.tf, signalId: null }));
+      } catch (e) {}
       headerHost.innerHTML = '<div class="review-header-loading">Cargando corrida&hellip;</div>';
       tradeListHost.innerHTML = '<div class="review-tradelist-loading">Cargando trades&hellip;</div>';
 
@@ -396,16 +591,35 @@
       renderHeader(headerHost, runFull, strategy);
 
       const symbol = instrumentoToSymbol(runFull.instrumento || row.instrumento);
-      const tf = appState.tf || "M1";
+      // Native-tf default fix: open on the RUN's own native tf (runFull.tf,
+      // sourced from variant.tf) unless the user has already explicitly
+      // picked a tf this session — a hardcoded "M1" fallback here produced
+      // "Sin barras para XAUUSD M1" whenever an M2 (or other non-M1) run
+      // opened, since M1 bars for that run's window may not exist.
+      const tf = userPickedTf ? (appState.tf || runFull.tf || DEFAULT_TF) : (runFull.tf || appState.tf || DEFAULT_TF);
       appState.symbol = symbol;
       appState.tf = tf;
+      setActiveTfButton(tf);
 
       if (!chartInst) {
         chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf });
       } else {
-        chartInst.symbol = symbol;
+        // Set the symbol WITHOUT triggering the setter's TAIL loadInitial() --
+        // selectTradeAt(0) below owns the single (trade-window) load. This
+        // removes the loadInitial-vs-setWindow race that could leave the chart
+        // with 0 committed bars (root cause, 2026-07-11b4).
+        chartInst.setSymbolNoLoad(symbol);
         if (chartInst.tf !== tf) await chartInst.setTF(tf);
       }
+      // Defect B fix: refreshIndicators() moved out of here -- it used to
+      // fire immediately after chart creation/setTF, i.e. BEFORE any trade
+      // is selected and the chart recenters its window around it. Fetching
+      // /indicators against that pre-selection window could return a range
+      // wider than (or disjoint from) the eventual trade-centered candle
+      // window. selectTradeAt() now calls refreshIndicators() itself, after
+      // its selectTrade() promise (setWindow) resolves. The empty-trades
+      // early-return path below still needs a refresh since selectTradeAt
+      // is never reached in that case.
 
       let tradesBody;
       try {
@@ -417,11 +631,17 @@
       }
 
       currentTrades = tradesBody.trades || [];
+      // Wave-2b req 1/7: group the flat ficha trades by signal_id -- the
+      // trade list and j/k navigation operate on SIGNALS (23), the chart
+      // markers still need every individual ficha trade (69).
+      currentSignals = groupBySignal(currentTrades);
       selectedIndex = -1;
 
       if (!currentTrades.length) {
         tradeListHost.innerHTML = '<div class="review-tradelist-empty">Esta corrida no tiene trades.</div>';
         if (chartInst) chartInst.selectTrade(null);
+        refreshIndicators();
+        updatePosCounter();
         return;
       }
 
@@ -431,18 +651,19 @@
       const tableEl = el("div", { class: "review-vtable" });
       tradeListHost.innerHTML = "";
       tradeListHost.appendChild(tableEl);
-      const rowsForTable = currentTrades.map((t, i) => Object.assign({ __n: i + 1 }, t));
+      const rowsForTable = buildSignalRows(currentSignals);
       vt = window.SENTINEL.vtable.createVTable(tableEl, {
         columns: tradeRowColumns(),
         rows: rowsForTable,
-        rowKey: (r) => r.trade_id,
+        rowKey: (r) => r.__rowKey,
         onRowClick: (r) => {
-          const idx = currentTrades.findIndex((t) => t.trade_id === r.trade_id);
+          const sid = r.__kind === "header" ? r.signal_id : r.__signalId;
+          const idx = currentSignals.findIndex((s) => s.signal_id === sid);
           if (idx >= 0) selectTradeAt(idx);
         },
       });
 
-      // select first trade by default so the chart isn't empty on run pick.
+      // select first signal by default so the chart isn't empty on run pick.
       selectTradeAt(0);
     }
 
@@ -461,6 +682,14 @@
 
       strategiesById = {};
       (strategiesBody.strategies || []).forEach((s) => { strategiesById[s.strategy_id] = s; });
+
+      try {
+        const s = JSON.parse(localStorage.getItem("sentinel.ui.review") || "null");
+        if (s && s.runId && !appState.selectedRun) {
+          appState.selectedRun = s.runId;
+          if (s.tf) appState.tf = s.tf;
+        }
+      } catch (e) {}
 
       const rows = runsBody.rows || [];
       runsById = {};

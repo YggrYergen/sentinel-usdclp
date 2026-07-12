@@ -17,6 +17,37 @@
   const tickBuffers = {}; // instrument -> {price:[], priceTs:[], macro:[], macroTs:[]}
   const configs = {};     // instrument -> /config response
   const sockets = {};
+  const hoverState = {};  // instrument -> bool, true while cursor is over one of its .tt-wrap tooltips
+  const pendingSnap = {}; // instrument -> latest {snap, cfg} deferred while hoverState is true
+
+  // Live ticks rebuild the panel's innerHTML (renderAssetPanel), which
+  // destroys/recreates the .tt-wrap/.tt-pop nodes the CSS :hover tooltip
+  // relies on — if a tick lands while the user is reading a tooltip, the
+  // node is swapped out from under the cursor and :hover never reapplies
+  // without a fresh mouse move, so the tooltip disappears. Defer the
+  // rebuild while hovering; flush the latest snapshot once the pointer
+  // leaves the tooltip area.
+  function flushPanel(instrument) {
+    const pending = pendingSnap[instrument];
+    if (!pending) return;
+    pendingSnap[instrument] = null;
+    const elMount = document.querySelector(`#panel-${instrument} .v2-mount`);
+    if (elMount) renderAssetPanel(elMount, pending.snap, pending.cfg);
+  }
+
+  function wireTooltipHoverGuard(instrument) {
+    const panelEl = document.getElementById(`panel-${instrument}`);
+    if (!panelEl) return;
+    panelEl.addEventListener("mouseover", (e) => {
+      if (e.target.closest(".tt-wrap")) hoverState[instrument] = true;
+    });
+    panelEl.addEventListener("mouseout", (e) => {
+      const to = e.relatedTarget;
+      if (to && to.closest && to.closest(".tt-wrap")) return;
+      hoverState[instrument] = false;
+      flushPanel(instrument);
+    });
+  }
 
   function ensureBuffer(instrument) {
     if (!tickBuffers[instrument]) {
@@ -442,8 +473,8 @@
     ws.onmessage = (evt) => {
       let snap;
       try { snap = JSON.parse(evt.data); } catch (e) { return; }
-      const elMount = document.querySelector(`#panel-${instrument} .v2-mount`);
-      if (elMount) renderAssetPanel(elMount, snap, configs[instrument] || { instrument });
+      pendingSnap[instrument] = { snap, cfg: configs[instrument] || { instrument } };
+      if (!hoverState[instrument]) flushPanel(instrument);
       updateTopBar(snap);
     };
     ws.onclose = () => setTimeout(() => connect(instrument), 1500);
@@ -467,17 +498,23 @@
       } catch (e) {
         configs[instrument] = { instrument };
       }
+      wireTooltipHoverGuard(instrument);
       connect(instrument);
     }
 
     // ── nav router ──
+    // Each section module's render() fully rebuilds its DOM and teardown()
+    // fully clears it (root.innerHTML = "") — so render() MUST run on every
+    // entry, not just the first. A previous `renderedSections` one-shot guard
+    // left every section blank after a single leave+return (teardown empties
+    // the container, but render() was never called again to refill it).
     const buttons = document.querySelectorAll(".nav-btn");
-    const renderedSections = new Set();
     buttons.forEach((btn) => {
       btn.addEventListener("click", () => {
         buttons.forEach((b) => b.classList.remove("active"));
         btn.classList.add("active");
         const name = btn.dataset.section;
+        try { localStorage.setItem("sentinel.ui.section", name); } catch (e) {}
         document.querySelectorAll(".right-section").forEach((s) => {
           if (!s.hidden && s.id !== `section-${name}`) {
             const prevName = s.id.replace(/^section-/, "");
@@ -492,14 +529,22 @@
         if (target) {
           target.hidden = false;
           const mod = window.SENTINEL.sections && window.SENTINEL.sections[name];
-          if (mod && typeof mod.render === "function" && !renderedSections.has(name)) {
-            renderedSections.add(name);
+          if (mod && typeof mod.render === "function") {
             try { mod.render(target); } catch (e) { /* noop */ }
           }
         }
         window.dispatchEvent(new CustomEvent("sentinel:section", { detail: name }));
       });
     });
+
+    restoreSection();
+  }
+
+  function restoreSection() {
+    let name = null;
+    try { name = localStorage.getItem("sentinel.ui.section"); } catch (e) {}
+    const btn = name && document.querySelector(`.nav-btn[data-section="${name}"]`);
+    if (btn) btn.click(); // replays the full teardown/render router path
   }
 
   window.SENTINEL = window.SENTINEL || {};
@@ -508,6 +553,7 @@
   window.SENTINEL.probeEndpoint = probeEndpoint;
   window.SENTINEL.tickBuffers = tickBuffers;
   window.SENTINEL.configs = configs;
+  window.SENTINEL.restoreSection = restoreSection;
 
   boot();
 })();

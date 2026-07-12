@@ -62,6 +62,45 @@ def test_lib_and_section_scripts_served(app_factory):
             assert resp.status_code == 200, path
 
 
+def test_style_css_design_tokens_not_swallowed_by_comment():
+    """Regression: a stray `*/` inside a comment (e.g. a glob like `--fx-*/`)
+    closes the CSS comment early, turning the whole `:root { --bg-2: ...; }`
+    design-token block into an invalid rule the browser silently drops — which
+    strips ALL styling from the right-pane sections. Guard by (a) balanced
+    comment delimiters and (b) the key tokens surviving comment-stripping as
+    real declarations."""
+    import re
+
+    css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
+    assert css.count("/*") == css.count("*/"), "unbalanced CSS comment delimiters (a stray '*/' in a comment?)"
+
+    # strip comments the way a CSS parser does (non-greedy, first '*/' wins)
+    stripped = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    for token in ("--bg-2:", "--border:", "--accent-celeste:", "--sp-3:", "--text-0:", "--font-mono:"):
+        assert token in stripped, f"design token {token!r} missing from real CSS (swallowed by a comment?)"
+
+
+def test_review_section_height_capped():
+    """Regression (NB1): the REVIEW section mounts `.review-section` (a grid with
+    `height:100%`) into `#section-review`. If `#section-review` itself has no
+    definite height, that `height:100%` resolves against an auto-height parent and
+    collapses — the chart+control-bar column then grows with the trade list and the
+    posnav/playback bar gets pushed far below the viewport (measured posnav top
+    ~1995px in a 900px window). Guard that the section is height-capped so the
+    percentage-height chain resolves."""
+    import re
+
+    css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
+    stripped = re.sub(r"/\*.*?\*/", "", css, flags=re.DOTALL)
+    m = re.search(r"#section-review\s*\{([^}]*)\}", stripped)
+    assert m, "no #section-review rule — REVIEW section is not height-capped (NB1)"
+    body = m.group(1)
+    assert "height" in body and "100%" in body, (
+        "#section-review must cap height (e.g. height:100%) so .review-section's "
+        "height:100% resolves (NB1)"
+    )
+
+
 def test_no_cdn_in_new_assets():
     for rel in (
         "index.html",
@@ -95,6 +134,16 @@ def test_appjs_calls_render_and_teardown_on_section_toggle():
     assert "window.SENTINEL.sections" in app_js
     assert ".render(" in app_js
     assert ".teardown(" in app_js
+
+
+def test_app_js_persists_and_restores_section():
+    """Task 1.1 (Wave-3 Stage 1): the active navbar section must survive a
+    refresh (F5). app.js persists the clicked section to localStorage and
+    exposes a restoreSection() helper that replays the click on boot."""
+    app_js = (WEB_DIR / "app.js").read_text(encoding="utf-8")
+    assert 'localStorage.setItem("sentinel.ui.section"' in app_js
+    assert 'localStorage.getItem("sentinel.ui.section"' in app_js
+    assert "restoreSection" in app_js
 
 
 def test_tokens_present_in_style_css():

@@ -12,7 +12,8 @@
 //   inst.enableTicks(symbol)                    -> WS subscribe, live candle.update()
 //   inst.disableTicks()
 //   inst.addOverlay(id, points)                 -> points: [[ts, value], ...] line series
-//   inst.removeOverlay(id)
+//   inst.addSarDots(id, points, colorHex)       -> points: [[ts, value], ...] per-bar dots (SAR)
+//   inst.removeOverlay(id)                      -> removes either kind (same overlays map)
 //   inst.destroy()
 //
 // Playback API (Task M2.6, plan §D.7/§D.4 forward-walk variable-speed):
@@ -34,6 +35,10 @@
 
   const LONG_COLOR = "#26a69a";
   const SHORT_COLOR = "#ef5350";
+  // Hover-halo color (electric sky-blue / "celeste eléctrico"). Single knob
+  // for the user to fine-tune the shade/intensity of the whole-group hover
+  // highlight (markers + connectors) — see buildMarkers()/redrawConnectors().
+  const HOVER_HALO_COLOR = "#29e0ff";
 
   const TF_LIST = ["M1", "M2", "M5", "M10", "M15"];
 
@@ -41,6 +46,8 @@
     // lightweight-charts wants seconds (UTCTimestamp) for time-based series.
     return Math.floor(Number(t));
   }
+
+  const TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900 };
 
   function barToCandle(bar) {
     const [ts, o, h, l, c] = bar;
@@ -66,6 +73,18 @@
 
     let symbol = opts.symbol || "XAUUSD";
     let tf = opts.tf || "M1";
+
+    // Wave-2b gap/wavy-line fix: lightweight-charts merges ALL series' time
+    // points into one shared time scale. Trade event times (ts_out often at
+    // :40s) don't align to bar boundaries (M1 bars at :00s), so handing raw
+    // event times to any series injects a phantom off-bar column -> visible
+    // gaps between real candles. Snap EVERY trade-derived time to the TF's
+    // bar boundary before it ever reaches a series/marker.
+    function secPerBar() { return TF_SEC[tf] || 60; }
+    function barTimeOf(epochSec) {
+      const s = secPerBar();
+      return Math.floor(Number(epochSec) / s) * s;
+    }
 
     // ---- DOM scaffold ----
     el.innerHTML = "";
@@ -94,10 +113,49 @@
         horzLines: { color: "rgba(0,191,255,.06)" },
       },
       crosshair: { mode: LightweightCharts.CrosshairMode.Magnet },
+      // Free navigation (pan L/R, wheel zoom, drag the price axis for up/down):
+      // all enabled explicitly so the chart is fully interactive in REVIEW.
+      handleScroll: {
+        mouseWheel: true,
+        pressedMouseMove: true,
+        horzTouchDrag: true,
+        vertTouchDrag: true,
+      },
+      handleScale: {
+        mouseWheel: true,
+        pinch: true,
+        axisPressedMouseMove: { time: true, price: true },
+        axisDoubleClickReset: { time: true, price: true },
+      },
       rightPriceScale: { borderColor: "rgba(0,191,255,.18)" },
       timeScale: { borderColor: "rgba(0,191,255,.18)", timeVisible: true, secondsVisible: false },
-      autoResize: true,
+      // ROOT-CAUSE FIX (2026-07-11b6): the correct lightweight-charts v4 option
+      // is `autoSize` (verified: the vendored v4.2.0 bundle contains `autoSize`
+      // and NO `autoResize`). We had `autoResize: true`, an UNKNOWN option that
+      // v4 silently ignores, so the chart was created at a stale/creation-time
+      // size and never tracked its container. Candles still painted (the canvas
+      // bitmap is CSS-scaled), but lightweight-charts' pointer hit-test and
+      // crosshair use its INTERNAL size, which no longer matched the on-screen
+      // canvas -> the crosshair/tooltip never appeared and mouse interaction was
+      // dead. `autoSize` engages the bundle's ResizeObserver to keep the chart's
+      // internal dimensions matched to the container.
+      autoSize: true,
     });
+
+    // Belt-and-suspenders (2026-07-11b6): explicitly size the chart to its
+    // container immediately after creation, in case the container's layout
+    // height settles a frame after createChart (flex/min-height). autoSize's
+    // ResizeObserver then keeps it in sync on every later resize. Without a
+    // correct initial size, the very first crosshair hit-test can be dead.
+    function syncChartSize() {
+      const w = canvasHost.clientWidth;
+      const h = canvasHost.clientHeight;
+      if (w > 0 && h > 0) {
+        try { chart.resize(w, h); } catch (e) { /* noop */ }
+      }
+    }
+    syncChartSize();
+    requestAnimationFrame(syncChartSize);
 
     const candleSeries = chart.addCandlestickSeries({
       upColor: LONG_COLOR,
@@ -117,11 +175,44 @@
     // Entry/exit marker series (lightweight-charts v4 setMarkers on a series).
     const markerSeries = candleSeries;
     let allTrades = []; // {trade, colorHex, dim}
-    let selectedTradeId = null;
+    let selectedTradeId = null;    // last trade object passed to selectTrade()
+    let selectedSignalId = null;   // Wave-2b: selection is by SIGNAL, not ficha
+    let hoveredSignalId = null;    // transient hover halo (crosshair-driven), distinct from selection
     let slTpLines = []; // price-line handles, cleared unless a trade is selected
 
-    // Connector lines: one line-series per trade connecting entry->exit points.
-    const connectorSeries = new Map(); // trade_id -> series
+    // Connector lines: entry->exit segments, ONE 2-point line series PER
+    // FICHA (Wave-2b gap/wavy-line fix). The old design merged every trade
+    // into a single ascending-time series with whitespace breaks; because
+    // all 3 fichas of a signal SHARE the same entry time, that forced a
+    // fake "clamp to last+1" time for repeated entries -> a zigzag line.
+    // Per-ficha series sidestep that entirely (each series has its own
+    // independent 2-point time axis) and naturally support V1's
+    // multi-day-hold fichas (F2/F3 exit days after F1 -- still just 2
+    // points). GUARD (see redrawConnectors): only draw the dim layer when
+    // allTrades.length <= 300, to protect huge runs from a series-per-ficha
+    // explosion; V1 imports are small (~69 trades / ~23 signals).
+    let connectorSeriesList = []; // array of series handles, cleared as a group
+
+    // ---- Wave-2b signal grouping (V1: entry + 3 ficha exits share signal_id) ----
+    // Derives the SIGNAL model from allTrades on demand -- no hardcoded run
+    // or signal ids anywhere (req 8), works for any future V1 import.
+    function groupBySignal() {
+      const bySignal = new Map(); // signal_id -> {signal_id, side, ts_in, px_in, trades:[...], colorHex}
+      allTrades.forEach(({ trade, colorHex }) => {
+        const sid = trade.signal_id || trade.trade_id;
+        let g = bySignal.get(sid);
+        if (!g) {
+          g = { signal_id: sid, side: trade.side, ts_in: trade.ts_in, px_in: trade.px_in, trades: [], colorHex };
+          bySignal.set(sid, g);
+        }
+        g.trades.push(trade);
+      });
+      return bySignal;
+    }
+
+    function signalIdOf(trade) {
+      return trade ? (trade.signal_id || trade.trade_id) : null;
+    }
 
     const overlays = new Map(); // id -> series
 
@@ -130,6 +221,14 @@
     let winTo = null;
     let fetchingPrev = false;
     let destroyed = false;
+    // Load-sequence token (Wave-3 race fix): the chart constructor kicks off
+    // loadInitial() (the TAIL) while review.js immediately calls
+    // selectTrade()->setWindow() (the selected trade's window). Both fetch
+    // /api/bars concurrently; whichever RESOLVES last used to win applyBars,
+    // so a slow tail load would clobber the trade window -> markers land
+    // off-screen (no glow, nothing to hover). Every loader captures the seq
+    // at START and only applies its result if it is still the latest.
+    let loadSeq = 0;
 
     // ---- playback (Task M2.6) ----
     const PLAYBACK_SPEEDS = [1, 5, 20, 60, "MAX"];
@@ -180,6 +279,15 @@
 
     function applyBars(newBars) {
       bars = newBars;
+      // ROOT-CAUSE FIX (2026-07-11b4): applyBars is the single point where real
+      // bars are committed, so clear the "loading" overlay HERE. Previously a
+      // load superseded by the loadSeq guard returned early WITHOUT calling
+      // showState(null); if such a superseded loader was the last to resolve,
+      // the semi-opaque .chart-state-overlay (inset:0; z-index:10) stayed up as
+      // an "invisible layer" over the canvas -- swallowing every pointer event
+      // and hiding the crosshair (exactly the reported symptom). Clearing on
+      // successful commit guarantees the overlay is down whenever candles exist.
+      showState(null);
       candleSeries.setData(bars.map(barToCandle));
       volumeSeries.setData(bars.map((b) => barToVolume(b, b[4] >= b[1])));
       if (bars.length) {
@@ -187,13 +295,26 @@
         winTo = bars[bars.length - 1][0];
       }
       recomputeOverlays();
+      // ROOT-CAUSE FIX (2026-07-11b4): markers/connectors set BEFORE bars land
+      // (selectTrade calls buildMarkers/redrawConnectors, THEN setWindow ->
+      // applyBars) were computed against an empty bar set (barsLoaded=0) and
+      // never rebuilt, so the selection glow + entry/exit markers rendered
+      // against no candles (invisible). Rebuild them here whenever new bars are
+      // committed, so markers always anchor to the freshly-loaded window and
+      // the selected signal's glow appears. Guarded on allTrades to avoid work
+      // on the plain CHARTS view (no trades loaded there).
+      if (allTrades.length) {
+        buildMarkers();
+        redrawConnectors();
+      }
     }
 
     async function loadInitial() {
+      const mySeq = ++loadSeq;
       showState("loading");
       try {
         const body = await fetchBars({ max_points: 3000 });
-        if (destroyed) return;
+        if (destroyed || mySeq !== loadSeq) return; // superseded by a newer load
         if (!body.bars || !body.bars.length) {
           showState("empty");
           bars = [];
@@ -213,10 +334,12 @@
     async function fetchPreviousBlock() {
       if (fetchingPrev || bars.length === 0) return;
       fetchingPrev = true;
+      const mySeq = loadSeq; // prepend is valid only for the current window
       try {
         const oldestTs = bars[0][0];
-        const body = await fetchBars({ to: oldestTs - 1, max_points: 1500 });
-        if (destroyed) return;
+        // Send ISO (matches setWindow); a bare epoch used to 400 the endpoint.
+        const body = await fetchBars({ to: new Date((tsSec(oldestTs) - 1) * 1000).toISOString(), max_points: 1500 });
+        if (destroyed || mySeq !== loadSeq) return; // window changed under us
         if (body.bars && body.bars.length) {
           // merge: dedupe by ts, prepend
           const seen = new Set(bars.map((b) => b[0]));
@@ -243,28 +366,169 @@
       }
     });
 
-    // ---- crosshair hover tooltip (ts, OHLC, vol, overlay values) ----
+    // Wave-2b req 5: human-readable duration (ts_out - ts_in), e.g. "10m",
+    // "1h 5m", "4h 55m". lightweight-charts markers have no native hover, so
+    // signal hover is detected by matching param.time to a signal's
+    // entry/exit bar time (see findSignalAtBarTime below).
+    function humanizeDuration(seconds) {
+      if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return "--";
+      let s = Math.max(0, Math.round(seconds));
+      const days = Math.floor(s / 86400); s -= days * 86400;
+      const hours = Math.floor(s / 3600); s -= hours * 3600;
+      const mins = Math.floor(s / 60);
+      const parts = [];
+      if (days) parts.push(`${days}d`);
+      if (hours) parts.push(`${hours}h`);
+      if (mins || !parts.length) parts.push(`${mins}m`);
+      return parts.slice(0, 2).join(" ");
+    }
+
+    // Finds the SIGNAL (group) whose entry bar OR any ficha's exit bar falls
+    // on the given lightweight-charts bar time (epoch seconds already
+    // rounded via tsSec). Returns null if the bar time isn't a signal
+    // entry/exit for any currently-loaded trade.
+    function findSignalAtBarTime(barTime) {
+      const bySignal = groupBySignal();
+      let found = null;
+      bySignal.forEach((group) => {
+        if (found) return;
+        if (barTimeOf(epochOf(group.ts_in)) === barTime) { found = group; return; }
+        group.trades.forEach((t) => {
+          if (t.ts_out && barTimeOf(epochOf(t.ts_out)) === barTime) found = group;
+        });
+      });
+      return found;
+    }
+
+    // Finds the SIGNAL whose CONNECTOR SPAN (entry->any ficha exit) passes
+    // near the given bar time + crosshair price. Unlike findSignalAtBarTime
+    // (exact entry/exit bar match), this covers hover ANYWHERE along a
+    // connector line, not just its endpoints. For each ficha segment whose
+    // bar-time range [tInBar, tOutBar] contains barTime, linearly interpolate
+    // the connector's price at barTime and compare to the crosshair price;
+    // pick the candidate with the smallest price distance (disambiguates
+    // overlapping signals). Tolerance is scaled to the visible price range so
+    // it feels consistent across symbols/zoom levels.
+    function findSignalNearConnector(barTime, price) {
+      if (price === null || price === undefined) return null;
+      const bySignal = groupBySignal();
+      const priceRange = visiblePriceRange();
+      const tol = priceRange ? priceRange * 0.02 : Math.abs(price) * 0.001 || 0.5;
+      let best = null;
+      let bestDist = Infinity;
+      bySignal.forEach((group) => {
+        const tInBar = barTimeOf(epochOf(group.ts_in));
+        group.trades.forEach((trade) => {
+          if (!trade.ts_out) return;
+          let tOutBar = barTimeOf(epochOf(trade.ts_out));
+          if (tOutBar <= tInBar) tOutBar = tInBar + secPerBar();
+          if (barTime < tInBar || barTime > tOutBar) return;
+          const frac = tOutBar === tInBar ? 0 : (barTime - tInBar) / (tOutBar - tInBar);
+          const interpPrice = group.px_in + (trade.px_out - group.px_in) * frac;
+          const dist = Math.abs(interpPrice - price);
+          if (dist <= tol && dist < bestDist) {
+            bestDist = dist;
+            best = group;
+          }
+        });
+      });
+      return best;
+    }
+
+    // Approximate visible price range (top-bottom of the right price scale)
+    // for scaling the connector-hover tolerance. Falls back to null if the
+    // chart can't report coordinates yet (e.g. before first paint).
+    function visiblePriceRange() {
+      try {
+        const height = canvasHost.clientHeight || 0;
+        if (!height) return null;
+        const top = candleSeries.coordinateToPrice(0);
+        const bottom = candleSeries.coordinateToPrice(height);
+        if (top === null || bottom === null) return null;
+        return Math.abs(bottom - top);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    function signalTooltipHtml(group) {
+      const fmt = window.SENTINEL.fmt;
+      const tsIn = epochOf(group.ts_in);
+      let html = `<div class="chart-tooltip-row chart-tooltip-signal-header mono">${escapeHtmlLite(group.side || "")} entry ${fmt.price(group.px_in, 2)} @ ${fmt.ts(tsIn)}</div>`;
+      let total = 0;
+      const sorted = group.trades.slice().sort((a, b) => (a.ficha || "").localeCompare(b.ficha || ""));
+      sorted.forEach((t) => {
+        const pnl = Number(t.pnl) || 0;
+        total += pnl;
+        const dur = t.ts_out ? humanizeDuration(epochOf(t.ts_out) - tsIn) : "--";
+        const pnlClass = pnl > 0 ? "chart-tooltip-pos" : pnl < 0 ? "chart-tooltip-neg" : "";
+        html += `<div class="chart-tooltip-row mono">${escapeHtmlLite(t.ficha || "?")} ${escapeHtmlLite(t.exit_reason || "--")} `
+          + `${fmt.price(t.px_in, 2)}&rarr;${fmt.price(t.px_out, 2)} `
+          + `<span class="${pnlClass}">${fmt.signed(pnl)}</span> ${dur}</div>`;
+      });
+      html += `<div class="chart-tooltip-row chart-tooltip-signal-total mono">total <span class="${total > 0 ? "chart-tooltip-pos" : total < 0 ? "chart-tooltip-neg" : ""}">${fmt.signed(total)}</span></div>`;
+      return html;
+    }
+
+    function escapeHtmlLite(s) {
+      return String(s == null ? "" : s).replace(/[&<>"']/g, (c) => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;",
+      }[c]));
+    }
+
+    // Updates the transient hover-halo target and rebuilds markers/connectors
+    // ONLY when the hovered signal actually changes (mousemove fires every
+    // frame; rebuilding on every tick would be wasteful and can cause
+    // flicker). Distinct from selectedSignalId (click-driven, persistent) --
+    // both can be active at once; buildMarkers/redrawConnectors give the
+    // hover halo precedence so it reads clearly even over a selected signal.
+    function setHoveredSignal(signalId) {
+      if (signalId === hoveredSignalId) return;
+      hoveredSignalId = signalId;
+      buildMarkers();
+      redrawConnectors();
+    }
+
+    // ---- crosshair hover tooltip (ts, OHLC, vol, overlay values; or, when
+    // hovering a signal's entry/exit bar, a per-ficha P&L mini-table) ----
     chart.subscribeCrosshairMove((param) => {
       if (!param || !param.time || !param.point) {
         tooltip.hidden = true;
+        setHoveredSignal(null);
         return;
       }
       const bar = bars.find((b) => tsSec(b[0]) === param.time);
       if (!bar) {
         tooltip.hidden = true;
+        setHoveredSignal(null);
         return;
       }
       const fmt = window.SENTINEL.fmt;
-      const [ts, o, h, l, c, v] = bar;
-      let html = `<div class="chart-tooltip-row"><span class="chart-tooltip-ts mono">${fmt.ts(ts)}</span></div>` +
-        `<div class="chart-tooltip-row mono">O ${fmt.price(o, 2)} H ${fmt.price(h, 2)} L ${fmt.price(l, 2)} C ${fmt.price(c, 2)}</div>` +
-        `<div class="chart-tooltip-row mono">vol ${fmt.num(v, 0)}</div>`;
-      overlays.forEach((series, id) => {
-        const val = param.seriesData ? param.seriesData.get(series) : null;
-        if (val && val.value !== undefined) {
-          html += `<div class="chart-tooltip-row mono">${id}: ${fmt.price(val.value, 2)}</div>`;
-        }
-      });
+      let html;
+      // Hover-halo detection (whole-group highlight): first try an exact
+      // entry/exit bar match (findSignalAtBarTime), then fall back to a
+      // connector-span match (hovering anywhere along the entry->exit line),
+      // using the crosshair's price coordinate to disambiguate overlaps.
+      let signalGroup = allTrades.length ? findSignalAtBarTime(param.time) : null;
+      if (!signalGroup && allTrades.length) {
+        const crosshairPrice = candleSeries.coordinateToPrice(param.point.y);
+        signalGroup = findSignalNearConnector(param.time, crosshairPrice);
+      }
+      setHoveredSignal(signalGroup ? signalGroup.signal_id : null);
+      if (signalGroup) {
+        html = signalTooltipHtml(signalGroup);
+      } else {
+        const [ts, o, h, l, c, v] = bar;
+        html = `<div class="chart-tooltip-row"><span class="chart-tooltip-ts mono">${fmt.ts(ts)}</span></div>` +
+          `<div class="chart-tooltip-row mono">O ${fmt.price(o, 2)} H ${fmt.price(h, 2)} L ${fmt.price(l, 2)} C ${fmt.price(c, 2)}</div>` +
+          `<div class="chart-tooltip-row mono">vol ${fmt.num(v, 0)}</div>`;
+        overlays.forEach((series, id) => {
+          const val = param.seriesData ? param.seriesData.get(series) : null;
+          if (val && val.value !== undefined) {
+            html += `<div class="chart-tooltip-row mono">${id}: ${fmt.price(val.value, 2)}</div>`;
+          }
+        });
+      }
       tooltip.innerHTML = html;
       tooltip.hidden = false;
       const box = el.getBoundingClientRect();
@@ -290,7 +554,10 @@
 
     function recomputeOverlays() {
       overlaySpecs.forEach((spec, id) => {
-        if (spec.points) {
+        if (!spec.points) return;
+        if (spec.dots) {
+          setSarDotsSeries(id, spec.points, spec.color);
+        } else {
           setOverlaySeries(id, spec.points, spec.color);
         }
       });
@@ -307,7 +574,12 @@
         });
         overlays.set(id, series);
       }
-      series.setData(points.map(([ts, val]) => ({ time: tsSec(ts), value: val })));
+      // Defect A fix: EMA/SuperTrend warmup bars carry `null` values.
+      // lightweight-charts line series reject `{time, value: null}` --
+      // `setData` throws and the WHOLE series never renders. Warmup gaps
+      // must instead be WHITESPACE points (`{time}`, no `value` key).
+      series.setData(points.map(([ts, val]) =>
+        (val === null || val === undefined) ? { time: tsSec(ts) } : { time: tsSec(ts), value: val }));
     }
 
     function addOverlay(id, points, colorHex) {
@@ -324,6 +596,39 @@
       overlaySpecs.delete(id);
     }
 
+    // SAR is per-bar DOTS, not a continuous line (a line series would draw a
+    // misleading zig-zag as trend flips). Rendered as a lightweight-charts
+    // line series with lineWidth 0 + circle crosshair-style markers via
+    // pointMarkersVisible, so each bar's SAR value shows as an isolated dot.
+    // Registered in the SAME `overlays`/`overlaySpecs` maps as addOverlay so
+    // removeOverlay/teardown work uniformly across line and dot overlays.
+    function setSarDotsSeries(id, points, color) {
+      let series = overlays.get(id);
+      if (!series) {
+        series = chart.addLineSeries({
+          color: color || "#ffb020",
+          lineWidth: 0,
+          lineVisible: false,
+          pointMarkersVisible: true,
+          pointMarkersRadius: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        overlays.set(id, series);
+      }
+      series.setData(
+        points
+          .filter(([, val]) => val !== null && val !== undefined)
+          .map(([ts, val]) => ({ time: tsSec(ts), value: val }))
+      );
+    }
+
+    function addSarDots(id, points, colorHex) {
+      overlaySpecs.set(id, { points, color: colorHex, dots: true });
+      setSarDotsSeries(id, points, colorHex);
+    }
+
     // ---- trade markers (D.4 NORMATIVE) ----
     function tradeMarkerColor(colorHex) {
       return colorHex || "#00bfff";
@@ -332,33 +637,47 @@
     function buildMarkers() {
       const markers = [];
       const cursor = playbackCursor; // null when not in playback -> show everything
-      allTrades.forEach(({ trade, colorHex, dim }) => {
-        const isSelected = selectedTradeId && trade.trade_id === selectedTradeId;
-        const color = tradeMarkerColor(colorHex);
-        const long = (trade.side || "").toUpperCase() === "LONG";
-        const tIn = epochOf(trade.ts_in);
+      const bySignal = groupBySignal();
+      // Wave-2b req 1: ONE entry marker per SIGNAL (dedupe -- the 3 fichas
+      // share ts_in/px_in/side), THREE exit markers per signal (one per
+      // ficha, distinct "square" shape from the arrowUp/arrowDown entries).
+      bySignal.forEach((group) => {
+        const isSelected = selectedSignalId && group.signal_id === selectedSignalId;
+        const isHovered = hoveredSignalId && group.signal_id === hoveredSignalId;
+        // Wave-2b highlight fix: when a signal IS selected, everything else
+        // must visibly dim (rgba fade + smaller size); when nothing is
+        // selected, everyone gets full color/size (unchanged look).
+        const dimOthers = !!selectedSignalId && !isHovered;
+        const colorHex = group.colorHex;
+        const baseColor = tradeMarkerColor(colorHex);
+        // Hover halo takes visual precedence over selection dim/bright so the
+        // hovered group reads clearly even when a DIFFERENT signal is
+        // selected (or when this same signal is both selected and hovered).
+        const color = isHovered ? HOVER_HALO_COLOR : (isSelected ? baseColor : (dimOthers ? hexToRgba(colorHex, 0.30) : baseColor));
+        const long = (group.side || "").toUpperCase() === "LONG";
+        const tIn = barTimeOf(epochOf(group.ts_in));
         if (cursor !== null && tIn > cursor) return; // not revealed yet
         markers.push({
-          time: tsSec(new Date(trade.ts_in).getTime() / 1000 || trade.ts_in),
+          time: tIn,
           position: long ? "belowBar" : "aboveBar",
           color,
           shape: long ? "arrowUp" : "arrowDown",
-          size: isSelected ? 2 : 1,
+          size: isHovered ? 2.4 : (isSelected ? 2 : 1),
           text: "",
         });
-        if (trade.ts_out) {
-          const tOut = epochOf(trade.ts_out);
-          if (cursor === null || tOut <= cursor) {
-            markers.push({
-              time: tsSec(new Date(trade.ts_out).getTime() / 1000 || trade.ts_out),
-              position: "inBar",
-              color,
-              shape: "square",
-              size: isSelected ? 1.6 : 1,
-              text: "",
-            });
-          }
-        }
+        group.trades.forEach((trade) => {
+          if (!trade.ts_out) return;
+          const tOut = barTimeOf(epochOf(trade.ts_out));
+          if (cursor !== null && tOut > cursor) return;
+          markers.push({
+            time: tOut,
+            position: "inBar",
+            color,
+            shape: "square",
+            size: isHovered ? 2 : (isSelected ? 1.6 : 1),
+            text: "",
+          });
+        });
       });
       markers.sort((a, b) => a.time - b.time);
       markerSeries.setMarkers(markers);
@@ -371,27 +690,53 @@
     }
 
     function clearConnectors() {
-      connectorSeries.forEach((series) => chart.removeSeries(series));
-      connectorSeries.clear();
+      connectorSeriesList.forEach((series) => {
+        try { chart.removeSeries(series); } catch (e) { /* noop */ }
+      });
+      connectorSeriesList = [];
     }
 
-    function drawConnector(trade, colorHex, alpha) {
-      const tsIn = epochOf(trade.ts_in);
-      const tsOut = trade.ts_out ? epochOf(trade.ts_out) : null;
-      if (!tsOut) return;
+    // Draws ONE 2-point line series for a single ficha's entry->exit,
+    // bar-snapped (Wave-2b gap fix). If entry and exit snap to the SAME bar
+    // (e.g. a sub-bar-duration ficha), bump the exit time forward by one
+    // real bar (secPerBar()), NOT +1s -- a synthetic +1s time isn't a real
+    // bar and would reintroduce a phantom column.
+    function drawFichaConnector(tIn, pIn, tOut, pOut, colorHex, bright, hovered) {
+      let tInBar = barTimeOf(tIn);
+      let tOutBar = barTimeOf(tOut);
+      if (tOutBar <= tInBar) tOutBar = tInBar + secPerBar();
+      const points = [
+        { time: tInBar, value: pIn },
+        { time: tOutBar, value: pOut },
+      ];
+      // Hover halo approximation: lightweight-charts markers/lines are
+      // canvas-drawn (no CSS box-shadow), so the "soft glow" is faked with a
+      // wide, low-opacity underlay line in the halo color PLUS a slim bright
+      // core line on top -- the wide layer reads as a tenuous halo around the
+      // thin connector without a real blur filter.
+      if (hovered) {
+        const glow = chart.addLineSeries({
+          color: hexToRgba(HOVER_HALO_COLOR, 0.22),
+          lineWidth: 6,
+          lineStyle: LightweightCharts.LineStyle.Solid,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          crosshairMarkerVisible: false,
+        });
+        glow.setData(points);
+        connectorSeriesList.push(glow);
+      }
       const series = chart.addLineSeries({
-        color: hexToRgba(colorHex, alpha),
-        lineWidth: 1,
-        lineStyle: LightweightCharts.LineStyle.Dashed,
+        color: hovered ? HOVER_HALO_COLOR : (bright ? hexToRgba(colorHex, 0.95) : hexToRgba(colorHex, 0.22)),
+        lineWidth: hovered ? 2.5 : (bright ? 2 : 1),
+        lineStyle: (bright || hovered) ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed,
         priceLineVisible: false,
         lastValueVisible: false,
         crosshairMarkerVisible: false,
       });
-      series.setData([
-        { time: tsSec(tsIn), value: trade.px_in },
-        { time: tsSec(tsOut), value: trade.px_out },
-      ]);
-      connectorSeries.set(trade.trade_id, series);
+      series.setData(points);
+      connectorSeriesList.push(series);
+      return series;
     }
 
     function hexToRgba(hex, alpha) {
@@ -401,18 +746,53 @@
       return `rgba(${r},${g},${b},${alpha})`;
     }
 
+    // Draws every ficha's entry->exit connector as its own 2-point series:
+    // non-selected signals dim+dashed (skipped entirely above the 300-trade
+    // GUARD to protect huge runs), the selected signal's fichas bright+solid
+    // and drawn LAST so they sit on top of the dim layer.
     function redrawConnectors() {
       clearConnectors();
+      if (!allTrades.length) return;
       const cursor = playbackCursor;
-      allTrades.forEach(({ trade, colorHex: c, dim: d }) => {
-        if (cursor !== null) {
-          if (!trade.ts_out) return; // no exit yet -> no connector during playback
-          if (epochOf(trade.ts_out) > cursor) return; // exit not reached yet
+      const bySignal = groupBySignal();
+      const withinCursor = (tOut) => cursor === null || epochOf(tOut) <= cursor;
+      const drawSignalDim = allTrades.length <= 300;
+
+      if (drawSignalDim) {
+        bySignal.forEach((group) => {
+          if (selectedSignalId && group.signal_id === selectedSignalId) return; // drawn bright below
+          if (hoveredSignalId && group.signal_id === hoveredSignalId) return; // drawn as halo below
+          const tIn = epochOf(group.ts_in);
+          group.trades.forEach((trade) => {
+            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
+            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, false);
+          });
+        });
+      }
+
+      if (selectedSignalId && selectedSignalId !== hoveredSignalId) {
+        const group = bySignal.get(selectedSignalId);
+        if (group) {
+          const tIn = epochOf(group.ts_in);
+          group.trades.forEach((trade) => {
+            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
+            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, true);
+          });
         }
-        const isSelected = selectedTradeId && trade.trade_id === selectedTradeId;
-        const alpha = isSelected ? 0.9 : d ? 0.25 : 0.6;
-        drawConnector(trade, c, alpha);
-      });
+      }
+
+      // Hovered signal drawn LAST (on top of everything, including a
+      // different selected signal) with the electric-blue halo treatment.
+      if (hoveredSignalId) {
+        const group = bySignal.get(hoveredSignalId);
+        if (group) {
+          const tIn = epochOf(group.ts_in);
+          group.trades.forEach((trade) => {
+            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
+            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, true, true);
+          });
+        }
+      }
     }
 
     function addTradeMarkers(trades, colorHex, options) {
@@ -432,52 +812,75 @@
       slTpLines = [];
     }
 
-    // Trade selected (D.4): scale 1.4x + glow (approximated via marker size),
-    // recenter [ts_in-100bars, ts_out+30bars] of active TF, SL/TP dotted lines
-    // only while selected.
+    // Signal selected (Wave-2b req 3, generalizes D.4 single-trade select):
+    // selecting ANY ficha of a signal selects the WHOLE SIGNAL -- its entry
+    // + 3 exits + 3 connectors go bright, everything else dims. Recenters
+    // the window to show the entry AND all 3 ficha exits:
+    // from = min(ts_in) - pad, to = max(ts_out over the 3 fichas) + pad.
+    // SL/TP dotted lines kept per selected signal if present on any ficha.
     function selectTrade(trade) {
       clearSlTpLines();
       if (!trade) {
         selectedTradeId = null;
+        selectedSignalId = null;
         buildMarkers();
+        redrawConnectors();
         return;
       }
       selectedTradeId = trade.trade_id;
+      selectedSignalId = signalIdOf(trade);
+      const bySignal = groupBySignal();
+      const group = bySignal.get(selectedSignalId) || { trades: [trade], ts_in: trade.ts_in };
+      const fichas = group.trades;
+
       buildMarkers();
       // rebuild connectors with the new selection's alpha
       redrawConnectors();
 
-      if (trade.sl) {
-        const line = candleSeries.createPriceLine({
-          price: trade.sl, color: "rgba(239,83,80,.4)", lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dotted, title: "SL",
-        });
-        slTpLines.push({ series: candleSeries, line });
-      }
-      if (trade.tp) {
-        const line = candleSeries.createPriceLine({
-          price: trade.tp, color: "rgba(38,166,154,.4)", lineWidth: 1,
-          lineStyle: LightweightCharts.LineStyle.Dotted, title: "TP",
-        });
-        slTpLines.push({ series: candleSeries, line });
-      }
+      fichas.forEach((t) => {
+        if (t.sl) {
+          const line = candleSeries.createPriceLine({
+            price: t.sl, color: "rgba(239,83,80,.4)", lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted, title: "SL",
+          });
+          slTpLines.push({ series: candleSeries, line });
+        }
+        if (t.tp) {
+          const line = candleSeries.createPriceLine({
+            price: t.tp, color: "rgba(38,166,154,.4)", lineWidth: 1,
+            lineStyle: LightweightCharts.LineStyle.Dotted, title: "TP",
+          });
+          slTpLines.push({ series: candleSeries, line });
+        }
+      });
 
-      // recenter: [ts_in - 100 bars, ts_out + 30 bars] of active TF
-      const tfMinutes = { M1: 1, M2: 2, M5: 5, M10: 10, M15: 15 }[tf] || 1;
-      const secPerBar = tfMinutes * 60;
-      const tsIn = epochOf(trade.ts_in);
-      const tsOut = trade.ts_out ? epochOf(trade.ts_out) : tsIn;
-      const from = tsIn - 100 * secPerBar;
-      const to = tsOut + 30 * secPerBar;
-      setWindow(from, to);
+      // recenter so entry + ALL 3 ficha exits sit in view with symmetric
+      // context: pad = max(40 bars, 1.5x the signal's total duration).
+      const barSec = secPerBar();
+      const tsIn = epochOf(group.ts_in || trade.ts_in);
+      let tsOutMax = tsIn;
+      fichas.forEach((t) => {
+        if (t.ts_out) tsOutMax = Math.max(tsOutMax, epochOf(t.ts_out));
+      });
+      const dur = Math.max(tsOutMax - tsIn, barSec);
+      const pad = Math.max(40 * barSec, dur * 1.5);
+      const from = tsIn - pad;
+      const to = tsOutMax + pad;
+      // Defect B (frontend half, Wave-2 plan 2026-07-10): return the
+      // setWindow promise so callers (review.js) can await window-settle
+      // before requesting indicator overlays for the NEW window -- without
+      // this, a caller's `selectTrade(t); refreshIndicators();` fired the
+      // indicators fetch against the STALE (pre-selection) window.
+      return setWindow(from, to);
     }
 
     // ---- window / TF ----
     async function setWindow(from, to) {
+      const mySeq = ++loadSeq;
       showState("loading");
       try {
         const body = await fetchBars({ from: new Date(from * 1000).toISOString(), to: new Date(to * 1000).toISOString(), max_points: 3000 });
-        if (destroyed) return;
+        if (destroyed || mySeq !== loadSeq) return; // superseded by a newer load
         if (!body.bars || !body.bars.length) {
           showState("empty");
           return;
@@ -499,6 +902,25 @@
       playbackCursor = null;
       tf = newTf;
       await loadInitial();
+      // Task 2.1 (Wave-3 Stage 2): loadInitial() only fetches the TAIL of
+      // the new tf, which may be months away from the currently-selected
+      // trade -- markers/connectors would stay built against the OLD tf's
+      // bar times. If a trade is selected, re-run the selection path so the
+      // chart reloads THAT trade's window on the new tf and rebuilds
+      // markers/connectors against the new bar boundaries (selectTrade ->
+      // setWindow -> applyBars -> buildMarkers/redrawConnectors already
+      // wired below via selectTrade itself).
+      if (selectedTradeId) {
+        const bySignal = groupBySignal();
+        const group = selectedSignalId ? bySignal.get(selectedSignalId) : null;
+        const trade = group ? group.trades.find((t) => t.trade_id === selectedTradeId) || group.trades[0] : null;
+        if (trade) {
+          await selectTrade(trade);
+          return;
+        }
+      }
+      buildMarkers();
+      redrawConnectors();
     }
 
     // ---- live ticks (WS /ws/ticks) ----
@@ -681,6 +1103,7 @@
       enableTicks,
       disableTicks,
       addOverlay,
+      addSarDots,
       removeOverlay,
       startPlayback,
       pausePlayback,
@@ -693,7 +1116,24 @@
       get symbol() { return symbol; },
       get tf() { return tf; },
       set symbol(v) { symbol = v; loadInitial(); },
+      // ROOT-CAUSE FIX (2026-07-11b4): set the symbol WITHOUT kicking off a
+      // TAIL loadInitial(). REVIEW opens a run then immediately calls
+      // selectTradeAt(0) -> selectTrade -> setWindow (the trade's window). The
+      // `set symbol` setter's loadInitial() raced that setWindow through the
+      // shared loadSeq token: whichever resolved last won, and on repeat opens
+      // a stale TAIL load could supersede the trade window -> chart committed 0
+      // relevant bars (barsLoaded=0). REVIEW must set the symbol quietly and
+      // let selectTrade own the single load.
+      setSymbolNoLoad(v) { symbol = v; },
+      // Defect B (frontend half): current candle window in epoch seconds,
+      // so callers (review.js refreshIndicators) can request overlays
+      // bounded to the SAME range as the loaded candles (overlay range must
+      // be a subset of candle range, never wider).
+      get windowFrom() { return winFrom === null ? null : tsSec(winFrom); },
+      get windowTo() { return winTo === null ? null : tsSec(winTo); },
       _chart: chart, // escape hatch for advanced callers (tests/debug only)
+      _candleSeries: candleSeries, // escape hatch (tests/debug only)
+      get _hoveredSignalId() { return hoveredSignalId; }, // escape hatch (tests/debug only)
     };
   }
 

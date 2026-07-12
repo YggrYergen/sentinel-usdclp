@@ -42,9 +42,33 @@ from sentinel_engine.feed import Feed
 from sentinel_engine.opt.levers import LEVER_GROUPS, priors_for
 from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
 from sentinel_engine.sim.lite import run_backtest_lite
-from sentinel_engine.strategies.emasar import EmasarPolicy
+from sentinel_engine.strategies.emasar import EmasarPolicy, ema_series, sar_series
 
-from .bars import BarsError, bars_payload
+
+def _parse_flexible_ts(value: str | None) -> "pd.Timestamp | None":
+    """Parse a `from`/`to` query param that may arrive as EITHER epoch
+    seconds/ms (a bare integer, e.g. the chart's pan-fetch `to=oldestTs-1`)
+    OR an ISO-8601 string (e.g. `setWindow`'s `Date.toISOString()`).
+
+    The chart frontend mixes both conventions; parsing a bare epoch with
+    `pd.Timestamp(str, tz="UTC")` mis-reads it as a calendar YEAR and raises
+    ``year 1769651099 is out of range`` → HTTP 400 → the candle window never
+    loads. Accepting both here (defense-in-depth) makes any caller work.
+    Returns None for empty/None so ``if from_`` semantics are preserved.
+    """
+    if value is None:
+        return None
+    s = str(value).strip()
+    if s == "":
+        return None
+    if s.lstrip("-").isdigit():  # bare epoch: >=1e12 is milliseconds, else seconds
+        n = int(s)
+        return pd.Timestamp(n, unit="ms" if abs(n) >= 1_000_000_000_000 else "s", tz="UTC")
+    return pd.Timestamp(s, tz="UTC")
+from sentinel_engine.strategies._supertrend_ref import supertrend as _supertrend_series
+from sentinel_engine.strategies.emasar_ref import _atr_wilder
+
+from .bars import BarsError, bars_payload, load_tf_frame
 from .chat import answer_chat
 from .stream import Broadcaster, TickHub
 
@@ -367,8 +391,8 @@ def create_app(
         max_points: int = 3000,
     ) -> Any:
         try:
-            ts_from = pd.Timestamp(from_, tz="UTC") if from_ else None
-            ts_to = pd.Timestamp(to, tz="UTC") if to else None
+            ts_from = _parse_flexible_ts(from_)
+            ts_to = _parse_flexible_ts(to)
         except (ValueError, TypeError) as exc:
             return _api_error(400, "bad_range", f"invalid from/to: {exc}")
         try:
@@ -456,6 +480,145 @@ def create_app(
     @app.get("/api/runs/{run_id}/trades")
     def get_run_trades(run_id: str) -> dict[str, Any]:
         return {"trades": registry.get_trades_for_run(run_id)}
+
+    @app.get("/api/runs/{run_id}/indicators")
+    def get_run_indicators(
+        run_id: str,
+        tf: str | None = None,
+        from_: str | None = Query(default=None, alias="from"),
+        to: str | None = None,
+    ) -> Any:
+        """EMA-fast/EMA-slow/SAR/SuperTrend overlay descriptors for the
+        REVIEW Trade View chart (design spec
+        2026-07-09-trade-view-indicator-overlays): computed with the RUN's
+        exact params (parity — same `emasar.py` functions the strategy
+        itself calls), on the bars for `tf` (default: the run's native tf
+        from its variant). Returns an extensible list of indicator
+        descriptors, not fixed keys, so adding more later is a
+        one-endpoint change.
+
+        Defect B fix (Wave-2 plan 2026-07-10, "candle-killer"): optional
+        `from`/`to` (ISO-8601, same contract as `/api/bars`) bound the
+        returned points to `[from, to]` — WITHOUT this, the endpoint
+        returns the entire lake history (100k+ points in production)
+        regardless of the loaded candle window; since every
+        lightweight-charts series shares ONE time scale, that pushes the
+        actual candles off the visible logical range. The invariant this
+        enforces: overlay time-range ⊆ candle time-range, never wider.
+        Indicators are still COMPUTED on a frame that includes a warmup
+        lookback before `from` (`lookback = max(periods) * 4` bars) so the
+        in-window values are correctly seeded, not cold-started at `from`
+        — only the RETURNED points are trimmed to `[from, to]`. Omitting
+        both keeps the pre-existing full-frame behavior (back-compat)."""
+        run = registry.get_run(run_id)
+        if run is None:
+            return _api_error(404, "run_not_found", f"unknown run_id: {run_id}")
+
+        resolved_tf = tf or run.get("tf") or "M1"
+        symbol = run.get("instrumento") or "XAUUSD"
+
+        try:
+            ts_from = _parse_flexible_ts(from_)
+            ts_to = _parse_flexible_ts(to)
+        except (ValueError, TypeError) as exc:
+            return _api_error(400, "bad_range", f"invalid from/to: {exc}")
+
+        params = registry.get_param_set(run.get("params_hash"))
+        if params is None:
+            variant = registry.get_variant(run.get("variant_id")) or {}
+            params = dict(variant.get("params_delta") or {})
+        policy_params = EmasarPolicy(params).params
+
+        try:
+            df = load_tf_frame(lake_root, symbol, resolved_tf)
+        except BarsError as exc:
+            return _api_error(400, "bad_tf", str(exc))
+
+        ema_fast_period = policy_params["ema_fast"]
+        ema_slow_period = policy_params["ema_slow"]
+        sar_step = policy_params["sar_step"]
+        sar_max = policy_params["sar_max"]
+        # SuperTrend (design spec 2026-07-10-emasar-v1-mt5-integration,
+        # Component 7): V1-only params, absent from V2's EmasarPolicy
+        # defaults -- read raw from the run's params dict (falls back to
+        # emasar_ref's own defaults: ATRPeriod=10, Mult=3.0, S6).
+        st_atr_period = int(params.get("st_atr_period") or params.get("ST_ATRPeriod") or 10)
+        st_mult = float(params.get("st_mult") or params.get("ST_Mult") or 3.0)
+
+        if not df.empty and ts_from is not None:
+            # Warmup lookback: enough PRIOR bars that every indicator is
+            # fully seeded by `from` (ample factor over the largest period
+            # among ema_fast/ema_slow/st_atr_period).
+            max_period = max(ema_fast_period, ema_slow_period, st_atr_period, 1)
+            lookback_bars = max_period * 4
+            pos = df.index.searchsorted(ts_from, side="left")
+            start_pos = max(0, pos - lookback_bars)
+            df = df.iloc[start_pos:]
+            if ts_to is not None:
+                df = df[df.index <= ts_to]
+        elif not df.empty and ts_to is not None:
+            df = df[df.index <= ts_to]
+
+        if df.empty:
+            times: list[int] = []
+            closes: list[float] = []
+            highs: list[float] = []
+            lows: list[float] = []
+        else:
+            times = [int(ts.value // 1_000_000_000) for ts in df.index]
+            closes = df["close"].tolist()
+            highs = df["high"].tolist()
+            lows = df["low"].tolist()
+
+        ema_fast_vals = ema_series(closes, ema_fast_period)
+        ema_slow_vals = ema_series(closes, ema_slow_period)
+        sar_vals, _sar_trend = sar_series(highs, lows, sar_step, sar_max)
+
+        if closes:
+            atr_vals = _atr_wilder(highs, lows, closes, st_atr_period)
+            _st_trend, st_line = _supertrend_series(
+                highs, lows, closes, [a if a is not None else 0.0 for a in atr_vals], st_mult,
+            )
+            supertrend_vals = [None if atr_vals[i] is None else st_line[i] for i in range(len(atr_vals))]
+        else:
+            supertrend_vals = []
+
+        from_epoch = int(ts_from.value // 1_000_000_000) if ts_from is not None else None
+        to_epoch = int(ts_to.value // 1_000_000_000) if ts_to is not None else None
+
+        def _points(vals: list) -> list:
+            pairs = zip(times, vals)
+            if from_epoch is not None or to_epoch is not None:
+                pairs = (
+                    (t, v) for t, v in pairs
+                    if (from_epoch is None or t >= from_epoch)
+                    and (to_epoch is None or t <= to_epoch)
+                )
+            return [[t, v] for t, v in pairs]
+
+        return {
+            "tf": resolved_tf,
+            "indicators": [
+                {
+                    "id": "ema_fast", "kind": "line", "label": f"EMA{ema_fast_period}",
+                    "period": ema_fast_period, "points": _points(ema_fast_vals),
+                },
+                {
+                    "id": "ema_slow", "kind": "line", "label": f"EMA{ema_slow_period}",
+                    "period": ema_slow_period, "points": _points(ema_slow_vals),
+                },
+                {
+                    "id": "sar", "kind": "dots", "label": f"SAR {sar_step}/{sar_max}",
+                    "step": sar_step, "max": sar_max, "points": _points(sar_vals),
+                },
+                {
+                    "id": "supertrend", "kind": "line",
+                    "label": f"SuperTrend {st_atr_period}/{st_mult}",
+                    "atr_period": st_atr_period, "mult": st_mult,
+                    "points": _points(supertrend_vals),
+                },
+            ],
+        }
 
     @app.get("/api/forward/sessions")
     def get_forward_sessions() -> dict[str, Any]:
@@ -673,6 +836,19 @@ def create_app(
         await websocket.close()
 
     if WEB_DIR.exists():
-        app.mount("/", StaticFiles(directory=str(WEB_DIR), html=True), name="web")
+        # `no-cache` (revalidate every time), NOT `no-store`: the browser still
+        # keeps a copy but must revalidate via ETag/Last-Modified on each load,
+        # so StaticFiles returns 304 when unchanged and fresh 200 the moment a
+        # file is edited. Without this, StaticFiles sends no Cache-Control and
+        # browsers heuristically serve stale app.js/style.css from memory cache
+        # on a plain F5 — making edits appear to have "no effect" until a hard
+        # reload. This keeps local dev edits always visible.
+        class _NoCacheStatic(StaticFiles):
+            async def get_response(self, path, scope):
+                response = await super().get_response(path, scope)
+                response.headers["Cache-Control"] = "no-cache"
+                return response
+
+        app.mount("/", _NoCacheStatic(directory=str(WEB_DIR), html=True), name="web")
 
     return app

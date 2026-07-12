@@ -95,6 +95,12 @@ html, body {
 }
 .right-section { animation: none; }
 .right-section[hidden] { display: none; }
+/* REVIEW must be capped to the pane so its chart+control-bar column doesn't
+   grow with the (virtualized) trade list — otherwise posnav/playback get
+   pushed far below the viewport. height:100% gives .review-section's own
+   height:100% something to resolve against; min-height:0 lets flex children
+   shrink instead of forcing overflow. */
+#section-review { height: 100%; min-height: 0; }
 
 /* -- placeholder (gated capability) -- */
 .gated-placeholder {
@@ -171,7 +177,7 @@ html, body {
 
 /* ============================================================
    M1.1 — SENTINEL V2+TOKATA design tokens (spec D.2, EXACT).
-   Additive only: does not remove/override existing --fx-*/--v2-*
+   Additive only: does not remove/override existing --fx- and --v2-
    vars used by #left-column/asset-panels (D.9 preservation gate).
    ============================================================ */
 :root {
@@ -626,6 +632,11 @@ html, body {
 }
 .chart-tooltip-row { line-height: 1.4; }
 .chart-tooltip-ts { color: var(--text-1); }
+/* Wave-2b req 5: per-signal hover mini-table (ficha/exit_reason/px/pnl/dur) */
+.chart-tooltip-signal-header { color: var(--text-0); font-weight: 600; }
+.chart-tooltip-signal-total { border-top: 1px solid rgba(0,191,255,.18); margin-top: 2px; padding-top: 2px; }
+.chart-tooltip-pos { color: var(--long, #26a69a); }
+.chart-tooltip-neg { color: var(--short, #ef5350); }
 
 .chart-state-overlay {
   position: absolute;
@@ -636,6 +647,14 @@ html, body {
   background: rgba(10,14,20,.55);
   z-index: 10;
 }
+/* ROOT-CAUSE FIX (2026-07-11b7): `display:flex` above overrides the `hidden`
+ * attribute (the UA `[hidden]{display:none}` rule has lower specificity), so
+ * stateOverlay.hidden=true left this full-chart, z-index:10, inset:0 DIV in the
+ * layout. document.elementFromPoint over the chart returned .chart-state-overlay
+ * -- it intercepted EVERY mouse event, so lightweight-charts never received a
+ * pointer move: no crosshair, no tooltip, no hover-driven glow. This restores
+ * real hiding. (Same guard on .chart-tooltip for safety.) */
+.chart-state-overlay[hidden] { display: none; }
 .chart-skeleton, .chart-empty {
   padding: var(--sp-4) var(--sp-6);
   color: var(--text-1);
@@ -898,6 +917,23 @@ html, body {
   box-shadow: inset 2px 0 0 var(--accent-celeste);
 }
 
+/* Wave-2b req 7: signal-grouped trade list -- header row (signal summary)
+   + 3 ficha sub-rows (F1/F2/F3), styled distinctly. */
+.vtable-row[data-key$="::hdr"] {
+  background: var(--bg-2);
+  font-weight: 600;
+}
+.vtable-row:not([data-key$="::hdr"]) {
+  padding-left: var(--sp-3);
+  opacity: 0.92;
+}
+.review-ficha-label {
+  color: var(--accent-celeste);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+.review-ficha-exit-reason { color: var(--text-1); }
+
 .review-header-host {
   flex: 0 0 auto;
   display: flex;
@@ -937,6 +973,30 @@ html, body {
   box-shadow: var(--glow-sm) rgba(0,191,255,.35);
 }
 .review-tf-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+/* position nav bar (◀ Anterior / counter / Siguiente ▶) under the chart */
+.review-posnav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+.review-posnav-btn {
+  background: var(--bg-1);
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+.review-posnav-btn:hover:not(:disabled) { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.review-posnav-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--border); color: var(--text-2); }
+.review-posnav-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-posnav-counter { min-width: 84px; text-align: center; color: var(--text-1); font-size: 0.85rem; }
 
 .playback-host { flex: 0 0 auto; }
 .playback-bar {
@@ -1015,7 +1075,11 @@ html, body {
 .runs-backtest-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.3); }
 .runs-backtest-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
 
-/* generic modal shell reused by "+ Variante" and "Backtest" (D.2 tokens) */
+/* generic modal shell reused by "+ Variante" and "Backtest" (D.2 tokens).
+   z-index must sit ABOVE the left column's .tt-wrap tooltips (z-index 100),
+   which create root-level stacking contexts — at the original z-index 50 the
+   left panel rendered on top and the modal appeared "behind"/invisible.
+   Kept just below the toast layer (9999) so toasts still surface over it. */
 .modal-overlay {
   position: fixed;
   inset: 0;
@@ -1023,7 +1087,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 50;
+  z-index: 1000;
 }
 .modal-box {
   background: var(--bg-2);

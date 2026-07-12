@@ -146,6 +146,33 @@ def test_bars_causal_to_filter_excludes_future_bars(client):
     assert len(body["bars"]) == 31  # bars 0..30 inclusive
 
 
+def test_bars_accepts_epoch_seconds_from_to(client):
+    # Wave-3 regression: the chart's pan-fetch sends `to` as a bare epoch
+    # (e.g. to=oldestTs-1). Parsing it as an ISO string mis-read it as a
+    # calendar YEAR -> HTTP 400 "year ... is out of range" -> candles never
+    # loaded. A bare epoch must now be accepted and behave like the ISO form.
+    cutoff = pd.Timestamp("2026-01-01T00:30:00Z")
+    epoch_resp = client.get("/api/bars", params={
+        "symbol": "XAUUSD", "tf": "M1", "to": int(cutoff.timestamp()),
+    })
+    assert epoch_resp.status_code == 200
+    body = epoch_resp.json()
+    assert "error" not in body
+    assert all(bar[0] <= int(cutoff.timestamp()) for bar in body["bars"])
+    assert len(body["bars"]) == 31  # identical to the ISO-`to` causal test
+
+
+def test_bars_epoch_milliseconds_from_to(client):
+    # Belt-and-suspenders: a 13-digit epoch is milliseconds, not seconds.
+    cutoff = pd.Timestamp("2026-01-01T00:30:00Z")
+    resp = client.get("/api/bars", params={
+        "symbol": "XAUUSD", "tf": "M1", "to": int(cutoff.timestamp() * 1000),
+    })
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["bars"]) == 31
+
+
 def test_decimate_ohlc_noop_under_threshold():
     df = _m1_frame(5)
     out, decimated = decimate_ohlc(df, 3000)

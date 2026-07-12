@@ -34,7 +34,8 @@ def test_lib_chart_and_section_charts_served(app_factory):
 def test_index_references_vendor_and_lib_chart():
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
     assert 'src="/vendor/lightweight-charts/lightweight-charts.standalone.production.js"' in html
-    assert 'src="/lib/chart.js"' in html
+    # tolerate a cache-busting ?v=... query on the src
+    assert 'src="/lib/chart.js"' in html or 'src="/lib/chart.js?v=' in html
 
 
 def test_chart_js_exposes_sentinel_chart_create():

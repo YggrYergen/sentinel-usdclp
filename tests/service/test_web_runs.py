@@ -71,4 +71,5 @@ def test_vtable_js_exposes_create_vtable_global():
 
 def test_index_includes_vtable_script_tag():
     html = (WEB_DIR / "index.html").read_text(encoding="utf-8")
-    assert '<script src="/lib/vtable.js">' in html
+    # tolerate a cache-busting ?v=... query on the src
+    assert '<script src="/lib/vtable.js">' in html or '<script src="/lib/vtable.js?v=' in html
