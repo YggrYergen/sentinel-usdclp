@@ -79,6 +79,10 @@ CREATE TABLE IF NOT EXISTS deals_raw(
   volume REAL, price REAL, profit REAL, magic INTEGER, time INTEGER, entry_type TEXT);
 """
 
+_META_DDL = """
+CREATE TABLE IF NOT EXISTS meta(key TEXT PRIMARY KEY, value TEXT);
+"""
+
 _RUN_COLUMNS = (
     "run_id", "variant_id", "params_hash", "engine", "fidelity",
     "periodo_desde", "periodo_hasta", "modelo_sim", "status",
@@ -221,6 +225,26 @@ class ResearchRegistry:
         run_cols = {row[1] for row in conn.execute("PRAGMA table_info(run)").fetchall()}
         if "fidelity_ref" not in run_cols:
             conn.execute("ALTER TABLE run ADD COLUMN fidelity_ref TEXT")
+            conn.commit()
+
+        # B1a-2: `meta` kv table (persisted DealsWatcher.last_sync + any
+        # other single-row settings) -- additive, own CREATE TABLE IF NOT
+        # EXISTS since it didn't exist in D.5's DDL.
+        conn.executescript(_META_DDL)
+        conn.commit()
+
+        # B1a-2: `deals_raw` attribution columns (magic -> strategy/ia/human).
+        # Nullable so pre-existing rows (inserted before this migration, or
+        # deals with no attribution) are untouched.
+        deals_cols = {row[1] for row in conn.execute("PRAGMA table_info(deals_raw)").fetchall()}
+        if "origin" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN origin TEXT")
+            conn.commit()
+        if "strategy_id" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN strategy_id TEXT")
+            conn.commit()
+        if "variant_id" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN variant_id TEXT")
             conn.commit()
 
     def _connect(self) -> sqlite3.Connection:
@@ -692,6 +716,43 @@ class ResearchRegistry:
             )
             conn.commit()
             return magic
+        finally:
+            conn.close()
+
+    def lookup_magic(self, magic: int) -> dict[str, Any] | None:
+        """`magic_allocation` row for a given `magic` (int), or `None` if
+        that magic hasn't been assigned to any strategy/variant — used by
+        `DealsWatcher` (B1a-2) to attribute a deal's `origin`."""
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            row = conn.execute(
+                "SELECT * FROM magic_allocation WHERE magic=?", (magic,)
+            ).fetchone()
+            return dict(row) if row is not None else None
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # meta (kv) — single-row settings, e.g. DealsWatcher.last_sync (B1a-2)
+    # ------------------------------------------------------------------
+    def get_meta(self, key: str) -> str | None:
+        conn = self._connect()
+        try:
+            row = conn.execute("SELECT value FROM meta WHERE key=?", (key,)).fetchone()
+            return row[0] if row is not None else None
+        finally:
+            conn.close()
+
+    def set_meta(self, key: str, value: str) -> None:
+        conn = self._connect()
+        try:
+            conn.execute(
+                """INSERT INTO meta(key, value) VALUES (?, ?)
+                   ON CONFLICT(key) DO UPDATE SET value=excluded.value""",
+                (key, str(value)),
+            )
+            conn.commit()
         finally:
             conn.close()
 

@@ -1,10 +1,10 @@
-"""tests/live/test_deals_watcher.py — TDD for DealsWatcher (B1a-1, NUCLEO).
+"""tests/live/test_deals_watcher.py — TDD for DealsWatcher (B1a-1 + B1a-2).
 
 Covers: attach-guard skip (never calls MT5 client when terminal64.exe is
-absent), idempotent upsert into `deals_raw` by ticket, and correct field
-mapping from a stub `mt5_client.history_deals_get(...)`. Attribution
-(magic -> strategia/ia/human) and `last_sync` persistence are explicitly
-OUT of scope here (B1a-2) -- this stub just passes `magic` through raw.
+absent), idempotent upsert into `deals_raw` by ticket, correct field
+mapping from a stub `mt5_client.history_deals_get(...)`, magic-based
+attribution (strategy/ia/human, B1a-2), and `last_sync` persistence across
+watcher restarts (B1a-2).
 """
 from __future__ import annotations
 
@@ -149,3 +149,100 @@ def test_deal_fields_are_mapped_correctly(reg):
         assert d["entry_type"] == "IN"
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# B1a-2: magic attribution matrix
+# ---------------------------------------------------------------------------
+
+def test_attribution_strategy_when_magic_is_allocated(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V1", {}, "M5", "XAUUSD", "original")
+    magic = reg.allocate_magic(sid, vid)  # 100000 (strategy_seq=0, variant_seq=0)
+
+    deal = dict(_SAMPLE_DEALS[0])
+    deal["ticket"] = 2001
+    deal["magic"] = magic
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (2001,)).fetchone()
+        d = dict(row)
+        assert d["origin"] == "strategy"
+        assert d["strategy_id"] == sid
+        assert d["variant_id"] == vid
+    finally:
+        conn.close()
+
+
+def test_attribution_ia_when_magic_in_ia_range_and_unallocated(reg):
+    deal = dict(_SAMPLE_DEALS[0])
+    deal["ticket"] = 2002
+    deal["magic"] = 900500
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (2002,)).fetchone()
+        d = dict(row)
+        assert d["origin"] == "ia"
+        assert d["strategy_id"] is None
+        assert d["variant_id"] is None
+    finally:
+        conn.close()
+
+
+def test_attribution_human_when_magic_unassigned_and_outside_ia_range(reg):
+    deal = dict(_SAMPLE_DEALS[0])
+    deal["ticket"] = 2003
+    deal["magic"] = 12345
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (2003,)).fetchone()
+        d = dict(row)
+        assert d["origin"] == "human"
+        assert d["strategy_id"] is None
+        assert d["variant_id"] is None
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# B1a-2: last_sync persistence across restarts
+# ---------------------------------------------------------------------------
+
+def test_last_sync_persists_across_watcher_restart(reg):
+    client = _StubMt5Client(_SAMPLE_DEALS)
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    assert watcher.last_sync == 0.0
+
+    watcher.poll_once()
+    assert watcher.last_sync > 0.0
+    persisted_value = watcher.last_sync
+
+    # A brand-new watcher built on the SAME registry must resume from the
+    # persisted last_sync, not restart at 0.0.
+    client2 = _StubMt5Client(_SAMPLE_DEALS)
+    watcher2 = DealsWatcher(reg, client2, poll_s=5, attach_checker=_always_attached)
+    assert watcher2.last_sync == persisted_value
+
+
+def test_last_sync_defaults_to_zero_on_fresh_registry(reg):
+    client = _StubMt5Client(_SAMPLE_DEALS)
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    assert watcher.last_sync == 0.0
