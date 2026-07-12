@@ -49,6 +49,36 @@
 
   const TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900 };
 
+  // A5b: fractional intrabar x-position. Markers/connectors were previously
+  // snapped to the bucket's bar time (barTimeOf), losing the exact intrabar
+  // signal timestamp. This computes WHERE inside the bar the signal actually
+  // landed, as a [0,1] fraction of the bar's width -- consumers (marker/
+  // connector drawing, or the canvas-overlay fallback) multiply this by the
+  // bar's pixel width and add to the bar's left-edge x. Pure function, no
+  // chart/DOM dependency, so it's independently testable.
+  function fractionalX(signalT, bucketT, tfSeconds) {
+    if (!tfSeconds) return 0;
+    const frac = (Number(signalT) - Number(bucketT)) / Number(tfSeconds);
+    return Math.max(0, Math.min(1, frac));
+  }
+
+  // A5b: exact HH:MM:SS (UTC) label for a signal's precise timestamp, for
+  // tooltips -- distinct from fmt.ts (bar-granularity), this always includes
+  // seconds so an intrabar signal_t isn't rounded away.
+  function preciseTimeLabel(epochSec) {
+    const d = new Date(Number(epochSec) * 1000);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}:${pad(d.getUTCSeconds())}`;
+  }
+
+  // A5b: full positioning helper for the hairline overlay -- given the bar
+  // CENTER x (what lightweight-charts' timeToCoordinate returns) and the bar
+  // width in px, returns the absolute pixel x of the signal's exact intrabar
+  // position: x = barLeftEdge + barWidth * fractionalX(...). Pure, testable.
+  function preciseXOf(signalT, bucketT, tfSeconds, barCenterX, barWidth) {
+    return (barCenterX - barWidth / 2) + barWidth * fractionalX(signalT, bucketT, tfSeconds);
+  }
+
   function barToCandle(bar) {
     const [ts, o, h, l, c] = bar;
     return { time: tsSec(ts), open: o, high: h, low: l, close: c };
@@ -111,7 +141,22 @@
     const stateOverlay = document.createElement("div");
     stateOverlay.className = "chart-state-overlay";
     stateOverlay.hidden = true;
+    // A5b precise-marker FALLBACK layer (design §6 ASSUMPTION, accepted):
+    // lightweight-charts v4 markers are bar-anchored (setMarkers snaps to a
+    // bar's time slot; no fractional-x placement API in the vendored bundle),
+    // so exact intrabar signal positions are drawn as 1px vertical hairlines
+    // on this dedicated overlay canvas at x = barX + barWidth *
+    // fractionalX(signal_t, bucket_t, tf_seconds). pointer-events: none so
+    // ALL hover/hit-testing stays owned by lightweight-charts + the existing
+    // hoveredSignalId/findSignalNearConnector logic (semantics intact).
+    const preciseCanvas = document.createElement("canvas");
+    preciseCanvas.className = "chart-precise-overlay";
+    preciseCanvas.style.position = "absolute";
+    preciseCanvas.style.inset = "0";
+    preciseCanvas.style.pointerEvents = "none";
+    preciseCanvas.style.zIndex = "5";
     root.appendChild(canvasHost);
+    root.appendChild(preciseCanvas);
     root.appendChild(tooltip);
     root.appendChild(stateOverlay);
     el.appendChild(root);
@@ -415,6 +460,8 @@
     // pan-left near edge -> fetch previous block and merge (D.7 CHARTS).
     chart.timeScale().subscribeVisibleLogicalRangeChange((range) => {
       if (!range || destroyed) return;
+      // A5b: hairlines are in PIXEL space -- re-anchor on every pan/zoom.
+      redrawPreciseOverlay();
       if (range.from !== null && range.from < 5) {
         fetchPreviousBlock();
       }
@@ -522,7 +569,8 @@
     function signalTooltipHtml(group) {
       const fmt = window.SENTINEL.fmt;
       const tsIn = epochOf(group.ts_in);
-      let html = `<div class="chart-tooltip-row chart-tooltip-signal-header mono">${escapeHtmlLite(group.side || "")} entry ${fmt.price(group.px_in, 2)} @ ${fmt.ts(tsIn)}</div>`;
+      // A5b: exact intrabar entry time (HH:MM:SS) -- fmt.ts is bar-granular.
+      let html = `<div class="chart-tooltip-row chart-tooltip-signal-header mono">${escapeHtmlLite(group.side || "")} entry ${fmt.price(group.px_in, 2)} @ ${fmt.ts(tsIn)} <span class="chart-tooltip-precise">${preciseTimeLabel(tsIn)}</span></div>`;
       let total = 0;
       const sorted = group.trades.slice().sort((a, b) => (a.ficha || "").localeCompare(b.ficha || ""));
       sorted.forEach((t) => {
@@ -530,9 +578,11 @@
         total += pnl;
         const dur = t.ts_out ? humanizeDuration(epochOf(t.ts_out) - tsIn) : "--";
         const pnlClass = pnl > 0 ? "chart-tooltip-pos" : pnl < 0 ? "chart-tooltip-neg" : "";
+        // A5b: exact intrabar exit time per ficha (HH:MM:SS).
+        const exitAt = t.ts_out ? ` <span class="chart-tooltip-precise">${preciseTimeLabel(epochOf(t.ts_out))}</span>` : "";
         html += `<div class="chart-tooltip-row mono">${escapeHtmlLite(t.ficha || "?")} ${escapeHtmlLite(t.exit_reason || "--")} `
           + `${fmt.price(t.px_in, 2)}&rarr;${fmt.price(t.px_out, 2)} `
-          + `<span class="${pnlClass}">${fmt.signed(pnl)}</span> ${dur}</div>`;
+          + `<span class="${pnlClass}">${fmt.signed(pnl)}</span> ${dur}${exitAt}</div>`;
       });
       html += `<div class="chart-tooltip-row chart-tooltip-signal-total mono">total <span class="${total > 0 ? "chart-tooltip-pos" : total < 0 ? "chart-tooltip-neg" : ""}">${fmt.signed(total)}</span></div>`;
       return html;
@@ -861,6 +911,97 @@
           });
         }
       }
+      // A5b: re-anchor the precise hairlines whenever markers/connectors
+      // rebuild (hover change, selection, playback reveal, applyBars).
+      redrawPreciseOverlay();
+    }
+
+    // ---- A5b precise intrabar overlay (fallback layer) ----
+    // Bar width in px: lightweight-charts' time scale barSpacing option is
+    // the per-bar pixel width at the current zoom level.
+    function barWidthPx() {
+      try {
+        const o = chart.timeScale().options();
+        return (o && o.barSpacing) || 6;
+      } catch (e) { return 6; }
+    }
+
+    // Absolute pixel x of a signal's EXACT timestamp: bar-center coordinate
+    // from the time scale, then the pure preciseXOf fractional offset.
+    // Returns null when the bar is off-screen (timeToCoordinate -> null).
+    function preciseSignalX(epochSec) {
+      const bucketT = barTimeOf(epochSec);
+      let barX = null;
+      try { barX = chart.timeScale().timeToCoordinate(bucketT); } catch (e) { return null; }
+      if (barX === null || barX === undefined) return null;
+      return preciseXOf(epochSec, bucketT, secPerBar(), barX, barWidthPx());
+    }
+
+    function drawHairline(ctx, x, height, color) {
+      if (x === null || x === undefined) return;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      // +0.5 centers a 1px stroke on the pixel grid (crisp hairline).
+      ctx.moveTo(Math.round(x) + 0.5, 0);
+      ctx.lineTo(Math.round(x) + 0.5, height);
+      ctx.stroke();
+    }
+
+    // Redraws every loaded signal's entry/exit hairlines at their FRACTIONAL
+    // intrabar x, plus (for the hovered/selected signal) a precise 1px
+    // connector segment between the exact entry/exit positions -- so
+    // connectors share the same fractional x re-anchor. The series-based
+    // connectors stay bar-snapped (arbitrary intrabar times on a series
+    // would inject phantom time-scale columns -- the Wave-2b gap bug).
+    function redrawPreciseOverlay() {
+      const w = canvasHost.clientWidth;
+      const h = canvasHost.clientHeight;
+      if (!w || !h) return;
+      const dpr = window.devicePixelRatio || 1;
+      if (preciseCanvas.width !== Math.round(w * dpr) || preciseCanvas.height !== Math.round(h * dpr)) {
+        preciseCanvas.width = Math.round(w * dpr);
+        preciseCanvas.height = Math.round(h * dpr);
+      }
+      const ctx = preciseCanvas.getContext("2d");
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.clearRect(0, 0, w, h);
+      if (!allTrades.length) return;
+      const cursor = playbackCursor;
+      const bySignal = groupBySignal();
+      bySignal.forEach((group) => {
+        const tIn = epochOf(group.ts_in);
+        if (cursor !== null && barTimeOf(tIn) > cursor) return;
+        const isHovered = hoveredSignalId && group.signal_id === hoveredSignalId;
+        const isSelected = selectedSignalId && group.signal_id === selectedSignalId;
+        const color = isHovered ? HOVER_HALO_COLOR : hexToRgba(group.colorHex, isSelected ? 0.85 : 0.35);
+        const xIn = preciseSignalX(tIn);
+        drawHairline(ctx, xIn, h, color);
+        group.trades.forEach((t) => {
+          if (!t.ts_out) return;
+          const tOut = epochOf(t.ts_out);
+          if (cursor !== null && tOut > cursor) return;
+          const xOut = preciseSignalX(tOut);
+          drawHairline(ctx, xOut, h, color);
+          // Precise connector segment (same fractional x) for the
+          // highlighted signal only -- keeps the overlay uncluttered.
+          if ((isHovered || isSelected) && xIn !== null && xOut !== null) {
+            let yIn = null, yOut = null;
+            try {
+              yIn = candleSeries.priceToCoordinate(group.px_in);
+              yOut = candleSeries.priceToCoordinate(t.px_out);
+            } catch (e) { /* noop */ }
+            if (yIn !== null && yIn !== undefined && yOut !== null && yOut !== undefined) {
+              ctx.strokeStyle = isHovered ? HOVER_HALO_COLOR : hexToRgba(group.colorHex, 0.9);
+              ctx.lineWidth = 1;
+              ctx.beginPath();
+              ctx.moveTo(xIn, yIn);
+              ctx.lineTo(xOut, yOut);
+              ctx.stroke();
+            }
+          }
+        });
+      });
     }
 
     function addTradeMarkers(trades, colorHex, options) {
@@ -1211,5 +1352,5 @@
   }
 
   window.SENTINEL = window.SENTINEL || {};
-  window.SENTINEL.chart = { create, TF_LIST };
+  window.SENTINEL.chart = { create, TF_LIST, fractionalX, preciseTimeLabel, preciseXOf };
 })();
