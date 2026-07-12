@@ -42,7 +42,7 @@
 | A11 live-tail adapter (Charts) | B | A5a, A10 | [ ] | |
 | B1a deals watcher core | C | — | [x] | 850860b+ce2c36c |
 | B1b position grouping (multi-lote/parciales) | C | B1a | [x] | 5da0947 |
-| B2 metrics.py + scorecard endpoint | A | W0.1 | [ ] | |
+| B2 metrics.py + scorecard endpoint | A | W0.1 | [x] | a4ca93e |
 | B3 Positions HUMANO UI | B | A5a, B1b, B2 | [ ] | |
 | B4 ESTRATEGIA two-floor + sesiones label | B | B2 | [ ] | |
 | B5 IA selector UI (empty-state) | B | B4 | [ ] | |
