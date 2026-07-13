@@ -581,9 +581,27 @@
       return;
     }
     if (state) state.activeEventSource = es;
+    let settled = false;
     function closeEs() {
       es.close();
       if (state && state.activeEventSource === es) state.activeEventSource = null;
+    }
+    function applyStatus(data) {
+      if (settled) return;
+      if (data.status === "queued" || data.status === "running") {
+        const pct = data.progress !== undefined && data.progress !== null ? ` ${Math.round(data.progress * 100)}%` : "";
+        progressBox.textContent = `${data.status}…${pct}`;
+        return;
+      }
+      if (data.status === "done") {
+        settled = true;
+        closeEs();
+        onDone(data.run_id);
+      } else if (data.status === "error") {
+        settled = true;
+        closeEs();
+        onError(data.error || "Backtest falló.");
+      }
     }
     es.addEventListener("job_update", (evt) => {
       let data;
@@ -593,22 +611,26 @@
         return;
       }
       if (data.job_id && data.job_id !== jobId) return;
-      if (data.status === "queued" || data.status === "running") {
-        const pct = data.progress !== undefined && data.progress !== null ? ` ${Math.round(data.progress * 100)}%` : "";
-        progressBox.textContent = `${data.status}…${pct}`;
-        return;
-      }
-      if (data.status === "done") {
-        closeEs();
-        onDone(data.run_id);
-      } else if (data.status === "error") {
-        closeEs();
-        onError(data.error || "Backtest falló.");
-      }
+      applyStatus(data);
     });
     es.onerror = () => {
       // keep listening; EventSource auto-reconnects per spec (retry: 3000)
     };
+    // ORC5-F2: the SSE stream only forwards job_update events for row
+    // changes AFTER subscription -- it does not replay a snapshot on
+    // connect. If the job reaches a terminal state (error/done) before the
+    // EventSource subscribes (e.g. instant validation failure), the UI
+    // would hang on "running… 0%" forever. Do a one-shot reconciliation
+    // fetch of current job state right after opening the stream.
+    fetch(`/api/jobs/${encodeURIComponent(jobId)}`)
+      .then((resp) => (resp.ok ? resp.json() : null))
+      .then((job) => {
+        if (!job || settled) return;
+        applyStatus(job);
+      })
+      .catch(() => {
+        // ignore -- SSE remains the primary channel; reconciliation is best-effort
+      });
   }
 
   // ---- filter bar ----

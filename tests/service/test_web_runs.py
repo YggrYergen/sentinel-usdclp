@@ -143,3 +143,30 @@ def test_runs_js_teardown_closes_active_eventsource():
     teardown_src = runs_js.split("function teardown()")[1]
     assert "state.activeEventSource.close()" in teardown_src
     assert "state.activeEventSource = null" in teardown_src
+
+
+# ---- ORC5-F2: streamJob reconciles job state on open (lost terminal event race) ----
+
+def _stream_job_src():
+    runs_js = (WEB_DIR / "sections" / "runs.js").read_text(encoding="utf-8")
+    marker = "function streamJob("
+    start = runs_js.index(marker)
+    # streamJob is followed by the filter bar section; slice up to the next
+    # top-level "// ---- filter bar" comment to isolate the function body.
+    end = runs_js.index("// ---- filter bar", start)
+    return runs_js[start:end]
+
+
+def test_streamJob_reconciles_via_fetch_jobs_by_id():
+    """After opening the EventSource, streamJob must do a one-shot fetch to
+    GET /api/jobs/{jobId} to reconcile state in case the terminal job_update
+    event was emitted (and lost) before the SSE subscription was live."""
+    src = _stream_job_src()
+    assert "fetch(`/api/jobs/${encodeURIComponent(jobId)}`)" in src or "fetch(\"/api/jobs/\" + encodeURIComponent(jobId))" in src
+
+
+def test_streamJob_has_settled_guard_against_double_dispatch():
+    """A `settled` flag must guard onDone/onError so a late reconciliation
+    fetch response cannot re-invoke them after the SSE already resolved."""
+    src = _stream_job_src()
+    assert "settled" in src
