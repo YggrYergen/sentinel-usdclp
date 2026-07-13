@@ -32,24 +32,29 @@
 | A3 /api/bars v2 (LOD+overlays) | A | W0.1, A1 | [x] | b3a3f3f |
 | A4 chart data controller | B | A3 contract | [x] | 49128e9 |
 | A5a adapters + windowed markers | B | A4 | [x] | 5ea9173 |
-| A5b precise intrabar marker + connector re-anchor | B | A5a | [ ] | |
+| A5b precise intrabar marker + connector re-anchor | B | A5a | [x] | bd43a80 (2 disp, ~6min) |
 | A6a TV split-pane + TF dot | B | W0.2 | [x] | 3ba0f14 |
 | A6b vlist util + TV lists virtualized | B | A6a | [x] | 1cda6d2 |
-| A7 goto-date (Charts+TV) | B | A2, A4 | [ ] | |
+| A7 goto-date (Charts+TV) | B | A2, A4 | [x] | d5a2a4a (1 disp, ~2min) |
 | A8 models/gate/cost endpoints | A | W0.1 | [x] | 1a6f9e5 |
-| A9 chat UI catalog+unlock+meter | B | A8 | [ ] | |
+| A9 chat UI catalog+unlock+meter | B | A8 | [x] | e2f5291 |
 | A10 live tail service (tick→last bar) | A | W0.1 | [x] | 32a770a |
-| A11 live-tail adapter (Charts) | B | A5a, A10 | [ ] | |
+| A11 live-tail adapter (Charts) | B | A5a, A10 | [x] | 6462ad3 (1 disp, ~3min) — WAVE A COMPLETE |
 | B1a deals watcher core | C | — | [x] | 850860b+ce2c36c |
 | B1b position grouping (multi-lote/parciales) | C | B1a | [x] | 5da0947 |
 | B2 metrics.py + scorecard endpoint | A | W0.1 | [x] | a4ca93e |
-| B3 Positions HUMANO UI | B | A5a, B1b, B2 | [ ] | |
+| B3-api positions list endpoint (gap found at B3 dispatch: routers/positions.py is stub, no /api/positions — UI has no data source) | A | B1b, B2 | [x] | e87ff10 (1 disp, ~2min) |
+| B1c watcher captures account/symbol meta (leverage, contract_size) — gap found at B3-api: pct=profit/margin has no inputs; B3-api serves pct=null until this lands | C | B1a | [x] | 06606d6 (1 disp, ~1.5min) |
+| B3 Positions HUMANO UI | B | A5a, B1b, B2, B3-api | [ ] | |
 | B4 ESTRATEGIA two-floor + sesiones label | B | B2 | [ ] | |
 | B5 IA selector UI (empty-state) | B | B4 | [ ] | |
-| B6 jobs queue + SSE | A | W0.1, A2 | [ ] | |
+| B6 jobs queue + SSE | A | W0.1, A2 | [x] | a7de06d (2 disp equiv, 16min — §2 review OK) |
 | B7 Runs launcher UI + detail dates | B | B6, A2 | [ ] | |
 | B8 /api/runs/{id}/equity | A | W0.1 | [ ] | |
 | B9 Lab tooltips render | B | ORC-3 content | [ ] | |
+| REV-1 grouping.py StopIteration guard (wave-A review, CONFIRMED) | C | — | [x] | 0733e97 (1 disp, ~1min) |
+| REV-2 web fixes: chart.js TF_SEC +H1/D · vlist-selected CSS · onTF live re-sync (review, CONFIRMED) | B | — | [x] | 8a00adb (1 disp, ~1.5min) |
+| REV-3 backlog (review): bars double-read w/ overlays · redraw/mousemove throttling · tuple-bar retirement · max_points≤0 · rangeless 404 · dual live-updaters | — | — | [ ] | backlog, fix pass post-Wave-B |
 | C1 news poller + API | A | W0.1 | [ ] | |
 | C2 News tab UI | B | C1 | [ ] | |
 | C3 dossier builders | A | B2 | [ ] | |
