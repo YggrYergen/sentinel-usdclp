@@ -7,6 +7,7 @@
   "use strict";
 
   const FIDELITIES = ["research", "screening", "real-tick", "forward", "live-demo"];
+  const FIDELITY_TFS = ["M1", "M2", "M5", "M15", "H1", "D"];
   const DASH_PATTERNS = [[], [6, 4], [1, 3]]; // solid, dashed, dotted (uPlot dash arrays)
 
   let state = null; // per-mount state, rebuilt on render()
@@ -106,6 +107,9 @@
       { key: "maxdd", label: "MaxDD", width: "80px", sortable: true, numeric: true, render: (r) => fmt.num(r.maxdd) },
       { key: "sharpe", label: "Sharpe", width: "80px", sortable: true, numeric: true, render: (r) => fmt.num(r.sharpe) },
       { key: "fecha_corrida", label: "Fecha", width: "110px", sortable: true, render: (r) => escapeHtml(r.fecha_corrida || "--") },
+      { key: "meta", label: "Meta", width: "150px",
+        render: (r) => `${r.engine ? `<span class="sentinel-badge sentinel-badge-engine" title="engine">${escapeHtml(r.engine)}</span>` : ""}` +
+          `${r.origin ? `<span class="sentinel-badge sentinel-badge-origin" title="origin">${escapeHtml(r.origin)}</span>` : ""}` },
       { key: "actions", label: "", width: "110px",
         render: (r) => `<button type="button" class="runs-backtest-btn" data-variant-id="${escapeHtml(r.variant_id || "")}">&#9654; Backtest</button>` },
     ];
@@ -387,6 +391,218 @@
     }, 1000);
   }
 
+  // ---- CT-1 coverage fetch (min/max bounds for period pickers) ----
+  async function fetchCoverage(symbol) {
+    const resp = await fetch(`/api/coverage?symbol=${encodeURIComponent(symbol)}`);
+    if (!resp.ok) throw new Error(`GET /api/coverage failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  function epochToDateStr(epochSec) {
+    if (epochSec === null || epochSec === undefined) return "";
+    const d = new Date(epochSec * 1000);
+    const pad = (n) => String(n).padStart(2, "0");
+    return `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}-${pad(d.getUTCDate())}`;
+  }
+
+  // ---- "Nueva corrida" launcher panel (B7, CT-4 first UI consumer) ----
+  // variant select + symbol select + TF select + period pickers bounded by
+  // CT-1 /api/coverage (min/max attrs on the date inputs => out-of-range is
+  // impossible via the input itself) + exploratory toggle (default ON) +
+  // submit -> POST /api/jobs/backtest -> progress via GET /api/jobs/stream
+  // (SSE, job_update events, filtered by this job's job_id).
+  function renderLauncherPanel(root, runRows, onRunCreated) {
+    const panel = el("div", { class: "runs-launcher" });
+    // variant/symbol options: no dedicated GET /api/variants endpoint exists
+    // yet, so we derive them (deduped) from the runs already loaded in the
+    // table -- same data source runs.js already consumes today.
+    const seen = new Set();
+    const variantOptions = [];
+    (runRows || []).forEach((r) => {
+      if (!r.variant_id || seen.has(r.variant_id)) return;
+      seen.add(r.variant_id);
+      variantOptions.push({ variant_id: r.variant_id, label: r.variant_id, instrumento: r.instrumento, tf: r.tf });
+    });
+
+    panel.innerHTML = `
+      <h4>Nueva corrida</h4>
+      <form class="runs-launcher-form">
+        <label class="runs-launcher-field">
+          <span>Variante</span>
+          <select class="runs-launcher-input" name="variant_id" required>
+            <option value="">-- seleccionar --</option>
+            ${variantOptions.map((v) => `<option value="${escapeHtml(v.variant_id)}">${escapeHtml(v.label)}</option>`).join("")}
+          </select>
+        </label>
+        <label class="runs-launcher-field">
+          <span>Symbol</span>
+          <select class="runs-launcher-input" name="symbol" required>
+            <option value="">-- seleccionar --</option>
+          </select>
+        </label>
+        <label class="runs-launcher-field">
+          <span>TF</span>
+          <select class="runs-launcher-input" name="tf" required>
+            <option value="">-- seleccionar --</option>
+            ${FIDELITY_TFS.map((tf) => `<option value="${tf}">${tf}</option>`).join("")}
+          </select>
+        </label>
+        <label class="runs-launcher-field">
+          <span>Desde</span>
+          <input class="runs-launcher-input" name="from" type="date" disabled />
+        </label>
+        <label class="runs-launcher-field">
+          <span>Hasta</span>
+          <input class="runs-launcher-input" name="to" type="date" disabled />
+        </label>
+        <label class="runs-launcher-field runs-launcher-toggle">
+          <input type="checkbox" name="exploratory" checked />
+          <span>Exploratoria (no cuenta para graduación)</span>
+        </label>
+        <div class="runs-launcher-error" hidden></div>
+        <div class="runs-launcher-progress" hidden></div>
+        <div class="runs-launcher-actions">
+          <button type="submit" class="runs-launcher-submit-btn">Lanzar backtest</button>
+        </div>
+      </form>`;
+    root.appendChild(panel);
+
+    const form = panel.querySelector(".runs-launcher-form");
+    const symbolSel = form.querySelector('[name="symbol"]');
+    const fromInput = form.querySelector('[name="from"]');
+    const toInput = form.querySelector('[name="to"]');
+    const errBox = form.querySelector(".runs-launcher-error");
+    const progressBox = form.querySelector(".runs-launcher-progress");
+
+    // symbol options: derive from known instrumentos on variants (fallback:
+    // free-text-like small set is unavailable without a dedicated endpoint,
+    // so we source it from the variants list actually offered above).
+    const symbolSet = new Set(variantOptions.map((v) => v.instrumento).filter(Boolean));
+    symbolSet.forEach((sym) => {
+      symbolSel.appendChild(el("option", { value: sym, text: sym }));
+    });
+
+    async function applyCoverageBounds() {
+      const symbol = symbolSel.value;
+      const tf = form.tf.value;
+      if (!symbol || !tf) {
+        fromInput.disabled = true;
+        toInput.disabled = true;
+        return;
+      }
+      try {
+        const cov = await fetchCoverage(symbol);
+        const tfCov = cov.tfs && cov.tfs[tf];
+        if (tfCov) {
+          const minStr = epochToDateStr(tfCov.first);
+          const maxStr = epochToDateStr(tfCov.last);
+          fromInput.setAttribute("min", minStr);
+          fromInput.setAttribute("max", maxStr);
+          toInput.setAttribute("min", minStr);
+          toInput.setAttribute("max", maxStr);
+          fromInput.disabled = false;
+          toInput.disabled = false;
+        } else {
+          fromInput.disabled = true;
+          toInput.disabled = true;
+        }
+      } catch (e) {
+        fromInput.disabled = true;
+        toInput.disabled = true;
+      }
+    }
+    symbolSel.addEventListener("change", applyCoverageBounds);
+    form.tf.addEventListener("change", applyCoverageBounds);
+
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      errBox.hidden = true;
+      const submitBtn = form.querySelector(".runs-launcher-submit-btn");
+      submitBtn.disabled = true;
+      progressBox.hidden = false;
+      progressBox.textContent = "Encolando job…";
+      const body = {
+        variant_id: form.variant_id.value,
+        symbol: symbolSel.value,
+        tf: form.tf.value,
+        from: fromInput.value || null,
+        to: toInput.value || null,
+        exploratory: form.exploratory.checked,
+      };
+      try {
+        const resp = await fetch("/api/jobs/backtest", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body),
+        });
+        const json = await resp.json().catch(() => ({}));
+        if (!resp.ok) {
+          errBox.hidden = false;
+          errBox.textContent = (json && json.error && json.error.message) || `Error POST /api/jobs/backtest (${resp.status})`;
+          submitBtn.disabled = false;
+          progressBox.hidden = true;
+          return;
+        }
+        streamJob(json.job_id, progressBox, (runId) => {
+          submitBtn.disabled = false;
+          progressBox.innerHTML = `Listo &rarr; <a href="#" class="runs-launcher-run-link" data-run-id="${escapeHtml(runId)}">ver run ${escapeHtml(runId)}</a>`;
+          progressBox.querySelector(".runs-launcher-run-link").addEventListener("click", (ev) => {
+            ev.preventDefault();
+            openDrawer({ run_id: runId });
+          });
+          if (onRunCreated) onRunCreated();
+        }, (msg) => {
+          errBox.hidden = false;
+          errBox.textContent = msg;
+          submitBtn.disabled = false;
+          progressBox.hidden = true;
+        });
+      } catch (err) {
+        errBox.hidden = false;
+        errBox.textContent = "Error de red en POST /api/jobs/backtest.";
+        submitBtn.disabled = false;
+        progressBox.hidden = true;
+      }
+    });
+
+    return panel;
+  }
+
+  // ---- CT-9 SSE progress via GET /api/jobs/stream, filtered by job_id ----
+  function streamJob(jobId, progressBox, onDone, onError) {
+    let es;
+    try {
+      es = new EventSource("/api/jobs/stream");
+    } catch (e) {
+      onError("No se pudo abrir /api/jobs/stream.");
+      return;
+    }
+    es.addEventListener("job_update", (evt) => {
+      let data;
+      try {
+        data = JSON.parse(evt.data);
+      } catch (e) {
+        return;
+      }
+      if (data.job_id && data.job_id !== jobId) return;
+      if (data.status === "queued" || data.status === "running") {
+        const pct = data.progress !== undefined && data.progress !== null ? ` ${Math.round(data.progress * 100)}%` : "";
+        progressBox.textContent = `${data.status}…${pct}`;
+        return;
+      }
+      if (data.status === "done") {
+        es.close();
+        onDone(data.run_id);
+      } else if (data.status === "error") {
+        es.close();
+        onError(data.error || "Backtest falló.");
+      }
+    });
+    es.onerror = () => {
+      // keep listening; EventSource auto-reconnects per spec (retry: 3000)
+    };
+  }
+
   // ---- filter bar ----
   function renderFilterBar(root, strategies, onChange) {
     const bar = el("div", { class: "runs-filterbar" });
@@ -475,12 +691,12 @@
       const metricsRows = [
         ["Run ID", full.run_id], ["Variant", full.variant_id],
         ["Instrumento", full.instrumento], ["Engine", full.engine],
-        ["Periodo", `${full.periodo_desde || "--"} → ${full.periodo_hasta || "--"}`],
+        ["Ventana", `${full.periodo_desde || "--"} → ${full.periodo_hasta || "--"}`],
         ["Modelo sim", full.modelo_sim || "--"],
         ["Trades", fmt.num(full.trades, 0)], ["Net", fmt.signed(full.net)],
         ["PF", fmt.num(full.pf)], ["WR%", fmt.pct(full.wr)],
         ["Payoff", fmt.num(full.payoff)], ["MaxDD", fmt.num(full.maxdd)],
-        ["Sharpe", fmt.num(full.sharpe)], ["Fecha", full.fecha_corrida || "--"],
+        ["Sharpe", fmt.num(full.sharpe)], ["Creada", full.fecha_corrida || "--"],
       ];
       const grid = metricsRows.map(([k, v]) => (
         `<div class="runs-drawer-metric"><span class="runs-drawer-metric-label">${escapeHtml(k)}</span>` +
@@ -610,6 +826,7 @@
     const toolbarHost = el("div", { class: "runs-toolbar" });
     const addVariantBtn = el("button", { type: "button", class: "manage-add-variant-btn", text: "＋ Variante" });
     toolbarHost.appendChild(addVariantBtn);
+    const launcherHost = el("div", { class: "runs-launcher-host" });
     const filterBarHost = el("div", { class: "runs-filterbar-host" });
     const tableHost = el("div", { class: "runs-table-host" });
     const compareBarHost = el("div", { class: "runs-compare-bar", hidden: "hidden" }, [
@@ -618,6 +835,7 @@
     ]);
 
     root.appendChild(toolbarHost);
+    root.appendChild(launcherHost);
     root.appendChild(filterBarHost);
     root.appendChild(compareBarHost);
     root.appendChild(tableHost);
@@ -662,6 +880,8 @@
         return;
       }
       const rows = body.rows || [];
+      launcherHost.innerHTML = "";
+      renderLauncherPanel(launcherHost, rows, () => loadRuns());
       tableHost.innerHTML = "";
       if (!rows.length) {
         tableHost.innerHTML = '<div class="runs-empty">Sin corridas para los filtros</div>';
