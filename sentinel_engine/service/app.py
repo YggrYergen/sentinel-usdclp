@@ -285,7 +285,7 @@ def create_app(
     app.include_router(positions_router.build_router(registry))
     app.include_router(chat_router.build_router(runners, _resolve, app.state))
     app.include_router(jobs_router.build_router(registry, lake_root, jobs, backtest_lock))
-    app.include_router(news_router.router)
+    app.include_router(news_router.build_router(registry))
     app.include_router(system_router.build_router(runners, broadcaster))
     app.state.runners = runners
     app.state.broadcaster = broadcaster

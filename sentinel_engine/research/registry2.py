@@ -92,6 +92,14 @@ CREATE TABLE IF NOT EXISTS jobs(
   run_id TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 """
 
+# C1a: `news_items` table (CT-5 news feed cache). Additive, own CREATE
+# TABLE IF NOT EXISTS -- same pattern as `_JOBS_DDL`.
+_NEWS_ITEMS_DDL = """
+CREATE TABLE IF NOT EXISTS news_items(
+  id TEXT PRIMARY KEY, ts INTEGER, source TEXT, title TEXT, url TEXT,
+  symbols_json TEXT, kind TEXT, impact TEXT);
+"""
+
 _RUN_COLUMNS = (
     "run_id", "variant_id", "params_hash", "engine", "fidelity",
     "periodo_desde", "periodo_hasta", "modelo_sim", "status",
@@ -280,6 +288,11 @@ class ResearchRegistry:
         if "contract_size" not in deals_cols:
             conn.execute("ALTER TABLE deals_raw ADD COLUMN contract_size REAL")
             conn.commit()
+
+        # C1a: `news_items` table (CT-5). Additive, own CREATE TABLE IF NOT
+        # EXISTS.
+        conn.executescript(_NEWS_ITEMS_DDL)
+        conn.commit()
 
         # B6: any job left `queued`/`running` from a prior process (crash or
         # restart) can never be resumed -- mark it `error:"interrupted"` on
