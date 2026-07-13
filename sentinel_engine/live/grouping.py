@@ -32,8 +32,11 @@ Style note: dataclasses are used here (not dicts), mirroring
 """
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass, field
 from typing import Any
+
+logger = logging.getLogger(__name__)
 
 # Multi-lot ("3 fichas") clustering window: entries within this many
 # seconds of the running cluster's anchor entry are grouped together.
@@ -78,6 +81,9 @@ def _build_positions(deals: list[dict[str, Any]]) -> list[Position]:
     deals against that position_id are its `fills`; the aggregated exit
     price is their VWAP (sum(price * volume) / sum(volume)), `exit_time`
     is the max OUT `time`, and `pnl` is the sum of OUT `profit`.
+
+    A position_id with no IN deal in `deals` (its entry fell outside the
+    queried window) is skipped rather than raising -- see `group_positions`.
     """
     by_position: dict[Any, list[dict[str, Any]]] = {}
     for deal in deals:
@@ -85,7 +91,17 @@ def _build_positions(deals: list[dict[str, Any]]) -> list[Position]:
 
     positions: list[Position] = []
     for position_id, group_deals in by_position.items():
-        entry = next(d for d in group_deals if d["entry_type"] == "IN")
+        entry = next((d for d in group_deals if d["entry_type"] == "IN"), None)
+        if entry is None:
+            # No IN deal in this batch (e.g. the entry fell outside the
+            # queried window on a rolling fetch). Skip rather than
+            # inventing an entry; caller re-queries a wider window later.
+            logger.debug(
+                "grouping: skipping position_id=%r with no IN deal "
+                "(%d OUT-only deal(s))",
+                position_id, len(group_deals),
+            )
+            continue
         outs = [d for d in group_deals if d["entry_type"] == "OUT"]
 
         total_volume = sum(d["volume"] for d in outs)

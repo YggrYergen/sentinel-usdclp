@@ -184,6 +184,30 @@ def test_different_symbol_side_or_magic_do_not_group():
     assert all(len(g.children) == 1 for g in groups)
 
 
+def test_orphan_out_only_position_is_skipped_without_crash():
+    """A position_id with only OUT deals (its IN entry fell outside the
+    queried window, e.g. a rolling fetch) must not raise StopIteration.
+    It's dropped silently; other positions in the same batch are
+    unaffected."""
+    deals = [
+        # Orphan: OUT-only, no IN deal for position_id=4001.
+        _deal(ticket=1, position_id=4001, entry_type="OUT", price=101.0,
+              volume=0.1, time=1010, profit=1.0),
+        # Normal position, should still be grouped correctly.
+        _deal(ticket=2, position_id=4002, entry_type="IN", price=100.0,
+              volume=0.1, time=2000),
+        _deal(ticket=3, position_id=4002, entry_type="OUT", price=102.0,
+              volume=0.1, time=2050, profit=2.0),
+    ]
+
+    groups = group_positions(deals)
+
+    all_positions = [pos for g in groups for pos in g.children]
+    assert len(all_positions) == 1
+    assert all_positions[0].position_id == 4002
+    assert all_positions[0].pnl == 2.0
+
+
 def test_mae_mfe_are_none_and_flagged_pending_on_every_position():
     deals = [
         _deal(ticket=1, position_id=1001, entry_type="IN", price=100.0,
