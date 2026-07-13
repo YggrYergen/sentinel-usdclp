@@ -216,6 +216,17 @@
     .positions-humano-chevron.open { transform: rotate(90deg); }
     .positions-humano-child-row { display: grid; grid-template-columns: 20px 1fr 1fr 90px 70px; gap: 8px; padding: 4px 10px 4px 30px; opacity: 0.85; }
     .positions-humano-empty { padding: 16px; opacity: 0.7; }
+    .positions-humano-panel { display: flex; flex-direction: column; border-top: 1px solid var(--border, #333); padding: 10px; box-sizing: border-box; gap: 10px; }
+    .positions-humano-panel-header { display: flex; justify-content: space-between; align-items: center; }
+    .positions-humano-panel-close { cursor: pointer; background: none; border: none; font-size: 18px; opacity: 0.7; }
+    .positions-humano-panel-close:hover { opacity: 1; }
+    .positions-humano-panel-chart { height: 320px; width: 100%; }
+    .positions-humano-panel-detail { width: 100%; }
+    .positions-humano-panel-detail table { width: 100%; border-collapse: collapse; }
+    .positions-humano-panel-detail td, .positions-humano-panel-detail th { padding: 3px 8px; text-align: left; border-bottom: 1px solid var(--border, #333); }
+    .positions-humano-panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
+    .positions-humano-panel-actions button { cursor: pointer; }
+    .positions-humano-panel-actions button:disabled { cursor: not-allowed; opacity: 0.5; }
   `;
 
   function injectHumanoCss() {
@@ -243,10 +254,132 @@
     return resp.json();
   }
 
-  // no-op hook: B3b wires this up to open the expanded detail/replay panel.
-  // Signature: onPositionSelect({ kind: "group"|"child", group, child }).
-  function onPositionSelect(_selection) {
-    // documented no-op for B3a; B3b (expanded panel + replay) replaces this.
+  // Task B3b: expanded detail panel + replay. Replaces the B3a no-op hook.
+  // fields covering all child/group columns + fills (Analizar is disabled
+  // until C5). Degrades clean if adapters.js/chart.js are not on the page
+  // (window.SENTINEL.adapters && / window.SENTINEL.chart && guards).
+  const DEFAULT_TF = "M5";
+  const PANEL_TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900, H1: 3600, D: 86400 };
+
+  function positionEntryExit(selection) {
+    const group = selection.group || {};
+    const child = selection.kind === "child" ? selection.child : (group.children || [])[0] || {};
+    const tIn = epochOf(child.ts_in != null ? child.ts_in : group.first_in);
+    const tOut = epochOf(child.ts_out != null ? child.ts_out : group.last_out);
+    return { child, tIn, tOut };
+  }
+
+  function renderDetailTable(host, selection) {
+    const group = selection.group || {};
+    const child = selection.kind === "child" ? selection.child : (group.children || [])[0] || {};
+    const fills = child.fills || group.fills || [];
+    const rows = [];
+    Object.keys(group).forEach((k) => {
+      if (k === "children") return;
+      rows.push([`group.${k}`, group[k]]);
+    });
+    Object.keys(child).forEach((k) => {
+      if (k === "fills") return;
+      rows.push([k, child[k]]);
+    });
+    const fillsHtml = fills.length
+      ? `<h4>Fills</h4><table>${fills.map((f, i) => `<tr><td>#${i + 1}</td><td>${escapeHtml(JSON.stringify(f))}</td></tr>`).join("")}</table>`
+      : "";
+    host.innerHTML = `<table>${rows.map(([k, v]) => `<tr><td class="mono">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v === null || v === undefined ? "--" : String(v))}</td></tr>`).join("")}</table>${fillsHtml}`;
+  }
+
+  function buildHumanoDetailPanel(container, selection, onClose) {
+    injectHumanoCss();
+    const panel = el("div", { class: "positions-humano-panel" });
+    const header = el("div", { class: "positions-humano-panel-header" });
+    header.innerHTML = `<strong>Detalle posici&oacute;n</strong>`;
+    const closeBtn = el("button", { type: "button", class: "positions-humano-panel-close", title: "Cerrar" });
+    closeBtn.textContent = "×";
+    header.appendChild(closeBtn);
+    panel.appendChild(header);
+
+    const chartHost = el("div", { class: "positions-humano-panel-chart" });
+    panel.appendChild(chartHost);
+
+    const detailHost = el("div", { class: "positions-humano-panel-detail" });
+    panel.appendChild(detailHost);
+    renderDetailTable(detailHost, selection);
+
+    const actions = el("div", { class: "positions-humano-panel-actions" });
+    const replayBtn = el("button", { type: "button", class: "positions-humano-replay-btn" });
+    replayBtn.textContent = "Replay";
+    const analizarBtn = el("button", {
+      type: "button",
+      class: "positions-humano-analizar-btn",
+      disabled: "disabled",
+      title: "Análisis IA — próximamente",
+    });
+    analizarBtn.textContent = "Analizar";
+    analizarBtn.disabled = true;
+    actions.appendChild(replayBtn);
+    actions.appendChild(analizarBtn);
+    panel.appendChild(actions);
+
+    const { child, tIn, tOut } = positionEntryExit(selection);
+    const tf = DEFAULT_TF;
+    const tfSec = PANEL_TF_SEC[tf] || 300;
+
+    let chartInst = null;
+    let histAdapter = null;
+    let panelBarSource = null;
+    const symbol = (selection.group && selection.group.symbol) || "";
+    if (window.SENTINEL.chart && window.SENTINEL.adapters) {
+      chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf });
+      if (chartInst && window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource && window.SENTINEL.adapters.HistAdapter) {
+        panelBarSource = window.SENTINEL.chartData.createBarSource({ symbol, tf });
+        histAdapter = window.SENTINEL.adapters.HistAdapter(chartInst, panelBarSource);
+      }
+      if (histAdapter && tIn != null && tOut != null) {
+        histAdapter.ensureWindow(tIn - 30 * tfSec, tOut + 30 * tfSec).then(() => {
+          histAdapter.setSignals([{
+            signal_id: child.position_id,
+            side: child.side,
+            ts_in: tIn,
+            px_in: child.px_in,
+            ts_out: tOut,
+            px_out: child.px_out,
+          }]);
+        }).catch(() => { /* noop: chart degrades to empty */ });
+      }
+    } else {
+      chartHost.innerHTML = '<div class="positions-panel-chart-unavailable">Chart no disponible.</div>';
+    }
+
+    replayBtn.addEventListener("click", () => {
+      if (!window.SENTINEL.adapters || !window.SENTINEL.adapters.ReplayAdapter || !chartInst || !panelBarSource) return;
+      if (tIn == null || tOut == null) return;
+      const replayArgs = {
+        fromT: tIn - 4 * tfSec,
+        toT: tOut + 4 * tfSec,
+        pauseAfterBars: 4,
+      };
+      const replay = window.SENTINEL.adapters.ReplayAdapter(chartInst, panelBarSource, replayArgs);
+      replay.prime().then(() => replay.play());
+    });
+
+    function escHandler(evt) {
+      if (evt.key === "Escape") closePanel();
+    }
+    document.addEventListener("keydown", escHandler);
+
+    function closePanel() {
+      document.removeEventListener("keydown", escHandler);
+      if (chartInst) { try { chartInst.destroy(); } catch (e) { /* noop */ } }
+      container.innerHTML = "";
+      if (onClose) onClose();
+    }
+
+    closeBtn.addEventListener("click", closePanel);
+
+    container.innerHTML = "";
+    container.appendChild(panel);
+
+    return { teardown: closePanel };
   }
 
   function buildHumanoFlatItems(groups, expandedIds) {
@@ -335,6 +468,8 @@
     let groups = [];
     let selectedKey = null;
     let humanoVlist = null;
+    let panelHandle = null;
+    const panelHost = el("div", { class: "positions-humano-panel-host" });
 
     function itemKeyOf(item) {
       return item.kind === "group" ? `g:${item.group.group_id}` : `c:${item.child.position_id}`;
@@ -354,7 +489,8 @@
       window.SENTINEL.appState = window.SENTINEL.appState || {};
       window.SENTINEL.appState.selectedPosition = selection;
       if (humanoVlist) humanoVlist.setSelected([selectedKey]);
-      onPositionSelect(selection);
+      if (panelHandle) { try { panelHandle.teardown(); } catch (e) { /* noop */ } panelHandle = null; }
+      panelHandle = buildHumanoDetailPanel(panelHost, selection, () => { panelHandle = null; });
     }
 
     function handleToggle(groupId) {
@@ -374,6 +510,7 @@
       listHost.style.height = "100%";
       listHost.style.overflow = "auto";
       host.appendChild(listHost);
+      host.appendChild(panelHost);
 
       const fmt = window.SENTINEL.fmt;
       humanoVlist = window.SENTINEL.vlist.createVList(listHost, {
@@ -393,7 +530,10 @@
     });
 
     return {
-      teardown: () => { if (humanoVlist) { try { humanoVlist.destroy(); } catch (e) { /* noop */ } } },
+      teardown: () => {
+        if (humanoVlist) { try { humanoVlist.destroy(); } catch (e) { /* noop */ } }
+        if (panelHandle) { try { panelHandle.teardown(); } catch (e) { /* noop */ } panelHandle = null; }
+      },
     };
   }
 

@@ -132,3 +132,61 @@ def test_positions_js_humano_injects_scoped_style():
     CSS must be injected section-scoped via a <style id="positions-humano-css">."""
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
     assert "positions-humano-css" in text
+
+
+# ---- B3b: expanded detail panel + replay -----------------------------------
+
+def test_positions_js_humano_panel_uses_hist_adapter_and_chart_create():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "window.SENTINEL.adapters" in text
+    assert "HistAdapter" in text
+    assert "window.SENTINEL.chart" in text
+    assert "chart.create" in text
+
+
+def test_positions_js_humano_panel_windows_30_bars_around_entry_exit():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "30" in text
+    assert "ensureWindow" in text
+
+
+def test_positions_js_humano_panel_sets_signals_with_entry_exit():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "setSignals" in text
+
+
+def test_positions_js_humano_panel_has_replay_button_using_replay_adapter():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "ReplayAdapter" in text
+    assert "fromT" in text
+    assert "toT" in text
+    assert "pauseAfterBars" in text
+
+
+def test_positions_js_humano_panel_replay_window_is_4x_tf_padded():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "4 * tfSec" in text or "4 * tf_s" in text or "tfSec * 4" in text
+
+
+def test_positions_js_humano_panel_has_analizar_button_disabled_with_tooltip():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "Analizar" in text
+    assert "Análisis IA" in text or "Analisis IA" in text
+    assert "próximamente" in text or "proximamente" in text
+    assert "disabled" in text
+
+
+def test_positions_js_humano_panel_closes_on_escape_with_listener_teardown():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert '"keydown"' in text
+    assert "Escape" in text
+    assert "removeEventListener" in text
+
+
+def test_positions_js_humano_panel_degrades_clean_without_adapters_or_chart():
+    """Guard pattern: if window.SENTINEL.adapters / window.SENTINEL.chart are
+    missing, the panel must not crash — checked before use (repo pattern,
+    same as chart.js's `window.SENTINEL.adapters &&` guard)."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "window.SENTINEL.adapters &&" in text or "window.SENTINEL.adapters&&" in text
+    assert "window.SENTINEL.chart &&" in text or "window.SENTINEL.chart&&" in text
