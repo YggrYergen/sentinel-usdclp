@@ -246,3 +246,98 @@ def test_last_sync_defaults_to_zero_on_fresh_registry(reg):
     client = _StubMt5Client(_SAMPLE_DEALS)
     watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
     assert watcher.last_sync == 0.0
+
+
+# ---------------------------------------------------------------------------
+# B1c: leverage + contract_size capture (pct = profit/margin inputs)
+# ---------------------------------------------------------------------------
+
+class _AccountInfo:
+    def __init__(self, leverage):
+        self.leverage = leverage
+
+
+class _SymbolInfo:
+    def __init__(self, trade_contract_size):
+        self.trade_contract_size = trade_contract_size
+
+
+class _StubMt5ClientWithLeverage(_StubMt5Client):
+    """Adds account_info()/symbol_info(sym) per B1c spec."""
+
+    def __init__(self, deals, leverage=100, contract_sizes=None):
+        super().__init__(deals)
+        self._leverage = leverage
+        self._contract_sizes = contract_sizes or {}
+        self.symbol_info_calls = []
+
+    def account_info(self):
+        return _AccountInfo(self._leverage)
+
+    def symbol_info(self, symbol):
+        self.symbol_info_calls.append(symbol)
+        size = self._contract_sizes.get(symbol)
+        if size is None:
+            return None
+        return _SymbolInfo(size)
+
+
+def test_leverage_and_contract_size_populated_when_client_supports_them(reg):
+    client = _StubMt5ClientWithLeverage(
+        _SAMPLE_DEALS, leverage=200, contract_sizes={"XAUUSD": 100.0}
+    )
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (1001,)).fetchone()
+        d = dict(row)
+        assert d["leverage"] == 200
+        assert d["contract_size"] == 100.0
+    finally:
+        conn.close()
+
+    # symbol_info cached once per distinct symbol in the batch (both sample
+    # deals share "XAUUSD").
+    assert client.symbol_info_calls == ["XAUUSD"]
+
+
+def test_leverage_and_contract_size_null_when_client_lacks_methods(reg):
+    client = _StubMt5Client(_SAMPLE_DEALS)  # old-style stub: no account_info/symbol_info
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    report = watcher.poll_once()
+
+    assert report.upserted == 2  # no crash
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (1001,)).fetchone()
+        d = dict(row)
+        assert d["leverage"] is None
+        assert d["contract_size"] is None
+    finally:
+        conn.close()
+
+
+def test_leverage_and_contract_size_idempotent_on_repeated_poll(reg):
+    client = _StubMt5ClientWithLeverage(
+        _SAMPLE_DEALS, leverage=500, contract_sizes={"XAUUSD": 100.0}
+    )
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+    second_report = watcher.poll_once()
+
+    assert second_report.upserted == 2
+
+    conn = sqlite3.connect(str(reg.db_path))
+    try:
+        count = conn.execute("SELECT COUNT(*) FROM deals_raw").fetchone()[0]
+        assert count == 2
+    finally:
+        conn.close()

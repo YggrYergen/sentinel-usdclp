@@ -269,6 +269,18 @@ class ResearchRegistry:
         conn.executescript(_JOBS_DDL)
         conn.commit()
 
+        # B1c: `deals_raw` leverage/contract_size (pct = profit/margin inputs,
+        # margin = volume*contract_size*open_price/leverage for B3 UI).
+        # Nullable -- pre-existing rows and clients without account_info()/
+        # symbol_info() stay null, no crash.
+        deals_cols = {row[1] for row in conn.execute("PRAGMA table_info(deals_raw)").fetchall()}
+        if "leverage" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN leverage REAL")
+            conn.commit()
+        if "contract_size" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN contract_size REAL")
+            conn.commit()
+
         # B6: any job left `queued`/`running` from a prior process (crash or
         # restart) can never be resumed -- mark it `error:"interrupted"` on
         # boot so `GET /api/jobs/{id}` never reports a job as perpetually

@@ -49,6 +49,7 @@ _DEAL_COLUMNS = (
     "ticket", "position_id", "symbol", "side", "volume",
     "price", "profit", "magic", "time", "entry_type",
     "origin", "strategy_id", "variant_id",
+    "leverage", "contract_size",
 )
 
 _LAST_SYNC_META_KEY = "deals_watcher.last_sync"
@@ -92,11 +93,19 @@ def _attribute_magic(registry: ResearchRegistry, magic: Any) -> dict[str, Any]:
     return {"origin": "human", "strategy_id": None, "variant_id": None}
 
 
-def _map_deal(registry: ResearchRegistry, deal: dict[str, Any]) -> dict[str, Any]:
+def _map_deal(
+    registry: ResearchRegistry,
+    deal: dict[str, Any],
+    leverage: float | None = None,
+    contract_sizes: dict[str, float | None] | None = None,
+) -> dict[str, Any]:
     """Deal dict -> `deals_raw` row shape, incl. B1a-2 magic-attribution
-    (`origin`/`strategy_id`/`variant_id`)."""
+    (`origin`/`strategy_id`/`variant_id`) and B1c leverage/contract_size
+    (pct = profit/margin inputs for B3 UI)."""
     row = {col: deal.get(col) for col in _DEAL_COLUMNS}
     row.update(_attribute_magic(registry, deal.get("magic")))
+    row["leverage"] = leverage
+    row["contract_size"] = (contract_sizes or {}).get(deal.get("symbol"))
     return row
 
 
@@ -134,7 +143,15 @@ class DealsWatcher:
         from_ts = self._last_sync - 3600
         deals = self.mt5_client.history_deals_get(from_ts, now)
 
-        upserted = self._upsert_deals(deals)
+        # B1c: leverage (account-level, once per poll) + contract_size
+        # (per distinct symbol in this batch) -- both are plain reads
+        # (never order_send/trading calls), defensively looked up via
+        # getattr so an older/stub mt5_client without these methods just
+        # leaves the columns null instead of crashing.
+        leverage = self._read_leverage()
+        contract_sizes = self._read_contract_sizes(deals)
+
+        upserted = self._upsert_deals(deals, leverage, contract_sizes)
 
         # Persist last_sync = now (poll time), not max(deal.time) -- stays
         # correct even when deals_seen == 0, and avoids trusting the
@@ -146,7 +163,43 @@ class DealsWatcher:
             attached=True, deals_seen=len(deals), upserted=upserted, skipped=False
         )
 
-    def _upsert_deals(self, deals: list[dict[str, Any]]) -> int:
+    def _read_leverage(self) -> float | None:
+        """B1c: `account_info().leverage`, once per poll. Defensive:
+        `mt5_client` may be an old-style stub with no `account_info` method
+        (getattr fallback), or `account_info()` may return None -- either
+        way this yields None, never a crash."""
+        account_info = getattr(self.mt5_client, "account_info", None)
+        if account_info is None:
+            return None
+        info = account_info()
+        if info is None:
+            return None
+        return getattr(info, "leverage", None)
+
+    def _read_contract_sizes(self, deals: list[dict[str, Any]]) -> dict[str, float | None]:
+        """B1c: `symbol_info(sym).trade_contract_size`, once per distinct
+        symbol in this poll's batch (cached in this dict for the batch --
+        no cross-poll session cache needed since each poll's batch is
+        small and this keeps the method stateless/simple). Defensive same
+        as `_read_leverage`."""
+        symbol_info = getattr(self.mt5_client, "symbol_info", None)
+        if symbol_info is None:
+            return {}
+        sizes: dict[str, float | None] = {}
+        for deal in deals:
+            sym = deal.get("symbol")
+            if sym is None or sym in sizes:
+                continue
+            info = symbol_info(sym)
+            sizes[sym] = getattr(info, "trade_contract_size", None) if info is not None else None
+        return sizes
+
+    def _upsert_deals(
+        self,
+        deals: list[dict[str, Any]],
+        leverage: float | None = None,
+        contract_sizes: dict[str, float | None] | None = None,
+    ) -> int:
         if not deals:
             return 0
         cols = ", ".join(_DEAL_COLUMNS)
@@ -154,7 +207,7 @@ class DealsWatcher:
         conn = self.registry._connect()
         try:
             for deal in deals:
-                row = _map_deal(self.registry, deal)
+                row = _map_deal(self.registry, deal, leverage, contract_sizes)
                 conn.execute(
                     f"INSERT OR REPLACE INTO deals_raw({cols}) VALUES ({placeholders})",
                     tuple(row[c] for c in _DEAL_COLUMNS),
