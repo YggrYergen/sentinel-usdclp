@@ -57,7 +57,7 @@
 | REV-4 service fixes wave-B review: SSE job_id (CT-4 enmendado) · equity JSON/ts hardening · pct computado · upsert COALESCE | A | — | [x] | 989e43c (2 disp c/ corte de sesión, ~5min) |
 | REV-5 web fixes wave-B review: EventSource teardown · group-card VWAP | B | — | [x] | ac9b7e0 (2 disp c/ corte de sesión, ~4min) |
 | REV-3 backlog (review): bars double-read w/ overlays · redraw/mousemove throttling · tuple-bar retirement · max_points≤0 · rangeless 404 · dual live-updaters · [wave-B] vwap con OUTs volume-0 · scorecard N-fetch sin caché · /api/positions full-scan (índice origin/symbol + time-bound antes de live) · fetchCoverage 3ª impl (runs.js) · re-fetch por tab-switch · guard IN-less duplicado router/grouping | — | — | [ ] | backlog, fix pass post-Wave-B |
-| C1 news poller + API | A | W0.1 | [ ] | |
+| C1 news poller + API | A | W0.1 | [~] | C1a `fcaaee2` (1 disp, ~2min, 12 tests); C1b pending |
 | C2 News tab UI | B | C1 | [ ] | |
 | C3 dossier builders | A | B2 | [ ] | |
 | C4 tool registry + manual loop | A | C3 | [ ] | |
