@@ -1,0 +1,21 @@
+# news.yaml — C1b news source config (CT-5).
+#
+# Consumed by `sentinel_engine.service.news.load_news_config` /
+# `NewsPoller`. `rss` is a list of RSS feed URLs polled on a 90s cadence
+# (conditional GET honors ETag/Last-Modified). `ff_calendar` is the
+# ForexFactory-style weekly calendar JSON URL (parsed via `parse_ff_calendar`
+# from C1a). `symbol_keywords` overrides the hardcoded
+# `DEFAULT_SYMBOL_KEYWORDS` map in `sentinel_engine/service/news.py` when
+# present (per-symbol list of lowercase substrings matched against titles).
+
+rss:
+  - https://www.forexlive.com/feed/news
+  - https://www.fxstreet.com/rss/news
+  - https://www.investing.com/rss/news_301.rss
+
+ff_calendar: https://nfs.faireconomy.media/ff_calendar_thisweek.json
+
+symbol_keywords:
+  XAUUSD: ["gold", "oro", "xau"]
+  DXY: ["dxy", "dollar index", "us dollar index"]
+  VIX: ["vix", "volatility index"]

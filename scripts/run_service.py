@@ -118,7 +118,13 @@ def main() -> None:
     feed_factory, kind = build_feed_factory(force_historical=args.force_historical)
     logger.info("Feed kind selected: %s", kind)
 
-    app = create_app(feed_factory=feed_factory, instruments=instruments)
+    # autostart_news_poller is opt-in (default False so tests/offline
+    # harnesses never fetch the network) — the real service DOES poll.
+    app = create_app(
+        feed_factory=feed_factory,
+        instruments=instruments,
+        autostart_news_poller=True,
+    )
 
     logger.info("Starting SENTINEL service on http://%s:%s (feed=%s)", args.host, args.port, kind)
     uvicorn.run(app, host=args.host, port=args.port)

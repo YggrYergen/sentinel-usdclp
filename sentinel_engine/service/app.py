@@ -37,6 +37,7 @@ from sentinel_engine.config import InstrumentConfig, load_instrument
 from sentinel_engine.engine import Engine, Snapshot
 from sentinel_engine.feed import Feed
 from sentinel_engine.research.registry2 import STRATEGY_PALETTE, ResearchRegistry
+from sentinel_engine.service.news import NewsPoller, load_news_config
 
 
 def _parse_flexible_ts(value: str | None) -> "pd.Timestamp | None":
@@ -75,6 +76,7 @@ DEFAULT_INSTRUMENTS: tuple[str, ...] = ("usdclp", "gold", "nasdaq")
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 DEFAULT_RESEARCH_DB = Path("data/research.db")
 DEFAULT_LAKE_ROOT = Path("data/lake")
+DEFAULT_NEWS_CONFIG = Path(__file__).resolve().parents[2] / "news.yaml"
 
 
 def _default_tick_source(symbol: str) -> tuple[float, float] | None:
@@ -206,6 +208,8 @@ def create_app(
     lake_root: Path | None = None,
     tick_source: Callable[[str], tuple[float, float] | None] | None = None,
     tick_poll_interval: float = 0.25,
+    news_config_path: Path | None = None,
+    autostart_news_poller: bool = False,
 ) -> FastAPI:
     """Build the SENTINEL FastAPI service.
 
@@ -227,6 +231,14 @@ def create_app(
     backing the `ticks:{SYMBOL}` WS channel; defaults to
     `_default_tick_source` (lazy MT5 import, never any order function).
     Tests inject a fake for plumbing without an MT5 dependency.
+
+    `news_config_path` (C1b): path to `news.yaml` backing the `NewsPoller`
+    (`GET /api/news/stream`); defaults to the repo-root `news.yaml`.
+    `autostart_news_poller` is OPT-IN (default False): `run_forever` polls
+    real network sources immediately, so tests / offline deterministic
+    harnesses (e.g. `scripts/dev/e2e_service.py`) must never start it by
+    default -- only the real service entry point (`scripts/run_service.py`)
+    passes True.
     """
     if registry is None:
         registry = ResearchRegistry(DEFAULT_RESEARCH_DB)
@@ -235,6 +247,10 @@ def create_app(
     lake_root = Path(lake_root)
     if tick_source is None:
         tick_source = _default_tick_source
+    if news_config_path is None:
+        news_config_path = DEFAULT_NEWS_CONFIG
+    news_config = load_news_config(news_config_path)
+    news_poller = NewsPoller(registry, news_config)
 
     runners: dict[str, InstrumentRunner] = {}
     for name in instruments:
@@ -260,11 +276,16 @@ def create_app(
     @asynccontextmanager
     async def lifespan(_app: FastAPI):
         task = asyncio.create_task(_background_loop()) if autostart_loop else None
+        news_task = (
+            asyncio.create_task(news_poller.run_forever()) if autostart_news_poller else None
+        )
         try:
             yield
         finally:
             if task is not None:
                 task.cancel()
+            if news_task is not None:
+                news_task.cancel()
             for sym_task in list(tick_hub._tasks.values()):  # noqa: SLF001 - shutdown-only cleanup
                 sym_task.cancel()
 
@@ -285,7 +306,7 @@ def create_app(
     app.include_router(positions_router.build_router(registry))
     app.include_router(chat_router.build_router(runners, _resolve, app.state))
     app.include_router(jobs_router.build_router(registry, lake_root, jobs, backtest_lock))
-    app.include_router(news_router.build_router(registry))
+    app.include_router(news_router.build_router(registry, news_poller))
     app.include_router(system_router.build_router(runners, broadcaster))
     app.state.runners = runners
     app.state.broadcaster = broadcaster
@@ -297,6 +318,7 @@ def create_app(
     app.state.registry = registry
     app.state.lake_root = lake_root
     app.state.tick_hub = tick_hub
+    app.state.news_poller = news_poller
     # POST /api/backtest job bookkeeping (M2.5): a plain dict of
     # job_id -> {"status","run_id"} plus a lock that serializes the actual
     # sim runs — "single-worker sequential queue" per plan §M2.5, backed by

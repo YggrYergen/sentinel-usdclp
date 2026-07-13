@@ -1,27 +1,46 @@
-"""sentinel_engine.service.news — C1a news core: parse + dedupe + table.
+"""sentinel_engine.service.news — C1a news core + C1b poller loop.
 
-Parsers accept raw strings only (no network code here — network fetching
-lands in C1b). `NewsItem` is a plain dict shaped per CT-5:
-`{"id","ts","source","title","url","symbols","kind","impact"}`.
+Parsers accept raw strings only. `NewsItem` is a plain dict shaped per
+CT-5: `{"id","ts","source","title","url","symbols","kind","impact"}`.
 
 Dedupe: exact-id dedupe (sha1 of canonical url / calendar event key) plus
 near-duplicate title collapsing within a 48h window via
 `difflib.SequenceMatcher` ratio > 0.9 (`is_dup_title`).
 
-Symbol keyword map is a hardcoded default here; per-symbol/yaml override
-is out of scope for this task (arrives in C1b).
+Symbol keyword map is a hardcoded default (`DEFAULT_SYMBOL_KEYWORDS`);
+`load_news_config` (C1b) reads `news.yaml` and can override it per-symbol.
+
+C1b additions: `load_news_config` (yaml loader) and `NewsPoller` (90s-cadence
+background loop -- injectable `fetcher(url, etag, last_modified) ->
+(status, headers, body)`, defaults to stdlib `urllib.request`; conditional
+GET honors ETag/Last-Modified, 304 => skip; new items only => broadcast to
+subscribers for `GET /api/news/stream`, CT-9 SSE `news_item` event). The
+poller never raises out of `poll_once`/the background loop -- fetch/parse
+errors are logged and the loop continues.
 """
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
+import logging
+import queue
 import sqlite3
+import urllib.request
 from difflib import SequenceMatcher
-from typing import Any
+from pathlib import Path
+from typing import Any, Callable
+from urllib.error import HTTPError, URLError
 from urllib.parse import urlsplit, urlunsplit
 from xml.etree import ElementTree
 
+import yaml
+
 NewsItem = dict[str, Any]
+
+logger = logging.getLogger(__name__)
+
+POLL_INTERVAL_SECONDS = 90.0
 
 _DUP_WINDOW_SECONDS = 48 * 3600
 _TITLE_DUP_RATIO = 0.9
@@ -72,16 +91,19 @@ def is_dup_title(a: NewsItem, b: NewsItem) -> bool:
     return ratio > _TITLE_DUP_RATIO
 
 
-def _detect_symbols(title: str) -> list[str]:
+def _detect_symbols(
+    title: str, symbol_keywords: dict[str, Any] | None = None
+) -> list[str]:
     lower = title.lower()
+    keyword_map = symbol_keywords if symbol_keywords else DEFAULT_SYMBOL_KEYWORDS
     hits = []
-    for symbol, keywords in DEFAULT_SYMBOL_KEYWORDS.items():
+    for symbol, keywords in keyword_map.items():
         if any(kw in lower for kw in keywords):
             hits.append(symbol)
     return hits
 
 
-def parse_rss(raw: str, source: str) -> list[NewsItem]:
+def parse_rss(raw: str, source: str, symbol_keywords: dict[str, Any] | None = None) -> list[NewsItem]:
     """Parse an RSS 2.0 XML string into a list of NewsItem dicts.
 
     Uses stdlib `xml.etree.ElementTree` only (no feedparser dependency).
@@ -94,7 +116,7 @@ def parse_rss(raw: str, source: str) -> list[NewsItem]:
         link = (item_el.findtext("link") or "").strip()
         pub_date = item_el.findtext("pubDate")
         ts = _parse_rfc822_ts(pub_date) if pub_date else None
-        symbols = _detect_symbols(title)
+        symbols = _detect_symbols(title, symbol_keywords)
         news_item: NewsItem = {
             "id": "",
             "ts": ts,
@@ -122,7 +144,7 @@ def _parse_rfc822_ts(raw: str) -> int | None:
     return int(dt.timestamp())
 
 
-def parse_ff_calendar(raw: str) -> list[NewsItem]:
+def parse_ff_calendar(raw: str, symbol_keywords: dict[str, Any] | None = None) -> list[NewsItem]:
     """Parse a ForexFactory-style weekly calendar JSON string into a list
     of NewsItem dicts (`kind="calendar"`).
 
@@ -138,7 +160,7 @@ def parse_ff_calendar(raw: str) -> list[NewsItem]:
         ts = _parse_iso_ts(date_str) if date_str else None
         impact_raw = (entry.get("impact") or "").strip().lower()
         impact = impact_raw if impact_raw in ("high", "medium", "low") else None
-        symbols = _detect_symbols(title)
+        symbols = _detect_symbols(title, symbol_keywords)
         news_item: NewsItem = {
             "id": "",
             "ts": ts,
@@ -257,3 +279,169 @@ def query_items(
         if len(results) >= limit:
             break
     return results
+
+
+# ---------------------------------------------------------------------------
+# C1b: news.yaml loader
+# ---------------------------------------------------------------------------
+def load_news_config(path: Path) -> dict[str, Any]:
+    """Load `news.yaml`: `{"rss": [...], "ff_calendar": <url|None>,
+    "symbol_keywords": {...}}`. `symbol_keywords` overrides
+    `DEFAULT_SYMBOL_KEYWORDS` wholesale when present and non-empty."""
+    with Path(path).open("r", encoding="utf-8") as f:
+        raw = yaml.safe_load(f) or {}
+    return {
+        "rss": raw.get("rss") or [],
+        "ff_calendar": raw.get("ff_calendar"),
+        "symbol_keywords": raw.get("symbol_keywords") or {},
+    }
+
+
+# ---------------------------------------------------------------------------
+# C1b: default fetcher (stdlib urllib, conditional GET)
+# ---------------------------------------------------------------------------
+def _default_fetcher(
+    url: str, etag: str | None, last_modified: str | None
+) -> tuple[int, dict[str, str], bytes]:
+    """`fetcher(url, etag, last_modified) -> (status, headers, body)`.
+    Conditional GET via `If-None-Match`/`If-Modified-Since`; a 304 response
+    surfaces as `(304, {}, b"")` rather than raising (urllib raises
+    `HTTPError` for non-2xx, including 304)."""
+    req = urllib.request.Request(url)
+    if etag:
+        req.add_header("If-None-Match", etag)
+    if last_modified:
+        req.add_header("If-Modified-Since", last_modified)
+    try:
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            return resp.status, dict(resp.headers), resp.read()
+    except HTTPError as exc:
+        if exc.code == 304:
+            return 304, {}, b""
+        raise
+
+
+# ---------------------------------------------------------------------------
+# C1b: NewsPoller -- background loop + SSE broadcaster
+# ---------------------------------------------------------------------------
+class NewsPoller:
+    """Polls `config["rss"]` (+ `config["ff_calendar"]` if set) on a 90s
+    cadence, upserts new items into `news_items`, and broadcasts each new
+    item to subscribers (`GET /api/news/stream`, CT-9 SSE `news_item`
+    event).
+
+    `fetcher(url, etag, last_modified) -> (status, headers, body)` is
+    injectable (tests pass a fake; production defaults to
+    `_default_fetcher`, stdlib `urllib.request` only). Conditional GET:
+    per-url ETag/Last-Modified from the previous response are sent on the
+    next poll; a 304 response means "unchanged" -- skipped, no parse, no
+    broadcast.
+
+    `poll_once()` and the background loop never raise: fetch errors,
+    malformed feed bodies, etc. are logged and that source is skipped for
+    this cycle -- the loop (and other sources) keep going.
+    """
+
+    def __init__(
+        self,
+        registry: Any,
+        config: dict[str, Any],
+        fetcher: Callable[[str, str | None, str | None], tuple[int, dict[str, str], bytes]]
+        | None = None,
+    ) -> None:
+        self._registry = registry
+        self._config = config
+        self._fetcher = fetcher or _default_fetcher
+        self._symbol_keywords = config.get("symbol_keywords") or None
+        self._cache: dict[str, dict[str, str | None]] = {}  # url -> {"etag","last_modified"}
+        self._subscribers: list["queue.Queue[dict]"] = []
+
+    # ------------------------------------------------------------------
+    # SSE broadcast (CT-9)
+    # ------------------------------------------------------------------
+    def subscribe(self) -> "queue.Queue[dict]":
+        q: "queue.Queue[dict]" = queue.Queue()
+        self._subscribers.append(q)
+        return q
+
+    def unsubscribe(self, q: "queue.Queue[dict]") -> None:
+        if q in self._subscribers:
+            self._subscribers.remove(q)
+
+    def _broadcast(self, item: NewsItem) -> None:
+        for q in list(self._subscribers):
+            q.put(item)
+
+    # ------------------------------------------------------------------
+    # polling
+    # ------------------------------------------------------------------
+    def _sources(self) -> list[tuple[str, str]]:
+        """`[(url, source_kind), ...]` where `source_kind` is `"rss"` or
+        `"ff_calendar"`."""
+        sources = [(url, "rss") for url in (self._config.get("rss") or [])]
+        ff_url = self._config.get("ff_calendar")
+        if ff_url:
+            sources.append((ff_url, "ff_calendar"))
+        return sources
+
+    def _poll_source(self, url: str, source_kind: str) -> None:
+        cached = self._cache.get(url, {})
+        try:
+            status, headers, body = self._fetcher(
+                url, cached.get("etag"), cached.get("last_modified")
+            )
+        except (HTTPError, URLError, OSError, TimeoutError) as exc:
+            logger.warning("news poller: fetch failed for %s: %s", url, exc)
+            return
+
+        if status == 304:
+            return
+        if status != 200:
+            logger.warning("news poller: unexpected status %s for %s", status, url)
+            return
+
+        etag = headers.get("ETag") or headers.get("Etag")
+        last_modified = headers.get("Last-Modified")
+        self._cache[url] = {"etag": etag, "last_modified": last_modified}
+
+        raw = body.decode("utf-8", errors="replace")
+        try:
+            if source_kind == "ff_calendar":
+                items = parse_ff_calendar(raw, self._symbol_keywords)
+            else:
+                items = parse_rss(raw, source=url, symbol_keywords=self._symbol_keywords)
+        except Exception as exc:  # noqa: BLE001 - malformed feed must not kill the loop
+            logger.warning("news poller: failed to parse %s: %s", url, exc)
+            return
+
+        if not items:
+            return
+
+        existing_ids = {row["id"] for row in query_items(self._registry, limit=10_000)}
+        new_items = [item for item in dedupe_items(items) if item["id"] not in existing_ids]
+        if not new_items:
+            return
+
+        upsert_items(self._registry, new_items)
+        for item in new_items:
+            self._broadcast(item)
+
+    def poll_once(self) -> None:
+        """One pass over every configured source. Never raises -- each
+        source's errors are caught and logged individually."""
+        for url, source_kind in self._sources():
+            try:
+                self._poll_source(url, source_kind)
+            except Exception as exc:  # noqa: BLE001 - the loop must survive any single source's failure
+                logger.warning("news poller: unhandled error polling %s: %s", url, exc)
+
+    async def run_forever(self, interval: float = POLL_INTERVAL_SECONDS) -> None:
+        """Background task entry point (same pattern as `app.py`'s compute
+        loop): `poll_once()` runs off the event loop thread via
+        `asyncio.to_thread` since the default fetcher does blocking I/O."""
+        while True:
+            try:
+                await asyncio.to_thread(self.poll_once)
+            except Exception as exc:  # noqa: BLE001 - defense in depth, poll_once already catches internally
+                logger.warning("news poller: loop iteration failed: %s", exc)
+            await asyncio.sleep(interval)
