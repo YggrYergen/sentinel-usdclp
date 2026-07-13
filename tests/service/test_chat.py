@@ -2,15 +2,28 @@
 P5 Task 5.1/5.2 — POST /chat builds its context SOLELY from
 `render_ai_context(snapshot, cfg)` + MT5 positions (never literals), and the
 endpoint answers grounded questions offline (no network, no API key).
+
+Task C4b (additive, below the P5 tests) covers `POST
+/api/ai/analyze_position` — SSE stream (CT-9 events `ai_text`/`ai_done`/
+`ai_error`), CT-6 gate enforcement, and unknown-trade_id handling. Uses a
+fake Anthropic-shaped client (`.messages.create(**kwargs) -> FakeMessage`)
+injected as `app.state.chat_client` — no network, mirrors the fakes in
+`tests/ai/test_loop.py`.
 """
 from __future__ import annotations
 
 import dataclasses
+from dataclasses import dataclass, field
+from pathlib import Path
 
+import pandas as pd
+import pytest
 from fastapi.testclient import TestClient
 
 from sentinel_engine.config import load_instrument
 from sentinel_engine.engine import Engine
+from sentinel_engine.lake import store
+from sentinel_engine.research.registry2 import ResearchRegistry
 from sentinel_engine.service.chat import ChatReply, answer_chat, build_chat_context
 from tests.golden.capture_engine import ENGINE_WARMUP_TICKS
 from tests.golden.fake_feed import FakeFeed
@@ -199,3 +212,191 @@ def test_post_chat_endpoint_mock_mode_without_api_key_or_network(app_factory, mo
         assert body["error"] is None
         assert "Modo Demo" in body["content"]
         assert "resume el mercado" in body["content"]
+
+
+# ── C4b: POST /api/ai/analyze_position (SSE, CT-9) ──
+
+TS_IN = pd.Timestamp("2026-07-10T13:22:00Z")
+TS_OUT = pd.Timestamp("2026-07-10T13:41:00Z")
+
+
+@dataclass
+class _FakeTextBlock:
+    text: str
+    type: str = "text"
+
+
+@dataclass
+class _FakeMessage:
+    content: list
+    stop_reason: str
+
+
+@dataclass
+class _FakeMessagesResource:
+    responses: list = field(default_factory=list)
+    calls: list = field(default_factory=list)
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        idx = len(self.calls) - 1
+        if idx < len(self.responses):
+            return self.responses[idx]
+        return self.responses[-1]
+
+
+@dataclass
+class _FakeAnthropicClient:
+    responses: list
+
+    def __post_init__(self):
+        self.messages = _FakeMessagesResource(responses=self.responses)
+
+
+def _seed_trade_and_lake(tmp_path: Path) -> tuple[Path, Path]:
+    db_path = tmp_path / "research.db"
+    lake_root = tmp_path / "lake"
+
+    reg = ResearchRegistry(db_path)
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V1", {}, "M5", "XAUUSD", "sl_tp")
+    run_id = reg.insert_run({
+        "run_id": "RUN001",
+        "variant_id": vid,
+        "engine": "sentinel-sim",
+        "fidelity": "research",
+        "periodo_desde": "2026-07-01",
+        "periodo_hasta": "2026-07-11",
+    })
+    reg.insert_trades(run_id, [{
+        "trade_id": "T00001",
+        "run_id": run_id,
+        "origin": "strategy",
+        "ts_in": TS_IN.isoformat(),
+        "ts_out": TS_OUT.isoformat(),
+        "px_in": 2415.30,
+        "px_out": 2418.75,
+        "side": "LONG",
+        "volume": 0.50,
+        "sl": 2413.80,
+        "tp": 2420.00,
+        "exit_reason": "tp_hit",
+        "exit_reason_source": "broker",
+        "pnl": 172.50,
+        "mae": -4.2,
+        "mfe": 34.5,
+    }])
+
+    start = TS_IN - pd.Timedelta(minutes=5 * 250)
+    idx = pd.date_range(start, periods=300, freq="5min", tz="UTC")
+    base = 2410.0
+    df = pd.DataFrame({
+        "open": [base + i * 0.10 for i in range(300)],
+        "high": [base + i * 0.10 + 0.30 for i in range(300)],
+        "low": [base + i * 0.10 - 0.20 for i in range(300)],
+        "close": [base + i * 0.10 + 0.05 for i in range(300)],
+        "volume": [100.0 + i for i in range(300)],
+    }, index=idx)
+    df.index.name = "time"
+    store.write_bars(lake_root, "XAUUSD", 5, df)
+
+    return db_path, lake_root
+
+
+def _parse_sse_events(text: str) -> list[tuple[str, str]]:
+    """Parse raw SSE body text into a list of (event_name, data_json_str),
+    skipping `retry:` lines and heartbeat comments (`: hb`)."""
+    events = []
+    event_name = None
+    for block in text.split("\n\n"):
+        block = block.strip("\n")
+        if not block or block.startswith(":") or block.startswith("retry:"):
+            continue
+        event_name = None
+        data = None
+        for line in block.split("\n"):
+            if line.startswith("event: "):
+                event_name = line[len("event: "):]
+            elif line.startswith("data: "):
+                data = line[len("data: "):]
+        if event_name is not None and data is not None:
+            events.append((event_name, data))
+    return events
+
+
+def test_analyze_position_happy_path_sse_sequence(app_factory, tmp_path):
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path, lake_root = _seed_trade_and_lake(tmp_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+
+    responses = [
+        _FakeMessage(content=[_FakeTextBlock(text="The trade hit TP cleanly.")], stop_reason="end_turn"),
+    ]
+    app.state.chat_client = _FakeAnthropicClient(responses=responses)
+
+    with TestClient(app) as client:
+        with client.stream(
+            "POST", "/api/ai/analyze_position", json={"trade_id": "T00001"}
+        ) as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("text/event-stream")
+            body = "".join(resp.iter_text())
+
+    events = _parse_sse_events(body)
+    names = [e[0] for e in events]
+    assert names == ["ai_text", "ai_done"]
+    assert "TP cleanly" in events[0][1]
+    assert "TP cleanly" in events[1][1]
+
+    # Model actually received the dossier XML + question, STABLE-FIRST
+    # ordering (fixed preamble -> dossier -> question last, per system
+    # prompt construction; the question itself lives in `messages`, not
+    # appended after the dossier inside `system`).
+    call = app.state.chat_client.messages.calls[0]
+    assert "<documents>" in call["system"]
+    assert call["system"].index("You are SENTINEL") < call["system"].index("<documents>")
+    assert "T00001" in call["messages"][0]["content"]
+
+
+def test_analyze_position_unknown_trade_id_emits_ai_error(app_factory, tmp_path):
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path, lake_root = _seed_trade_and_lake(tmp_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+    app.state.chat_client = _FakeAnthropicClient(responses=[])
+
+    with TestClient(app) as client:
+        with client.stream(
+            "POST", "/api/ai/analyze_position", json={"trade_id": "DOES-NOT-EXIST"}
+        ) as resp:
+            assert resp.status_code == 200
+            body = "".join(resp.iter_text())
+
+    events = _parse_sse_events(body)
+    assert [e[0] for e in events] == ["ai_error"]
+    assert "DOES-NOT-EXIST" in events[0][1]
+
+
+def test_analyze_position_gated_model_without_unlock_returns_403_before_any_call(
+    app_factory, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("SENTINEL_OPUS_GATE", "letmein")
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path, lake_root = _seed_trade_and_lake(tmp_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+
+    fake_client = _FakeAnthropicClient(responses=[])
+    app.state.chat_client = fake_client
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/ai/analyze_position",
+            json={"trade_id": "T00001", "model": "claude-opus-4-8"},
+        )
+        assert resp.status_code == 403
+        assert resp.json() == {"error": "gated_model_locked"}
+
+    # No API call was made -- gate checked BEFORE dossier build / API call.
+    assert fake_client.messages.calls == []
