@@ -54,7 +54,9 @@
 | B9 Lab tooltips render | B | ORC-3 content | [ ] | |
 | REV-1 grouping.py StopIteration guard (wave-A review, CONFIRMED) | C | — | [x] | 0733e97 (1 disp, ~1min) |
 | REV-2 web fixes: chart.js TF_SEC +H1/D · vlist-selected CSS · onTF live re-sync (review, CONFIRMED) | B | — | [x] | 8a00adb (1 disp, ~1.5min) |
-| REV-3 backlog (review): bars double-read w/ overlays · redraw/mousemove throttling · tuple-bar retirement · max_points≤0 · rangeless 404 · dual live-updaters | — | — | [ ] | backlog, fix pass post-Wave-B |
+| REV-4 service fixes wave-B review: SSE job_id (CT-4 enmendado) · equity JSON/ts hardening · pct computado · upsert COALESCE | A | — | [x] | 989e43c (2 disp c/ corte de sesión, ~5min) |
+| REV-5 web fixes wave-B review: EventSource teardown · group-card VWAP | B | — | [x] | ac9b7e0 (2 disp c/ corte de sesión, ~4min) |
+| REV-3 backlog (review): bars double-read w/ overlays · redraw/mousemove throttling · tuple-bar retirement · max_points≤0 · rangeless 404 · dual live-updaters · [wave-B] vwap con OUTs volume-0 · scorecard N-fetch sin caché · /api/positions full-scan (índice origin/symbol + time-bound antes de live) · fetchCoverage 3ª impl (runs.js) · re-fetch por tab-switch · guard IN-less duplicado router/grouping | — | — | [ ] | backlog, fix pass post-Wave-B |
 | C1 news poller + API | A | W0.1 | [ ] | |
 | C2 News tab UI | B | C1 | [ ] | |
 | C3 dossier builders | A | B2 | [ ] | |
@@ -110,7 +112,7 @@ Rules: `from`/`to` epoch-s or ISO (`_parse_flexible_ts`). Bars strictly ascendin
 `teorico` from `baseline_ref` run ONLY (never best-run). Fields null when insufficient data; never invented.
 
 ### CT-4 Jobs
-`POST /api/jobs/backtest {"variant_id","symbol","tf","from","to","preregistro_id"?:str,"exploratory":bool}` → `{"job_id"}`; 422 if window outside CT-1 coverage. `GET /api/jobs/{id}` → `{"status":"queued|running|done|error","progress":0.0-1.0,"run_id":null|str,"error":null|str}`. `GET /api/jobs/stream` = SSE, events `job_update` with same body. Worker pool size 1.
+`POST /api/jobs/backtest {"variant_id","symbol","tf","from","to","preregistro_id"?:str,"exploratory":bool}` → `{"job_id"}`; 422 if window outside CT-1 coverage. `GET /api/jobs/{id}` → `{"status":"queued|running|done|error","progress":0.0-1.0,"run_id":null|str,"error":null|str}`. `GET /api/jobs/stream` = SSE, events `job_update` with same body **+ `"job_id"` (AMENDED 2026-07-12, wave-B review REV-4: multi-job streams need event identity; without it clients cannot filter and cross-job progress/run_id bleed occurs)**. Worker pool size 1.
 
 ### CT-5 News
 `GET /api/news?symbol=&impact=&kind=&limit=100` → `{"items":[{"id","ts","source","title","url","symbols":["XAUUSD"],"kind":"news|calendar","impact":"high|medium|low|null"}]}`; `GET /api/news/stream` SSE event `news_item`. id = sha1(canonical url) or sha1(calendar event key).
