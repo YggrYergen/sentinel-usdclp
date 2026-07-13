@@ -45,12 +45,12 @@
 | B2 metrics.py + scorecard endpoint | A | W0.1 | [x] | a4ca93e |
 | B3-api positions list endpoint (gap found at B3 dispatch: routers/positions.py is stub, no /api/positions — UI has no data source) | A | B1b, B2 | [x] | e87ff10 (1 disp, ~2min) |
 | B1c watcher captures account/symbol meta (leverage, contract_size) — gap found at B3-api: pct=profit/margin has no inputs; B3-api serves pct=null until this lands | C | B1a | [x] | 06606d6 (1 disp, ~1.5min) |
-| B3 Positions HUMANO UI | B | A5a, B1b, B2, B3-api | [ ] | |
-| B4 ESTRATEGIA two-floor + sesiones label | B | B2 | [ ] | |
-| B5 IA selector UI (empty-state) | B | B4 | [ ] | |
+| B3 Positions HUMANO UI | B | A5a, B1b, B2, B3-api | [x] | bb9d155 (B3a) + 704b6f8 (B3b), 2 disp, ~5min |
+| B4 ESTRATEGIA two-floor + sesiones label | B | B2 | [x] | 67c4914 (1 disp, ~2.5min) |
+| B5 IA selector UI (empty-state) | B | B4 | [x] | 1061c55 (1 disp, ~2min; agregado client-side — endpoint ?origin=ia de B2 nunca existió) |
 | B6 jobs queue + SSE | A | W0.1, A2 | [x] | a7de06d (2 disp equiv, 16min — §2 review OK) |
-| B7 Runs launcher UI + detail dates | B | B6, A2 | [ ] | |
-| B8 /api/runs/{id}/equity | A | W0.1 | [ ] | |
+| B7 Runs launcher UI + detail dates | B | B6, A2 | [x] | efd0a92 (1 disp, ~3min) — WAVE B COMPLETE salvo B9 (ORC-3) |
+| B8 /api/runs/{id}/equity | A | W0.1 | [x] | f0ebb35 (1 disp, ~4min) |
 | B9 Lab tooltips render | B | ORC-3 content | [ ] | |
 | REV-1 grouping.py StopIteration guard (wave-A review, CONFIRMED) | C | — | [x] | 0733e97 (1 disp, ~1min) |
 | REV-2 web fixes: chart.js TF_SEC +H1/D · vlist-selected CSS · onTF live re-sync (review, CONFIRMED) | B | — | [x] | 8a00adb (1 disp, ~1.5min) |
