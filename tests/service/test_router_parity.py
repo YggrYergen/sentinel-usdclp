@@ -28,6 +28,7 @@ EXPECTED_ROUTES = {
     ("APIRoute", "/api/runs", ("GET",), "get_runs"),
     ("APIRoute", "/api/runs/{run_id}", ("GET",), "get_run"),
     ("APIRoute", "/api/runs/{run_id}/trades", ("GET",), "get_run_trades"),
+    ("APIRoute", "/api/runs/{run_id}/equity", ("GET",), "get_run_equity"),
     ("APIRoute", "/api/runs/{run_id}/indicators", ("GET",), "get_run_indicators"),
     ("APIRoute", "/api/forward/sessions", ("GET",), "get_forward_sessions"),
     ("APIRoute", "/api/forward/{session_id}/trades", ("GET",), "get_forward_session_trades"),

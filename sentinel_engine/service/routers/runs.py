@@ -13,6 +13,8 @@ this module at its own top-level to register the router.
 """
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, Query
@@ -69,6 +71,44 @@ def build_router(registry, lake_root) -> APIRouter:
     @r.get("/api/runs/{run_id}/trades")
     def get_run_trades(run_id: str) -> dict[str, Any]:
         return {"trades": registry.get_trades_for_run(run_id)}
+
+    @r.get("/api/runs/{run_id}/equity")
+    def get_run_equity(run_id: str) -> Any:
+        """Equity curve for the REVIEW Trade View (task B8):
+        `{"points":[{"t":epoch_s,"v":equity_value}]}`. Prefers a
+        pre-computed equity artifact (`run.artifacts.equity_path`, same
+        mechanism `/api/runs/{id}` already exposes) when present on disk
+        as a JSON file already shaped `{"points":[...]}`; otherwise falls
+        back to cumulative pnl over the run's trades (same
+        `registry.get_trades_for_run` the `/trades` endpoint uses),
+        ordered by `ts_out` (a trade's pnl realizes at exit)."""
+        run = registry.get_run(run_id)
+        if run is None:
+            return _api_error(404, "run_not_found", f"unknown run_id: {run_id}")
+
+        equity_path = (run.get("artifacts") or {}).get("equity_path")
+        if equity_path:
+            path = Path(equity_path)
+            if path.is_file():
+                with path.open("r", encoding="utf-8") as fh:
+                    return json.load(fh)
+
+        trades = registry.get_trades_for_run(run_id)
+        trades_sorted = sorted(trades, key=lambda t: t.get("ts_out") or "")
+
+        points: list[dict[str, Any]] = []
+        cum = 0.0
+        for t in trades_sorted:
+            ts_out = t.get("ts_out")
+            if not ts_out:
+                continue
+            ts = _parse_flexible_ts(ts_out)
+            if ts is None:
+                continue
+            cum += float(t.get("pnl") or 0.0)
+            points.append({"t": int(ts.value // 1_000_000_000), "v": cum})
+
+        return {"points": points}
 
     @r.get("/api/runs/{run_id}/indicators")
     def get_run_indicators(
