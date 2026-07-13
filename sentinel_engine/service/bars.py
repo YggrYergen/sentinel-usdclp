@@ -19,7 +19,7 @@ from sentinel_engine.lake.store import read_bars
 
 # Native timeframes stored directly in the lake (minutes). M2/M10 are
 # resampled on read from the M1 frame — see plan §D.6.
-NATIVE_TF_MINUTES = {"M1": 1, "M5": 5, "M15": 15}
+NATIVE_TF_MINUTES = {"M1": 1, "M5": 5, "M15": 15, "H1": 60, "D": 1440}
 RESAMPLE_TF_MINUTES = {"M2": 2, "M10": 10}
 ALL_TF_MINUTES = {**NATIVE_TF_MINUTES, **RESAMPLE_TF_MINUTES}
 
