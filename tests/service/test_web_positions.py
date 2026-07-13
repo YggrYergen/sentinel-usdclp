@@ -76,3 +76,59 @@ def test_no_cdn_in_positions_js():
     assert "cdnjs." not in text.lower()
     assert "unpkg.com" not in text
     assert "jsdelivr" not in text.lower()
+
+
+# ---- B3a: HUMANO tab card list (vlist) -----------------------------------
+
+def test_positions_js_humano_fetches_positions_endpoint():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "/api/positions" in text
+    assert "origin=human" in text
+
+
+def test_positions_js_humano_uses_vlist():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "window.SENTINEL.vlist" in text or "SENTINEL.vlist" in text
+    assert "createVList" in text
+
+
+def test_positions_js_humano_renders_group_fields():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "group_id" in text
+    assert "position_id" in text
+    assert "px_in" in text
+    assert "px_out" in text
+    assert "mae" in text
+    assert "mfe" in text
+
+
+def test_positions_js_humano_null_fields_render_dashes():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "--" in text
+    # pct/mae/mfe formatting must go through a null-safe helper
+    assert "fmtOrDash" in text or "orDash" in text or "fmt.num" in text or "fmt.pct" in text
+
+
+def test_positions_js_humano_group_chevron_expand():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "chevron" in text.lower()
+    assert "expand" in text.lower() or "toggle" in text.lower()
+
+
+def test_positions_js_humano_selection_uses_vlist_selected_class():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "vlist-selected" in text or "setSelected" in text
+
+
+def test_positions_js_humano_has_onpositionselect_hook():
+    """B3b (expanded panel + replay) will consume this hook; B3a leaves it
+    as a documented no-op."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "onPositionSelect" in text
+
+
+def test_positions_js_humano_injects_scoped_style():
+    """CHOKE: index.html/style.css are off-limits for this task; any new
+    CSS must be injected section-scoped via a <style id="positions-humano-css">."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "positions-humano-css" in text

@@ -200,6 +200,203 @@
     host.innerHTML = `<div class="positions-empty-future">${escapeHtml(EMPTY_FUTURE_COPY)}</div>`;
   }
 
+  // ---- HUMANO tab (Task B3a): card list of GET /api/positions?origin=human
+  // groups, virtualized via window.SENTINEL.vlist. Multi-lote groups render
+  // a group card with a chevron that expands/collapses its children inline
+  // (flattened into the vlist items array on toggle -- vlist itemHeight is
+  // fixed, so "expand" = insert child rows into the flat list, not a nested
+  // sub-list). Part 2 (B3b: expanded detail panel + replay) is NOT built
+  // here; onPositionSelect is a documented no-op hook for B3b to replace. ----
+
+  const HUMANO_CSS_ID = "positions-humano-css";
+  const HUMANO_CSS = `
+    .positions-humano-card { display: grid; grid-template-columns: 20px 1fr 1fr 90px 70px 60px 60px 60px; gap: 8px; align-items: center; padding: 6px 10px; box-sizing: border-box; cursor: pointer; border-bottom: 1px solid var(--border, #333); }
+    .positions-humano-card.vlist-selected { background: var(--accent-select-bg, rgba(80,140,255,0.15)); }
+    .positions-humano-chevron { display: inline-block; transition: transform 0.1s ease; cursor: pointer; }
+    .positions-humano-chevron.open { transform: rotate(90deg); }
+    .positions-humano-child-row { display: grid; grid-template-columns: 20px 1fr 1fr 90px 70px; gap: 8px; padding: 4px 10px 4px 30px; opacity: 0.85; }
+    .positions-humano-empty { padding: 16px; opacity: 0.7; }
+  `;
+
+  function injectHumanoCss() {
+    if (document.getElementById(HUMANO_CSS_ID)) return;
+    const style = document.createElement("style");
+    style.id = HUMANO_CSS_ID;
+    style.textContent = HUMANO_CSS;
+    document.head.appendChild(style);
+  }
+
+  function fmtOrDash(fmt, value, kind) {
+    if (value === null || value === undefined || Number.isNaN(Number(value))) return "--";
+    if (kind === "pct") return fmt.pct(value);
+    if (kind === "price") return fmt.price(value);
+    return fmt.num(value);
+  }
+
+  async function fetchPositions(origin, symbol) {
+    const params = new URLSearchParams();
+    if (origin) params.set("origin", origin);
+    if (symbol) params.set("symbol", symbol);
+    params.set("limit", "200");
+    const resp = await fetch(`/api/positions?${params.toString()}`);
+    if (!resp.ok) throw new Error(`GET /api/positions failed: ${resp.status}`);
+    return resp.json();
+  }
+
+  // no-op hook: B3b wires this up to open the expanded detail/replay panel.
+  // Signature: onPositionSelect({ kind: "group"|"child", group, child }).
+  function onPositionSelect(_selection) {
+    // documented no-op for B3a; B3b (expanded panel + replay) replaces this.
+  }
+
+  function buildHumanoFlatItems(groups, expandedIds) {
+    const items = [];
+    groups.forEach((group) => {
+      const isMulti = (group.children || []).length > 1;
+      items.push({ kind: "group", group, isMulti, expanded: isMulti && expandedIds.has(group.group_id) });
+      if (isMulti && expandedIds.has(group.group_id)) {
+        (group.children || []).forEach((child) => {
+          items.push({ kind: "child", group, child });
+        });
+      }
+    });
+    return items;
+  }
+
+  function renderHumanoGroupCard(item, fmt, expandedIds, onToggle, onSelect) {
+    const group = item.group;
+    const child = (group.children || [])[0] || {};
+    const card = el("div", {
+      class: "positions-humano-card",
+      "data-group-id": group.group_id,
+    });
+    const chevronHtml = item.isMulti
+      ? `<span class="positions-humano-chevron${item.expanded ? " open" : ""}" data-chevron="1">&#9656;</span>`
+      : `<span></span>`;
+    const tsIn = fmt.tsShort(epochOf(group.first_in));
+    const tsOut = fmt.tsShort(epochOf(group.last_out));
+    const pxIn = child.px_in != null ? fmtOrDash(fmt, child.px_in, "price") : "--";
+    const pxOut = child.px_out != null ? fmtOrDash(fmt, child.px_out, "price") : "--";
+    const pnl = group.net;
+    const pct = fmtOrDash(fmt, child.pct, "pct");
+    const mae = fmtOrDash(fmt, child.mae);
+    const mfe = fmtOrDash(fmt, child.mfe);
+    card.innerHTML = `
+      ${chevronHtml}
+      <span class="mono">${escapeHtml(group.symbol || "--")}</span>
+      <span class="mono">${tsIn} &rarr; ${tsOut}</span>
+      <span class="mono">${pxIn} / ${pxOut}</span>
+      <span class="mono ${signClass(pnl)}">${fmt.signed(pnl)}</span>
+      <span class="mono">${pct}</span>
+      <span class="mono">${mae}</span>
+      <span class="mono">${mfe}</span>`;
+    const chevronEl = card.querySelector("[data-chevron]");
+    if (chevronEl) {
+      chevronEl.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        onToggle(group.group_id);
+      });
+    }
+    card.addEventListener("click", () => {
+      onSelect({ kind: "group", group });
+      if (item.isMulti) onToggle(group.group_id);
+    });
+    return card;
+  }
+
+  function renderHumanoChildRow(item, fmt, onSelect) {
+    const c = item.child;
+    const row = el("div", {
+      class: "positions-humano-card positions-humano-child-row",
+      "data-position-id": c.position_id,
+    });
+    const tsIn = fmt.tsShort(epochOf(c.ts_in));
+    const tsOut = fmt.tsShort(epochOf(c.ts_out));
+    const pxIn = fmtOrDash(fmt, c.px_in, "price");
+    const pxOut = fmtOrDash(fmt, c.px_out, "price");
+    row.innerHTML = `
+      <span></span>
+      <span class="mono">${escapeHtml(String(c.position_id != null ? c.position_id : "--"))}</span>
+      <span class="mono">${tsIn} &rarr; ${tsOut}</span>
+      <span class="mono">${pxIn} / ${pxOut}</span>
+      <span class="mono ${signClass(c.pnl)}">${fmt.signed(c.pnl)}</span>`;
+    row.addEventListener("click", (ev) => {
+      ev.stopPropagation();
+      onSelect({ kind: "child", group: item.group, child: c });
+    });
+    return row;
+  }
+
+  function renderHumanoTab(host) {
+    injectHumanoCss();
+    host.innerHTML = '<div class="positions-loading">Cargando posiciones&hellip;</div>';
+
+    const expandedIds = new Set();
+    let groups = [];
+    let selectedKey = null;
+    let humanoVlist = null;
+
+    function itemKeyOf(item) {
+      return item.kind === "group" ? `g:${item.group.group_id}` : `c:${item.child.position_id}`;
+    }
+
+    function refreshItems() {
+      const items = buildHumanoFlatItems(groups, expandedIds);
+      if (humanoVlist) {
+        humanoVlist.setItems(items);
+        humanoVlist.setSelected(selectedKey ? [selectedKey] : []);
+      }
+      return items;
+    }
+
+    function handleSelect(selection) {
+      selectedKey = selection.kind === "group" ? `g:${selection.group.group_id}` : `c:${selection.child.position_id}`;
+      window.SENTINEL.appState = window.SENTINEL.appState || {};
+      window.SENTINEL.appState.selectedPosition = selection;
+      if (humanoVlist) humanoVlist.setSelected([selectedKey]);
+      onPositionSelect(selection);
+    }
+
+    function handleToggle(groupId) {
+      if (expandedIds.has(groupId)) expandedIds.delete(groupId);
+      else expandedIds.add(groupId);
+      refreshItems();
+    }
+
+    fetchPositions("human", "").then((body) => {
+      groups = body.groups || [];
+      host.innerHTML = "";
+      if (!groups.length) {
+        host.innerHTML = '<div class="positions-humano-empty">Sin posiciones HUMANO.</div>';
+        return;
+      }
+      const listHost = el("div", { class: "positions-humano-list" });
+      listHost.style.height = "100%";
+      listHost.style.overflow = "auto";
+      host.appendChild(listHost);
+
+      const fmt = window.SENTINEL.fmt;
+      humanoVlist = window.SENTINEL.vlist.createVList(listHost, {
+        itemHeight: 34,
+        items: buildHumanoFlatItems(groups, expandedIds),
+        itemKey: (item) => itemKeyOf(item),
+        render: (item) => {
+          if (item.kind === "group") {
+            return renderHumanoGroupCard(item, fmt, expandedIds, handleToggle, handleSelect);
+          }
+          return renderHumanoChildRow(item, fmt, handleSelect);
+        },
+      });
+    }).catch((e) => {
+      host.innerHTML = '<div class="positions-error">Error cargando /api/positions.</div>';
+      if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error cargando /api/positions", { type: "error" });
+    });
+
+    return {
+      teardown: () => { if (humanoVlist) { try { humanoVlist.destroy(); } catch (e) { /* noop */ } } },
+    };
+  }
+
   function renderEmptySessions(host) {
     host.innerHTML = '<div class="positions-empty">Sin sesiones forward</div>';
   }
@@ -231,6 +428,7 @@
     let sessionsById = {};
     let selectedSessionId = null;
     let vt = null;
+    let humanoTabHandle = null;
 
     function renderTabs() {
       tabsHost.innerHTML = "";
@@ -253,9 +451,14 @@
 
     function renderBody() {
       if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } vt = null; }
+      if (humanoTabHandle) { try { humanoTabHandle.teardown(); } catch (e) { /* noop */ } humanoTabHandle = null; }
       body.innerHTML = "";
-      if (activeTab === "humano" || activeTab === "ia") {
+      if (activeTab === "ia") {
         renderEmptyFutureTab(body);
+        return;
+      }
+      if (activeTab === "humano") {
+        humanoTabHandle = renderHumanoTab(body);
         return;
       }
       renderEstrategiaTab();
@@ -411,6 +614,7 @@
       root,
       teardown: () => {
         if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } }
+        if (humanoTabHandle) { try { humanoTabHandle.teardown(); } catch (e) { /* noop */ } }
       },
     };
   }
