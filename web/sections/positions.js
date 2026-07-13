@@ -533,9 +533,28 @@
     return items;
   }
 
+  // VWAP over a group's children for a given price field, ignoring children
+  // whose value/volume is missing. Returns null if no valid children.
+  function vwapOf(children, priceKey) {
+    let sumPV = 0;
+    let sumV = 0;
+    (children || []).forEach((c) => {
+      const price = c[priceKey];
+      const volume = Number(c.volume);
+      if (price === null || price === undefined || Number.isNaN(Number(price))) return;
+      if (!volume || Number.isNaN(volume)) return;
+      sumPV += Number(price) * volume;
+      sumV += volume;
+    });
+    if (sumV === 0) return null;
+    return sumPV / sumV;
+  }
+
   function renderHumanoGroupCard(item, fmt, expandedIds, onToggle, onSelect) {
     const group = item.group;
-    const child = (group.children || [])[0] || {};
+    const children = group.children || [];
+    const child = children[0] || {};
+    const isMulti = children.length > 1;
     const card = el("div", {
       class: "positions-humano-card",
       "data-group-id": group.group_id,
@@ -545,12 +564,18 @@
       : `<span></span>`;
     const tsIn = fmt.tsShort(epochOf(group.first_in));
     const tsOut = fmt.tsShort(epochOf(group.last_out));
-    const pxIn = child.px_in != null ? fmtOrDash(fmt, child.px_in, "price") : "--";
-    const pxOut = child.px_out != null ? fmtOrDash(fmt, child.px_out, "price") : "--";
+    // Multi-lote groups: px_in/px_out are VWAP across children (a single
+    // child's fill is not representative of the group). pct/mae/mfe have no
+    // defined group-level aggregation yet, so they show "--" rather than
+    // borrowing one child's value.
+    const pxInVal = isMulti ? vwapOf(children, "px_in") : child.px_in;
+    const pxOutVal = isMulti ? vwapOf(children, "px_out") : child.px_out;
+    const pxIn = pxInVal != null ? fmtOrDash(fmt, pxInVal, "price") : "--";
+    const pxOut = pxOutVal != null ? fmtOrDash(fmt, pxOutVal, "price") : "--";
     const pnl = group.net;
-    const pct = fmtOrDash(fmt, child.pct, "pct");
-    const mae = fmtOrDash(fmt, child.mae);
-    const mfe = fmtOrDash(fmt, child.mfe);
+    const pct = isMulti ? "--" : fmtOrDash(fmt, child.pct, "pct");
+    const mae = isMulti ? "--" : fmtOrDash(fmt, child.mae);
+    const mfe = isMulti ? "--" : fmtOrDash(fmt, child.mfe);
     card.innerHTML = `
       ${chevronHtml}
       <span class="mono">${escapeHtml(group.symbol || "--")}</span>

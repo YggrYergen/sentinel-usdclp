@@ -250,6 +250,66 @@ def test_positions_js_ia_tab_empty_state_exact_text():
     assert "Sin posiciones IA aún — se activa con el motor paper (Wave D)" in text
 
 
+# ---- REV-5 Fix 2: multi-lote group cards aggregate honestly ---------------
+# px_in/px_out of a multi-child group = VWAP over its children; pct/mae/mfe
+# have no defined group aggregation yet -> "--".
+
+def _extract_vwap_fn(text: str) -> str:
+    start = text.index("function vwapOf")
+    end = text.index("\n  }", start) + len("\n  }")
+    return text[start:end]
+
+
+def test_positions_js_group_card_vwap_hand_computed_3_lote():
+    """Execute the actual vwapOf implementation (via node) against a 3-lot
+    fixture with distinct prices/volumes and compare to hand-computed VWAPs.
+    px_out of one child is null (still open) and must be ignored."""
+    import json
+    import shutil
+    import subprocess
+
+    node = shutil.which("node")
+    if node is None:
+        import pytest
+        pytest.skip("node not available")
+
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    vwap_src = _extract_vwap_fn(text)
+    fixture = [
+        {"px_in": 100.0, "px_out": 110.0, "volume": 1},
+        {"px_in": 102.0, "px_out": None, "volume": 2},
+        {"px_in": 105.0, "px_out": 112.0, "volume": 3},
+    ]
+    script = (
+        vwap_src
+        + f"\nconst children = {json.dumps(fixture)};"
+        + "\nconsole.log(JSON.stringify({"
+        + 'vin: vwapOf(children, "px_in"), vout: vwapOf(children, "px_out")'
+        + "}));"
+    )
+    out = subprocess.run(
+        [node, "-e", script], capture_output=True, text=True, check=True
+    ).stdout.strip()
+    result = json.loads(out)
+    # hand-computed: (100*1 + 102*2 + 105*3) / (1+2+3) = 619/6
+    assert abs(result["vin"] - 619.0 / 6.0) < 1e-9
+    # hand-computed (null px_out ignored): (110*1 + 112*3) / (1+3) = 446/4
+    assert abs(result["vout"] - 446.0 / 4.0) < 1e-9
+
+
+def test_positions_js_group_card_multi_uses_vwap_and_dashes_pct_mae_mfe():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    card_src = text.split("function renderHumanoGroupCard")[1]
+    # group px_in/px_out come from vwapOf over children, not children[0]
+    assert 'vwapOf(children, "px_in")' in card_src
+    assert 'vwapOf(children, "px_out")' in card_src
+    # pct/mae/mfe of a multi-lote group are "--" (aggregate undefined);
+    # single-child groups keep the child's values.
+    assert 'isMulti ? "--" : fmtOrDash(fmt, child.pct, "pct")' in card_src
+    assert 'isMulti ? "--" : fmtOrDash(fmt, child.mae)' in card_src
+    assert 'isMulti ? "--" : fmtOrDash(fmt, child.mfe)' in card_src
+
+
 def test_positions_js_ia_tab_reuses_humano_list_builder():
     """B5 must not copy-paste a second list builder; renderHumanoTab (or its
     item/card builders) is parametrized by origin and reused for IA."""

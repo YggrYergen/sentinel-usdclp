@@ -124,3 +124,22 @@ def test_runs_js_list_rows_have_engine_fidelity_origin_badges():
     runs_js = (WEB_DIR / "sections" / "runs.js").read_text(encoding="utf-8")
     assert "r.engine" in runs_js
     assert "r.origin" in runs_js
+
+
+# ---- REV-5 Fix 1: teardown() closes the launcher's live EventSource ------
+
+def test_runs_js_registers_active_eventsource_on_section_state():
+    """streamJob must register its EventSource on the section state so that
+    teardown() can reach it (otherwise the SSE connection leaks when the user
+    navigates away while a job is still running)."""
+    runs_js = (WEB_DIR / "sections" / "runs.js").read_text(encoding="utf-8")
+    assert "activeEventSource" in runs_js
+    # streamJob assigns the freshly-opened EventSource to the state
+    assert "state.activeEventSource = es" in runs_js
+
+
+def test_runs_js_teardown_closes_active_eventsource():
+    runs_js = (WEB_DIR / "sections" / "runs.js").read_text(encoding="utf-8")
+    teardown_src = runs_js.split("function teardown()")[1]
+    assert "state.activeEventSource.close()" in teardown_src
+    assert "state.activeEventSource = null" in teardown_src

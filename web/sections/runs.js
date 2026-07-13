@@ -569,6 +569,9 @@
   }
 
   // ---- CT-9 SSE progress via GET /api/jobs/stream, filtered by job_id ----
+  // The EventSource is registered on the section state (state.activeEventSource)
+  // so teardown() can close it if the section is navigated away from while a
+  // job is still running (pattern: charts.js's teardownLiveAdapter).
   function streamJob(jobId, progressBox, onDone, onError) {
     let es;
     try {
@@ -576,6 +579,11 @@
     } catch (e) {
       onError("No se pudo abrir /api/jobs/stream.");
       return;
+    }
+    if (state) state.activeEventSource = es;
+    function closeEs() {
+      es.close();
+      if (state && state.activeEventSource === es) state.activeEventSource = null;
     }
     es.addEventListener("job_update", (evt) => {
       let data;
@@ -591,10 +599,10 @@
         return;
       }
       if (data.status === "done") {
-        es.close();
+        closeEs();
         onDone(data.run_id);
       } else if (data.status === "error") {
-        es.close();
+        closeEs();
         onError(data.error || "Backtest falló.");
       }
     });
@@ -930,13 +938,17 @@
     loadStrategiesAndBar();
     loadRuns();
 
-    state = { root, vt: () => vt };
+    state = { root, vt: () => vt, activeEventSource: null };
   }
 
   function teardown() {
     closeDrawer();
     const compareOverlay = document.querySelector(".runs-compare-overlay");
     if (compareOverlay) compareOverlay.remove();
+    if (state && state.activeEventSource) {
+      try { state.activeEventSource.close(); } catch (e) { /* noop */ }
+      state.activeEventSource = null;
+    }
     if (state && state.root) state.root.innerHTML = "";
     state = null;
   }
