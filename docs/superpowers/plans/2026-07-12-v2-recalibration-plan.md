@@ -309,15 +309,81 @@ def test_route_set_unchanged(client):
 
 ---
 
-## Wave C — News + Assistant v1 (ORC expands to TDD steps at wave start)
+## Wave C — News + Assistant v1 (EXPANDED 2026-07-13 sesión #4, ORC per §6.5; contracts frozen)
 
-- **C1** news poller: `sentinel_engine/service/news.py` + router. Sources config `news.yaml`: rss list (forexlive, fxstreet, investing), ff_calendar url (faireconomy weekly json). Poll 90s async, conditional GET (ETag/Last-Modified), stdlib-only parse (xml.etree; NO new deps), dedupe sha1(url) + `difflib.SequenceMatcher(None,a,b).ratio()>0.9` title match window 48h, symbol keyword map in yaml (XAUUSD: gold, oro, xau…; refs DXY/VIX). Registry table `news_items`. CT-5.
-- **C2** News tab: vlist + filters (symbol/impact/kind) + freshness label ("hace N min") + link-out `target=_blank` + SSE append.
-- **C3** dossier builders per CT-7 — implement research templates LITERALLY; golden snapshot tests (fixture trade → expected xml hash) + token estimate via chars/3.5 heuristic (documented).
-- **C4** tool registry + manual loop in chat service: tools `get_bars(symbol,tf,from,to)` (CT-2 passthrough, cap 25K tok), `get_trade_detail(trade_id)`, `query_registry(filters)`, `get_scorecard(strategy_id)`; loop: while stop_reason==tool_use execute+append; max 8 iterations; stream text SSE. Model from session (CT-6 gate respected). System prompt stable-first for caching; dossier docs then question LAST.
-- **C5** Analizar: enable button → `POST /api/ai/analyze_position {trade_id}` → C4 loop with position dossier → SSE into card panel.
-- **C6** mini-eval: `scripts/llm_format_eval.py` per research §6 (8 preguntas × 4 formatos × {sonnet,haiku}; output md report `docs/superpowers/specs/2026-07-12-format-eval-results.md`). ORC reviews → may flip dossier default (plan amendment).
-- **C7** strategy review: ESTRATEGIA card button "Revisar con IA" → strategy dossier + tools chat panel.
+Sequencing (one in flight per lane): lane A serial C1a→C1b→C3a→C3b→C4a→C4b→C7a ·
+lane B C2 (after C1b), C5 (after C4b), C7b (after C7a) · lane C C6 (after C3b).
+Current reality (verified): `routers/news.py` = empty 6-line stub; `routers/chat.py` has CT-6
+endpoints (`/api/llm/models|unlock|usage`) + NON-streaming `POST /chat`; `sentinel_engine/ai/`
+does not exist; nav button + `section-news` already in `index.html` (no CHOKE for C2 unless app.js glue needed).
+
+### Task C1a: news core — parse + dedupe + table + GET /api/news
+**Files:** Create `sentinel_engine/service/news.py`, `tests/service/test_news_core.py`; Modify `sentinel_engine/service/routers/news.py` (stub → build_router pattern like positions.py), `sentinel_engine/research/registry2.py` (additive `news_items` migration ONLY), `sentinel_engine/service/app.py` (swap `news_router.router` → `news_router.build_router(registry)`).
+**Interfaces:** `parse_rss(raw: str, source: str) -> list[NewsItem]` (stdlib `xml.etree`), `parse_ff_calendar(raw: str) -> list[NewsItem]` (json), `dedupe_key(item) -> str` (sha1 canonical url / calendar event key), `is_dup_title(a, b) -> bool` (`difflib.SequenceMatcher(None,a,b).ratio()>0.9`, only inside 48h window), `upsert_items(registry, items)`, `query_items(registry, symbol, impact, kind, limit)`.
+**Spec:** CT-5 response shape EXACT. `news_items` table additive migration (PRAGMA-guarded like B1c): `id TEXT PRIMARY KEY, ts INTEGER, source TEXT, title TEXT, url TEXT, symbols_json TEXT, kind TEXT, impact TEXT`. Symbol keyword map hardcoded default dict in news.py (XAUUSD: gold, oro, xau; DXY, VIX refs) — yaml override lands in C1b. No network code in this task (parsers take raw strings).
+**Tests (TDD):** fixture RSS xml (2 items, 1 dup-title variant) + fixture ff-calendar json → parsed shapes; dedupe by id and by title-ratio window; endpoint filters symbol/impact/kind/limit over tmp registry; 200 empty `{"items":[]}`.
+**Gate:** `python -m pytest tests/service/test_news_core.py tests/service/test_router_parity.py -q`. Budget: 1 dispatch.
+
+### Task C1b: news poller loop + SSE + news.yaml
+**Files:** Modify `sentinel_engine/service/news.py`, `sentinel_engine/service/routers/news.py`, `sentinel_engine/service/app.py` (start/stop task in lifespan, same pattern as compute loop); Create `news.yaml` (repo root), `tests/service/test_news_poller.py`.
+**Interfaces:** `NewsPoller(registry, config, fetcher=None)` — `fetcher(url, etag, last_modified) -> (status, headers, body)` injectable (stdlib `urllib.request` default, run via `asyncio.to_thread`); 90s cadence; conditional GET honors ETag/Last-Modified (304 ⇒ skip). `GET /api/news/stream` SSE event `news_item` per CT-5/CT-9 (subscribe/broadcast pattern copied from jobs stream, heartbeat 15s, retry 3000).
+**Spec:** `news.yaml`: `rss: [forexlive, fxstreet, investing urls]`, `ff_calendar: <faireconomy weekly json url>`, `symbol_keywords:` map (overrides C1a default). utf-8 explicit read, pathlib. Poller never raises out of its loop (log + continue). New items only ⇒ broadcast.
+**Tests (TDD):** fake fetcher: first poll inserts+broadcasts, second poll 304 ⇒ no work; malformed feed ⇒ logged, loop alive; SSE endpoint emits `news_item` for a new insert (TestClient stream, same technique as test_jobs SSE); yaml load honors overrides.
+**Gate:** `python -m pytest tests/service/test_news_poller.py tests/service/test_news_core.py -q`. Budget: 1 dispatch.
+
+### Task C2: News tab UI
+**Files:** Create `web/sections/news.js`, `tests/service/test_web_news.py`; Modify ONLY the include/glue the orchestrator confirms at dispatch (nav button + section already exist in index.html).
+**Spec:** vlist (reuse `web/lib/vlist.js`) of CT-5 items; filters symbol/impact/kind (selects, client-side re-fetch `/api/news?...`); freshness label "hace N min" (computed from ts, re-render on a 60s timer); title = `<a target="_blank" rel="noopener">`; SSE `/api/news/stream` appends at top (EventSource with teardown on section switch — REV-5 pattern from runs.js).
+**Tests (TDD):** serve-and-assert pattern of test_web_positions.py: source asserts for vlist reuse, target=_blank+rel, EventSource teardown registration, filter param building.
+**Gate:** `python -m pytest tests/service/test_web_news.py -q`. Budget: 1 dispatch.
+
+### Task C3a: position dossier builder (CT-7)
+**Files:** Create `sentinel_engine/ai/__init__.py`, `sentinel_engine/ai/dossier.py`, `tests/ai/test_dossier_position.py` (+ `tests/ai/__init__.py`, fixture files under `tests/ai/fixtures/`).
+**Spec:** `build_position_dossier(trade_id, tfs=["M5"]) -> {"xml","token_estimate","sections"}` per CT-7. Template = LITERAL §3 of `docs/superpowers/specs/2026-07-12-llm-timeseries-context-research.md` (markdown tables, fixed dp, `<document><source>…<document_content>` wrappers, stats server-computed, question NOT included). `token_estimate = ceil(len(chars)/3.5)` (heuristic, documented in docstring). Budget ≤8K tok enforced: trim bar tables (drop oldest rows) until under budget, record trim in `sections`. Data access: registry (trade row) + lake bars via existing `load_tf_frame`/bars_source — read-only.
+**Tests (TDD):** golden snapshot: fixture trade + tiny fixture lake → exact expected xml (committed fixture file) compared by hash AND full string (diff on fail); token_estimate formula; budget trim kicks in on an oversized fixture; unknown trade_id raises clean error.
+**Gate:** `python -m pytest tests/ai/test_dossier_position.py -q`. Budget: 1 dispatch.
+
+### Task C3b: strategy dossier builder (CT-7)
+**Files:** Modify `sentinel_engine/ai/dossier.py`; Create `tests/ai/test_dossier_strategy.py` (+ fixtures).
+**Spec:** `build_strategy_dossier(strategy_id) -> Dossier`, LITERAL §4 of the research doc; ≤10K tok + tools note; sources: registry strategy/variant rows, CT-3 scorecard data (call the same internals the scorecard endpoint uses — no HTTP self-calls), recent runs table. Same trim/estimate rules as C3a.
+**Tests (TDD):** golden snapshot vs committed fixture xml; budget trim; unknown strategy_id clean error.
+**Gate:** `python -m pytest tests/ai/ -q`. Budget: 1 dispatch.
+
+### Task C4a: tool registry (pure, no LLM)
+**Files:** Create `sentinel_engine/ai/tools.py`, `tests/ai/test_tools.py`.
+**Interfaces:** `TOOLS: list[dict]` (Anthropic tool-schema dicts) + `execute_tool(name, args, ctx) -> str` where `ctx = {"registry","lake_root"}`. Tools: `get_bars(symbol,tf,from,to)` → CT-2-shaped compact result, hard cap: serialized result ≤25K tokens by the chars/3.5 heuristic (truncate + note); `get_trade_detail(trade_id)`; `query_registry(filters)` (whitelisted filter keys → parameterized SQL ONLY); `get_scorecard(strategy_id)` (CT-3 internals reuse).
+**Spec:** pure functions, deterministic, read-only; unknown tool/args ⇒ error string result (never raises to caller). No network, no LLM.
+**Tests (TDD):** each tool happy path over tmp registry+lake; cap enforcement on get_bars; SQL-injection attempt in query_registry filters is neutralized; unknown tool name → error string.
+**Gate:** `python -m pytest tests/ai/test_tools.py -q`. Budget: 1 dispatch.
+
+### Task C4b: manual tool loop + SSE chat streaming + analyze endpoint
+**Files:** Create `sentinel_engine/ai/loop.py`, `tests/ai/test_loop.py`; Modify `sentinel_engine/service/routers/chat.py` (add `POST /api/ai/analyze_position` + SSE upgrade), `tests/service/test_chat.py` (additive).
+**Interfaces:** `run_tool_loop(client, model, system, messages, tools, ctx, on_text) -> final_text` — while `stop_reason=="tool_use"`: execute via C4a, append `tool_result`, re-call; max 8 iterations (then append "max iterations" note and stop); `on_text(chunk)` streams text deltas. `POST /api/ai/analyze_position {"trade_id"}` → SSE stream (CT-9, events `ai_text`/`ai_done`/`ai_error`): builds C3a dossier, system prompt STABLE-FIRST (fixed system → tools → dossier docs → question LAST, per research §5 caching order), model from session (CT-6 gate respected — gated model w/o unlock ⇒ 403 BEFORE any API call).
+**Tests (TDD):** fake Anthropic client scripted with tool_use→end_turn sequences: loop executes tools, respects max-8, streams text; endpoint 403 on gated model; SSE event sequence on happy path; unknown trade_id → `ai_error`.
+**Gate:** `python -m pytest tests/ai/test_loop.py tests/service/test_chat.py -q`. Budget: 1 dispatch (if >12min: split endpoint out).
+
+### Task C5: Analizar wiring (web)
+**Files:** Modify `web/sections/positions.js`; `tests/service/test_web_positions.py` (additive).
+**Spec:** enable the B3b-disabled "Analizar" button → `POST /api/ai/analyze_position {trade_id}` → consume SSE into a text panel inside the expanded card panel (append `ai_text` chunks, close on `ai_done`, show `ai_error`); EventSource/reader teardown on panel close + section switch (REV-5 pattern); button disabled while a stream is active.
+**Tests (TDD):** source asserts: endpoint URL, event names, teardown registration, re-entrancy guard.
+**Gate:** `python -m pytest tests/service/test_web_positions.py -q`. Budget: 1 dispatch.
+
+### Task C6: mini-eval runner (lane C — `scripts/**`)
+**Files:** Create `scripts/llm_format_eval.py`, `tests/scripts/test_llm_format_eval.py` (+ `tests/scripts/__init__.py` if absent).
+**Spec:** per research §6: 8 preguntas × 4 formatos × {sonnet, haiku}; formats built from C3 builders + §6 variants; `--dry-run` prints prompts w/o API calls (default when `ANTHROPIC_API_KEY` absent); real run writes `docs/superpowers/specs/2026-07-12-format-eval-results.md` (scores + per-question table). Cost guard: hard cap N calls = 8×4×2, abort if estimate > cap. ORC reviews the report → may flip dossier default via plan amendment (NOT the implementer).
+**Tests (TDD):** dry-run builds 64 prompt specs with correct matrix; report writer renders md from canned results; no network in tests.
+**Gate:** `python -m pytest tests/scripts/test_llm_format_eval.py -q`. Budget: 1 dispatch. NOTE: real API run is ORC/user-triggered, not part of the task.
+
+### Task C7a: strategy-review endpoint (service)
+**Files:** Modify `sentinel_engine/service/routers/chat.py`; `tests/service/test_chat.py` (additive).
+**Spec:** `POST /api/ai/review_strategy {"strategy_id"}` → same SSE shape as analyze_position, dossier = C3b strategy dossier + C4a tools available in the loop; CT-6 gate respected.
+**Tests (TDD):** fake client; 403 gated; SSE sequence; unknown strategy_id → `ai_error`.
+**Gate:** `python -m pytest tests/service/test_chat.py -q`. Budget: 1 dispatch.
+
+### Task C7b: strategy-review panel (web)
+**Files:** Modify `web/sections/positions.js` (ESTRATEGIA card button "Revisar con IA" → SSE chat panel, reuse C5's stream-consumer helper); `tests/service/test_web_positions.py` (additive).
+**Tests (TDD):** source asserts as C5.
+**Gate:** `python -m pytest tests/service/test_web_positions.py -q`. Budget: 1 dispatch.
 
 ## Wave D — Paper engine + TRAINING (expand at wave start)
 
