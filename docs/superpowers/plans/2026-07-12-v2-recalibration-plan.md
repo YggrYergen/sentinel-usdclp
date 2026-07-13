@@ -78,7 +78,17 @@
 | ORC-2 Study frontend-design session | ORC+user | — | [ ] | |
 | ORC-3 Lab tooltips content (+user review) | ORC+user | — | [ ] | |
 | ORC-4 wave-boundary review+commit batches | ORC | continuous | [ ] | |
-| ORC-5 e2e headless browser checklist | ORC | Wave A+B done | [ ] | |
+| ORC-5 e2e headless browser checklist | ORC | Wave A+B done | [x] | see below |
+
+ORC-5 (2026-07-13, sesión #4): tooling `scripts/dev/e2e_service.py` (service :8611, historical feed,
+registry COPY seeded with synthetic deals — real `data/research.db` untouched) + `scripts/dev/cdp_e2e_orc5.js`
+(headless Chrome CDP driver). All steps PASS, zero console errors: charts (candles painted, TF switch,
+EMA/BB chips, goto-date) · TV/review (run load, native-tf dot, replay ticking, split focus, trade rows;
+equity endpoint 200 w/ points) · positions (3 tabs, multi-lot chevron expand, VWAP 3300.66667 verified,
+detail panel + chart + replay btn, IA aggregate client-side) · launcher CT-4 happy-path in-browser
+(H1 job → done → run link) · chat gate renders. Findings fixed: F1 backtest rejected H1/D tf offered by
+launcher (`a9df394`) · F2 UI hang on terminal-before-subscribe SSE race (`bc562e8`). Grouping 90s
+multi-lot window confirmed working as spec'd (initial seed 1h apart correctly split into 2 groups).
 
 Concurrency: max 3 in flight, one per lane. Waves C/D/E: ORC expands each task to full TDD steps at wave start (contracts here are already frozen).
 
