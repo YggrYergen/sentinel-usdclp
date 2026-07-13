@@ -3,10 +3,13 @@
 Reads `deals_raw` rows from the registry (`research/registry2.py`),
 optionally filtered by `origin`/`symbol`, and groups them into
 `PositionGroup`s via `sentinel_engine.live.grouping.group_positions`
-(reused verbatim, not reimplemented). `pct` is always null for now
-(leverage/contract_size inputs aren't captured yet — B1c). `mae`/`mfe`
-come back null with `needs_excursions=True` straight from the grouping
-module; passed through as-is.
+(reused verbatim, not reimplemented). `pct = profit / margin` with
+`margin = volume * contract_size * px_in / leverage`, computed from the
+leverage/contract_size columns B1c's DealsWatcher captures on each deal's
+IN row; when any input is missing (null) or leverage/margin is not
+positive, `pct` is null. `mae`/`mfe` come back null with
+`needs_excursions=True` straight from the grouping module; passed
+through as-is.
 
 `_build_router(registry)` follows the same lazy-registry pattern as
 `routers/strategies.py`; `app.py` calls it once at `create_app()` time.
@@ -29,7 +32,25 @@ from ...live.grouping import group_positions
 router = APIRouter()
 
 
-def _pos_to_dict(pos: Any) -> dict[str, Any]:
+def _compute_pct(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> float | None:
+    """`pct = profit / margin` with `margin = volume * contract_size *
+    px_in / leverage` — only when ALL inputs are non-null, leverage > 0
+    and margin > 0; otherwise None (previous behavior)."""
+    leverage, contract_size = margin_inputs.get(pos.position_id, (None, None))
+    volume = pos.entry_volume
+    px_in = pos.entry_price
+    profit = pos.pnl
+    if leverage is None or contract_size is None or volume is None or px_in is None or profit is None:
+        return None
+    if leverage <= 0:
+        return None
+    margin = volume * contract_size * px_in / leverage
+    if margin <= 0:
+        return None
+    return profit / margin
+
+
+def _pos_to_dict(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[str, Any]:
     return {
         "position_id": pos.position_id,
         "ts_in": pos.entry_time,
@@ -38,7 +59,7 @@ def _pos_to_dict(pos: Any) -> dict[str, Any]:
         "px_out": pos.exit_price,
         "volume": pos.entry_volume,
         "pnl": pos.pnl,
-        "pct": None,
+        "pct": _compute_pct(pos, margin_inputs),
         "mae": pos.mae,
         "mfe": pos.mfe,
         "needs_excursions": pos.needs_excursions,
@@ -55,7 +76,7 @@ def _pos_to_dict(pos: Any) -> dict[str, Any]:
     }
 
 
-def _group_to_dict(group: Any) -> dict[str, Any]:
+def _group_to_dict(group: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[str, Any]:
     return {
         "group_id": group.group_id,
         "symbol": group.symbol,
@@ -65,7 +86,7 @@ def _group_to_dict(group: Any) -> dict[str, Any]:
         "last_out": group.last_out,
         "net": group.net,
         "lots": group.lots,
-        "children": [_pos_to_dict(p) for p in group.children],
+        "children": [_pos_to_dict(p, margin_inputs) for p in group.children],
     }
 
 
@@ -97,10 +118,18 @@ def build_router(registry) -> APIRouter:
         ids_with_in = {d["position_id"] for d in deals if d.get("entry_type") == "IN"}
         deals = [d for d in deals if d["position_id"] in ids_with_in]
 
+        # pct inputs (B1c): leverage/contract_size from each position's IN
+        # deal row (grouping.Position doesn't carry these columns).
+        margin_inputs = {
+            d["position_id"]: (d.get("leverage"), d.get("contract_size"))
+            for d in deals
+            if d.get("entry_type") == "IN"
+        }
+
         groups = group_positions(deals)
         groups.sort(key=lambda g: g.first_in, reverse=True)
         groups = groups[:limit]
 
-        return {"groups": [_group_to_dict(g) for g in groups]}
+        return {"groups": [_group_to_dict(g, margin_inputs) for g in groups]}
 
     return r

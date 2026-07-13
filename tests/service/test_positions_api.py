@@ -22,6 +22,7 @@ _DEAL_COLUMNS = (
     "ticket", "position_id", "symbol", "side", "volume",
     "price", "profit", "magic", "time", "entry_type",
     "origin", "strategy_id", "variant_id",
+    "leverage", "contract_size",
 )
 
 
@@ -58,11 +59,12 @@ def client(registry):
         yield c
 
 
-def _deal(ticket, position_id, symbol, side, volume, price, profit, magic, time, entry_type, origin, strategy_id=None, variant_id=None):
+def _deal(ticket, position_id, symbol, side, volume, price, profit, magic, time, entry_type, origin, strategy_id=None, variant_id=None, leverage=None, contract_size=None):
     return {
         "ticket": ticket, "position_id": position_id, "symbol": symbol, "side": side,
         "volume": volume, "price": price, "profit": profit, "magic": magic, "time": time,
         "entry_type": entry_type, "origin": origin, "strategy_id": strategy_id, "variant_id": variant_id,
+        "leverage": leverage, "contract_size": contract_size,
     }
 
 
@@ -208,3 +210,44 @@ def test_positions_skips_position_without_in_deal(client, registry):
     body = resp.json()
     assert len(body["groups"]) == 1
     assert body["groups"][0]["children"][0]["position_id"] == 100
+
+
+def test_positions_pct_computed_when_margin_inputs_present(client, registry):
+    # margin = volume * contract_size * px_in / leverage
+    #        = 1.0 * 100000 * 1.1 / 100 = 1100.0
+    # pct = profit / margin = 50.0 / 1100.0
+    _insert_deals(registry, [
+        _deal(1, 100, "EURUSD", "buy", 1.0, 1.1000, 0.0, 111, 1000, "IN", "human",
+              leverage=100, contract_size=100000.0),
+        _deal(2, 100, "EURUSD", "buy", 1.0, 1.1050, 50.0, 111, 1100, "OUT", "human",
+              leverage=100, contract_size=100000.0),
+    ])
+    resp = client.get("/api/positions")
+    assert resp.status_code == 200
+    child = resp.json()["groups"][0]["children"][0]
+    assert child["pct"] == pytest.approx(50.0 / 1100.0)
+
+
+def test_positions_pct_null_when_margin_inputs_missing(client, registry):
+    # No leverage/contract_size captured -> pct stays null (current behavior).
+    _insert_deals(registry, [
+        _deal(1, 100, "EURUSD", "buy", 1.0, 1.1000, 0.0, 111, 1000, "IN", "human"),
+        _deal(2, 100, "EURUSD", "buy", 1.0, 1.1050, 50.0, 111, 1100, "OUT", "human"),
+    ])
+    resp = client.get("/api/positions")
+    assert resp.status_code == 200
+    child = resp.json()["groups"][0]["children"][0]
+    assert child["pct"] is None
+
+
+def test_positions_pct_null_when_leverage_zero(client, registry):
+    _insert_deals(registry, [
+        _deal(1, 100, "EURUSD", "buy", 1.0, 1.1000, 0.0, 111, 1000, "IN", "human",
+              leverage=0, contract_size=100000.0),
+        _deal(2, 100, "EURUSD", "buy", 1.0, 1.1050, 50.0, 111, 1100, "OUT", "human",
+              leverage=0, contract_size=100000.0),
+    ])
+    resp = client.get("/api/positions")
+    assert resp.status_code == 200
+    child = resp.json()["groups"][0]["children"][0]
+    assert child["pct"] is None

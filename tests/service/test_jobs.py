@@ -189,7 +189,8 @@ def test_jobs_stream_broadcasts_job_update_event(monkeypatch, registry, lake_roo
             body = sub_queue.get(timeout=0.5)
         except queue.Empty:
             continue
-        assert set(body.keys()) == {"status", "progress", "run_id", "error"}
+        assert set(body.keys()) == {"job_id", "status", "progress", "run_id", "error"}
+        assert body["job_id"] == job_id
         frame = f"event: job_update\ndata: {json.dumps(body)}\n\n"
         assert frame.startswith("event: job_update\ndata: ")
         assert frame.endswith("\n\n")

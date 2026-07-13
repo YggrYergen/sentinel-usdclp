@@ -81,10 +81,11 @@ class JobsService:
 
     def _row_to_dict(self, row) -> dict[str, Any]:
         return {
-            "status": row[0],
-            "progress": row[1],
-            "run_id": row[2],
-            "error": row[3],
+            "job_id": row[0],
+            "status": row[1],
+            "progress": row[2],
+            "run_id": row[3],
+            "error": row[4],
         }
 
     def _update_job(self, job_id: str, **fields: Any) -> dict[str, Any]:
@@ -99,7 +100,7 @@ class JobsService:
                 )
                 conn.commit()
                 row = conn.execute(
-                    "SELECT status, progress, run_id, error FROM jobs WHERE id=?",
+                    "SELECT id, status, progress, run_id, error FROM jobs WHERE id=?",
                     (job_id,),
                 ).fetchone()
             finally:
@@ -145,7 +146,7 @@ class JobsService:
                 conn.commit()
             finally:
                 conn.close()
-        self._broadcast({"status": "queued", "progress": 0.0, "run_id": None, "error": None})
+        self._broadcast({"job_id": job_id, "status": "queued", "progress": 0.0, "run_id": None, "error": None})
         self._queue.put(job_id)
         return job_id
 
@@ -153,7 +154,7 @@ class JobsService:
         conn = self._connect()
         try:
             row = conn.execute(
-                "SELECT status, progress, run_id, error FROM jobs WHERE id=?",
+                "SELECT id, status, progress, run_id, error FROM jobs WHERE id=?",
                 (job_id,),
             ).fetchone()
         finally:

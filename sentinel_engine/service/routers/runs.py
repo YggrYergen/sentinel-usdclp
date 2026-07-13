@@ -90,8 +90,11 @@ def build_router(registry, lake_root) -> APIRouter:
         if equity_path:
             path = Path(equity_path)
             if path.is_file():
-                with path.open("r", encoding="utf-8") as fh:
-                    return json.load(fh)
+                try:
+                    with path.open("r", encoding="utf-8") as fh:
+                        return json.load(fh)
+                except (json.JSONDecodeError, OSError):
+                    pass  # corrupt/unreadable artifact -> fall back to trades below
 
         trades = registry.get_trades_for_run(run_id)
         trades_sorted = sorted(trades, key=lambda t: t.get("ts_out") or "")
@@ -106,7 +109,11 @@ def build_router(registry, lake_root) -> APIRouter:
             if ts is None:
                 continue
             cum += float(t.get("pnl") or 0.0)
-            points.append({"t": int(ts.value // 1_000_000_000), "v": cum})
+            if hasattr(ts, "value"):
+                epoch_s = int(ts.value // 1_000_000_000)
+            else:
+                epoch_s = int(ts.timestamp())
+            points.append({"t": epoch_s, "v": cum})
 
         return {"points": points}
 

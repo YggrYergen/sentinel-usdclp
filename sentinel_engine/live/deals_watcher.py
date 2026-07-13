@@ -204,12 +204,24 @@ class DealsWatcher:
             return 0
         cols = ", ".join(_DEAL_COLUMNS)
         placeholders = ", ".join("?" for _ in _DEAL_COLUMNS)
+        # REV-4 Fix 4: on ticket conflict (re-poll over the overlap window),
+        # take the NEW value for every column EXCEPT leverage/contract_size,
+        # which COALESCE to the previous value when the new one is NULL --
+        # a transient account_info/symbol_info failure must not wipe good
+        # values captured on an earlier poll.
+        preserve = {"leverage", "contract_size"}
+        updates = ", ".join(
+            f"{c}=COALESCE(excluded.{c}, {c})" if c in preserve else f"{c}=excluded.{c}"
+            for c in _DEAL_COLUMNS
+            if c != "ticket"
+        )
         conn = self.registry._connect()
         try:
             for deal in deals:
                 row = _map_deal(self.registry, deal, leverage, contract_sizes)
                 conn.execute(
-                    f"INSERT OR REPLACE INTO deals_raw({cols}) VALUES ({placeholders})",
+                    f"INSERT INTO deals_raw({cols}) VALUES ({placeholders}) "
+                    f"ON CONFLICT(ticket) DO UPDATE SET {updates}",
                     tuple(row[c] for c in _DEAL_COLUMNS),
                 )
             conn.commit()

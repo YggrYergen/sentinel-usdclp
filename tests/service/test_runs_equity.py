@@ -115,6 +115,23 @@ def test_equity_prefers_artifact_over_trades(client, registry, tmp_path):
     assert resp.json() == artifact_payload
 
 
+def test_equity_falls_back_to_trades_when_artifact_is_corrupt(client, registry, tmp_path):
+    run_id = "run-equity-corrupt"
+    equity_file = tmp_path / "equity_corrupt.json"
+    equity_file.write_text("{not valid json", encoding="utf-8")
+
+    _seed_run_with_trades(
+        registry, run_id,
+        [_trade("t1", "2026-01-01T00:00:00Z", "2026-01-01T01:00:00Z", 100.0)],
+        equity_path=equity_file,
+    )
+
+    resp = client.get(f"/api/runs/{run_id}/equity")
+    assert resp.status_code == 200
+    t1 = int(pd_ts("2026-01-01T01:00:00Z"))
+    assert resp.json() == {"points": [{"t": t1, "v": 100.0}]}
+
+
 def pd_ts(s: str) -> int:
     import pandas as pd
     return pd.Timestamp(s, tz="UTC").value // 1_000_000_000

@@ -341,3 +341,61 @@ def test_leverage_and_contract_size_idempotent_on_repeated_poll(reg):
         assert count == 2
     finally:
         conn.close()
+
+
+def test_reupsert_with_null_leverage_preserves_previous_values(reg):
+    """REV-4 Fix 4: a re-poll over the overlap window whose account_info/
+    symbol_info transiently fail (-> None leverage/contract_size) must NOT
+    wipe the good values captured on the first poll -- COALESCE keeps them."""
+    good_client = _StubMt5ClientWithLeverage(
+        _SAMPLE_DEALS, leverage=200, contract_sizes={"XAUUSD": 100.0}
+    )
+    watcher = DealsWatcher(reg, good_client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    # Same tickets again, but now the client can't provide leverage/
+    # contract_size (old-style stub with neither method).
+    degraded_client = _StubMt5Client(_SAMPLE_DEALS)
+    watcher2 = DealsWatcher(reg, degraded_client, poll_s=5, attach_checker=_always_attached)
+    report = watcher2.poll_once()
+    assert report.upserted == 2
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        for ticket in (1001, 1002):
+            row = conn.execute(
+                "SELECT * FROM deals_raw WHERE ticket=?", (ticket,)
+            ).fetchone()
+            d = dict(row)
+            assert d["leverage"] == 200, f"ticket {ticket}: leverage wiped"
+            assert d["contract_size"] == 100.0, f"ticket {ticket}: contract_size wiped"
+    finally:
+        conn.close()
+
+
+def test_reupsert_updates_other_fields_with_new_values(reg):
+    """Non-leverage/contract_size columns still take the NEW value on
+    conflict (INSERT OR REPLACE semantics preserved for them)."""
+    client = _StubMt5ClientWithLeverage(
+        _SAMPLE_DEALS, leverage=200, contract_sizes={"XAUUSD": 100.0}
+    )
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    updated = [dict(d) for d in _SAMPLE_DEALS]
+    updated[0]["profit"] = 99.9
+    client2 = _StubMt5ClientWithLeverage(
+        updated, leverage=300, contract_sizes={"XAUUSD": 100.0}
+    )
+    watcher2 = DealsWatcher(reg, client2, poll_s=5, attach_checker=_always_attached)
+    watcher2.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        d = dict(conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (1001,)).fetchone())
+        assert d["profit"] == 99.9
+        assert d["leverage"] == 300  # new non-null value wins
+    finally:
+        conn.close()
