@@ -1,0 +1,55 @@
+<documents>
+
+  <document index="1">
+    <source>aggregate_stats:emasar::EMASAR</source>
+    <document_content>
+Metrics contract: v1 | Baseline ref: RUN000
+Real (forward/live):
+  Period: n/a to n/a | N trades: 0
+  Net: n/a | Profit factor: n/a | Win rate: n/a% | Payoff: n/a
+  Expectancy (R): n/a [ok]
+  Net/day: n/a | Trades/day: n/a | MaxDD: n/a% | Sharpe(d): n/a
+Teorico (baseline backtest):
+  Period: 2026-07-01 to 2026-07-11 | N trades: 1
+  Net: 172.50 | Profit factor: n/a | Win rate: 100.0% | Payoff: n/a
+  Expectancy (R): 230.000 [ok]
+  Net/day: 172.50 | Trades/day: 1.00 | MaxDD: 0.00% | Sharpe(d): n/a
+    </document_content>
+  </document>
+
+  <document index="2">
+    <source>strategy_record:emasar::EMASAR</source>
+    <document_content>
+{
+  "strategy_id": "emasar::EMASAR",
+  "name": "EMASAR",
+  "familia": "emasar",
+  "platform": "mt5",
+  "estado": "activa",
+  "graduated": false,
+  "notes": "",
+  "variants": [
+    {"variant_id": "V1", "tf": "M5", "instrumento": "XAUUSD", "modo_salida": "sl_tp"}
+  ]
+}
+    </document_content>
+  </document>
+
+  <document index="3">
+    <source>recent_runs:emasar::EMASAR:n=3</source>
+    <document_content>
+| run_id | variant_id | engine | fidelity | periodo | trades | net | pf | wr | maxdd | sharpe |
+|--------|------------|--------|----------|---------|-------:|----:|---:|---:|------:|-------:|
+| RUN000 | V1 | sentinel-sim | research | 2026-07-01..2026-07-11 | 10 | 100.00 | 1.50 | 50.0 | -80.00 | 1.00 |
+| RUN001 | V1 | sentinel-sim | research | 2026-07-01..2026-07-11 | 11 | 101.00 | 1.60 | 51.0 | -81.00 | 1.05 |
+| RUN002 | V1 | sentinel-sim | research | 2026-07-01..2026-07-11 | 12 | 102.00 | 1.70 | 52.0 | -82.00 | 1.10 |
+    </document_content>
+  </document>
+
+</documents>
+
+<!-- cache_control breakpoint at the end of </documents>. Declare get_trade_bars and
+     get_trade_detail as real Claude API tool definitions (tools=[...]), not prompt text --
+     capped at 25,000 tokens/response per Anthropic's own Claude Code default (RQ7). Keep the
+     tool set identical across turns of the same review session -- adding/removing a tool
+     invalidates the cached data block too (RQ6/RQ8). -->

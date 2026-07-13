@@ -59,6 +59,14 @@ CHARS_PER_TOKEN = 3.5
 # Position dossier target budget (research doc §3: "3,000-8,000 tokens").
 BUDGET_TOKENS = 8000
 
+# Strategy dossier target budget (Task C3b brief: <= 10K estimated tokens
+# for the stuffed portion; research doc §4 gives 8-20K as the general range
+# -- this app pins the ceiling at 10K).
+BUDGET_TOKENS_STRATEGY = 10000
+
+# Recent-runs table default size for the strategy dossier (newest first).
+RECENT_RUNS_LIMIT = 50
+
 # Bars-before-entry / bars-after-exit window per timeframe (research doc §3
 # worked example uses N=20/M=20 at the entry timeframe as the default).
 BARS_BEFORE_ENTRY = 20
@@ -384,6 +392,208 @@ def build_position_dossier(
         tf_windows[target_tf] = (df, entry_idx, exit_idx)
         trim_applied = True
         xml, sections = _render(trade, tf_windows)
+        token_estimate = _token_estimate(xml)
+
+    if trim_applied:
+        sections["trim_applied"] = True
+
+    return {"xml": xml, "token_estimate": token_estimate, "sections": sections}
+
+
+# ---------------------------------------------------------------------------
+# Strategy dossier (Task C3b, CT-7 / research doc §4)
+# ---------------------------------------------------------------------------
+
+# §4 tools note, included verbatim after </documents> (research doc §4: the
+# actual `get_trade_bars`/`get_trade_detail` tool DEFINITIONS go in the API
+# request's `tools=[...]`, not in prompt text -- this comment documents the
+# intent for the caller assembling the request).
+_STRATEGY_TOOLS_NOTE = (
+    "<!-- cache_control breakpoint at the end of </documents>. Declare get_trade_bars and\n"
+    "     get_trade_detail as real Claude API tool definitions (tools=[...]), not prompt text --\n"
+    "     capped at 25,000 tokens/response per Anthropic's own Claude Code default (RQ7). Keep the\n"
+    "     tool set identical across turns of the same review session -- adding/removing a tool\n"
+    "     invalidates the cached data block too (RQ6/RQ8). -->"
+)
+
+
+def _fetch_variants(db_path: Path, strategy_id: str) -> list[dict[str, Any]]:
+    conn = sqlite3.connect(str(db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        rows = conn.execute(
+            "SELECT * FROM variant WHERE strategy_id=? ORDER BY variant_seq ASC",
+            (strategy_id,),
+        ).fetchall()
+        return [dict(r) for r in rows]
+    finally:
+        conn.close()
+
+
+def _metrics_block_text(label: str, block: dict[str, Any] | None) -> str:
+    """One CT-3 scorecard metrics block (`real`/`teorico`) -> plain-text
+    stats lines (server-computed, never left for the model -- research doc
+    §4/§RQ5)."""
+    if block is None:
+        return f"{label}: n/a (no data)"
+    window = block.get("window") or {}
+    wr = block.get("wr")
+    wr_pct = wr * 100.0 if wr is not None else None  # metrics.wr is [0,1]
+    lines = [
+        f"{label}:",
+        f"  Period: {window.get('from') or 'n/a'} to {window.get('to') or 'n/a'} | N trades: {block.get('trades')}",
+        f"  Net: {_fmt(block.get('net'), 2)} | Profit factor: {_fmt(block.get('pf'), 2)} | "
+        f"Win rate: {_fmt(wr_pct, 1)}% | Payoff: {_fmt(block.get('payoff'), 2)}",
+        f"  Expectancy (R): {_fmt(block.get('expectancy_r'), 3)}"
+        + (f" [{block.get('expectancy_r_flag')}]" if block.get("expectancy_r_flag") else ""),
+        f"  Net/day: {_fmt(block.get('net_per_day'), 2)} | Trades/day: {_fmt(block.get('trades_per_day'), 2)} | "
+        f"MaxDD: {_fmt(block.get('maxdd_pct'), 2)}% | Sharpe(d): {_fmt(block.get('sharpe_d'), 2)}",
+    ]
+    return "\n".join(lines)
+
+
+def _aggregate_stats_section(scorecard: dict[str, Any]) -> str:
+    floors = scorecard.get("floors") or {}
+    lines = [
+        f"Metrics contract: {scorecard.get('metrics_contract')} | "
+        f"Baseline ref: {scorecard.get('baseline_ref') or 'n/a'}",
+        _metrics_block_text("Real (forward/live)", floors.get("real")),
+        _metrics_block_text("Teorico (baseline backtest)", floors.get("teorico")),
+    ]
+    return "\n".join(lines)
+
+
+def _strategy_record_section(strategy: dict[str, Any], variants: list[dict[str, Any]]) -> str:
+    """Small, irregular structure -> compact JSON (research doc §RQ1/§RQ8),
+    same hand-rolled deterministic style as `_trade_record_section`."""
+    var_lines = []
+    for v in variants:
+        var_lines.append(
+            "    {"
+            f'"variant_id": "{v["variant_id"]}", '
+            f'"tf": "{v.get("tf") or "n/a"}", '
+            f'"instrumento": "{v.get("instrumento") or "n/a"}", '
+            f'"modo_salida": "{v.get("modo_salida") or "n/a"}"'
+            "}"
+        )
+    variants_json = "[\n" + ",\n".join(var_lines) + "\n  ]" if var_lines else "[]"
+    lines = [
+        "{",
+        f'  "strategy_id": "{strategy["strategy_id"]}",',
+        f'  "name": "{strategy.get("name")}",',
+        f'  "familia": "{strategy.get("familia")}",',
+        f'  "platform": "{strategy.get("platform")}",',
+        f'  "estado": "{strategy.get("estado") or "n/a"}",',
+        f'  "graduated": {"true" if strategy.get("graduated") else "false"},',
+        f'  "notes": "{strategy.get("notes") or ""}",',
+        f'  "variants": {variants_json}',
+        "}",
+    ]
+    return "\n".join(lines)
+
+
+def _runs_table(runs: list[dict[str, Any]]) -> str:
+    header = (
+        "| run_id | variant_id | engine | fidelity | periodo | trades | net | pf | wr | maxdd | sharpe |"
+    )
+    sep = "|--------|------------|--------|----------|---------|-------:|----:|---:|---:|------:|-------:|"
+    rows = [header, sep]
+    for r in runs:
+        periodo = f"{r.get('periodo_desde') or 'n/a'}..{r.get('periodo_hasta') or 'n/a'}"
+        rows.append(
+            f"| {r['run_id']} | {r.get('variant_id') or 'n/a'} | {r.get('engine') or 'n/a'} | "
+            f"{r.get('fidelity') or 'n/a'} | {periodo} | {r.get('trades') if r.get('trades') is not None else 'n/a'} | "
+            f"{_fmt(r.get('net'), 2)} | {_fmt(r.get('pf'), 2)} | {_fmt(r.get('wr'), 1)} | "
+            f"{_fmt(r.get('maxdd'), 2)} | {_fmt(r.get('sharpe'), 2)} |"
+        )
+    return "\n".join(rows)
+
+
+def _render_strategy(
+    strategy: dict[str, Any],
+    variants: list[dict[str, Any]],
+    scorecard: dict[str, Any],
+    runs: list[dict[str, Any]],
+) -> tuple[str, dict[str, int]]:
+    """§4 template order: aggregate stats FIRST (stats-first, research doc
+    §4/§RQ5), then the strategy/variants record, then the compact
+    one-row-per-run recent-runs table. Tools note appended verbatim after
+    </documents> (§4)."""
+    sid = strategy["strategy_id"]
+    sections: dict[str, int] = {}
+
+    stats_content = _aggregate_stats_section(scorecard)
+    sections["aggregate_stats"] = len(stats_content)
+
+    record_content = _strategy_record_section(strategy, variants)
+    sections["strategy_record"] = len(record_content)
+
+    runs_content = _runs_table(runs)
+    sections["recent_runs"] = len(runs_content)
+
+    docs = [
+        _document(1, f"aggregate_stats:{sid}", stats_content),
+        _document(2, f"strategy_record:{sid}", record_content),
+        _document(3, f"recent_runs:{sid}:n={len(runs)}", runs_content),
+    ]
+    xml = (
+        "<documents>\n\n" + "\n\n".join(docs) + "\n\n</documents>\n\n"
+        + _STRATEGY_TOOLS_NOTE
+    )
+    return xml, sections
+
+
+def build_strategy_dossier(
+    strategy_id: str,
+    *,
+    db_path: Path | None = None,
+) -> dict[str, Any]:
+    """Build the strategy-review dossier for `strategy_id` per CT-7 / §4.
+    Returns `{"xml": str, "token_estimate": int, "sections": dict[str, int]}`.
+
+    Sources (all read-only, in-process -- NEVER an HTTP self-call):
+      - strategy + variant rows from the registry DB,
+      - CT-3 scorecard via `sentinel_engine.research.scorecard.build_scorecard`
+        (the SAME internals the scorecard endpoint uses),
+      - recent runs via `ResearchRegistry.query_runs` (newest first).
+
+    Budget: <= `BUDGET_TOKENS_STRATEGY` (10K) estimated tokens; if over,
+    the recent-runs table is trimmed by dropping its OLDEST rows (bottom of
+    the newest-first table), recorded via `sections["trim_applied"]`.
+    """
+    from sentinel_engine.research.registry2 import ResearchRegistry
+    from sentinel_engine.research.scorecard import build_scorecard
+
+    db_path = Path(db_path) if db_path is not None else DEFAULT_DB_PATH
+    registry = ResearchRegistry(db_path)
+
+    strategy = registry.get_strategy(strategy_id)
+    if strategy is None:
+        raise DossierError(f"unknown strategy_id: {strategy_id!r}")
+
+    scorecard = build_scorecard(registry, strategy_id)
+    if scorecard is None:  # pragma: no cover -- get_strategy already guarded
+        raise DossierError(f"unknown strategy_id: {strategy_id!r}")
+
+    variants = _fetch_variants(db_path, strategy_id)
+    runs = registry.query_runs(
+        strategy_id=strategy_id, limit=RECENT_RUNS_LIMIT,
+    )["rows"]
+
+    xml, sections = _render_strategy(strategy, variants, scorecard, runs)
+    token_estimate = _token_estimate(xml)
+
+    trim_applied = False
+    # Same trim discipline as the position dossier: bulk-drop the OLDEST
+    # rows (bottom of the newest-first runs table) based on average
+    # chars/row, re-render, re-measure -- converges in O(few) passes.
+    while token_estimate > BUDGET_TOKENS_STRATEGY and len(runs) > 1:
+        excess_chars = (token_estimate - BUDGET_TOKENS_STRATEGY) * CHARS_PER_TOKEN
+        avg_row_chars = max(1.0, sections.get("recent_runs", len(runs) * 60) / max(1, len(runs)))
+        drop_n = max(1, min(len(runs) - 1, int(excess_chars / avg_row_chars) + 1))
+        runs = runs[: len(runs) - drop_n]
+        trim_applied = True
+        xml, sections = _render_strategy(strategy, variants, scorecard, runs)
         token_estimate = _token_estimate(xml)
 
     if trim_applied:
