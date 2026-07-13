@@ -210,6 +210,69 @@
     return resp.json();
   }
 
+  // ---- C5: reusable SSE-over-fetch consumer (EventSource does not support
+  // POST bodies, so the AI analysis stream is consumed manually via fetch +
+  // ReadableStream reader). Parses `event:`/`data:` lines per the SSE wire
+  // format (blank line terminates each event). Caller passes onEvent(name,
+  // dataText) and gets back { abort } for REV-5-pattern teardown; caller may
+  // also pass an external AbortController via opts.signal. C7b reuses this
+  // helper verbatim for its own SSE endpoint. ----
+  function consumeSseStream(url, body, opts) {
+    const options = opts || {};
+    const controller = new AbortController();
+    const signal = controller.signal;
+    const onEvent = options.onEvent || function () {};
+
+    async function run() {
+      let resp;
+      try {
+        resp = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body || {}),
+          signal,
+        });
+      } catch (e) {
+        if (signal.aborted) return;
+        onEvent("ai_error", JSON.stringify({ message: e.message || String(e) }));
+        return;
+      }
+      if (!resp.ok || !resp.body) {
+        onEvent("ai_error", JSON.stringify({ message: `stream failed: ${resp.status}` }));
+        return;
+      }
+      const reader = resp.body.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let buf = "";
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let idx;
+          while ((idx = buf.indexOf("\n\n")) !== -1) {
+            const rawEvent = buf.slice(0, idx);
+            buf = buf.slice(idx + 2);
+            let eventName = "message";
+            let dataText = "";
+            rawEvent.split("\n").forEach((line) => {
+              if (line.startsWith("event:")) eventName = line.slice(6).trim();
+              else if (line.startsWith("data:")) dataText += line.slice(5).trim();
+            });
+            onEvent(eventName, dataText);
+          }
+        }
+      } catch (e) {
+        if (!signal.aborted) onEvent("ai_error", JSON.stringify({ message: e.message || String(e) }));
+      } finally {
+        try { reader.releaseLock(); } catch (e) { /* noop */ }
+      }
+    }
+
+    run();
+    return { abort: () => controller.abort() };
+  }
+
   // ---- trades table columns (same as REVIEW) ----
   function tradeRowColumns() {
     const fmt = window.SENTINEL.fmt;
@@ -364,6 +427,9 @@
     .positions-humano-panel-actions { display: flex; justify-content: flex-end; gap: 8px; }
     .positions-humano-panel-actions button { cursor: pointer; }
     .positions-humano-panel-actions button:disabled { cursor: not-allowed; opacity: 0.5; }
+    .positions-humano-panel-ai { display: none; white-space: pre-wrap; padding: 8px; border: 1px solid var(--border, #333); border-radius: 4px; max-height: 220px; overflow: auto; font-size: 0.82rem; }
+    .positions-humano-panel-ai.active { display: block; }
+    .positions-humano-panel-ai.error { color: var(--sentinel-sign-neg, #e05555); }
   `;
 
   function injectHumanoCss() {
@@ -448,14 +514,48 @@
     const analizarBtn = el("button", {
       type: "button",
       class: "positions-humano-analizar-btn",
-      disabled: "disabled",
-      title: "Análisis IA — próximamente",
+      title: "Análisis IA",
     });
     analizarBtn.textContent = "Analizar";
-    analizarBtn.disabled = true;
     actions.appendChild(replayBtn);
     actions.appendChild(analizarBtn);
     panel.appendChild(actions);
+
+    const aiPanel = el("div", { class: "positions-humano-panel-ai" });
+    panel.appendChild(aiPanel);
+
+    let aiStream = null;
+
+    function aiEventHandler(name, dataText) {
+      if (name === "ai_text") {
+        let chunk = "";
+        try { chunk = JSON.parse(dataText).chunk || JSON.parse(dataText).text || ""; } catch (e) { chunk = dataText; }
+        aiPanel.classList.remove("error");
+        aiPanel.classList.add("active");
+        aiPanel.textContent += chunk;
+      } else if (name === "ai_done") {
+        analizarBtn.disabled = false;
+        aiStream = null;
+      } else if (name === "ai_error") {
+        let msg = dataText;
+        try { msg = JSON.parse(dataText).message || dataText; } catch (e) { /* keep raw */ }
+        aiPanel.classList.add("active", "error");
+        aiPanel.textContent = `Error: ${msg}`;
+        analizarBtn.disabled = false;
+        aiStream = null;
+      }
+    }
+
+    analizarBtn.addEventListener("click", () => {
+      if (analizarBtn.disabled || aiStream) return;
+      const { child: aiChild } = positionEntryExit(selection);
+      const tradeId = aiChild.position_id != null ? aiChild.position_id : aiChild.trade_id;
+      analizarBtn.disabled = true;
+      aiPanel.classList.remove("error");
+      aiPanel.classList.add("active");
+      aiPanel.textContent = "";
+      aiStream = consumeSseStream("/api/ai/analyze_position", { trade_id: tradeId }, { onEvent: aiEventHandler });
+    });
 
     const { child, tIn, tOut } = positionEntryExit(selection);
     const tf = DEFAULT_TF;
@@ -506,6 +606,7 @@
 
     function closePanel() {
       document.removeEventListener("keydown", escHandler);
+      if (aiStream) { try { aiStream.abort(); } catch (e) { /* noop */ } aiStream = null; }
       if (chartInst) { try { chartInst.destroy(); } catch (e) { /* noop */ } }
       container.innerHTML = "";
       if (onClose) onClose();

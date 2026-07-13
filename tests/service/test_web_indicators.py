@@ -89,9 +89,84 @@ def test_indicators_endpoint_returns_ema_and_sar_descriptors(client_with_run):
     body = resp.json()
     assert body["tf"] == "M2"
     ids = [ind["id"] for ind in body["indicators"]]
-    # SuperTrend added (design spec 2026-07-10, Component 7) alongside the
-    # pre-existing EMA/SAR descriptors -- same list-of-descriptors shape.
-    assert ids == ["ema_fast", "ema_slow", "sar", "supertrend"]
+    # FIX 5 / D80: the endpoint now returns the FULL indicator set for EVERY
+    # run (every indicator toggleable in the selector on any run) -- price
+    # overlays lead, oscillator subpanel trails. ema_pullback (EMA5) is always
+    # present now (was V2-only). Order is stable.
+    assert ids == [
+        "ema_fast", "ema_slow", "ema_pullback", "sar", "supertrend",
+        "ao", "ac", "momentum",
+    ]
+    # oscillators carry panel == "oscillator"; price overlays panel == "price"
+    by_id = {ind["id"]: ind for ind in body["indicators"]}
+    assert by_id["ema_fast"]["panel"] == "price"
+    assert by_id["ao"]["panel"] == "oscillator"
+    assert by_id["ac"]["kind"] == "histogram"
+    assert by_id["momentum"]["kind"] == "line"
+
+
+def test_indicators_full_set_always_present_with_default_on_flags(client_with_run):
+    """FIX 5 / D80: EVERY indicator is returned for EVERY run so all are
+    toggleable in the selector; the family only decides which come toggled ON
+    by default via `default_on`. This fixture is an EMASAR V1 run, so its
+    default-ON set is EMA8/EMA20/SAR/SuperTrend; EMA5 pullback + AO/AC/Momentum
+    are present but default OFF."""
+    client, _registry, run_id, _vid, _df = client_with_run
+    body = client.get(f"/api/runs/{run_id}/indicators", params={"tf": "M2"}).json()
+    by_id = {ind["id"]: ind for ind in body["indicators"]}
+    # every indicator carries a boolean default_on
+    for ind in body["indicators"]:
+        assert isinstance(ind["default_on"], bool)
+    # V1 default-ON set
+    assert by_id["ema_fast"]["default_on"] is True
+    assert by_id["ema_slow"]["default_on"] is True
+    assert by_id["sar"]["default_on"] is True
+    assert by_id["supertrend"]["default_on"] is True
+    # present but OFF by default on a V1 run
+    assert by_id["ema_pullback"]["default_on"] is False
+    assert by_id["ao"]["default_on"] is False
+    assert by_id["ac"]["default_on"] is False
+    assert by_id["momentum"]["default_on"] is False
+    # This fixture's native SAR IS 0.3/0.3, so the extra fixed SAR(0.3/0.3)
+    # overlay is de-duplicated (no `sar_3_3` chip) -- only the native `sar`.
+    assert "sar_3_3" not in by_id
+
+
+def test_indicators_extra_sar_3_3_present_when_native_sar_differs(registry, tmp_path):
+    """User request 2026-07-13: add a fixed SAR(0.3/0.3) overlay IN ADDITION to
+    the run's native SAR. On a run whose native SAR is NOT 0.3/0.3, both a
+    `sar` (native) and a `sar_3_3` (fixed 0.3/0.3, off by default) descriptor
+    are returned; on a run whose native SAR already IS 0.3/0.3 it is
+    de-duplicated (covered above)."""
+    lake_root = tmp_path / "lake"
+    df = _mk_synthetic_lake(lake_root, "XAUUSD", 600)
+    sid = registry.upsert_strategy("EMASAR", "emasar", "mt5")
+    # native SAR 0.005/0.05 -> distinct from 0.3/0.3
+    vid = registry.upsert_variant(
+        sid, "emasar_XAUUSD_M2_sar005m05_test",
+        {"sar_step": 0.005, "sar_max": 0.05}, "M2", "XAUUSD", "original",
+    )
+    run_id = "sim-testindic0002"
+    registry.insert_run({
+        "run_id": run_id, "variant_id": vid, "params_hash": None,
+        "engine": "sentinel-sim", "fidelity": "research",
+        "periodo_desde": "2026-01-01", "periodo_hasta": "2026-01-02",
+        "trades": 0, "net": 0.0,
+    })
+    shared_feed = FakeFeed()
+    app = create_app(
+        feed_factory=lambda name: shared_feed, instruments=("usdclp",),
+        autostart_loop=False, registry=registry, lake_root=lake_root,
+    )
+    with TestClient(app) as client:
+        body = client.get(f"/api/runs/{run_id}/indicators", params={"tf": "M2"}).json()
+    by_id = {ind["id"]: ind for ind in body["indicators"]}
+    assert by_id["sar"]["label"] == "SAR 0.005/0.05"      # native kept
+    assert by_id["sar_3_3"]["label"] == "SAR 0.3/0.3"     # extra fixed SAR added
+    assert by_id["sar_3_3"]["step"] == 0.3 and by_id["sar_3_3"]["max"] == 0.3
+    assert by_id["sar_3_3"]["kind"] == "dots"
+    assert by_id["sar_3_3"]["default_on"] is False
+    assert len(by_id["sar_3_3"]["points"]) == len(by_id["sar"]["points"])
 
 
 def test_indicators_reflect_run_params_not_hardcoded_defaults(client_with_run):

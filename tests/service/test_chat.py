@@ -400,3 +400,119 @@ def test_analyze_position_gated_model_without_unlock_returns_403_before_any_call
 
     # No API call was made -- gate checked BEFORE dossier build / API call.
     assert fake_client.messages.calls == []
+
+
+# ── C7a: POST /api/ai/review_strategy (SSE, CT-9) ──
+
+def _seed_strategy(db_path: Path) -> None:
+    reg = ResearchRegistry(db_path)
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V1", {}, "M5", "XAUUSD", "sl_tp")
+    run_id = reg.insert_run({
+        "run_id": "RUN001",
+        "variant_id": vid,
+        "engine": "sentinel-sim",
+        "fidelity": "research",
+        "periodo_desde": "2026-07-01",
+        "periodo_hasta": "2026-07-11",
+    })
+    reg.insert_trades(run_id, [{
+        "trade_id": "T00001",
+        "run_id": run_id,
+        "origin": "strategy",
+        "ts_in": TS_IN.isoformat(),
+        "ts_out": TS_OUT.isoformat(),
+        "px_in": 2415.30,
+        "px_out": 2418.75,
+        "side": "LONG",
+        "volume": 0.50,
+        "sl": 2413.80,
+        "tp": 2420.00,
+        "exit_reason": "tp_hit",
+        "exit_reason_source": "broker",
+        "pnl": 172.50,
+        "mae": -4.2,
+        "mfe": 34.5,
+    }])
+
+
+def test_review_strategy_happy_path_sse_sequence(app_factory, tmp_path):
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path = tmp_path / "research.db"
+    lake_root = tmp_path / "lake"
+    _seed_strategy(db_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+
+    responses = [
+        _FakeMessage(content=[_FakeTextBlock(text="The strategy is performing well overall.")], stop_reason="end_turn"),
+    ]
+    app.state.chat_client = _FakeAnthropicClient(responses=responses)
+
+    with TestClient(app) as client:
+        with client.stream(
+            "POST", "/api/ai/review_strategy", json={"strategy_id": "EMASAR"}
+        ) as resp:
+            assert resp.status_code == 200
+            assert resp.headers["content-type"].startswith("text/event-stream")
+            body = "".join(resp.iter_text())
+
+    events = _parse_sse_events(body)
+    names = [e[0] for e in events]
+    assert names == ["ai_text", "ai_done"]
+    assert "performing well" in events[0][1]
+    assert "performing well" in events[1][1]
+
+    # Model actually received the dossier XML + question, STABLE-FIRST
+    # ordering (fixed preamble -> dossier -> question last).
+    call = app.state.chat_client.messages.calls[0]
+    assert "<documents>" in call["system"]
+    assert call["system"].index("You are SENTINEL") < call["system"].index("<documents>")
+    assert "EMASAR" in call["messages"][0]["content"]
+
+
+def test_review_strategy_unknown_strategy_id_emits_ai_error(app_factory, tmp_path):
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path = tmp_path / "research.db"
+    lake_root = tmp_path / "lake"
+    _seed_strategy(db_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+    app.state.chat_client = _FakeAnthropicClient(responses=[])
+
+    with TestClient(app) as client:
+        with client.stream(
+            "POST", "/api/ai/review_strategy", json={"strategy_id": "DOES-NOT-EXIST"}
+        ) as resp:
+            assert resp.status_code == 200
+            body = "".join(resp.iter_text())
+
+    events = _parse_sse_events(body)
+    assert [e[0] for e in events] == ["ai_error"]
+    assert "DOES-NOT-EXIST" in events[0][1]
+
+
+def test_review_strategy_gated_model_without_unlock_returns_403_before_any_call(
+    app_factory, tmp_path, monkeypatch
+):
+    monkeypatch.setenv("SENTINEL_OPUS_GATE", "letmein")
+    app = app_factory(instruments=("usdclp",), autostart_loop=False)
+    db_path = tmp_path / "research.db"
+    lake_root = tmp_path / "lake"
+    _seed_strategy(db_path)
+    app.state.registry = ResearchRegistry(db_path)
+    app.state.lake_root = lake_root
+
+    fake_client = _FakeAnthropicClient(responses=[])
+    app.state.chat_client = fake_client
+
+    with TestClient(app) as client:
+        resp = client.post(
+            "/api/ai/review_strategy",
+            json={"strategy_id": "EMASAR", "model": "claude-opus-4-8"},
+        )
+        assert resp.status_code == 403
+        assert resp.json() == {"error": "gated_model_locked"}
+
+    # No API call was made -- gate checked BEFORE dossier build / API call.
+    assert fake_client.messages.calls == []

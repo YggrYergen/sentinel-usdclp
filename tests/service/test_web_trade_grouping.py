@@ -107,35 +107,61 @@ def test_chart_js_has_bar_time_snapping_helpers():
 
 
 def test_chart_js_build_markers_snaps_entry_and_exit_times():
+    # 2026-07-13: snapping now flows through resolveBarTime, which wraps
+    # barTimeOf AND resolves against the COMMITTED bar set in windowMode
+    # (returns null for off-window times instead of injecting a phantom
+    # column into the shared time scale).
     text = _chart_js()
     start = text.index("function buildMarkers")
     end = text.index("\n    function epochOf", start)
     body = text[start:end]
-    assert "barTimeOf(epochOf(group.ts_in))" in body
-    assert "barTimeOf(epochOf(trade.ts_out))" in body
+    assert "resolveBarTime(group.ts_in)" in body
+    assert "resolveBarTime(trade.ts_out)" in body
 
 
 def test_chart_js_find_signal_at_bar_time_uses_bar_time_of():
+    # 2026-07-13: hover matching uses the SAME resolved bar times the
+    # markers are drawn at (resolveBarTime), gated on signalFullyInWindow so
+    # an undrawn off-window neighbor can never win the hover match.
     text = _chart_js()
     start = text.index("function findSignalAtBarTime")
     end = text.index("\n    function signalTooltipHtml", start)
     body = text[start:end]
-    assert "barTimeOf(epochOf(group.ts_in))" in body
-    assert "barTimeOf(epochOf(t.ts_out))" in body
+    assert "resolveBarTime(group.ts_in)" in body
+    assert "resolveBarTime(t.ts_out)" in body
+    assert "signalFullyInWindow(group)" in body
 
 
 def test_chart_js_connector_drawer_snaps_times_to_bar():
-    """The per-ficha connector drawer must snap both endpoints via
-    barTimeOf, and if entry/exit collapse onto the same bar it must bump
-    forward by a REAL bar (secPerBar()), not a synthetic +1s (a +1s bump
-    would reintroduce an off-bar phantom time)."""
+    """The per-ficha connector drawer must snap both endpoints to COMMITTED
+    bars (resolveBarTime; null endpoint -> no series, never a clamped
+    phantom time), and if entry/exit collapse onto the same bar it must bump
+    forward to the NEXT COMMITTED bar (nextBarTime) -- not a synthetic +1s
+    nor a blind +secPerBar() that could land inside a closed-market gap."""
     text = _chart_js()
     start = text.index("function drawFichaConnector")
     end = text.index("\n    function hexToRgba", start)
     body = text[start:end]
-    assert "barTimeOf(tIn)" in body
-    assert "barTimeOf(tOut)" in body
-    assert "secPerBar()" in body
+    assert "resolveBarTime(tIn)" in body
+    assert "resolveBarTime(tOut)" in body
+    assert "nextBarTime(tInBar)" in body
+
+
+def test_chart_js_resolve_bar_time_helpers_present():
+    """2026-07-13 root-cause fix: the windowMode time-scale hygiene helpers
+    must exist -- barTimes set committed in applyBars, resolveBarTime /
+    nextBarTime / signalFullyInWindow gating, and overlay-point clipping so
+    NO series ever hands the shared time scale a non-candle time (phantom
+    columns rendered as candle gaps and shifted the anchor zoom's logical
+    indices -> selected trade off-center/off-screen)."""
+    text = _chart_js()
+    assert "let barTimes = new Set()" in text
+    assert "function resolveBarTime(" in text
+    assert "function nextBarTime(" in text
+    assert "function signalFullyInWindow(" in text
+    assert "function clipOverlayPoints(" in text
+    # every series setter passes its points through the clip
+    assert text.count("clipOverlayPoints(points)") >= 4
 
 
 # ---- req 3: selection tracks a whole signal, not a single trade ----
@@ -155,7 +181,9 @@ def test_chart_js_build_markers_dims_non_selected_signals():
     start = text.index("function buildMarkers")
     end = text.index("\n    function epochOf", start)
     body = text[start:end]
-    assert "hexToRgba(colorHex, 0.30)" in body or "hexToRgba(colorHex,0.30)" in body
+    # FIX 3 (non-selected 50% MORE transparent): dim marker alpha halved
+    # 0.30 -> 0.15. Still fades non-selected markers, just more.
+    assert "hexToRgba(colorHex, 0.15)" in body or "hexToRgba(colorHex,0.15)" in body
 
 
 # ---- req 5: hover popup shows per-ficha mini-table ----
@@ -227,13 +255,15 @@ def test_selected_markers_use_glow():
     body = text[start:end]
     assert "isSelected ? 2 : 1" in body
     assert "isSelected ? 1.6 : 1" in body
-    assert "hexToRgba(colorHex, 0.30)" in body or "hexToRgba(colorHex,0.30)" in body
+    # FIX 3: dim marker alpha halved 0.30 -> 0.15 (selected stays full color).
+    assert "hexToRgba(colorHex, 0.15)" in body or "hexToRgba(colorHex,0.15)" in body
 
     start2 = text.index("function drawFichaConnector")
     end2 = text.index("\n    function hexToRgba", start2)
     conn_body = text[start2:end2]
     assert "bright ? 3" in conn_body or "bright ? hexToRgba(colorHex, 0.95)" in conn_body
-    assert "0.22" in conn_body or "0.25" in conn_body
+    # FIX 3: dim connector alpha halved 0.22 -> 0.11.
+    assert "0.11" in conn_body
 
     css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
     assert ".review-row-selected" in css

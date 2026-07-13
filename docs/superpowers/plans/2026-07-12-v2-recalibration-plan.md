@@ -57,10 +57,10 @@
 | REV-4 service fixes wave-B review: SSE job_id (CT-4 enmendado) · equity JSON/ts hardening · pct computado · upsert COALESCE | A | — | [x] | 989e43c (2 disp c/ corte de sesión, ~5min) |
 | REV-5 web fixes wave-B review: EventSource teardown · group-card VWAP | B | — | [x] | ac9b7e0 (2 disp c/ corte de sesión, ~4min) |
 | REV-3 backlog (review): bars double-read w/ overlays · redraw/mousemove throttling · tuple-bar retirement · max_points≤0 · rangeless 404 · dual live-updaters · [wave-B] vwap con OUTs volume-0 · scorecard N-fetch sin caché · /api/positions full-scan (índice origin/symbol + time-bound antes de live) · fetchCoverage 3ª impl (runs.js) · re-fetch por tab-switch · guard IN-less duplicado router/grouping | — | — | [ ] | backlog, fix pass post-Wave-B |
-| C1 news poller + API | A | W0.1 | [~] | C1a `fcaaee2` (1 disp, ~2min, 12 tests); C1b pending |
-| C2 News tab UI | B | C1 | [ ] | |
-| C3 dossier builders | A | B2 | [ ] | |
-| C4 tool registry + manual loop | A | C3 | [ ] | |
+| C1 news poller + API | A | W0.1 | [x] | C1a `fcaaee2` (1 disp, ~2min, 12 tests); C1b `1b4a7e4` (1 disp + fix ORC, ~13min, 19 tests; fix: poller opt-in — default True disparaba red en todos los tests lifespan) |
+| C2 News tab UI | B | C1 | [x] | `dd55b3a` (1 disp, ~1.6min, 10 tests; SSE prepend no re-aplica filtros activos — nota v1) |
+| C3 dossier builders | A | B2 | [x] | C3a `94ec680` (1 disp + fix ORC, ~12min, 5 tests; fix: columnas indicadores ema8/ema20/sar + hold_time_min vs §3 literal; rsi14 omitida — no hay función RSI serie en codebase); C3b `5938145` (1 disp, ~19min — §2 review con lupa OK: +210 aditivo, 26 tests; runs-table en vez de trade_log §4 = per plan spec) |
+| C4 tool registry + manual loop | A | C3 (C4b only) | [x] | C4a `6a0163e` (1 disp, ~2min, 12 tests); C4b `4343e59` (1 disp, ~6min, 17 tests + sweep 486; notas: model opcional per-request — no existe "modelo de sesión" persistido; sin heartbeat durante tool loop, documentado) |
 | C5 Analizar wiring | B | C4, B3 | [ ] | |
 | C6 mini-eval runner | A | C3 | [ ] | |
 | C7 strategy-review chat v2 | A+B | C4, B4 | [ ] | |
@@ -313,6 +313,10 @@ def test_route_set_unchanged(client):
 
 Sequencing (one in flight per lane): lane A serial C1a→C1b→C3a→C3b→C4a→C4b→C7a ·
 lane B C2 (after C1b), C5 (after C4b), C7b (after C7a) · lane C C6 (after C3b).
+**AMENDED 2026-07-13 sesión #5 (ORC):** file-disjoint tasks may run concurrently across lanes —
+C1b ∥ C3a ∥ C4a dispatched together (ai/ `__init__.py` scaffolding pre-created by ORC to
+de-conflict C3a∥C4a; C4a's real deps are B1/B2, the C3 dep binds C4b only). One-file-one-owner
+and CHOKE rules unchanged.
 Current reality (verified): `routers/news.py` = empty 6-line stub; `routers/chat.py` has CT-6
 endpoints (`/api/llm/models|unlock|usage`) + NON-streaming `POST /chat`; `sentinel_engine/ai/`
 does not exist; nav button + `section-news` already in `index.html` (no CHOKE for C2 unless app.js glue needed).

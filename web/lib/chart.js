@@ -54,8 +54,8 @@
   // signal timestamp. This computes WHERE inside the bar the signal actually
   // landed, as a [0,1] fraction of the bar's width -- consumers (marker/
   // connector drawing, or the canvas-overlay fallback) multiply this by the
-  // bar's pixel width and add to the bar's left-edge x. Pure function, no
-  // chart/DOM dependency, so it's independently testable.
+  // bar's pixel width and add to the bar's CENTER x (see preciseXOf). Pure
+  // function, no chart/DOM dependency, so it's independently testable.
   function fractionalX(signalT, bucketT, tfSeconds) {
     if (!tfSeconds) return 0;
     const frac = (Number(signalT) - Number(bucketT)) / Number(tfSeconds);
@@ -74,9 +74,21 @@
   // A5b: full positioning helper for the hairline overlay -- given the bar
   // CENTER x (what lightweight-charts' timeToCoordinate returns) and the bar
   // width in px, returns the absolute pixel x of the signal's exact intrabar
-  // position: x = barLeftEdge + barWidth * fractionalX(...). Pure, testable.
+  // position: x = barCenterX + barWidth * fractionalX(...). Pure, testable.
+  //
+  // ROOT-CAUSE FIX (2026-07-13, "verticals misaligned with entry/exit"):
+  // this used to anchor at the bar's LEFT EDGE (barCenterX - barWidth/2 +
+  // barWidth*frac). Sim-report signal times land exactly on bar boundaries
+  // (frac = 0), so EVERY hairline drew half a bar LEFT of its entry/exit
+  // marker (measured -13px at barSpacing 26.8 in headless Chrome on all 4
+  // fixture runs) -- the misalignment the user reported. lightweight-charts
+  // anchors markers, candles and time->coordinate interpolation at bar
+  // CENTERS (an arbitrary time between two bar times maps between their
+  // CENTER coordinates), so the consistent convention is center-based:
+  // frac=0 sits exactly on the bar's marker/candle center, frac=1 on the
+  // NEXT bar's center.
   function preciseXOf(signalT, bucketT, tfSeconds, barCenterX, barWidth) {
-    return (barCenterX - barWidth / 2) + barWidth * fractionalX(signalT, bucketT, tfSeconds);
+    return barCenterX + barWidth * fractionalX(signalT, bucketT, tfSeconds);
   }
 
   function barToCandle(bar) {
@@ -117,6 +129,19 @@
     let symbol = opts.symbol || "XAUUSD";
     let tf = opts.tf || "M1";
 
+    // windowMode (Trade View / REVIEW): the caller pins an explicit window
+    // per selected trade via setWindow(). In that mode the chunked-prefetch
+    // barSource must be DISABLED: its onData->applyBars kept re-committing an
+    // ever-growing merged bar set (tail chunks + every pan-triggered chunk),
+    // which (a) clobbered the trade window -> chart "self-moves" (BUG-C1) and
+    // (b) forced a full buildMarkers()/redrawConnectors()/precise-overlay
+    // redraw on EVERY merge, thrashing the main thread to ~1fps on runs whose
+    // trades sit far from the data tail (BUG-C3/perf, e.g. EMS_XAU_V1_M5_sar3m3
+    // whose Jan trades are ~6 months before the July tail). setWindow() owns
+    // the single fetch; no near-edge fetchPreviousBlock either. CHARTS (free
+    // pan) leaves this false and keeps the LOD prefetch.
+    const windowMode = !!opts.windowMode;
+
     // Wave-2b gap/wavy-line fix: lightweight-charts merges ALL series' time
     // points into one shared time scale. Trade event times (ts_out often at
     // :40s) don't align to bar boundaries (M1 bars at :00s), so handing raw
@@ -149,14 +174,29 @@
     // fractionalX(signal_t, bucket_t, tf_seconds). pointer-events: none so
     // ALL hover/hit-testing stays owned by lightweight-charts + the existing
     // hoveredSignalId/findSignalNearConnector logic (semantics intact).
+    // DPR ROOT-CAUSE FIX (2026-07-13, "duplicated geometry offset up/left at
+    // display scaling >100%"): this canvas is appended INSIDE canvasHost (a
+    // sibling of lightweight-charts' own canvases) so it shares EXACTLY the
+    // same origin and CSS box as the LC pane -- the coordinate space that
+    // timeToCoordinate/priceToCoordinate report in. Previously it lived on
+    // chart-root with inset:0, whose box (chart-root, incl. border) differed
+    // from canvasHost by ~20px vertically, and -- fatally -- its backing store
+    // was sized from canvasHost.clientWidth*dpr while its CSS box came from
+    // chart-root, so at dpr>1 the dpr-transformed drawing was CSS-stretched by
+    // a second (chart-root/canvasHost) factor, painting a copy shifted by
+    // ~x*(dpr-1). redrawPreciseOverlay now pins both CSS size and backing size
+    // to canvasHost's own rect every draw (re-derives dpr on each call, so a
+    // window zoom / monitor move that changes devicePixelRatio self-heals).
     const preciseCanvas = document.createElement("canvas");
     preciseCanvas.className = "chart-precise-overlay";
     preciseCanvas.style.position = "absolute";
-    preciseCanvas.style.inset = "0";
+    preciseCanvas.style.left = "0";
+    preciseCanvas.style.top = "0";
     preciseCanvas.style.pointerEvents = "none";
     preciseCanvas.style.zIndex = "5";
+    canvasHost.style.position = "relative"; // containing block for the overlay
+    canvasHost.appendChild(preciseCanvas);
     root.appendChild(canvasHost);
-    root.appendChild(preciseCanvas);
     root.appendChild(tooltip);
     root.appendChild(stateOverlay);
     el.appendChild(root);
@@ -275,6 +315,16 @@
     const overlays = new Map(); // id -> series
 
     let bars = []; // current [[ts,o,h,l,c,v],...]
+    // Set of the committed bars' times (epoch sec). THE time-scale invariant
+    // (2026-07-13 root-cause fix, see resolveBarTime below): in windowMode
+    // every time handed to ANY series/marker MUST be a member of this set.
+    // lightweight-charts merges all series' time points into ONE shared time
+    // scale; any non-candle time injects a PHANTOM COLUMN, which (a) renders
+    // as a gap between candles, (b) shifts every logical index so the
+    // bars-array-index == logical-index assumption of setWindow's anchor
+    // zoom breaks (selected trade off-center/off-screen), and (c) reshuffles
+    // the viewport when the phantom points are later replaced.
+    let barTimes = new Set();
     let winFrom = null;
     let winTo = null;
     let fetchingPrev = false;
@@ -282,7 +332,7 @@
 
     // ---- barSource (Task A4 wiring): chunked/LRU data controller feeding
     // ensureRange() calls off the visible-range-change debounce below.
-    const barSource = (window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource)
+    const barSource = (!windowMode && window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource)
       ? window.SENTINEL.chartData.createBarSource({ symbol, tf })
       : null;
 
@@ -378,6 +428,7 @@
 
     function applyBars(newBars) {
       bars = newBars;
+      barTimes = new Set(bars.map((b) => tsSec(b[0])));
       // ROOT-CAUSE FIX (2026-07-11b4): applyBars is the single point where real
       // bars are committed, so clear the "loading" overlay HERE. Previously a
       // load superseded by the loadSeq guard returned early WITHOUT calling
@@ -417,6 +468,7 @@
         if (!body.bars || !body.bars.length) {
           showState("empty");
           bars = [];
+          barTimes = new Set();
           candleSeries.setData([]);
           volumeSeries.setData([]);
           return;
@@ -445,6 +497,7 @@
           const merged = body.bars.filter((b) => !seen.has(b[0])).concat(bars);
           merged.sort((a, b) => a[0] - b[0]);
           bars = merged;
+          barTimes = new Set(bars.map((b) => tsSec(b[0])));
           candleSeries.setData(bars.map(barToCandle));
           volumeSeries.setData(bars.map((b) => barToVolume(b, b[4] >= b[1])));
           winFrom = bars[0][0];
@@ -462,7 +515,10 @@
       if (!range || destroyed) return;
       // A5b: hairlines are in PIXEL space -- re-anchor on every pan/zoom.
       redrawPreciseOverlay();
-      if (range.from !== null && range.from < 5) {
+      // windowMode (REVIEW): the window is pinned by setWindow(); skip the
+      // near-edge auto-prefetch that would otherwise refetch/merge on every
+      // pan and thrash the redraw path (BUG-C1/BUG-C3 perf).
+      if (!windowMode && range.from !== null && range.from < 5) {
         fetchPreviousBlock();
       }
       // Task A4 wiring: debounce 150ms -> ensureRange(view.from - 300*tf,
@@ -507,9 +563,14 @@
       let found = null;
       bySignal.forEach((group) => {
         if (found) return;
-        if (barTimeOf(epochOf(group.ts_in)) === barTime) { found = group; return; }
+        // 2026-07-13 fix ("garbage hover"): never hover-match a signal that
+        // isn't drawn (off-window neighbors used to win the match and pop a
+        // tooltip for an invisible trade). Match on the SAME resolved bar
+        // times the markers are drawn at.
+        if (!signalFullyInWindow(group)) return;
+        if (resolveBarTime(group.ts_in) === barTime) { found = group; return; }
         group.trades.forEach((t) => {
-          if (t.ts_out && barTimeOf(epochOf(t.ts_out)) === barTime) found = group;
+          if (t.ts_out && resolveBarTime(t.ts_out) === barTime) found = group;
         });
       });
       return found;
@@ -532,11 +593,20 @@
       let best = null;
       let bestDist = Infinity;
       bySignal.forEach((group) => {
-        const tInBar = barTimeOf(epochOf(group.ts_in));
+        // 2026-07-13 fix ("garbage hover"): only match connectors that are
+        // actually drawn (same gate + same resolved bar times as
+        // redrawConnectors/drawFichaConnector).
+        if (!signalFullyInWindow(group)) return;
+        const tInBar = resolveBarTime(group.ts_in);
+        if (tInBar === null) return;
         group.trades.forEach((trade) => {
           if (!trade.ts_out) return;
-          let tOutBar = barTimeOf(epochOf(trade.ts_out));
-          if (tOutBar <= tInBar) tOutBar = tInBar + secPerBar();
+          let tOutBar = resolveBarTime(trade.ts_out);
+          if (tOutBar === null) return;
+          if (tOutBar <= tInBar) {
+            tOutBar = nextBarTime(tInBar);
+            if (tOutBar === null) return;
+          }
           if (barTime < tInBar || barTime > tOutBar) return;
           const frac = tOutBar === tInBar ? 0 : (barTime - tInBar) / (tOutBar - tInBar);
           const interpPrice = group.px_in + (trade.px_out - group.px_in) * frac;
@@ -569,8 +639,20 @@
     function signalTooltipHtml(group) {
       const fmt = window.SENTINEL.fmt;
       const tsIn = epochOf(group.ts_in);
+      // Lot size (2026-07-13): show the position's total volume in the
+      // header and each ficha's own lot in its row (trade.volume from the
+      // /trades payload; omitted gracefully when null).
+      let volTotal = 0;
+      let hasVol = false;
+      group.trades.forEach((t) => {
+        if (t.volume !== null && t.volume !== undefined) {
+          hasVol = true;
+          volTotal += Number(t.volume) || 0;
+        }
+      });
+      const volHdr = hasVol ? ` &middot; ${fmt.num(volTotal, 2)} lot` : "";
       // A5b: exact intrabar entry time (HH:MM:SS) -- fmt.ts is bar-granular.
-      let html = `<div class="chart-tooltip-row chart-tooltip-signal-header mono">${escapeHtmlLite(group.side || "")} entry ${fmt.price(group.px_in, 2)} @ ${fmt.ts(tsIn)} <span class="chart-tooltip-precise">${preciseTimeLabel(tsIn)}</span></div>`;
+      let html = `<div class="chart-tooltip-row chart-tooltip-signal-header mono">${escapeHtmlLite(group.side || "")} entry ${fmt.price(group.px_in, 2)} @ ${fmt.ts(tsIn)} <span class="chart-tooltip-precise">${preciseTimeLabel(tsIn)}</span>${volHdr}</div>`;
       let total = 0;
       const sorted = group.trades.slice().sort((a, b) => (a.ficha || "").localeCompare(b.ficha || ""));
       sorted.forEach((t) => {
@@ -580,7 +662,8 @@
         const pnlClass = pnl > 0 ? "chart-tooltip-pos" : pnl < 0 ? "chart-tooltip-neg" : "";
         // A5b: exact intrabar exit time per ficha (HH:MM:SS).
         const exitAt = t.ts_out ? ` <span class="chart-tooltip-precise">${preciseTimeLabel(epochOf(t.ts_out))}</span>` : "";
-        html += `<div class="chart-tooltip-row mono">${escapeHtmlLite(t.ficha || "?")} ${escapeHtmlLite(t.exit_reason || "--")} `
+        const fichaVol = (t.volume !== null && t.volume !== undefined) ? ` (${fmt.num(t.volume, 2)})` : "";
+        html += `<div class="chart-tooltip-row mono">${escapeHtmlLite(t.ficha || "?")}${fichaVol} ${escapeHtmlLite(t.exit_reason || "--")} `
           + `${fmt.price(t.px_in, 2)}&rarr;${fmt.price(t.px_out, 2)} `
           + `<span class="${pnlClass}">${fmt.signed(pnl)}</span> ${dur}${exitAt}</div>`;
       });
@@ -675,10 +758,32 @@
         if (!spec.points) return;
         if (spec.dots) {
           setSarDotsSeries(id, spec.points, spec.color);
+        } else if (spec.oscHist) {
+          setOscHistogramSeries(id, spec.points, spec.color);
+        } else if (spec.oscLine) {
+          setOscLineSeries(id, spec.points, spec.color);
         } else {
           setOverlaySeries(id, spec.points, spec.color);
         }
       });
+    }
+
+    // 2026-07-13 ROOT-CAUSE FIX (windowMode): every overlay point whose time
+    // is NOT a committed candle time is dropped before it reaches a series.
+    // Two verified failure paths fed such points into the shared time scale:
+    //  (1) applyBars() -> recomputeOverlays() re-applied the PREVIOUS
+    //      selection's overlaySpecs points against the NEW candle window
+    //      (measured: ~115 phantom columns on the supertrend run, shifting
+    //      the selected trade's bar from logical index 40 to ~156 -> the
+    //      whole selection rendered off-screen);
+    //  (2) an /indicators response computed on a different tf grid than the
+    //      served bars would land off-grid points between candles (rendered
+    //      as candle "gaps").
+    // Whitespace warmup points ({time} only) at valid bar times survive.
+    // No-op outside windowMode (CHARTS unchanged).
+    function clipOverlayPoints(points) {
+      if (!windowMode) return points || [];
+      return (points || []).filter(([ts]) => barTimes.has(tsSec(ts)));
     }
 
     function setOverlaySeries(id, points, color) {
@@ -696,7 +801,7 @@
       // lightweight-charts line series reject `{time, value: null}` --
       // `setData` throws and the WHOLE series never renders. Warmup gaps
       // must instead be WHITESPACE points (`{time}`, no `value` key).
-      series.setData(points.map(([ts, val]) =>
+      series.setData(clipOverlayPoints(points).map(([ts, val]) =>
         (val === null || val === undefined) ? { time: tsSec(ts) } : { time: tsSec(ts), value: val }));
     }
 
@@ -736,7 +841,7 @@
         overlays.set(id, series);
       }
       series.setData(
-        points
+        clipOverlayPoints(points)
           .filter(([, val]) => val !== null && val !== undefined)
           .map(([ts, val]) => ({ time: tsSec(ts), value: val }))
       );
@@ -745,6 +850,87 @@
     function addSarDots(id, points, colorHex) {
       overlaySpecs.set(id, { points, color: colorHex, dots: true });
       setSarDotsSeries(id, points, colorHex);
+    }
+
+    // ---- oscillator SUBPANEL (AO/AC/Momentum) ----
+    // The vendored lightweight-charts v4 has no multi-pane API, so the
+    // subpanel is a dedicated OVERLAY PRICE SCALE ("osc") pinned to the
+    // bottom band via scaleMargins. Height is adjustable through
+    // OSC_PANEL_FRAC (fraction of chart height the subpanel occupies) --
+    // exposed via setOscPanelFraction() for a future drag handle. Registered
+    // in the same overlays/overlaySpecs maps so removeOverlay/recompute/
+    // teardown work uniformly with the price overlays.
+    let oscPanelFrac = 0.28; // adjustable: subpanel = bottom 28% by default
+    function oscScaleMargins() {
+      // volume already owns the very bottom 15% band; put the oscillator
+      // subpanel just above it, sized by oscPanelFrac.
+      const bottom = 0.16;
+      const top = Math.max(0.5, Math.min(0.9, 1 - bottom - oscPanelFrac));
+      return { top, bottom };
+    }
+    function ensureOscScale(series) {
+      series.priceScale().applyOptions({ scaleMargins: oscScaleMargins() });
+    }
+
+    function setOscHistogramSeries(id, points, color) {
+      let series = overlays.get(id);
+      if (!series) {
+        series = chart.addHistogramSeries({
+          priceScaleId: "osc",
+          color: color || "#c9d4e3",
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        overlays.set(id, series);
+      }
+      // AO/AC read as up/down bars (green when rising vs prior, red when
+      // falling) like the reference terminal; falls back to a flat color.
+      let prev = null;
+      series.setData(
+        clipOverlayPoints(points)
+          .filter(([, val]) => val !== null && val !== undefined)
+          .map(([ts, val]) => {
+            const up = prev === null ? true : val >= prev;
+            prev = val;
+            return { time: tsSec(ts), value: val, color: up ? LONG_COLOR : SHORT_COLOR };
+          })
+      );
+      ensureOscScale(series);
+    }
+
+    function setOscLineSeries(id, points, color) {
+      let series = overlays.get(id);
+      if (!series) {
+        series = chart.addLineSeries({
+          priceScaleId: "osc",
+          color: color || "#ffffff",
+          lineWidth: 1,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        });
+        overlays.set(id, series);
+      }
+      series.setData(clipOverlayPoints(points).map(([ts, val]) =>
+        (val === null || val === undefined) ? { time: tsSec(ts) } : { time: tsSec(ts), value: val }));
+      ensureOscScale(series);
+    }
+
+    function addOscHistogram(id, points, colorHex) {
+      overlaySpecs.set(id, { points, color: colorHex, oscHist: true });
+      setOscHistogramSeries(id, points, colorHex);
+    }
+
+    function addOscLine(id, points, colorHex) {
+      overlaySpecs.set(id, { points, color: colorHex, oscLine: true });
+      setOscLineSeries(id, points, colorHex);
+    }
+
+    function setOscPanelFraction(frac) {
+      oscPanelFrac = Math.max(0.1, Math.min(0.6, Number(frac) || 0.28));
+      overlays.forEach((series, id) => {
+        const spec = overlaySpecs.get(id);
+        if (spec && (spec.oscHist || spec.oscLine)) ensureOscScale(series);
+      });
     }
 
     // ---- trade markers (D.4 NORMATIVE) ----
@@ -760,6 +946,11 @@
       // share ts_in/px_in/side), THREE exit markers per signal (one per
       // ficha, distinct "square" shape from the arrowUp/arrowDown entries).
       bySignal.forEach((group) => {
+        // 2026-07-13 fix: STRICT gate -- only signals whose entry AND every
+        // exit resolve to committed bars are drawn, so no marker time can
+        // inject a phantom column into the shared time scale (see
+        // signalFullyInWindow) and no stray half-signals render.
+        if (!signalFullyInWindow(group)) return;
         const isSelected = selectedSignalId && group.signal_id === selectedSignalId;
         const isHovered = hoveredSignalId && group.signal_id === hoveredSignalId;
         // Wave-2b highlight fix: when a signal IS selected, everything else
@@ -771,9 +962,15 @@
         // Hover halo takes visual precedence over selection dim/bright so the
         // hovered group reads clearly even when a DIFFERENT signal is
         // selected (or when this same signal is both selected and hovered).
-        const color = isHovered ? HOVER_HALO_COLOR : (isSelected ? baseColor : (dimOthers ? hexToRgba(colorHex, 0.30) : baseColor));
+        // FIX 3 (non-selected 50% MORE transparent): dim marker alpha halved
+        // 0.30 -> 0.15. Selected/hovered stay full color.
+        const color = isHovered ? HOVER_HALO_COLOR : (isSelected ? baseColor : (dimOthers ? hexToRgba(colorHex, 0.15) : baseColor));
         const long = (group.side || "").toUpperCase() === "LONG";
-        const tIn = barTimeOf(epochOf(group.ts_in));
+        // resolveBarTime == barTimeOf outside windowMode; in windowMode it
+        // additionally floors gap-times to a real bar (never null here --
+        // signalFullyInWindow already checked).
+        const tIn = resolveBarTime(group.ts_in);
+        if (tIn === null) return;
         if (cursor !== null && tIn > cursor) return; // not revealed yet
         markers.push({
           time: tIn,
@@ -785,7 +982,8 @@
         });
         group.trades.forEach((trade) => {
           if (!trade.ts_out) return;
-          const tOut = barTimeOf(epochOf(trade.ts_out));
+          const tOut = resolveBarTime(trade.ts_out);
+          if (tOut === null) return;
           if (cursor !== null && tOut > cursor) return;
           markers.push({
             time: tOut,
@@ -807,6 +1005,67 @@
       return d.getTime() / 1000;
     }
 
+    // ---- windowMode time-scale hygiene (2026-07-13 ROOT-CAUSE FIX) ----
+    // Verified in headless Chrome on all 4 fixture runs: the previous
+    // "straddle-keep" gate (signalInWindow: keep a signal if entry OR exit
+    // OR its span overlapped [winFrom, winTo]) handed the shared time scale
+    // times with NO candle bar -- e.g. the supertrend run's neighbor signal
+    // entry (Jun 8 07:00) while the fetched bars started Jun 9 00:00. Every
+    // such time becomes a PHANTOM COLUMN in lightweight-charts' merged time
+    // scale. Measured effects (CDP, before this fix): the selected signal's
+    // own entry marker sat at x=1000..7920px on a 702px chart (markers
+    // "missing"/clipped off the right edge), the viewport showed the
+    // PREVIOUS signal's region, phantom columns rendered as candle "gaps",
+    // straddling neighbors left stray exit squares with no entry, and hover
+    // matched those invisible neighbors (garbage tooltips).
+    //
+    // The invariant now enforced: every time handed to any series/marker is
+    // a member of `barTimes`. Signals that don't FULLY resolve inside the
+    // committed candle set are skipped entirely (their partial geometry
+    // marked nothing anyway). No effect outside windowMode (CHARTS
+    // unchanged).
+
+    // Resolve an event timestamp to an EXISTING committed bar's time:
+    //  - exact TF bucket when that bar exists;
+    //  - the last bar BEFORE it for events inside an intra-window closed-
+    //    market gap (e.g. XAUUSD 17:00-18:00 / weekends), so a Friday-open
+    //    exit that fires during the gap draws on the last real candle;
+    //  - null when the event falls before the first / after the last
+    //    committed bar (truly off-window -> caller must skip, never clamp).
+    function resolveBarTime(ts) {
+      const t = barTimeOf(epochOf(ts));
+      if (!windowMode) return t;
+      if (barTimes.has(t)) return t;
+      if (!bars.length) return null;
+      const first = tsSec(bars[0][0]);
+      const last = tsSec(bars[bars.length - 1][0]);
+      if (t < first || t > last) return null;
+      const idx = barIndexOf(t); // last bar with time <= t (gap floor)
+      return idx === null ? null : tsSec(bars[idx][0]);
+    }
+
+    // Next committed bar time after `barTime` (windowMode); falls back to
+    // +1 TF bucket outside windowMode (CHARTS behavior unchanged). Used by
+    // same-bar connectors so the bumped exit time is a REAL bar, never a
+    // phantom column inside a data gap.
+    function nextBarTime(barTime) {
+      if (!windowMode) return barTime + secPerBar();
+      const idx = barIndexOf(barTime);
+      if (idx === null || idx + 1 >= bars.length) return null;
+      return tsSec(bars[idx + 1][0]);
+    }
+
+    // A signal is drawable in windowMode ONLY if its entry AND every ficha
+    // exit resolve to committed bars -- partially-in-window neighbors are
+    // skipped whole (kills stray exit markers / duplicated half-connectors /
+    // phantom columns). The SELECTED signal always qualifies: setWindow
+    // fetches [entry - pad, max(exit) + pad].
+    function signalFullyInWindow(group) {
+      if (!windowMode) return true;
+      if (resolveBarTime(group.ts_in) === null) return false;
+      return group.trades.every((t) => !t.ts_out || resolveBarTime(t.ts_out) !== null);
+    }
+
     function clearConnectors() {
       connectorSeriesList.forEach((series) => {
         try { chart.removeSeries(series); } catch (e) { /* noop */ }
@@ -816,13 +1075,21 @@
 
     // Draws ONE 2-point line series for a single ficha's entry->exit,
     // bar-snapped (Wave-2b gap fix). If entry and exit snap to the SAME bar
-    // (e.g. a sub-bar-duration ficha), bump the exit time forward by one
-    // real bar (secPerBar()), NOT +1s -- a synthetic +1s time isn't a real
-    // bar and would reintroduce a phantom column.
+    // (e.g. a sub-bar-duration ficha), bump the exit time forward to the
+    // NEXT COMMITTED bar (nextBarTime), NOT +1s or a blind +secPerBar() --
+    // a time that isn't a real committed bar reintroduces a phantom column
+    // (2026-07-13 fix: the blind +secPerBar() bump could land inside a
+    // closed-market gap). Endpoints are resolved against the committed bar
+    // set; an unresolvable endpoint skips the connector entirely instead of
+    // clamping (returns null, no series created).
     function drawFichaConnector(tIn, pIn, tOut, pOut, colorHex, bright, hovered) {
-      let tInBar = barTimeOf(tIn);
-      let tOutBar = barTimeOf(tOut);
-      if (tOutBar <= tInBar) tOutBar = tInBar + secPerBar();
+      let tInBar = resolveBarTime(tIn);
+      let tOutBar = resolveBarTime(tOut);
+      if (tInBar === null || tOutBar === null) return null;
+      if (tOutBar <= tInBar) {
+        tOutBar = nextBarTime(tInBar);
+        if (tOutBar === null) return null;
+      }
       const points = [
         { time: tInBar, value: pIn },
         { time: tOutBar, value: pOut },
@@ -845,7 +1112,9 @@
         connectorSeriesList.push(glow);
       }
       const series = chart.addLineSeries({
-        color: hovered ? HOVER_HALO_COLOR : (bright ? hexToRgba(colorHex, 0.95) : hexToRgba(colorHex, 0.22)),
+        // FIX 3 (non-selected 50% MORE transparent): dim connector alpha halved
+        // 0.22 -> 0.11. Bright (selected 0.95) / hovered (halo) unchanged.
+        color: hovered ? HOVER_HALO_COLOR : (bright ? hexToRgba(colorHex, 0.95) : hexToRgba(colorHex, 0.11)),
         lineWidth: hovered ? 2.5 : (bright ? 2 : 1),
         lineStyle: (bright || hovered) ? LightweightCharts.LineStyle.Solid : LightweightCharts.LineStyle.Dashed,
         priceLineVisible: false,
@@ -876,40 +1145,43 @@
       const withinCursor = (tOut) => cursor === null || epochOf(tOut) <= cursor;
       const drawSignalDim = allTrades.length <= 300;
 
+      // Per-group connector drawing with strict windowMode gating
+      // (signalFullyInWindow -- see the 2026-07-13 root-cause block above)
+      // and DEDUPE of byte-identical segments: two fichas of one signal can
+      // exit at the same bar AND price (e.g. the M5 fixture's F1/F2 both
+      // out 08:10 @ 4064.06), which used to stack two identical dim series
+      // -- reading as a "duplicated"/darker connector.
+      function drawGroupConnectors(group, bright, hovered) {
+        if (!signalFullyInWindow(group)) return;
+        const tIn = epochOf(group.ts_in);
+        const seen = new Set();
+        group.trades.forEach((trade) => {
+          if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
+          const key = `${trade.ts_out}|${trade.px_in}|${trade.px_out}`;
+          if (seen.has(key)) return;
+          seen.add(key);
+          drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, bright, hovered);
+        });
+      }
+
       if (drawSignalDim) {
         bySignal.forEach((group) => {
           if (selectedSignalId && group.signal_id === selectedSignalId) return; // drawn bright below
           if (hoveredSignalId && group.signal_id === hoveredSignalId) return; // drawn as halo below
-          const tIn = epochOf(group.ts_in);
-          group.trades.forEach((trade) => {
-            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
-            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, false);
-          });
+          drawGroupConnectors(group, false, false);
         });
       }
 
       if (selectedSignalId && selectedSignalId !== hoveredSignalId) {
         const group = bySignal.get(selectedSignalId);
-        if (group) {
-          const tIn = epochOf(group.ts_in);
-          group.trades.forEach((trade) => {
-            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
-            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, true);
-          });
-        }
+        if (group) drawGroupConnectors(group, true, false);
       }
 
       // Hovered signal drawn LAST (on top of everything, including a
       // different selected signal) with the electric-blue halo treatment.
       if (hoveredSignalId) {
         const group = bySignal.get(hoveredSignalId);
-        if (group) {
-          const tIn = epochOf(group.ts_in);
-          group.trades.forEach((trade) => {
-            if (!trade.ts_out || !withinCursor(trade.ts_out)) return;
-            drawFichaConnector(tIn, trade.px_in, epochOf(trade.ts_out), trade.px_out, group.colorHex, true, true);
-          });
-        }
+        if (group) drawGroupConnectors(group, true, true);
       }
       // A5b: re-anchor the precise hairlines whenever markers/connectors
       // rebuild (hover change, selection, playback reveal, applyBars).
@@ -928,9 +1200,13 @@
 
     // Absolute pixel x of a signal's EXACT timestamp: bar-center coordinate
     // from the time scale, then the pure preciseXOf fractional offset.
-    // Returns null when the bar is off-screen (timeToCoordinate -> null).
+    // Returns null when the event doesn't resolve to a committed bar
+    // (2026-07-13 fix: resolveBarTime instead of raw barTimeOf, so a
+    // gap/off-window time can never be asked of the time scale) or when the
+    // bar is off-screen (timeToCoordinate -> null).
     function preciseSignalX(epochSec) {
-      const bucketT = barTimeOf(epochSec);
+      const bucketT = resolveBarTime(epochSec);
+      if (bucketT === null) return null;
       let barX = null;
       try { barX = chart.timeScale().timeToCoordinate(bucketT); } catch (e) { return null; }
       if (barX === null || barX === undefined) return null;
@@ -959,10 +1235,19 @@
       const h = canvasHost.clientHeight;
       if (!w || !h) return;
       const dpr = window.devicePixelRatio || 1;
-      if (preciseCanvas.width !== Math.round(w * dpr) || preciseCanvas.height !== Math.round(h * dpr)) {
-        preciseCanvas.width = Math.round(w * dpr);
-        preciseCanvas.height = Math.round(h * dpr);
-      }
+      // DPR fix: the CSS box MUST equal the coordinate space we draw in (w x h,
+      // the same canvasHost px that timeToCoordinate/priceToCoordinate report),
+      // and the backing store MUST be that box scaled by dpr. Pinning BOTH here
+      // (not just the backing store) is what eliminates the second, CSS-driven
+      // scale that produced the offset duplicate at dpr>1. Cheap no-op when
+      // already correct; re-derives dpr each draw so a monitor/zoom change that
+      // alters devicePixelRatio self-heals on the next pan/hover/redraw.
+      if (preciseCanvas.style.width !== w + "px") preciseCanvas.style.width = w + "px";
+      if (preciseCanvas.style.height !== h + "px") preciseCanvas.style.height = h + "px";
+      const backW = Math.round(w * dpr);
+      const backH = Math.round(h * dpr);
+      if (preciseCanvas.width !== backW) preciseCanvas.width = backW;
+      if (preciseCanvas.height !== backH) preciseCanvas.height = backH;
       const ctx = preciseCanvas.getContext("2d");
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, w, h);
@@ -970,11 +1255,22 @@
       const cursor = playbackCursor;
       const bySignal = groupBySignal();
       bySignal.forEach((group) => {
+        // FIX 1+2 (spurious verticals) + 2026-07-13 strict gate: only
+        // signals FULLY resolvable inside the committed bar set draw
+        // hairlines, on the SAME predicate as buildMarkers/redrawConnectors
+        // (signalFullyInWindow), so every visible vertical maps to a real
+        // in-window entry/exit and no neighbor's half-signal leaks in.
+        if (!signalFullyInWindow(group)) return;
         const tIn = epochOf(group.ts_in);
         if (cursor !== null && barTimeOf(tIn) > cursor) return;
         const isHovered = hoveredSignalId && group.signal_id === hoveredSignalId;
         const isSelected = selectedSignalId && group.signal_id === selectedSignalId;
-        const color = isHovered ? HOVER_HALO_COLOR : hexToRgba(group.colorHex, isSelected ? 0.85 : 0.35);
+        // FIX 3 (non-selected 50% MORE transparent): dim hairline alpha halved
+        // 0.35 -> 0.175. Selected (0.85) / hovered (halo) stay full intensity.
+        const color = isHovered ? HOVER_HALO_COLOR : hexToRgba(group.colorHex, isSelected ? 0.85 : 0.175);
+        // preciseSignalX() resolves each endpoint against the committed bar
+        // set (null for anything unresolvable), so a hairline can only ever
+        // land on a real in-window bar -- no clamped edge verticals.
         const xIn = preciseSignalX(tIn);
         drawHairline(ctx, xIn, h, color);
         group.trades.forEach((t) => {
@@ -983,23 +1279,16 @@
           if (cursor !== null && tOut > cursor) return;
           const xOut = preciseSignalX(tOut);
           drawHairline(ctx, xOut, h, color);
-          // Precise connector segment (same fractional x) for the
-          // highlighted signal only -- keeps the overlay uncluttered.
-          if ((isHovered || isSelected) && xIn !== null && xOut !== null) {
-            let yIn = null, yOut = null;
-            try {
-              yIn = candleSeries.priceToCoordinate(group.px_in);
-              yOut = candleSeries.priceToCoordinate(t.px_out);
-            } catch (e) { /* noop */ }
-            if (yIn !== null && yIn !== undefined && yOut !== null && yOut !== undefined) {
-              ctx.strokeStyle = isHovered ? HOVER_HALO_COLOR : hexToRgba(group.colorHex, 0.9);
-              ctx.lineWidth = 1;
-              ctx.beginPath();
-              ctx.moveTo(xIn, yIn);
-              ctx.lineTo(xOut, yOut);
-              ctx.stroke();
-            }
-          }
+          // DPR/duplicate-geometry FIX (2026-07-13): the overlay used to ALSO
+          // draw the entry->exit diagonal connector here (priceToCoordinate
+          // Y's, fractional X's) for the highlighted signal. lightweight-charts
+          // already draws that exact segment as a bright line SERIES
+          // (drawFichaConnector) -- DPR-correct on its own canvas. Two layers
+          // drawing the same geometry is the "duplicated connector" the user
+          // saw, and the overlay copy carried the dpr CSS-stretch offset. The
+          // overlay now draws ONLY the precise vertical hairlines (which series
+          // cannot render at fractional intrabar x); the diagonal has a single
+          // source of truth (the series). One geometry, one layer.
         });
       });
     }
@@ -1063,28 +1352,61 @@
         }
       });
 
-      // recenter so entry + ALL 3 ficha exits sit in view with symmetric
-      // context: pad = max(40 bars, 1.5x the signal's total duration).
+      // FIX 4 (selected position fills ~80% of chart width, centered): the old
+      // pad = max(40 bars, 1.5x dur) produced a window many times wider than
+      // the entry->exit span (measured ~10-18% of chart width in CDP) -- the
+      // selected trade was well-centered but far too zoomed out.
+      //
+      // The FETCH window is padded generously in WALL-CLOCK time (so enough
+      // bars are loaded on each side even across a weekend gap), but the actual
+      // ZOOM is set by LOGICAL BAR range (setVisibleLogicalRange) inside
+      // setWindow: pad = 0.125 * (barSpan) on each side so the entry->exit bar
+      // span occupies 1/1.25 = ~80% of the width, centered. Using bar indices
+      // (not wall-clock time) is gap-immune -- a trade spanning a weekend (no
+      // candles Sat/Sun) still fills 80% because empty time isn't counted. For
+      // a 1-bar scalp the span collapses to ~1 bar -> heavy zoom (intended).
       const barSec = secPerBar();
       const tsIn = epochOf(group.ts_in || trade.ts_in);
       let tsOutMax = tsIn;
       fichas.forEach((t) => {
         if (t.ts_out) tsOutMax = Math.max(tsOutMax, epochOf(t.ts_out));
       });
-      const dur = Math.max(tsOutMax - tsIn, barSec);
-      const pad = Math.max(40 * barSec, dur * 1.5);
-      const from = tsIn - pad;
-      const to = tsOutMax + pad;
+      const span = Math.max(tsOutMax - tsIn, barSec);
+      // Fetch pad: comfortably wider than the visible 12.5% so the logical
+      // zoom always has bars to show on both sides (min 40 bars of history).
+      const fetchPad = Math.max(40 * barSec, span * 0.5);
+      const from = tsIn - fetchPad;
+      const to = tsOutMax + fetchPad;
       // Defect B (frontend half, Wave-2 plan 2026-07-10): return the
       // setWindow promise so callers (review.js) can await window-settle
       // before requesting indicator overlays for the NEW window -- without
       // this, a caller's `selectTrade(t); refreshIndicators();` fired the
       // indicators fetch against the STALE (pre-selection) window.
-      return setWindow(from, to);
+      return setWindow(from, to, { tsIn, tsOut: tsOutMax });
+    }
+
+    // Logical bar index (fractional) of the bar nearest an epoch time in the
+    // current `bars`. Returns null if bars is empty. Used by FIX 4 to zoom by
+    // BAR position (gap-immune) rather than wall-clock time.
+    function barIndexOf(epochSec) {
+      if (!bars.length) return null;
+      const target = tsSec(epochSec);
+      // binary search for the last bar with time <= target
+      let lo = 0, hi = bars.length - 1, idx = 0;
+      while (lo <= hi) {
+        const mid = (lo + hi) >> 1;
+        if (bars[mid][0] <= target) { idx = mid; lo = mid + 1; }
+        else hi = mid - 1;
+      }
+      return idx;
     }
 
     // ---- window / TF ----
-    async function setWindow(from, to) {
+    // `anchor` (optional): {tsIn, tsOut} -> FIX 4 zooms so the entry->exit bar
+    // span occupies ~80% of the chart width via setVisibleLogicalRange (gap-
+    // immune). Without an anchor (CHARTS goto, etc.) it falls back to the
+    // wall-clock setVisibleRange it always used.
+    async function setWindow(from, to, anchor) {
       const mySeq = ++loadSeq;
       showState("loading");
       try {
@@ -1096,7 +1418,38 @@
         }
         showState(null);
         applyBars(body.bars);
-        chart.timeScale().setVisibleRange({ from: tsSec(from), to: tsSec(to) });
+        if (anchor && anchor.tsIn !== undefined && bars.length) {
+          const iIn = barIndexOf(anchor.tsIn);
+          const iOut = anchor.tsOut !== undefined ? barIndexOf(anchor.tsOut) : iIn;
+          const lo = Math.min(iIn, iOut);
+          const hi = Math.max(iIn, iOut);
+          const barSpan = Math.max(hi - lo, 1); // >=1 bar so a scalp still pads
+          // Target: entry->exit span == ~80% of chart width, centered. Pad is a
+          // pure FRACTION of the bar span (spec: "fraction of the span, NOT a
+          // fixed +-N bars"). In theory 0.125 yields exactly 80%, but
+          // lightweight-charts adds a small fixed edge margin (~half a bar of
+          // barSpacing on each side); ~0.07 compensates so MULTI-bar trades
+          // measure ~80%.
+          const pad = barSpan * 0.07;
+          let vFrom = lo - pad;
+          let vTo = hi + pad;
+          // 2026-07-13 fix ("position invisible when entry and exit share a
+          // candle"): a 1-bar scalp collapsed the visible range to ~1.14
+          // bars -> barSpacing ~300px, only two giant half-candles on
+          // screen, nothing readable. Enforce a minimum visible bar count
+          // (widened symmetrically, so the trade stays centered); the ~80%
+          // rule still governs every trade wider than the minimum.
+          const MIN_VISIBLE_BARS = 16;
+          const width = vTo - vFrom;
+          if (width < MIN_VISIBLE_BARS) {
+            const extra = (MIN_VISIBLE_BARS - width) / 2;
+            vFrom -= extra;
+            vTo += extra;
+          }
+          chart.timeScale().setVisibleLogicalRange({ from: vFrom, to: vTo });
+        } else {
+          chart.timeScale().setVisibleRange({ from: tsSec(from), to: tsSec(to) });
+        }
       } catch (e) {
         if (destroyed) return;
         showState("error", "Error cargando barras.");
@@ -1225,6 +1578,7 @@
       playbackIdx = Math.max(0, Math.min(playbackBars.length, idx));
       const visible = playbackBars.slice(0, playbackIdx);
       bars = visible.slice();
+      barTimes = new Set(bars.map((b) => tsSec(b[0])));
       candleSeries.setData(visible.map(barToCandle));
       volumeSeries.setData(visible.map((b) => barToVolume(b, b[4] >= b[1])));
       recomputeOverlays();
@@ -1318,6 +1672,9 @@
       disableTicks,
       addOverlay,
       addSarDots,
+      addOscHistogram,
+      addOscLine,
+      setOscPanelFraction,
       removeOverlay,
       startPlayback,
       pausePlayback,

@@ -624,11 +624,13 @@ html, body {
   background: var(--bg-3);
   border: var(--border);
   border-radius: var(--radius);
-  padding: var(--sp-1) var(--sp-2);
-  font-size: 0.72rem;
+  /* 2026-07-13 user request: popup ~30% bigger (box + font) — was
+     var(--sp-1) var(--sp-2) / 0.72rem / 220px, unreadable. */
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.94rem;
   color: var(--text-0);
   pointer-events: none;
-  max-width: 220px;
+  max-width: 290px;
 }
 .chart-tooltip-row { line-height: 1.4; }
 .chart-tooltip-ts { color: var(--text-1); }
@@ -695,14 +697,23 @@ html, body {
 }
 .review-left {
   display: grid;
-  grid-template-rows: 1fr 1fr;
-  transition: grid-template-rows .25s ease;
-  gap: var(--sp-3);
+  /* 3 rows: runs pane | drag divider | trades pane. Default 50/50 is set
+     inline by review.js (setupPaneDivider); this is the pre-JS fallback. */
+  grid-template-rows: 1fr 6px 1fr;
+  gap: var(--sp-2);
   min-height: 0;
   overflow: hidden;
 }
-.review-left.focused-top { grid-template-rows: 3fr 1fr; }
-.review-left.focused-bottom { grid-template-rows: 1fr 3fr; }
+/* legacy focus presets (unused now; kept for a future preset toggle) */
+.review-left.focused-top { grid-template-rows: 3fr 6px 1fr; }
+.review-left.focused-bottom { grid-template-rows: 1fr 6px 3fr; }
+.review-pane-divider {
+  cursor: row-resize;
+  background: rgba(0,191,255,.12);
+  border-radius: 3px;
+  align-self: stretch;
+}
+.review-pane-divider:hover { background: rgba(0,191,255,.35); }
 .review-right {
   display: flex;
   flex-direction: column;
@@ -710,12 +721,13 @@ html, body {
   min-height: 0;
 }
 
-.review-selector-host { flex: 0 0 auto; }
+.review-selector-host { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
 .review-run-selector {
   display: flex;
   flex-direction: column;
   gap: var(--sp-2);
-  max-height: 40%;
+  height: 100%;
+  min-height: 0;
 }
 .review-run-search {
   background: var(--bg-1);

@@ -196,6 +196,14 @@ def build_router(lake_root, tick_hub: TickHub) -> APIRouter:
         max_points: int = 3000,
         overlays: str | None = None,
     ) -> Any:
+        # Global perf constraint (v2 recalibration plan): /api/bars serves at
+        # most 5000 points. Clamp max_points so a hostile/buggy caller can't
+        # pull the whole lake (a bare max_points=999999 returned ~7MB before).
+        if max_points > 5000:
+            max_points = 5000
+        elif max_points < 1:
+            max_points = 1
+
         try:
             ts_from = _parse_flexible_ts(from_)
             ts_to = _parse_flexible_ts(to)

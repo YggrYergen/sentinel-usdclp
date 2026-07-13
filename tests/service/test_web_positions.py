@@ -321,3 +321,62 @@ def test_positions_js_ia_tab_reuses_humano_list_builder():
     # second copy-pasted "renderIaTab" list builder existing independently.
     assert "function renderHumanoTab(host, origin" in text or "function renderHumanoTab(host," in text
     assert "renderHumanoTab(" in text.split("function renderHumanoTab")[-1] or text.count("renderHumanoTab(") >= 2
+
+
+# ---- C5: Analizar wiring (POST /api/ai/analyze_position -> SSE panel) ----
+
+def test_positions_js_analizar_posts_analyze_position_endpoint():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "/api/ai/analyze_position" in text
+    assert "trade_id" in text
+
+
+def test_positions_js_analizar_button_no_longer_hard_disabled():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    # the B3b placeholder ("próximamente" tooltip + statically disabled
+    # button) is gone; Analizar is now wired and only disabled while a
+    # stream is active (re-entrancy guard), not permanently.
+    assert "analizarBtn.disabled = true;" not in text
+
+
+def test_positions_js_has_reusable_consume_sse_stream_helper():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "function consumeSseStream(" in text
+    assert "ReadableStream" in text or "getReader" in text
+    assert "AbortController" in text
+
+
+def test_positions_js_consume_sse_stream_parses_event_and_data_lines():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    helper_src = text.split("function consumeSseStream(")[1]
+    assert "event:" in helper_src
+    assert "data:" in helper_src
+    assert "onEvent" in helper_src
+
+
+def test_positions_js_analizar_handles_ai_text_ai_done_ai_error_events():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "ai_text" in text
+    assert "ai_done" in text
+    assert "ai_error" in text
+
+
+def test_positions_js_analizar_has_text_panel_in_expanded_card():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "positions-humano-panel-ai" in text
+
+
+def test_positions_js_analizar_teardown_registered_on_panel_close():
+    """REV-5 pattern: the AI stream's AbortController must be aborted when
+    the detail panel closes (closePanel) so no dangling fetch reader survives
+    panel close or section switch."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    close_panel_src = text.split("function closePanel()")[1].split("\n    }", 1)[0]
+    assert "abort()" in close_panel_src or "aiAbort" in close_panel_src
+
+
+def test_positions_js_analizar_button_disabled_while_stream_active():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    panel_src = text.split("function buildHumanoDetailPanel")[1]
+    assert "analizarBtn.disabled = true" in panel_src
+    assert "analizarBtn.disabled = false" in panel_src

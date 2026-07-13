@@ -146,11 +146,11 @@ def test_app_js_persists_and_restores_section():
     assert "restoreSection" in app_js
 
 
-def test_review_split_pane_focus_css():
-    """A6a: .review-left is a 2-row grid (top=run selector, bottom=trade
-    list) that can be "focused" 3fr/1fr in either direction, with a smooth
-    transition, and .review-run-groups is no longer height-capped at 240px
-    (it now flexes to fill its row instead)."""
+def test_review_split_pane_divider_css():
+    """Task-2 BUG-L2: .review-left is a 3-row grid (runs pane | drag divider |
+    trades pane) defaulting to an even 50/50 split, with a row-resize divider.
+    The old click-anywhere-to-focus behavior (which jammed the split at 3:1 on
+    run selection) is gone; .review-run-groups is not height-capped at 240px."""
     import re
 
     css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
@@ -159,31 +159,32 @@ def test_review_split_pane_focus_css():
     assert m, ".review-left rule missing"
     body = m.group(1)
     assert "grid-template-rows" in body
-    assert "transition" in body
-    assert ".focused-top" in stripped
-    assert ".focused-bottom" in stripped
+    # even default split (fallback before JS sets it inline)
+    assert "1fr 6px 1fr" in body
+    # draggable divider between the two panes
+    assert ".review-pane-divider" in stripped
+    assert "row-resize" in stripped
     assert "max-height: 240px" not in stripped and "max-height:240px" not in stripped
 
 
-def test_review_js_wires_pane_focus_and_native_tf():
-    """A6a: the split-pane-focus and native-tf-dot helpers must actually be
-    CALLED from the render flow, not just defined (dead code)."""
+def test_review_js_wires_pane_divider_and_native_tf():
+    """Task-2 BUG-L2: the draggable pane divider + native-tf-dot helpers must
+    actually be CALLED from the render flow, not just defined (dead code)."""
     import re
 
     text = (WEB_DIR / "sections" / "review.js").read_text(encoding="utf-8")
-    assert "function setupPaneFocus(" in text
+    assert "function setupPaneDivider(" in text
     assert "function markNativeTfButton(" in text
-    assert "function applyPaneFocus(" in text
-    assert 'PANE_FOCUS_KEY = "tv.paneFocus"' in text
-    assert "tv.paneFocus" in text
+    assert "function applySplit(" in text
+    assert 'SPLIT_FRAC_KEY = "tv.splitFrac"' in text
     assert "localStorage" in text
 
     # helper DEFINITIONS use "function name(" -- calls use "name(" without
-    # the "function" keyword directly before it. Strip the definition lines
-    # and confirm at least one call-style occurrence remains for each.
-    calls_setup = re.findall(r"(?<!function )setupPaneFocus\(", text)
+    # the "function" keyword directly before it. Confirm at least one
+    # call-style occurrence remains for each.
+    calls_setup = re.findall(r"(?<!function )setupPaneDivider\(", text)
     calls_mark = re.findall(r"(?<!function )markNativeTfButton\(", text)
-    assert calls_setup, "setupPaneFocus is defined but never called (dead code)"
+    assert calls_setup, "setupPaneDivider is defined but never called (dead code)"
     assert calls_mark, "markNativeTfButton is defined but never called (dead code)"
 
 

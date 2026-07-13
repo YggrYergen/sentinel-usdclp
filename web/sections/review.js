@@ -97,7 +97,16 @@
     return resp.json();
   }
 
-  const OVERLAY_COLORS = { ema_fast: "#00bfff", ema_slow: "#ffb020", sar: "#ff6e40", supertrend: "#7e57c2" };
+  const OVERLAY_COLORS = {
+    ema_fast: "#00bfff", ema_slow: "#ffb020", sar: "#ff6e40", supertrend: "#7e57c2",
+    ema_pullback: "#26a69a",
+    // extra fixed SAR(0.3/0.3) overlay -- distinct hue from the native SAR so
+    // the two dot rows are visually separable when both are toggled on.
+    sar_3_3: "#ffd54f",
+    // oscillators (subpanel): white default per request; AC uses red/green
+    // by sign (handled in chart.js addOscHistogram), AO neutral, Mom white.
+    ao: "#c9d4e3", ac: "#c9d4e3", momentum: "#ffffff",
+  };
 
   function renderOverlayChips(host, indicators, activeIds, onToggle) {
     host.innerHTML = "";
@@ -119,7 +128,17 @@
 
   function applyIndicator(chartInst, ind) {
     const color = OVERLAY_COLORS[ind.id] || "#00bfff";
-    if (ind.kind === "dots") {
+    // Oscillators (AO/AC/Momentum) render in a dedicated bottom SUBPANEL
+    // (separate price scale) so they don't distort the price axis. AO/AC are
+    // histograms (red/green by sign like the reference terminal); Momentum is
+    // a line. Everything else stays on the price scale (add-not-modify).
+    if (ind.panel === "oscillator") {
+      if (ind.kind === "histogram") {
+        chartInst.addOscHistogram(ind.id, ind.points, color);
+      } else {
+        chartInst.addOscLine(ind.id, ind.points, color);
+      }
+    } else if (ind.kind === "dots") {
       chartInst.addSarDots(ind.id, ind.points, color);
     } else {
       chartInst.addOverlay(ind.id, ind.points, color);
@@ -369,34 +388,60 @@
     });
   }
 
-  // ---- split-pane focus (left column: run-selector / trade-list) ----
-  // Click on either pane toggles it "focused" (grid-template-rows 3fr/1fr),
-  // click again on the already-focused pane restores the even 1fr/1fr
-  // split. State persists across reloads under localStorage "tv.paneFocus".
-  const PANE_FOCUS_KEY = "tv.paneFocus";
+  // ---- split-pane divider (left column: run-selector / trade-list) ----
+  // BUG-L2 fix: the previous design toggled a 3fr/1fr "focus" on ANY CLICK in
+  // either pane -- so simply selecting a run threw the split to 3:1 and it
+  // never returned to 50/50 (the reported "not working"). Replaced with an
+  // explicit DRAGGABLE divider between the two panes: default is a clean
+  // 50/50 (grid-template-rows via --tv-split, 0.5), dragging the handle
+  // re-proportions runs vs trades, persisted under "tv.splitFrac". Normal
+  // clicks on run rows / trade rows no longer affect the split. The old
+  // focused-top/bottom CSS classes are left in place (unused) for a possible
+  // future preset-toggle (backlog).
+  const SPLIT_FRAC_KEY = "tv.splitFrac";
 
-  function applyPaneFocus(leftEl, focus) {
-    leftEl.classList.remove("focused-top", "focused-bottom");
-    if (focus === "top") leftEl.classList.add("focused-top");
-    else if (focus === "bottom") leftEl.classList.add("focused-bottom");
+  function applySplit(leftEl, frac) {
+    // frac = fraction of the resizable area given to the TOP (runs) pane.
+    const f = Math.max(0.15, Math.min(0.85, Number(frac) || 0.5));
+    leftEl.style.gridTemplateRows = `${f}fr 6px ${1 - f}fr`;
   }
 
-  function setupPaneFocus(leftEl, topEl, bottomEl) {
-    let focus = "none";
+  function setupPaneDivider(leftEl, dividerEl) {
+    let frac = 0.5;
     try {
-      const stored = localStorage.getItem(PANE_FOCUS_KEY);
-      if (stored === "top" || stored === "bottom" || stored === "none") focus = stored;
+      const stored = parseFloat(localStorage.getItem(SPLIT_FRAC_KEY));
+      if (!Number.isNaN(stored)) frac = stored;
     } catch (e) { /* noop */ }
-    applyPaneFocus(leftEl, focus);
+    applySplit(leftEl, frac);
 
-    function toggle(which) {
-      focus = focus === which ? "none" : which;
-      applyPaneFocus(leftEl, focus);
-      try { localStorage.setItem(PANE_FOCUS_KEY, focus); } catch (e) { /* noop */ }
+    let dragging = false;
+    function onMove(ev) {
+      if (!dragging) return;
+      const rect = leftEl.getBoundingClientRect();
+      const y = (ev.touches ? ev.touches[0].clientY : ev.clientY) - rect.top;
+      frac = y / rect.height;
+      applySplit(leftEl, frac);
+      ev.preventDefault();
     }
-
-    topEl.addEventListener("click", () => toggle("top"));
-    bottomEl.addEventListener("click", () => toggle("bottom"));
+    function onUp() {
+      if (!dragging) return;
+      dragging = false;
+      document.removeEventListener("mousemove", onMove);
+      document.removeEventListener("mouseup", onUp);
+      document.removeEventListener("touchmove", onMove);
+      document.removeEventListener("touchend", onUp);
+      try { localStorage.setItem(SPLIT_FRAC_KEY, String(Math.max(0.15, Math.min(0.85, frac)))); } catch (e) { /* noop */ }
+    }
+    function onDown(ev) {
+      dragging = true;
+      document.addEventListener("mousemove", onMove);
+      document.addEventListener("mouseup", onUp);
+      document.addEventListener("touchmove", onMove, { passive: false });
+      document.addEventListener("touchend", onUp);
+      ev.preventDefault();
+    }
+    dividerEl.addEventListener("mousedown", onDown);
+    dividerEl.addEventListener("touchstart", onDown, { passive: false });
   }
 
   // ---- playback UI bar (Task M2.6) — same pattern as charts.js:
@@ -478,16 +523,17 @@
     mountEl.appendChild(root);
 
     const selectorHost = el("div", { class: "review-selector-host" });
+    const paneDivider = el("div", { class: "review-pane-divider", title: "Arrastrar para redimensionar" });
     const tradeListHost = el("div", { class: "review-tradelist-host" });
     left.appendChild(selectorHost);
+    left.appendChild(paneDivider);
     left.appendChild(tradeListHost);
-    // split-pane focus wiring: click on either sub-panel (run selector on
-    // top, trade list on bottom) toggles it "focused" (3fr/1fr), persisted
-    // under localStorage tv.paneFocus. selectorHost/tradeListHost are the
-    // real top/bottom children of .review-left (see appends above) -- click
-    // handlers on their inner buttons/rows still fire first (no
-    // stopPropagation anywhere in this file), so item selection is unaffected.
-    setupPaneFocus(left, selectorHost, tradeListHost);
+    // BUG-L2 fix: default 50/50 runs/trades split with an explicit draggable
+    // divider between them (see setupPaneDivider). Replaces the old
+    // click-anywhere-to-focus behavior that jammed the split at 3:1 on run
+    // selection. The search bar stays where it is (inside the runs pane, per
+    // the user's "search bar is correct, do not touch").
+    setupPaneDivider(left, paneDivider);
 
     const reviewToolbar = el("div", { class: "review-toolbar" });
     const overlayChipsHost = el("div", { class: "review-overlay-chips-host" });
@@ -536,6 +582,13 @@
     let runsById = {};
     let selectorApi = null;
     let activeOverlayIds = new Set(); // persists across tf switches/runs
+    // FIX 5 / D80: the backend now returns EVERY indicator for EVERY run with
+    // a `default_on` flag (its own strategy's indicators start ON, the rest
+    // are present but OFF, all toggleable). An indicator the user has NOT
+    // explicitly toggled follows its `default_on`; once toggled, the user's
+    // choice sticks (tracked in userTouchedIds) across tf switches. Switching
+    // runs resets both so each run opens with ITS default-on set.
+    let userTouchedIds = new Set();
     let tfButtonsGroup = null;
     let userPickedTf = false; // true once the user clicks a TF button explicitly
 
@@ -597,7 +650,16 @@
         return;
       }
       const indicators = body.indicators || [];
+      // FIX 5 / D80: for any indicator the user hasn't explicitly toggled this
+      // run, honor its backend `default_on` -> seed activeOverlayIds so the
+      // run opens with its own strategy's indicators ON and the rest OFF.
+      indicators.forEach((ind) => {
+        if (userTouchedIds.has(ind.id)) return;
+        if (ind.default_on) activeOverlayIds.add(ind.id);
+        else activeOverlayIds.delete(ind.id);
+      });
       renderOverlayChips(overlayChipsHost, indicators, activeOverlayIds, (ind, active) => {
+        userTouchedIds.add(ind.id);
         if (active) {
           activeOverlayIds.add(ind.id);
           applyIndicator(chartInst, ind);
@@ -671,6 +733,11 @@
 
     async function loadRunTrades(row) {
       currentRunId = row.run_id;
+      // FIX 5 / D80: each run opens with ITS own default-on indicator set --
+      // reset per-run selection state so a prior run's toggles don't leak
+      // (e.g. SAR left ON from an EMASAR run onto the SuperTrend run).
+      userTouchedIds = new Set();
+      activeOverlayIds = new Set();
       if (selectorApi) selectorApi.markActive(row.run_id);
       appState.selectedRun = row.run_id;
       try {
@@ -710,7 +777,11 @@
       markNativeTfButton(tfButtonsGroup, runFull);
 
       if (!chartInst) {
-        chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf });
+        // windowMode: REVIEW pins an explicit per-trade window via
+        // setWindow(); disables the chunked LOD prefetch that otherwise
+        // clobbered the trade window (self-move) and thrashed redraws to
+        // ~1fps on runs whose trades sit far from the data tail (BUG-C1/C3).
+        chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf, windowMode: true });
       } else {
         // Set the symbol WITHOUT triggering the setter's TAIL loadInitial() --
         // selectTradeAt(0) below owns the single (trade-window) load. This
@@ -753,7 +824,9 @@
         return;
       }
 
-      // all trades as dim markers (40% alpha per D.4/D.7)
+      // all trades as dim markers; non-selected alpha is halved in chart.js
+      // (FIX 3: markers 0.15, connectors 0.11, overlay hairlines 0.175 -- the
+      // user wanted non-selected positions 50% MORE transparent).
       chartInst.addTradeMarkers(currentTrades, currentColor, { dim: true });
 
       const tableEl = el("div", { class: "review-vtable" });

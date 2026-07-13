@@ -65,7 +65,7 @@ from pydantic import BaseModel
 from starlette.responses import StreamingResponse
 
 from ..chat import answer_chat
-from ...ai.dossier import DossierError, build_position_dossier
+from ...ai.dossier import DossierError, build_position_dossier, build_strategy_dossier
 from ...ai.loop import run_tool_loop
 from ...ai.tools import TOOLS
 
@@ -95,6 +95,22 @@ _ANALYZE_POSITION_SYSTEM_PREAMBLE = (
 class AnalyzePositionRequest(BaseModel):
     trade_id: str
     model: str | None = None
+
+
+class ReviewStrategyRequest(BaseModel):
+    strategy_id: str
+    model: str | None = None
+
+# STABLE-FIRST fixed system preamble for the strategy-review endpoint
+# (C7a) -- same caching-order convention as `_ANALYZE_POSITION_SYSTEM_PREAMBLE`
+# above: fixed preamble first, then the (request-stable) dossier XML, then
+# the trader's question LAST.
+_REVIEW_STRATEGY_SYSTEM_PREAMBLE = (
+    "You are SENTINEL's trading strategy reviewer. You have read-only tools "
+    "to inspect bars, the strategy scorecard, and the research registry. "
+    "Use them when they would sharpen your review. Below is a dossier with "
+    "the strategy record, its scorecard, and recent runs."
+)
 
 _SESSION_COOKIE = "sentinel_session"
 _MODELS_YAML_PATH = Path(__file__).resolve().parents[3] / "models.yaml"
@@ -341,6 +357,86 @@ def build_router(runners: dict, resolve: Callable[[str | None], Any], app_state)
                 )
             except Exception as exc:  # noqa: BLE001 - report via ai_error, never crash the stream
                 yield _sse("ai_error", {"error": f"analyze_failed: {exc}"})
+                return
+
+            for chunk in chunks:
+                yield _sse("ai_text", {"text": chunk})
+            yield _sse("ai_done", {"text": final_text})
+
+        stream = StreamingResponse(event_stream(), media_type="text/event-stream")
+        stream.set_cookie(_SESSION_COOKIE, _sid, httponly=True, samesite="lax")
+        return stream
+
+    @r.post("/api/ai/review_strategy")
+    async def post_review_strategy(
+        payload: ReviewStrategyRequest, request: Request, response: Response
+    ):
+        _sid, session = _get_or_create_session(request, response)
+        model_id = payload.model or _default_model_id()
+
+        # CT-6 gate: checked BEFORE any dossier build or API call (same
+        # pattern as /api/ai/analyze_position above).
+        if model_id in _gated_ids() and not session["unlocked"]:
+            err = JSONResponse(status_code=403, content={"error": "gated_model_locked"})
+            err.set_cookie(_SESSION_COOKIE, _sid, httponly=True, samesite="lax")
+            return err
+
+        def _sse(event: str, data: dict) -> str:
+            return f"event: {event}\ndata: {json.dumps(data)}\n\n"
+
+        async def event_stream():
+            yield "retry: 3000\n\n"
+            try:
+                dossier = build_strategy_dossier(
+                    payload.strategy_id,
+                    db_path=app_state.registry.db_path,
+                )
+            except DossierError as exc:
+                yield _sse("ai_error", {"error": str(exc)})
+                return
+            except Exception as exc:  # noqa: BLE001 - never crash the stream
+                yield _sse("ai_error", {"error": f"dossier_failed: {exc}"})
+                return
+
+            # STABLE-FIRST ordering (research doc §5): fixed preamble first,
+            # dossier XML next, the trader's question LAST.
+            system_prompt = (
+                f"{_REVIEW_STRATEGY_SYSTEM_PREAMBLE}\n\n{dossier['xml']}"
+            )
+            messages = [
+                {
+                    "role": "user",
+                    "content": (
+                        f"Review this strategy (strategy_id={payload.strategy_id}). "
+                        "What is working, what isn't, and what would you change?"
+                    ),
+                }
+            ]
+
+            client = app_state.chat_client
+            if client is None:
+                yield _sse("ai_error", {"error": "no AI client configured"})
+                return
+
+            ctx = {"registry": app_state.registry, "lake_root": app_state.lake_root}
+            chunks: list[str] = []
+
+            def _on_text(chunk: str) -> None:
+                chunks.append(chunk)
+
+            try:
+                final_text = await asyncio.to_thread(
+                    run_tool_loop,
+                    client,
+                    model_id,
+                    system_prompt,
+                    messages,
+                    TOOLS,
+                    ctx,
+                    _on_text,
+                )
+            except Exception as exc:  # noqa: BLE001 - report via ai_error, never crash the stream
+                yield _sse("ai_error", {"error": f"review_failed: {exc}"})
                 return
 
             for chunk in chunks:

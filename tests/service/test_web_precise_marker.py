@@ -190,10 +190,18 @@ def test_chart_js_tooltip_uses_precise_time_label():
 
 @requires_node
 def test_node_precise_x_of_intrabar_signal():
+    # 2026-07-13 center-based convention (hairline/marker alignment fix):
+    # lightweight-charts anchors markers/candles at bar CENTERS and maps
+    # arbitrary times BETWEEN adjacent bar centers, so preciseXOf is
+    # x = barCenterX + barWidth * frac (frac=0 -> exactly on the bar's
+    # marker; frac=1 -> the next bar's center). The old left-edge anchor
+    # (barCenterX - barWidth/2 + barWidth*frac) drew every bar-boundary
+    # signal (frac=0, the entire sim-report population) half a bar LEFT of
+    # its entry/exit marker -- the reported "verticals misaligned" bug.
     # M1 bar (tf=60s), bucket t=0, bar CENTER x=100px, bar width=8px.
-    # Signal at t=30 (mid-bar) -> x = (100 - 4) + 8*0.5 = 100.
-    # Signal at t=45 (3/4)     -> x = 96 + 8*0.75 = 102.
-    # Signal before bucket     -> clamp 0 -> x = 96 (left edge).
+    # Signal at t=30 (mid-bar) -> x = 100 + 8*0.5  = 104.
+    # Signal at t=45 (3/4)     -> x = 100 + 8*0.75 = 106.
+    # Signal before bucket     -> clamp 0 -> x = 100 (on the marker).
     out = _run_node("""
 const px = window.SENTINEL.chart.preciseXOf;
 console.log(JSON.stringify({
@@ -203,4 +211,4 @@ console.log(JSON.stringify({
 }));
 """)
     data = json.loads(out)
-    assert data == {"mid": 100, "q3": 102, "clamped": 96}
+    assert data == {"mid": 104, "q3": 106, "clamped": 100}
