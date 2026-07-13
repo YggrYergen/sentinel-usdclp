@@ -70,6 +70,12 @@
     return resp.json();
   }
 
+  async function fetchScorecard(strategyId) {
+    const resp = await fetch(`/api/strategies/${encodeURIComponent(strategyId)}/scorecard`);
+    if (!resp.ok) throw new Error(`GET /api/strategies/${strategyId}/scorecard failed: ${resp.status}`);
+    return resp.json();
+  }
+
   async function postEstado(strategyId, estado) {
     const resp = await fetch(`/api/strategies/${encodeURIComponent(strategyId)}/estado`, {
       method: "POST",
@@ -82,6 +88,56 @@
       throw new Error(msg);
     }
     return json;
+  }
+
+  // ---- Task B4: two-floor (real/teorico) scorecard CSS, section-scoped. ----
+  const ESTRATEGIA_CSS_ID = "positions-estrategia-css";
+  const ESTRATEGIA_CSS = `
+    .estrategia-tf-badge { display: inline-block; font-size: 0.7rem; padding: 1px 6px; border: 1px solid var(--border, #333); border-radius: 3px; opacity: 0.85; margin-left: 6px; }
+    .estrategia-scorecard { display: flex; flex-direction: column; gap: 2px; margin-top: 4px; }
+    .estrategia-floor { display: flex; justify-content: space-between; gap: 8px; padding: 2px 4px; font-size: 0.78rem; }
+    .estrategia-floor-real { font-weight: 700; opacity: 1; }
+    .estrategia-floor-teorico { font-weight: 400; opacity: 0.55; }
+    .estrategia-floor-label { text-transform: uppercase; font-size: 0.62rem; opacity: 0.7; }
+  `;
+
+  function injectEstrategiaCss() {
+    if (document.getElementById(ESTRATEGIA_CSS_ID)) return;
+    const style = document.createElement("style");
+    style.id = ESTRATEGIA_CSS_ID;
+    style.textContent = ESTRATEGIA_CSS;
+    document.head.appendChild(style);
+  }
+
+  function scorecardFloorText(block) {
+    if (!block) return "sin baseline";
+    const fmt = window.SENTINEL.fmt;
+    const net = block.net != null ? fmt.signed(block.net) : "--";
+    const trades = block.trades != null ? block.trades : "--";
+    const pf = block.pf != null ? fmt.num(block.pf) : "--";
+    return `${net} · ${trades} trades · PF ${pf}`;
+  }
+
+  function renderScorecardFloors(host, card) {
+    injectEstrategiaCss();
+    host.innerHTML = "";
+    const wrap = el("div", { class: "estrategia-scorecard" });
+    const real = el("div", { class: "estrategia-floor estrategia-floor-real" });
+    real.innerHTML = `<span class="estrategia-floor-label">Real</span><span>Cargando&hellip;</span>`;
+    const teorico = el("div", { class: "estrategia-floor estrategia-floor-teorico" });
+    teorico.innerHTML = `<span class="estrategia-floor-label">Te&oacute;rico</span><span>Cargando&hellip;</span>`;
+    wrap.appendChild(real);
+    wrap.appendChild(teorico);
+    host.appendChild(wrap);
+
+    fetchScorecard(card.strategy_id).then((data) => {
+      const floors = data.floors || {};
+      real.innerHTML = `<span class="estrategia-floor-label">Real</span><span>${escapeHtml(scorecardFloorText(floors.real))}</span>`;
+      teorico.innerHTML = `<span class="estrategia-floor-label">Te&oacute;rico</span><span>${escapeHtml(scorecardFloorText(floors.teorico))}</span>`;
+    }).catch(() => {
+      real.innerHTML = `<span class="estrategia-floor-label">Real</span><span>Error cargando scorecard.</span>`;
+      teorico.innerHTML = `<span class="estrategia-floor-label">Te&oacute;rico</span><span>sin baseline</span>`;
+    });
   }
 
   // ---- strategy state panel (M2.7): per-strategy activa/pausada/graduada
@@ -107,11 +163,15 @@
       display_name: strategy.name,
     });
     const starHtml = strategy.graduated ? '<span class="manage-graduated-star" title="Graduada">&#9733;</span>' : "";
+    const tfHtml = strategy.tf ? `<span class="estrategia-tf-badge">${escapeHtml(strategy.tf)}</span>` : "";
     card.innerHTML = `
-      <div class="manage-strategy-card-top">${starHtml}${stratBadge}
+      <div class="manage-strategy-card-top">${starHtml}${stratBadge}${tfHtml}
         <span class="manage-estado-badge manage-estado-${escapeHtml(estado)}">${escapeHtml(estado)}</span>
       </div>
+      <div class="estrategia-scorecard-host"></div>
       <div class="manage-estado-controls"></div>`;
+    const scorecardHost = card.querySelector(".estrategia-scorecard-host");
+    renderScorecardFloors(scorecardHost, strategy);
     const controls = card.querySelector(".manage-estado-controls");
     ESTADOS.forEach((e) => {
       const btn = el("button", {
@@ -656,6 +716,8 @@
         return;
       }
 
+      const sessionsHeader = el("div", { class: "manage-strategy-panel-title", text: "Sesiones forward" });
+      wrap.appendChild(sessionsHeader);
       const cardsHost = el("div", { class: "positions-cards" });
       const detailHost = el("div", { class: "positions-detail" });
       wrap.appendChild(cardsHost);

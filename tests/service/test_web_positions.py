@@ -190,3 +190,40 @@ def test_positions_js_humano_panel_degrades_clean_without_adapters_or_chart():
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
     assert "window.SENTINEL.adapters &&" in text or "window.SENTINEL.adapters&&" in text
     assert "window.SENTINEL.chart &&" in text or "window.SENTINEL.chart&&" in text
+
+
+# ---- B4: ESTRATEGIA two-floor + labels -----------------------------------
+
+def test_positions_js_fetches_strategy_scorecard():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "/api/strategies/" in text
+    assert "/scorecard" in text
+
+
+def test_positions_js_has_two_floor_markup():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "estrategia-floor-real" in text
+    assert "estrategia-floor-teorico" in text
+
+
+def test_positions_js_teorico_null_shows_sin_baseline():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "sin baseline" in text
+
+
+def test_positions_js_sessions_header_renamed():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "Sesiones forward" in text
+
+
+def test_positions_js_tf_badge_present():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "estrategia-tf-badge" in text
+
+
+def test_positions_js_estado_buttons_still_present():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "manage-estado-btn" in text
+    assert '"activa"' in text
+    assert '"pausada"' in text
+    assert '"graduada"' in text
