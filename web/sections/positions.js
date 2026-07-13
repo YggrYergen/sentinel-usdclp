@@ -17,8 +17,6 @@
     { id: "ia", label: "IA" },
   ];
 
-  const EMPTY_FUTURE_COPY = "Disponible al activar live/IA (B4/B5)";
-
   function el(tag, attrs, children) {
     const e = document.createElement(tag);
     for (const [k, v] of Object.entries(attrs || {})) {
@@ -256,8 +254,87 @@
     return card;
   }
 
-  function renderEmptyFutureTab(host) {
-    host.innerHTML = `<div class="positions-empty-future">${escapeHtml(EMPTY_FUTURE_COPY)}</div>`;
+  // ---- IA tab (Task B5): TOP = client-side aggregated card over
+  // GET /api/positions?origin=ia (net total, #posiciones, lots — no
+  // dedicated scorecard endpoint exists for origin=ia; B2 only covers
+  // strategy_id scorecards, so this aggregate is computed in the client).
+  // BOTTOM = reuses renderHumanoTab(host, "ia") verbatim (no second
+  // copy-pasted list builder). ----
+  const IA_CSS_ID = "positions-ia-css";
+  const IA_CSS = `
+    .positions-ia-aggregate { display: flex; gap: 24px; align-items: center; padding: 14px 16px; margin-bottom: 10px; border: 1px solid var(--border, #333); border-radius: 6px; }
+    .positions-ia-aggregate-stat { display: flex; flex-direction: column; gap: 2px; }
+    .positions-ia-aggregate-label { font-size: 0.68rem; text-transform: uppercase; opacity: 0.65; }
+    .positions-ia-aggregate-value { font-size: 1.25rem; font-weight: 700; }
+    .positions-ia-list-host { flex: 1; min-height: 0; }
+  `;
+
+  function injectIaCss() {
+    if (document.getElementById(IA_CSS_ID)) return;
+    const style = document.createElement("style");
+    style.id = IA_CSS_ID;
+    style.textContent = IA_CSS;
+    document.head.appendChild(style);
+  }
+
+  function aggregateIaGroups(groups) {
+    let net = 0;
+    let lots = 0;
+    groups.forEach((g) => {
+      net += Number(g.net) || 0;
+      lots += Number(g.lots) || 0;
+    });
+    return { net, count: groups.length, lots };
+  }
+
+  function renderIaAggregateCard(host, groups) {
+    injectIaCss();
+    const fmt = window.SENTINEL.fmt;
+    const agg = aggregateIaGroups(groups);
+    const card = el("div", { class: "positions-ia-aggregate" });
+    card.innerHTML = `
+      <div class="positions-ia-aggregate-stat">
+        <span class="positions-ia-aggregate-label">Net total</span>
+        <span class="positions-ia-aggregate-value ${signClass(agg.net)} mono">${fmt.signed(agg.net)}</span>
+      </div>
+      <div class="positions-ia-aggregate-stat">
+        <span class="positions-ia-aggregate-label">Posiciones</span>
+        <span class="positions-ia-aggregate-value mono">${agg.count}</span>
+      </div>
+      <div class="positions-ia-aggregate-stat">
+        <span class="positions-ia-aggregate-label">Lots</span>
+        <span class="positions-ia-aggregate-value mono">${fmt.num(agg.lots)}</span>
+      </div>`;
+    host.innerHTML = "";
+    host.appendChild(card);
+  }
+
+  function renderIaTab(host) {
+    injectIaCss();
+    host.innerHTML = '<div class="positions-loading">Cargando posiciones IA&hellip;</div>';
+    let innerHandle = null;
+    let torn = false;
+    fetchPositions("ia", "").then((body) => {
+      if (torn) return;
+      const groups = body.groups || [];
+      host.innerHTML = "";
+      const aggHost = el("div", {});
+      const listHost = el("div", { class: "positions-ia-list-host" });
+      host.appendChild(aggHost);
+      host.appendChild(listHost);
+      renderIaAggregateCard(aggHost, groups);
+      innerHandle = renderHumanoTab(listHost, "ia");
+    }).catch(() => {
+      if (torn) return;
+      host.innerHTML = '<div class="positions-error">Error cargando /api/positions.</div>';
+      if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error cargando /api/positions", { type: "error" });
+    });
+    return {
+      teardown: () => {
+        torn = true;
+        if (innerHandle) { try { innerHandle.teardown(); } catch (e) { /* noop */ } innerHandle = null; }
+      },
+    };
   }
 
   // ---- HUMANO tab (Task B3a): card list of GET /api/positions?origin=human
@@ -520,7 +597,8 @@
     return row;
   }
 
-  function renderHumanoTab(host) {
+  function renderHumanoTab(host, origin) {
+    const originArg = origin || "human";
     injectHumanoCss();
     host.innerHTML = '<div class="positions-loading">Cargando posiciones&hellip;</div>';
 
@@ -559,11 +637,12 @@
       refreshItems();
     }
 
-    fetchPositions("human", "").then((body) => {
+    fetchPositions(originArg, "").then((body) => {
       groups = body.groups || [];
       host.innerHTML = "";
       if (!groups.length) {
-        host.innerHTML = '<div class="positions-humano-empty">Sin posiciones HUMANO.</div>';
+        const emptyText = originArg === "ia" ? "Sin posiciones IA aún — se activa con el motor paper (Wave D)" : "Sin posiciones HUMANO.";
+        host.innerHTML = `<div class="positions-humano-empty">${escapeHtml(emptyText)}</div>`;
         return;
       }
       const listHost = el("div", { class: "positions-humano-list" });
@@ -654,11 +733,11 @@
       if (humanoTabHandle) { try { humanoTabHandle.teardown(); } catch (e) { /* noop */ } humanoTabHandle = null; }
       body.innerHTML = "";
       if (activeTab === "ia") {
-        renderEmptyFutureTab(body);
+        humanoTabHandle = renderIaTab(body);
         return;
       }
       if (activeTab === "humano") {
-        humanoTabHandle = renderHumanoTab(body);
+        humanoTabHandle = renderHumanoTab(body, "human");
         return;
       }
       renderEstrategiaTab();

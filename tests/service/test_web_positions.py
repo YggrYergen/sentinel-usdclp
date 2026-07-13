@@ -52,8 +52,12 @@ def test_positions_js_registers_sentinel_namespace():
 
 
 def test_positions_js_has_honest_empty_states():
+    # B4/B5 landed: the "future feature" placeholder copy is gone; the
+    # surviving honest empty states are IA (paper engine pending, Wave D)
+    # and the forward-sessions list.
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "Disponible al activar live/IA (B4/B5)" in text
+    assert "Disponible al activar live/IA (B4/B5)" not in text
+    assert "Sin posiciones IA aún" in text
     assert "Sin sesiones forward" in text
 
 
@@ -227,3 +231,33 @@ def test_positions_js_estado_buttons_still_present():
     assert '"activa"' in text
     assert '"pausada"' in text
     assert '"graduada"' in text
+
+
+# ---- B5: IA subtab (empty-state + aggregated card + reused HUMANO list) --
+
+def test_positions_js_ia_tab_fetches_origin_ia():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "origin=ia" in text or 'fetchPositions("ia"' in text or "fetchPositions('ia'" in text
+
+
+def test_positions_js_ia_tab_has_aggregate_card_markup():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "positions-ia-aggregate" in text
+
+
+def test_positions_js_ia_tab_empty_state_exact_text():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "Sin posiciones IA aún — se activa con el motor paper (Wave D)" in text
+
+
+def test_positions_js_ia_tab_reuses_humano_list_builder():
+    """B5 must not copy-paste a second list builder; renderHumanoTab (or its
+    item/card builders) is parametrized by origin and reused for IA."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert text.count("function renderHumanoGroupCard") == 1
+    assert text.count("function renderHumanoChildRow") == 1
+    assert text.count("function buildHumanoFlatItems") == 1
+    # renderHumanoTab must accept/forward an origin param instead of a
+    # second copy-pasted "renderIaTab" list builder existing independently.
+    assert "function renderHumanoTab(host, origin" in text or "function renderHumanoTab(host," in text
+    assert "renderHumanoTab(" in text.split("function renderHumanoTab")[-1] or text.count("renderHumanoTab(") >= 2
