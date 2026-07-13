@@ -39,6 +39,7 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from sentinel_engine.strategies.emasar_ref import simular  # noqa: E402
+from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies._supertrend_ref import supertrend, flips  # noqa: E402
 from sentinel_engine.strategies.emasar_ref import _atr_wilder  # noqa: E402
 from sentinel_engine.research.registry2 import ResearchRegistry  # noqa: E402
@@ -197,6 +198,77 @@ def run_emasar_variant(tf: str, sim_kwargs: dict[str, Any], strategy_mode: int) 
             entry_bid = pos["precio"]
             entry_side_l = pos["side"]
             entry_px = _entry_fill(entry_side_l, entry_bid)
+            exit_px = _exit_fill(entry_side_l, ev["precio"])
+
+            trades.append({
+                "signal_id": pos["signal_id"],
+                "ficha": ficha,
+                "side": pos["side_ui"],
+                "ts_in_epoch": pos["t"],
+                "ts_out_epoch": bar["t"],
+                "px_in": round(entry_px, 2),
+                "px_out": round(exit_px, 2),
+                "exit_reason": motivo,
+                "entry_in_window": _in_window(pos["t"]),
+            })
+
+            pos["fichas_remaining"].discard(ficha)
+            if not pos["fichas_remaining"]:
+                open_positions.pop(pos["signal_id"], None)
+
+    return trades, eventos
+
+
+# ---------------------------------------------------------------------------
+# EMASAR per-ficha trailing variant (2026-07-13 trader request)
+# ---------------------------------------------------------------------------
+
+def run_emasar_trailing_variant(tf: str, variant_kwargs: dict[str, Any]) -> tuple[list[dict], list[dict]]:
+    """Runs emasar_variant.simular_variant (per-ficha trailing ladder) on the
+    loaded `tf` bars, applies spread at fill, and pairs each EXIT_* event with
+    its ficha's open position -- same pairing shape as run_emasar_variant
+    (V1: one ENTRY opens F1+F2+F3; each closes independently by its own
+    trailing). simular_variant never reenters while fichas are open, so
+    last_signal_id resolves the owning group."""
+    bars = _load_bars(tf)
+    eventos = simular_variant(bars, **variant_kwargs)
+
+    trades: list[dict[str, Any]] = []
+    open_positions: dict[str, dict[str, Any]] = {}
+    signal_seq = 0
+    last_signal_id: str | None = None
+
+    for ev in eventos:
+        motivo = ev["motivo"]
+        idx = ev["idx"]
+        bar = bars[idx]
+        side_l = ev["lado"]
+        side_ui = "LONG" if side_l == "L" else "SHORT"
+
+        if motivo in ("ENTRY_L", "ENTRY_S"):
+            signal_seq += 1
+            signal_id = f"sig-{bar['t']}-{signal_seq}"
+            open_positions[signal_id] = {
+                "signal_id": signal_id, "t": bar["t"], "side": side_l,
+                "side_ui": side_ui, "precio": ev["precio"],
+                "fichas_remaining": {"F1", "F2", "F3"},
+            }
+            last_signal_id = signal_id
+        elif motivo.startswith("EXIT"):
+            ficha = ev.get("ficha") or "F1"
+            pos = open_positions.get(last_signal_id)
+            if pos is None or ficha not in pos["fichas_remaining"]:
+                pos = None
+                for sid, p in open_positions.items():
+                    if ficha in p["fichas_remaining"]:
+                        pos = p
+                        last_signal_id = sid
+                        break
+                if pos is None:
+                    continue
+
+            entry_side_l = pos["side"]
+            entry_px = _entry_fill(entry_side_l, pos["precio"])
             exit_px = _exit_fill(entry_side_l, ev["precio"])
 
             trades.append({
@@ -541,7 +613,95 @@ def main() -> None:
     )
     results.append(r4)
 
-    print(json.dumps(results, indent=2, ensure_ascii=False))
+    # === TRAILING-LADDER VARIANT (2026-07-13 trader request) ===============
+    # New variant vs its original, across the 4 available TFs (M1/M2/M5/M15),
+    # SAME window as the original EMASAR runs (2026-07-02/03). Entry tweaks:
+    # faster EMAs 5/8 + drop G1 (require_ema_order=False). Exits: per-ficha
+    # trailing LADDER (fixed $ values, per trader clarification 2026-07-13):
+    # F1 tightest, F2 mid, F3 loosest -> F1 < F2 < F3. F1=$0.60 (a bit looser
+    # than its original engulfing but the tightest of the three), F2=$0.90
+    # (a bit wider than its original ST-flip), F3=$1.70 (opt A) / $1.00 (opt B).
+    # F1/F2 are BELOW $1.00 so the ladder still holds when F3=$1.00. Both stay
+    # above the broker's $0.50 min stop. Shared legal range-SL kept.
+    # 2 F3 options x 4 TFs = 8 variant backtests; plus each TF's original
+    # baseline for the vs-original comparison (M2 original already = r1).
+    LADDER_F1_PIPS = 60.0    # $0.60 (tightest)
+    LADDER_F2_PIPS = 90.0    # $0.90 (mid)
+    TFS = ["M1", "M2", "M5", "M15"]
+    ladder_results: list[dict[str, Any]] = []
+    baseline_results: list[dict[str, Any]] = []
+
+    for tf in TFS:
+        # ---- original baseline at this TF (same as r1's config) ----
+        if tf == "M2":
+            baseline_results.append(dict(r1, _label=f"ORIG {tf}"))
+        else:
+            base_kwargs = dict(
+                strategy_mode=1, confirm_mode=2, symbol=SYMBOL,
+                sar_step=0.3, sar_max=0.3, **LEGAL_STOP,
+            )
+            btr, _ = run_emasar_variant(tf, base_kwargs, strategy_mode=1)
+            rb = _ingest_run(
+                registry, run_id=f"sim-report-emasar-orig-sar3m3-{tf.lower()}",
+                variant_id=f"EMS_XAU_V1_{tf}_c2_sar3m3", strategy_name="EMASAR", familia="emasar",
+                tf=tf, params_delta={
+                    "strategy_mode": 1, "confirm_mode": 2, "sar_step": 0.3, "sar_max": 0.3,
+                    "ema_fast": 8, "ema_slow": 20, "require_ema_order": True,
+                    "init_sl_mode": "range", "init_sl_range_k": 1.0,
+                },
+                trades_all=btr, display_name=f"EMASAR original (SAR 0.3/0.3) {tf}, legal range-SL",
+            )
+            baseline_results.append(dict(rb, _label=f"ORIG {tf}"))
+
+        # ---- trailing-ladder variant: F3=$1.70 and F3=$1.00 ----
+        for f3_pips, tag in ((170.0, "170"), (100.0, "100")):
+            vk = dict(
+                confirm_mode=2, symbol=SYMBOL,
+                ema_fast=5, ema_slow=8, sar_step=0.3, sar_max=0.3,
+                require_ema_order=False, init_sl_range_k=1.0,
+                f1_trail_pips=LADDER_F1_PIPS, f2_trail_pips=LADDER_F2_PIPS, f3_trail_pips=f3_pips,
+            )
+            vtr, _ = run_emasar_trailing_variant(tf, vk)
+            rv = _ingest_run(
+                registry, run_id=f"sim-report-emasar-ladder-f3{tag}-{tf.lower()}",
+                variant_id=f"EMS_XAU_V1_{tf}_c2_sar3m3_ladder_f3{tag}",
+                strategy_name="EMASAR", familia="emasar",
+                tf=tf, params_delta={
+                    "strategy_mode": 1, "confirm_mode": 2, "sar_step": 0.3, "sar_max": 0.3,
+                    "ema_fast": 5, "ema_slow": 8, "require_ema_order": False,
+                    "init_sl_mode": "range", "init_sl_range_k": 1.0,
+                    "exit_model": "per_ficha_trailing_ladder",
+                    "f1_trail_pips": LADDER_F1_PIPS, "f2_trail_pips": LADDER_F2_PIPS,
+                    "f3_trail_pips": f3_pips,
+                },
+                trades_all=vtr,
+                display_name=(f"EMASAR ladder (EMA5/8, F1${LADDER_F1_PIPS*0.01:.2f}/"
+                              f"F2${LADDER_F2_PIPS*0.01:.2f}/F3${f3_pips*0.01:.2f}) {tf}"),
+            )
+            ladder_results.append(dict(rv, _label=f"LADDER f3${f3_pips*0.01:.2f} {tf}"))
+
+    results.extend(baseline_results)
+    results.extend(ladder_results)
+
+    # ---- comparison table (stdout) ----
+    def _fmt(r: dict[str, Any]) -> str:
+        pf = r.get("pf")
+        pf_s = f"{pf:.2f}" if isinstance(pf, (int, float)) else str(pf)
+        return (f"  {r.get('_label',''):<22} tf={r['tf']:<3} "
+                f"trades={r['trades']:<4} net=${r['net']:<10} pf={pf_s:<6} "
+                f"wr={r['wr']}%  dd=${r['maxdd']}")
+
+    print("\n===== EMASAR trailing-ladder variant vs original (2026-07-02/03) =====")
+    for tf in TFS:
+        print(f"\n--- {tf} ---")
+        for r in baseline_results:
+            if r["tf"] == tf:
+                print(_fmt(r))
+        for r in ladder_results:
+            if r["tf"] == tf:
+                print(_fmt(r))
+
+    print("\n" + json.dumps(results, indent=2, ensure_ascii=False))
 
     # ---- Indicator manifest ----
     manifest["runs"] = [
