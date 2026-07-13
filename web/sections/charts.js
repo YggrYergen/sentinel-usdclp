@@ -295,6 +295,10 @@
         appState.tf = tf;
         if (chartInst) {
           chartInst.setTF(tf).then(() => applyOverlays(chartInst, appState.symbol, tf, activeOverlays));
+          if (liveAdapter) {
+            if (typeof liveAdapter.setTf === "function") liveAdapter.setTf(tf);
+            else setupLiveAdapter(appState.symbol || initial.symbol);
+          }
         }
       },
       onLiveToggle: (checked) => {

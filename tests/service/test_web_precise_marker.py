@@ -88,6 +88,17 @@ def test_chart_js_exposes_precise_time_label_helper():
     assert "preciseTimeLabel" in text
 
 
+def test_chart_js_tf_sec_includes_h1_and_d():
+    """REV-2 fix 1: TF_SEC local (line ~50) lacked H1/D entries present in
+    the other copies of this map elsewhere in the codebase, so secPerBar()
+    fell back to 60 and marker/connector/overlay fractional-x math was wrong
+    whenever the CT-2 LOD served H1 or D bars."""
+    text = _chart_js()
+    tf_sec_line = next(line for line in text.splitlines() if "TF_SEC = {" in line)
+    assert "H1: 3600" in tf_sec_line
+    assert "D: 86400" in tf_sec_line
+
+
 def test_chart_js_preserves_hover_halo_and_connector_functions():
     """Regression guard: A5b's re-anchor edit must not touch hover-halo /
     connector-hit-test semantics or the loadSeq race guard."""

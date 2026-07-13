@@ -150,6 +150,22 @@ def test_live_adapter_degrades_on_503_without_throwing():
     assert "console.info" in text
 
 
+# ---- REV-2 fix 3: TF-switch re-syncs the live liveAdapter ----
+
+def test_charts_js_ontf_resyncs_live_adapter():
+    """With live ticks ON, switching TF left the LiveAdapter filtering on
+    the stale tf (adapters.js's LiveAdapter/HistAdapter filter bar_tail
+    events by currentTf, only advanced via setTf()), so bar_tail events for
+    the new TF were silently dropped. onTF must re-sync liveAdapter's tf,
+    either via its setTf(tf) (adapters.js exposes it -- see
+    test_node_live_adapter_extends_hist_adapter_api) or by tearing down and
+    calling setupLiveAdapter() again, mirroring the onSymbol handler."""
+    text = (WEB_DIR / "sections" / "charts.js").read_text(encoding="utf-8")
+    onTF_src = text.split("onTF: (tf) => {", 1)[1].split("\n      },", 1)[0]
+    assert "liveAdapter" in onTF_src
+    assert ("liveAdapter.setTf(" in onTF_src) or ("setupLiveAdapter(" in onTF_src)
+
+
 # ---- real logic execution ----
 
 @requires_node

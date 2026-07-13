@@ -756,6 +756,15 @@ html, body {
   background: var(--bg-3);
 }
 
+/* REV-2 fix 2: vlist.js re-stamps this class on scroll/re-render; without a
+   rule the selection highlight vanished once a selected row scrolled out
+   and back into the viewport. Visually equivalent to .review-run-item.active. */
+.vlist-selected {
+  color: var(--accent-celeste);
+  border-left-color: var(--accent-celeste);
+  background: var(--bg-3);
+}
+
 /* -- POSICIONES (M2.3, plan §D.7-POSICIONES: tabs + forward_session cards) -- */
 .positions-section {
   display: flex;

@@ -59,6 +59,14 @@ def test_vlist_js_selection_preservation_logic():
     assert "selected" in text
 
 
+def test_style_css_has_vlist_selected_rule():
+    """REV-2 fix 2: vlist.js:84 re-stamps the `vlist-selected` class on
+    scroll/re-render, but style.css had no rule for it, so the selection
+    highlight disappeared once a selected row scrolled out and back in."""
+    css = (WEB_DIR / "style.css").read_text(encoding="utf-8")
+    assert ".vlist-selected" in css
+
+
 def test_no_cdn_in_vlist_js():
     text = (WEB_DIR / "lib" / "vlist.js").read_text(encoding="utf-8")
     assert "cdn.jsdelivr" not in text.lower()

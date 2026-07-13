@@ -47,7 +47,7 @@
     return Math.floor(Number(t));
   }
 
-  const TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900 };
+  const TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900, H1: 3600, D: 86400 };
 
   // A5b: fractional intrabar x-position. Markers/connectors were previously
   // snapped to the bucket's bar time (barTimeOf), losing the exact intrabar
