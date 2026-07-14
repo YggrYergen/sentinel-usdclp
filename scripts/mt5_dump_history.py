@@ -16,6 +16,8 @@ Flow:
      ISO-8601 tz-aware UTC).
   4. Ingest every CSV into the Parquet lake via the repo's ingest_mt5_csv, then
      build the coverage manifest and print a summary.
+  5. Rebuild the lake TF tiers (M1..D) for every distinct symbol touched, so
+     downstream offline tools reading tiers never see stale data after a dump.
 
 The 3 config futures symbols rolled contracts; we source the current continuous
 contract but STORE it under the config's original key so config_hash / parity is
@@ -144,6 +146,34 @@ def write_csv(lake_key: str, tf_min: int, df: pd.DataFrame) -> Path:
     return path
 
 
+def _ingest_and_tier(csv_paths: list[tuple[str, int, Path]]) -> None:
+    """Ingest all fetched CSVs into the Parquet lake, write the coverage
+    manifest, then rebuild lake TF tiers for every distinct symbol touched.
+
+    A tier-build failure for one symbol is logged and skipped -- it must
+    never abort the dump or affect other symbols; the monolith lake (already
+    ingested above) stays intact regardless.
+    """
+    for lake_key, tf_min, path in csv_paths:
+        ingest_mt5_csv(path, lake_key, tf_min, LAKE_ROOT, update_manifest=False)
+    write_manifest(LAKE_ROOT, gap_tolerance_factor=3.0)
+
+    from sentinel_engine.lake.tiers import build_tiers
+
+    seen: list[str] = []
+    for lake_key, _tf_min, _path in csv_paths:
+        if lake_key not in seen:
+            seen.append(lake_key)
+
+    for lake_key in seen:
+        try:
+            build_tiers(lake_key, LAKE_ROOT)
+        except Exception as exc:
+            log(f"!! build_tiers({lake_key}) FAILED: {exc} -- tiers stale for this symbol, monolith is intact")
+            continue
+        log(f"tiers rebuilt for {lake_key}")
+
+
 def main() -> int:
     import MetaTrader5 as mt5
 
@@ -184,9 +214,7 @@ def main() -> int:
     mt5.shutdown()
 
     log(f"ingesting {len(csv_paths)} CSVs into lake {LAKE_ROOT} ...")
-    for lake_key, tf_min, path in csv_paths:
-        ingest_mt5_csv(path, lake_key, tf_min, LAKE_ROOT, update_manifest=False)
-    write_manifest(LAKE_ROOT, gap_tolerance_factor=3.0)
+    _ingest_and_tier(csv_paths)
 
     manifest = build_manifest(LAKE_ROOT, gap_tolerance_factor=3.0)
     log("=== COVERAGE MANIFEST ===")
