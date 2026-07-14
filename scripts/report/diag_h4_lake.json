@@ -1,0 +1,86 @@
+{
+  "investigation": "diag-h4-lake: why offline tools saw stale data despite mt5_dump_history.py running",
+  "date": "2026-07-14",
+  "system_clock_note": "Filesystem mtimes displayed by `ls -la --time-style=full-iso` use the machine's local TZ offset -04:00 (tzname 'Hora est. Sudamerica Pacifico'). Interpreting mtime epoch seconds as UTC directly (python fromtimestamp(mt, utc)) yields values 4h AHEAD of the bar-content UTC timestamps inside the same files (e.g. monolith XAUUSD/5.parquet mtime-as-UTC = 2026-07-14T11:53:59Z, but its last bar's own timestamp column = 2026-07-14T07:50:00Z). All timeline entries below use the LOCAL DISPLAY TIME (the -04:00 stamps shown by ls), which is the frame the orchestrator's CONTEXT (02:54/07:53 etc.) was already anchored to, cross-checked against bar-content timestamps (unambiguous, TZ-independent) wherever a file has bar-level data.",
+  "write_path": {
+    "mt5_dump_history.py": {
+      "writes_raw_csv": "data/raw/<lake_key>/<tf_minutes>.csv (write_csv(), full overwrite per run, capped ~100000 rows/file by fetch loop CHUNK paging + MT5 history depth)",
+      "calls_ingest_mt5_csv": "for each (lake_key, tf_min, path) in csv_paths: ingest_mt5_csv(path, lake_key, tf_min, LAKE_ROOT, update_manifest=False)",
+      "ingest_mt5_csv_writes": "data/lake/<symbol>/<tf_minutes>.parquet via sentinel_engine.lake.store.write_bars (MONOLITHIC layer only)",
+      "calls_write_manifest": "write_manifest(LAKE_ROOT, gap_tolerance_factor=3.0) -> sentinel_engine.lake.manifest.build_manifest() full rescan of monolith files only, writes data/lake/manifest.json",
+      "calls_build_tiers": false,
+      "imports_tiers_module": false,
+      "evidence": "grep of scripts/mt5_dump_history.py imports: only sentinel_engine.lake.ingest_mt5.ingest_mt5_csv and sentinel_engine.lake.manifest.{build_manifest,write_manifest}; no import of sentinel_engine.lake.tiers or scripts.build_tiers"
+    },
+    "sentinel_engine/lake/ingest_mt5.py": {
+      "ingest_mt5_csv": "reads CSV -> write_bars(lake_root, symbol, timeframe_minutes, df) -> writes ONLY <lake_root>/<symbol>/<tf_minutes>.parquet (monolithic). Never touches <symbol>/<TF_NAME>/<YYYY-MM>.parquet tier files."
+    },
+    "sentinel_engine/lake/store.py": {
+      "write_bars": "writes <lake_root>/<symbol>/<tf_minutes>.parquet, merging with existing file content (read existing, concat, dedupe on index keep='last', sort, to_parquet). This explains why monolith row counts (e.g. XAUUSD/5.parquet = 101267 rows) exceed the raw CSV's single-run 100000-row cap: monolith accumulates across multiple historical dump runs."
+    },
+    "sentinel_engine/lake/tiers.py": {
+      "build_tiers": "the ONLY function that writes <lake_root>/<symbol>/<TF_NAME>/<YYYY-MM>.parquet tier files and updates manifest.json with TF_NAME-keyed entries (M1/M2/M5/M15/H1/D). Reads source bars via store.read_bars (monolith layer) then resamples.",
+      "invoked_by": "scripts/build_tiers.py only (CLI entrypoint, --symbol argument, manual/scheduled invocation)"
+    },
+    "conclusion_write_path": "mt5_dump_history.py's full call chain (fetch -> write_csv -> ingest_mt5_csv -> write_bars -> write_manifest/build_manifest) touches ONLY the monolithic <symbol>/<tf_minutes>.parquet layer and the flat manifest.json (monolith schema). It never calls build_tiers and never writes to <symbol>/<TF_NAME>/<YYYY-MM>.parquet."
+  },
+  "read_path": {
+    "check_live_sim_parity.py::load_bars": {
+      "file": "scripts/live/check_live_sim_parity.py",
+      "lines": "103-135",
+      "reads": "lake_root / symbol / tf / f'{y:04d}-{m:02d}.parquet'  (tf is the TF_NAME string e.g. 'M5', 'M1', 'M15' -- the TIER layer, not the monolith)",
+      "uses": "pyarrow.parquet.read_table per month file in [start,end) window",
+      "never_reads_monolith": true
+    },
+    "reproduction_result": {
+      "function_called": "scripts.live.check_live_sim_parity.load_bars(Path('data/lake'), 'XAUUSD', 'M5', datetime(2026,7,13,tz=UTC), datetime(2026,7,15,tz=UTC))",
+      "n_bars_returned": 311,
+      "max_bar_epoch": 1783997400,
+      "max_bar_utc": "2026-07-14T02:50:00+00:00",
+      "matches_tier_file_max": true,
+      "matches_monolith_max": false,
+      "monolith_M5_max_utc": "2026-07-14T07:50:00+00:00"
+    }
+  },
+  "timeline_local_display_time_minus4": [
+    {"path": "data/lake/XAUUSD/M1/2026-07.parquet (tier)", "mtime_local": "2026-07-14 02:57:20.412450", "content_max_bar": "2026-07-14T02:54:00Z (from prior context; independently confirmed M5 below)"},
+    {"path": "data/lake/XAUUSD/M2/2026-07.parquet (tier)", "mtime_local": "2026-07-14 02:57:20.865643"},
+    {"path": "data/lake/XAUUSD/M5/2026-07.parquet (tier)", "mtime_local": "2026-07-14 02:57:21.460572", "content_max_bar_epoch": 1783997400, "content_max_bar_utc": "2026-07-14T02:50:00+00:00", "content_rows": 2470},
+    {"path": "data/lake/XAUUSD/M15/2026-07.parquet (tier)", "mtime_local": "2026-07-14 02:57:22.433293"},
+    {"path": "data/lake/XAUUSD tier dirs (D/H1/M1/M15/M2/M5)", "mtime_local": "2026-07-14 02:57:20 .. 02:57:23", "note": "last build_tiers.py run for XAUUSD"},
+    {"path": "data/raw/XAUUSD/1.csv", "mtime_local": "2026-07-14 07:53:11.206679", "content_max_bar": "2026-07-14T07:53:00+00:00", "content_min_bar": "2026-04-01T08:56:00+00:00", "rows": 100000},
+    {"path": "data/raw/XAUUSD/2.csv", "mtime_local": "2026-07-14 07:53:11.844401", "content_max_bar": "2026-07-14T07:52:00+00:00", "content_min_bar": "2025-12-17T00:04:00+00:00", "rows": 100000},
+    {"path": "data/raw/XAUUSD/5.csv", "mtime_local": "2026-07-14 07:53:12.460602", "content_max_bar": "2026-07-14T07:50:00+00:00", "content_min_bar": "2025-02-11T13:50:00+00:00", "rows": 100000},
+    {"path": "data/raw/XAUUSD/15.csv", "mtime_local": "2026-07-14 07:53:13.172597", "content_max_bar": "2026-07-14T07:45:00+00:00", "content_min_bar": "2022-04-06T20:00:00+00:00", "rows": 100000},
+    {"path": "data/lake/XAUUSD/1.parquet (monolith)", "mtime_local": "2026-07-14 07:53:58.519668", "content_max_bar": "2026-07-14T07:53:00+00:00", "content_rows": 106333},
+    {"path": "data/lake/XAUUSD/2.parquet (monolith)", "mtime_local": "2026-07-14 07:53:58.794976", "content_max_bar": "2026-07-14T07:52:00+00:00", "content_rows": 103146},
+    {"path": "data/lake/XAUUSD/5.parquet (monolith)", "mtime_local": "2026-07-14 07:53:59.058080", "content_max_bar": "2026-07-14T07:50:00+00:00", "content_rows": 101267},
+    {"path": "data/lake/XAUUSD/15.parquet (monolith)", "mtime_local": "2026-07-14 07:53:59.300946", "content_max_bar": "2026-07-14T07:45:00+00:00", "content_rows": 100423},
+    {"path": "data/lake/XAUUSD/60.parquet (monolith)", "mtime_local": "2026-07-14 07:53:59.385194", "content_rows": 26563, "manifest_end": "2026-07-14T07:00:00+00:00"},
+    {"path": "data/lake/XAUUSD/1440.parquet (monolith)", "mtime_local": "2026-07-14 07:53:59.424717", "content_rows": 1410, "manifest_end": "2026-07-14T00:00:00+00:00"},
+    {"path": "data/lake/manifest.json", "mtime_local": "2026-07-14 07:55:01.002258", "schema_keys_present": ["1","2","5","15","60","1440"], "schema_keys_absent": ["M1","M2","M5","M15","H1","D"], "note": "flat monolith-schema manifest; overwrote/replaced any prior tier-schema (TF_NAME-keyed) entries because manifest.py's write_manifest always does a full fresh rescan and writes the whole dict"}
+  ],
+  "git_log": {
+    "scripts/mt5_dump_history.py": [
+      {"commit": "c93fcd0", "date_local": "2026-07-14 03:03:36 -04:00", "subject": "feat(live): first armed DEMO session -- parity tooling + executor hardening"},
+      {"commit": "24cca00", "date_local": "2026-07-07 21:19:51 -04:00", "subject": "feat(A): add M2 (2-min) timeframe to the MT5 dumper"},
+      {"commit": "828c39c", "date_local": "2026-07-07 18:25:28 -04:00", "subject": "feat(A): real MT5 OHLC ingest -- 16 symbols x 5 TFs into the data lake"}
+    ],
+    "sentinel_engine/lake/tiers.py_and_scripts/build_tiers.py": [
+      {"commit": "b776ed0", "date_local": "2026-07-12 16:16:59 -04:00", "subject": "feat(a1): lake TF-tiers builder (LOD source for /api/bars)"}
+    ],
+    "scripts/live/check_live_sim_parity.py": [
+      {"commit": "c93fcd0", "date_local": "2026-07-14 03:03:36 -04:00", "subject": "feat(live): first armed DEMO session -- parity tooling + executor hardening"},
+      {"commit": "440331f", "date_local": "feat(live): EMASAR variant program + guarded live infra (session #6)"}
+    ]
+  },
+  "drop_forming_bar_analysis": {
+    "now_epoch_capture_line": "scripts/mt5_dump_history.py:153  now_epoch = int(datetime.now(timezone.utc).timestamp())",
+    "capture_point": "once, at the very top of main(), BEFORE mt5.initialize() and before the double loop over 16 symbols x 6 timeframes (96 fetch_series calls, each paging backward through MT5 history in up-to-400 chunked copy_rates_from calls)",
+    "function_body": "drop_forming_bar(df, tf_minutes, now_epoch): if df empty return df; t_epoch = last row's epoch; if t_epoch + tf_minutes*60 > now_epoch: return df.iloc[:-1] (drop ONLY the single last row); else return df unchanged.",
+    "max_rows_ever_dropped_per_call": 1,
+    "staleness_effect": "Because now_epoch is fixed at run-start rather than refreshed per-symbol/TF, a stale (too-old) now_epoch can only make the forming-bar check LESS aggressive over time (a bar that has since closed relative to true 'now' may still be judged 'still forming' or vice versa for at most the single trailing bar) -- it structurally cannot cause discarding of more than the one trailing row, regardless of how many minutes elapse during the fetch loop.",
+    "empirical_check": "raw data/raw/XAUUSD/{1,2,5,15}.csv max timestamps are IDENTICAL to data/lake/XAUUSD/{1,2,5,15}.parquet (monolith) max timestamps for all 4 TFs (07:53/07:52/07:50/07:45 respectively); every one of the last 20 raw-CSV bars for each TF is present in the corresponding monolith file (set difference = empty). No bars were discarded by drop_forming_bar or lost in ingest for XAUUSD in the run(s) that produced the current raw CSVs/monolith."
+  },
+  "conclusion": "The monolithic layer data/lake/XAUUSD/{1,2,5,15,60,1440}.parquet is written by mt5_dump_history.py (via ingest_mt5_csv -> write_bars) and was last written locally at 2026-07-14 07:53:58-07:53:59 (display time), containing bars through 07:53/07:52/07:50/07:45 UTC-per-content matching the raw CSVs exactly (no forming-bar over-discard found). The tier layer data/lake/XAUUSD/{M1,M2,M5,M15,H1,D}/2026-07.parquet is written ONLY by scripts/build_tiers.py (via sentinel_engine.lake.tiers.build_tiers), which was last run at 2026-07-14 02:57:2x (display time) -- roughly 5 hours before the last dump -- and mt5_dump_history.py's code contains no call into the tiers module at all. scripts/live/check_live_sim_parity.py's load_bars() (lines 103-135) reads exclusively from the tier layer (lake_root/symbol/tf_name/YYYY-MM.parquet); reproducing that exact function read-only against the live lake for XAUUSD M5 returns a max bar time of 2026-07-14T02:50:00+00:00, matching the tier file's content and confirming the tool consumed the stale, un-rebuilt tier layer while the monolith 5 hours ahead sat unread by that code path. No writer bug was found or demonstrated: the staleness is fully explained by build_tiers.py simply not having been invoked again after 02:57, not by any data loss/discard in the write path."
+}
