@@ -1,0 +1,1144 @@
+[
+  {
+    "config_id": "SS-M2",
+    "magic": 720010,
+    "verdict": "DIVERGENCE",
+    "n_bars": 55,
+    "sim_entries": 7,
+    "live_entries": 7,
+    "matches": 5,
+    "within_tolerance": 0,
+    "same_bar_optimism": 12,
+    "same_bar_cost": 20.53999999999769,
+    "entry_next_bar": 5,
+    "entry_slip_cost": 1.5000000000004547,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.2100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.8400 vs live px 4020.8700 gap 2.9700 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.8400 vs live px 4020.9000 gap 2.9400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.8400 vs live px 4020.9000 gap 2.9400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 10011 (t=1783992480) has no live position at bar 10011 or 10012"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 10012: |live-sim| entry px = 0.6300 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8200 gap 0.9200 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8200 gap 0.9200 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8700 gap 0.9700 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10023: sim entry matched live group at bar 10024 (next-tick fill), |live-sim| entry px = 0.3600"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10023: exit px worst diff 0.2200 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10036: sim entry matched live group at bar 10037 (next-tick fill), |live-sim| entry px = 0.1400"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10036: exit px worst diff 0.3700 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10045: sim entry matched live group at bar 10046 (next-tick fill), |live-sim| entry px = 0.4000"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4022.7800 vs live px 4023.6200 gap 0.8400 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4022.7800 vs live px 4023.6200 gap 0.8400 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4022.7800 vs live px 4023.6200 gap 0.8400 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10051: sim entry matched live group at bar 10052 (next-tick fill), |live-sim| entry px = 0.3900"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10051: sim exit (EXIT_TRAIL) px 4024.1800 vs live px 4026.3000 gap 2.1200 > tol 0.5100 (live fill bar 10053, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10051: sim exit (EXIT_TRAIL) px 4024.1800 vs live px 4026.3000 gap 2.1200 > tol 0.5100 (live fill bar 10053, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10051: sim exit (EXIT_TRAIL) px 4024.1800 vs live px 4026.3000 gap 2.1200 > tol 0.5100 (live fill bar 10053, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 10000 (t=1783991160) where sim has NO entry at bar 10000 or 9999"
+      }
+    ]
+  },
+  {
+    "config_id": "V06D-M2",
+    "magic": 720020,
+    "verdict": "DIVERGENCE",
+    "n_bars": 55,
+    "sim_entries": 7,
+    "live_entries": 6,
+    "matches": 3,
+    "within_tolerance": 0,
+    "same_bar_optimism": 9,
+    "same_bar_cost": 9.540000000000418,
+    "entry_next_bar": 3,
+    "entry_slip_cost": 0.760000000000673,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 10004 (t=1783991640) has no live position at bar 10004 or 10005"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 10005: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10008: sim entry matched live group at bar 10009 (next-tick fill), |live-sim| entry px = 0.3500"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4800 gap 1.2100 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.5100 gap 1.2400 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.5100 gap 1.2400 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 10011 (t=1783992480) has no live position at bar 10011 or 10012"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 10012: |live-sim| entry px = 0.6800 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.7300 gap 0.8300 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8000 gap 0.9000 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8400 gap 0.9400 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10036: sim entry matched live group at bar 10037 (next-tick fill), |live-sim| entry px = 0.1400"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10036: exit px worst diff 0.3200 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10052: sim entry matched live group at bar 10053 (next-tick fill), |live-sim| entry px = 0.2700"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.0000 gap 1.0600 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.0000 gap 1.0600 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.0000 gap 1.0600 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 10006 (t=1783991880) where sim has NO entry at bar 10006 or 10005"
+      }
+    ]
+  },
+  {
+    "config_id": "V15-M2",
+    "magic": 720030,
+    "verdict": "DIVERGENCE",
+    "n_bars": 55,
+    "sim_entries": 5,
+    "live_entries": 5,
+    "matches": 4,
+    "within_tolerance": 1,
+    "same_bar_optimism": 9,
+    "same_bar_cost": 11.659999999998945,
+    "entry_next_bar": 3,
+    "entry_slip_cost": 0.6600000000003092,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.1000"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.6000 vs live px 4021.0100 gap 2.5900 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.6000 vs live px 4021.0100 gap 2.5900 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4023.6000 vs live px 4021.0100 gap 2.5900 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 10011 (t=1783992480) has no live position at bar 10011 or 10012"
+      },
+      {
+        "kind": "ENTRY_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10012: |live-sim| entry px = 0.0400 <= tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4600 gap 0.5600 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.5100 gap 0.6100 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.5100 gap 0.6100 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10036: sim entry matched live group at bar 10037 (next-tick fill), |live-sim| entry px = 0.1400"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10036: exit px worst diff 0.3300 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10045: sim entry matched live group at bar 10046 (next-tick fill), |live-sim| entry px = 0.4200"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4023.0200 vs live px 4023.7200 gap 0.7000 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4023.0200 vs live px 4023.7200 gap 0.7000 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10045: sim exit (EXIT_TRAIL) px 4023.0200 vs live px 4023.7300 gap 0.7100 > tol 0.5100 (live fill bar 10047, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 10000 (t=1783991160) where sim has NO entry at bar 10000 or 9999"
+      }
+    ]
+  },
+  {
+    "config_id": "SS-M5",
+    "magic": 720040,
+    "verdict": "DIVERGENCE",
+    "n_bars": 21,
+    "sim_entries": 4,
+    "live_entries": 3,
+    "matches": 2,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.920000000000982,
+    "entry_next_bar": 2,
+    "entry_slip_cost": 0.9000000000014552,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.0300"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10011: sim entry matched live group at bar 10012 (next-tick fill), |live-sim| entry px = 0.8700"
+      },
+      {
+        "kind": "EXIT_BARS_MISMATCH",
+        "hard": true,
+        "detail": "bar 10011: sim exit bars [10012, 10012, 10012] != live [10014, 10014, 10014]"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4024.17 bar 10019 (t=1783997100) has no live position at bar 10019 or 10020"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 10020: |live-sim| entry px = 1.1500 > tol 0.5100"
+      }
+    ]
+  },
+  {
+    "config_id": "V06D-M5",
+    "magic": 720050,
+    "verdict": "MATCH",
+    "n_bars": 21,
+    "sim_entries": 2,
+    "live_entries": 2,
+    "matches": 2,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.940000000000509,
+    "entry_next_bar": 2,
+    "entry_slip_cost": 0.4399999999995998,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.0200"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1000 gap 1.6800 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1500 gap 1.6300 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1500 gap 1.6300 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10019: sim entry matched live group at bar 10020 (next-tick fill), |live-sim| entry px = 0.4200"
+      }
+    ]
+  },
+  {
+    "config_id": "V13-M5",
+    "magic": 720060,
+    "verdict": "MATCH",
+    "n_bars": 21,
+    "sim_entries": 2,
+    "live_entries": 2,
+    "matches": 2,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.890000000000327,
+    "entry_next_bar": 2,
+    "entry_slip_cost": 0.5400000000004184,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.1300"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1500 gap 1.6300 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1500 gap 1.6300 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1500 gap 1.6300 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10019: sim entry matched live group at bar 10020 (next-tick fill), |live-sim| entry px = 0.4100"
+      }
+    ]
+  },
+  {
+    "config_id": "SS-M15",
+    "magic": 720070,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V13-M15",
+    "magic": 720080,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06D-M15",
+    "magic": 720090,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06C-M5",
+    "magic": 720100,
+    "verdict": "MATCH",
+    "n_bars": 21,
+    "sim_entries": 2,
+    "live_entries": 2,
+    "matches": 2,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.8700000000008,
+    "entry_next_bar": 2,
+    "entry_slip_cost": 0.44000000000096406,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.0300"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1600 gap 1.6200 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1700 gap 1.6100 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10019: sim entry matched live group at bar 10020 (next-tick fill), |live-sim| entry px = 0.4100"
+      }
+    ]
+  },
+  {
+    "config_id": "V06C-M15",
+    "magic": 720110,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06B-M15",
+    "magic": 720120,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V15-M15",
+    "magic": 720130,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V10-M5",
+    "magic": 720140,
+    "verdict": "MATCH",
+    "n_bars": 21,
+    "sim_entries": 1,
+    "live_entries": 1,
+    "matches": 1,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.920000000000982,
+    "entry_next_bar": 1,
+    "entry_slip_cost": 0.05999999999949068,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.0600"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      }
+    ]
+  },
+  {
+    "config_id": "V10-M15",
+    "magic": 720150,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V13-M2",
+    "magic": 720160,
+    "verdict": "DIVERGENCE",
+    "n_bars": 55,
+    "sim_entries": 7,
+    "live_entries": 6,
+    "matches": 3,
+    "within_tolerance": 0,
+    "same_bar_optimism": 6,
+    "same_bar_cost": 6.009999999999309,
+    "entry_next_bar": 3,
+    "entry_slip_cost": 1.1700000000000728,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 10004 (t=1783991640) has no live position at bar 10004 or 10005"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 10005: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10008: sim entry matched live group at bar 10009 (next-tick fill), |live-sim| entry px = 0.0900"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4500 gap 1.1800 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4600 gap 1.1900 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4700 gap 1.2000 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 10011 (t=1783992480) has no live position at bar 10011 or 10012"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 10012: |live-sim| entry px = 0.6500 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10012: exit px worst diff 0.5000 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10036: sim entry matched live group at bar 10037 (next-tick fill), |live-sim| entry px = 0.7700"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10036: exit px worst diff 0.3500 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10052: sim entry matched live group at bar 10053 (next-tick fill), |live-sim| entry px = 0.3100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.2300 gap 0.8300 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.2500 gap 0.8100 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.2600 gap 0.8000 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 10006 (t=1783991880) where sim has NO entry at bar 10006 or 10005"
+      }
+    ]
+  },
+  {
+    "config_id": "V09-CTRL-M5",
+    "magic": 720170,
+    "verdict": "MATCH",
+    "n_bars": 21,
+    "sim_entries": 2,
+    "live_entries": 2,
+    "matches": 2,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.920000000000982,
+    "entry_next_bar": 2,
+    "entry_slip_cost": 0.9099999999998545,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10004: sim entry matched live group at bar 10005 (next-tick fill), |live-sim| entry px = 0.3700"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10004: sim exit (EXIT_TRAIL) px 4029.7800 vs live px 4028.1400 gap 1.6400 > tol 0.5100 (live fill bar 10006, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10019: sim entry matched live group at bar 10020 (next-tick fill), |live-sim| entry px = 0.5400"
+      }
+    ]
+  },
+  {
+    "config_id": "V09-CTRL-M15",
+    "magic": 720180,
+    "verdict": "MATCH",
+    "n_bars": 7,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "entry_next_bar": 0,
+    "entry_slip_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "SS-M1",
+    "magic": 720190,
+    "verdict": "DIVERGENCE",
+    "n_bars": 109,
+    "sim_entries": 17,
+    "live_entries": 16,
+    "matches": 11,
+    "within_tolerance": 0,
+    "same_bar_optimism": 17,
+    "same_bar_cost": 27.4799999999982,
+    "entry_next_bar": 11,
+    "entry_slip_cost": 5.540000000000418,
+    "divergences": [
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9586: sim entry matched live group at bar 9587 (next-tick fill), |live-sim| entry px = 0.5400"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9586: exit px diff 0.4300 <= tol"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9586: exit px diff 0.4500 <= tol"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9586: sim exit (EXIT_TRAIL) px 4021.4800 vs live px 4022.0300 gap 0.5500 > tol 0.5100 (live fill bar 9588, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9593: sim entry matched live group at bar 9594 (next-tick fill), |live-sim| entry px = 0.0900"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9593: sim exit (EXIT_TRAIL) px 4022.0700 vs live px 4026.6800 gap 4.6100 > tol 0.5100 (live fill bar 9595, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9593: sim exit (EXIT_TRAIL) px 4022.0700 vs live px 4026.8900 gap 4.8200 > tol 0.5100 (live fill bar 9595, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9593: sim exit (EXIT_TRAIL) px 4022.0700 vs live px 4026.9100 gap 4.8400 > tol 0.5100 (live fill bar 9595, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9595: sim entry matched live group at bar 9596 (next-tick fill), |live-sim| entry px = 1.1200"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9595: exit px diff 0.3900 <= tol"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9595: sim exit (EXIT_TRAIL) px 4025.7100 vs live px 4026.2800 gap 0.5700 > tol 0.5100 (live fill bar 9597, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9595: sim exit (EXIT_TRAIL) px 4025.7100 vs live px 4026.2800 gap 0.5700 > tol 0.5100 (live fill bar 9597, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9618: sim entry matched live group at bar 9619 (next-tick fill), |live-sim| entry px = 0.3300"
+      },
+      {
+        "kind": "EXIT_BARS_MISMATCH",
+        "hard": true,
+        "detail": "bar 9618: sim exit bars [9620, 9620, 9620] != live [9621, 9621, 9621]"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9628: sim entry matched live group at bar 9629 (next-tick fill), |live-sim| entry px = 0.2400"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9628: sim exit (EXIT_TRAIL) px 4029.9500 vs live px 4030.8500 gap 0.9000 > tol 0.5100 (live fill bar 9630, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9628: sim exit (EXIT_TRAIL) px 4029.9500 vs live px 4030.9300 gap 0.9800 > tol 0.5100 (live fill bar 9630, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9628: sim exit (EXIT_TRAIL) px 4029.9500 vs live px 4030.9500 gap 1.0000 > tol 0.5100 (live fill bar 9630, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4029.52 bar 9631 (t=1783994760) has no live position at bar 9631 or 9632"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 9632: sim L vs live ['SELL', 'SELL', 'SELL']"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9634: sim entry matched live group at bar 9635 (next-tick fill), |live-sim| entry px = 0.7600"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9634: exit px worst diff 0.4800 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9644: sim entry matched live group at bar 9645 (next-tick fill), |live-sim| entry px = 0.6200"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9644: exit px worst diff 0.3100 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9650: sim entry matched live group at bar 9651 (next-tick fill), |live-sim| entry px = 0.4800"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9650: exit px diff 0.4000 <= tol"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9650: sim exit (EXIT_TRAIL) px 4025.1600 vs live px 4025.7100 gap 0.5500 > tol 0.5100 (live fill bar 9652, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9650: sim exit (EXIT_TRAIL) px 4025.1600 vs live px 4025.7100 gap 0.5500 > tol 0.5100 (live fill bar 9652, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4023.62 bar 9662 (t=1783996620) has no live position at bar 9662 or 9663"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 9663: |live-sim| entry px = 1.6500 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 9663: exit px worst diff 0.4200 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9669: sim entry matched live group at bar 9670 (next-tick fill), |live-sim| entry px = 0.6000"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4025.53 bar 9671 (t=1783997160) has no live position at bar 9671 or 9672"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 9672: |live-sim| entry px = 0.7000 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9672: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2100 gap 1.5300 > tol 0.5100 (live fill bar 9674, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9672: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2100 gap 1.5300 > tol 0.5100 (live fill bar 9674, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9672: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2600 gap 1.4800 > tol 0.5100 (live fill bar 9674, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9673: sim entry matched live group at bar 9674 (next-tick fill), |live-sim| entry px = 0.6700"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9673: sim exit (EXIT_TRAIL) px 4024.2900 vs live px 4025.2900 gap 1.0000 > tol 0.5100 (live fill bar 9675, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9673: sim exit (EXIT_TRAIL) px 4024.2900 vs live px 4025.2900 gap 1.0000 > tol 0.5100 (live fill bar 9675, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 9673: sim exit (EXIT_TRAIL) px 4024.2900 vs live px 4025.2900 gap 1.0000 > tol 0.5100 (live fill bar 9675, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 9678: sim entry matched live group at bar 9679 (next-tick fill), |live-sim| entry px = 0.0900"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 9571 (t=1783991160) where sim has NO entry at bar 9571 or 9570"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 9633 (t=1783994880) where sim has NO entry at bar 9633 or 9632"
+      }
+    ]
+  },
+  {
+    "config_id": "V11-M2",
+    "magic": 720200,
+    "verdict": "DIVERGENCE",
+    "n_bars": 55,
+    "sim_entries": 7,
+    "live_entries": 6,
+    "matches": 3,
+    "within_tolerance": 0,
+    "same_bar_optimism": 8,
+    "same_bar_cost": 7.129999999999654,
+    "entry_next_bar": 3,
+    "entry_slip_cost": 0.9900000000002365,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 10004 (t=1783991640) has no live position at bar 10004 or 10005"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 10005: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10008: sim entry matched live group at bar 10009 (next-tick fill), |live-sim| entry px = 0.2000"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4500 gap 1.1800 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.4500 gap 1.1800 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10008: sim exit (EXIT_TRAIL) px 4021.2700 vs live px 4022.5000 gap 1.2300 > tol 0.5100 (live fill bar 10010, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 10011 (t=1783992480) has no live position at bar 10011 or 10012"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 10012: |live-sim| entry px = 1.0100 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10012: exit px diff 0.3600 <= tol"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4200 gap 0.5200 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10012: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4200 gap 0.5200 > tol 0.5100 (live fill bar 10014, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10036: sim entry matched live group at bar 10037 (next-tick fill), |live-sim| entry px = 0.4800"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 10036: exit px worst diff 0.3700 <= tol"
+      },
+      {
+        "kind": "ENTRY_NEXT_BAR",
+        "hard": false,
+        "detail": "bar 10052: sim entry matched live group at bar 10053 (next-tick fill), |live-sim| entry px = 0.3100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.1900 gap 0.8700 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.2000 gap 0.8600 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 10052: sim exit (EXIT_TRAIL) px 4025.0600 vs live px 4024.2900 gap 0.7700 > tol 0.5100 (live fill bar 10054, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 10006 (t=1783991880) where sim has NO entry at bar 10006 or 10005"
+      }
+    ]
+  }
+]

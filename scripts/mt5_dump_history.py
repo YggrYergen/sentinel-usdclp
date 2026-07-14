@@ -29,8 +29,6 @@ from pathlib import Path
 
 import pandas as pd
 
-import MetaTrader5 as mt5
-
 REPO = Path(r"D:\FOREX")
 sys.path.insert(0, str(REPO))
 from sentinel_engine.lake.ingest_mt5 import ingest_mt5_csv  # noqa: E402
@@ -43,14 +41,20 @@ LAKE_ROOT = REPO / "data" / "lake"
 START_BOUND = datetime(2022, 1, 1, tzinfo=timezone.utc)
 CHUNK = 20000  # bars per copy_rates_from call (100k errors; 20k-50k safe)
 
-TIMEFRAMES = {
-    1: mt5.TIMEFRAME_M1,
-    2: mt5.TIMEFRAME_M2,
-    5: mt5.TIMEFRAME_M5,
-    15: mt5.TIMEFRAME_M15,
-    60: mt5.TIMEFRAME_H1,
-    1440: mt5.TIMEFRAME_D1,
-}
+# tf_minutes -> MT5 TIMEFRAME_* constant. Built lazily in main() after MT5 is
+# imported, so this module stays importable offline (see TIMEFRAMES below).
+TIMEFRAMES: dict[int, int] = {}
+
+
+def _build_timeframes(mt5) -> dict[int, int]:
+    return {
+        1: mt5.TIMEFRAME_M1,
+        2: mt5.TIMEFRAME_M2,
+        5: mt5.TIMEFRAME_M5,
+        15: mt5.TIMEFRAME_M15,
+        60: mt5.TIMEFRAME_H1,
+        1440: mt5.TIMEFRAME_D1,
+    }
 
 # lake_key -> broker source symbol. Only the 3 rolled futures differ from identity.
 SYMBOL_MAP = {
@@ -80,7 +84,21 @@ def log(msg: str) -> None:
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def fetch_series(broker_sym: str, mt5_tf: int) -> pd.DataFrame:
+def drop_forming_bar(df: pd.DataFrame, tf_minutes: int, now_epoch: int) -> pd.DataFrame:
+    """Remove the last row of df IFF its bar-open time has not yet closed as of
+    now_epoch, i.e. t + tf_minutes*60 > now_epoch. df must have a tz-aware
+    DatetimeIndex named/representing bar-open time (UTC). Returns df unchanged
+    if empty or if the last bar is already closed."""
+    if df.empty:
+        return df
+    last_t = df.index[-1]
+    t_epoch = int(last_t.timestamp())
+    if t_epoch + tf_minutes * 60 > now_epoch:
+        return df.iloc[:-1]
+    return df
+
+
+def fetch_series(broker_sym: str, mt5_tf: int, mt5) -> pd.DataFrame:
     """Page backward until START_BOUND or history exhausted. Returns a
     tz-aware UTC DatetimeIndex frame with open/high/low/close/volume."""
     anchor = datetime.now(timezone.utc)
@@ -127,6 +145,13 @@ def write_csv(lake_key: str, tf_min: int, df: pd.DataFrame) -> Path:
 
 
 def main() -> int:
+    import MetaTrader5 as mt5
+
+    global TIMEFRAMES
+    TIMEFRAMES = _build_timeframes(mt5)
+
+    now_epoch = int(datetime.now(timezone.utc).timestamp())
+
     if not mt5.initialize(path=str(PORTABLE)):
         log(f"initialize FAILED: {mt5.last_error()}")
         return 1
@@ -140,10 +165,17 @@ def main() -> int:
             continue
         mt5.symbol_select(broker_sym, True)
         for tf_min, mt5_tf in TIMEFRAMES.items():
-            df = fetch_series(broker_sym, mt5_tf)
+            df = fetch_series(broker_sym, mt5_tf, mt5)
             if df.empty:
                 log(f"   {lake_key:14s} tf={tf_min:>4d}  EMPTY")
                 continue
+            pre_last = df.index[-1]
+            df = drop_forming_bar(df, tf_min, now_epoch)
+            if df.empty:
+                log(f"   {lake_key:14s} tf={tf_min:>4d}  dropped forming bar t={pre_last} -- series now EMPTY")
+                continue
+            if df.index[-1] != pre_last:
+                log(f"   {lake_key:14s} tf={tf_min:>4d}  dropped forming bar t={pre_last}")
             path = write_csv(lake_key, tf_min, df)
             log(f"   {lake_key:14s} tf={tf_min:>4d}  {len(df):>7d} bars  "
                 f"{df.index[0].date()} .. {df.index[-1].date()}  <- {broker_sym}")

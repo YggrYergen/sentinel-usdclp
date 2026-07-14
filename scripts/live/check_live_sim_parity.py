@@ -83,6 +83,10 @@ class ParityReport:
     live_entries: int = 0
     matches: int = 0
     within_tolerance: int = 0
+    same_bar_optimism: int = 0
+    same_bar_cost: float = 0.0
+    entry_next_bar: int = 0
+    entry_slip_cost: float = 0.0
     divergences: list[Divergence] = field(default_factory=list)
 
     @property
@@ -129,6 +133,25 @@ def load_bars(lake_root: Path, symbol: str, tf: str, start: datetime, end: datet
     bars = [b for b in bars if s <= b["t"] < e]
     bars.sort(key=lambda b: b["t"])
     return bars
+
+
+def load_bars_with_warmup(lake_root: Path, symbol: str, tf: str, start: datetime, end: datetime,
+                          warmup_bars: int) -> tuple[list[dict[str, Any]], int]:
+    """Load warmup_bars bars BEFORE `start` (extra 1.6x margin to absorb
+    weekend/holiday gaps, then trimmed to the last `warmup_bars`) plus the
+    [start, end) window bars. Returns (bars, first_in_window_idx) where
+    bars[first_in_window_idx] is the first bar with t >= start."""
+    from datetime import timedelta
+
+    tf_s = TF_SECONDS[tf]
+    warmup_start = start - timedelta(seconds=warmup_bars * tf_s * 1.6)
+    warmup_pool = load_bars(lake_root, symbol, tf, warmup_start, start)
+    if len(warmup_pool) > warmup_bars:
+        warmup_pool = warmup_pool[-warmup_bars:]
+    day_bars = load_bars(lake_root, symbol, tf, start, end)
+    bars = warmup_pool + day_bars
+    first_idx = len(warmup_pool)
+    return bars, first_idx
 
 
 def load_live_deals(db_path: Path, magic_lo: int, magic_hi: int,
@@ -216,24 +239,39 @@ def live_positions(deals: list[dict[str, Any]], bars: list[dict[str, Any]], tf_s
 
 _SIDE_NORM = {"L": "L", "S": "S", "LONG": "L", "SHORT": "S", "BUY": "L", "SELL": "S"}
 
+# Stop/trail exit motivos (sentinel_engine.strategies.emasar_variant): a trail
+# raised using the just-closed bar's OWN high/AC can stop the sim out WITHIN
+# that bar, while live's server-side SL only catches up next tick (fallback
+# market-close). EXIT_TP/EXIT_INITSL/EXIT_ACDECEL fire at a fixed/pre-existing
+# level (not a same-bar-raised trail), so they don't qualify.
+_TRAIL_EXIT_MOTIVOS = {"EXIT_TRAIL"}
+
 
 # ---------------- diff ----------------
 
 def diff_config(config: dict[str, Any], bars: list[dict[str, Any]],
                 deals: list[dict[str, Any]], *, spread: float = 0.5,
-                tick: float = 0.01, direction_mask: list[int] | None = None) -> ParityReport:
+                tick: float = 0.01, direction_mask: list[int] | None = None,
+                first_in_window_idx: int = 0) -> ParityReport:
     """Core diff (pure; injectable for tests). Entry matching is bar-level
     per signal: sim fires ONE entry (3 fichas) per signal bar; live shows up
-    as up-to-3 positions (magic+1/+2/+3) on that bar."""
+    as up-to-3 positions (magic+1/+2/+3) on that bar.
+
+    `bars` may include warmup bars BEFORE the diff window; `simular_variant`
+    is run over the full list (for correct indicator state), but only sim
+    events whose bar index >= first_in_window_idx participate in the diff.
+    Live deals are already restricted to [start, end) by the caller."""
     tf_s = TF_SECONDS[config["tf"]]
     tol = spread + tick
-    rep = ParityReport(config_id=config["id"], magic=config["magic"], n_bars=len(bars))
+    n_window_bars = len(bars) - first_in_window_idx
+    rep = ParityReport(config_id=config["id"], magic=config["magic"], n_bars=n_window_bars)
 
     kwargs = dict(config["kwargs"])
     if config.get("direction_filter"):
         kwargs["direction_mask"] = direction_mask
     events = simular_variant(bars, **kwargs)
-    sim = sim_positions(events, bars)
+    sim_all = sim_positions(events, bars)
+    sim = [s for s in sim_all if s["bar_idx"] >= first_in_window_idx]
     live_all = live_positions(deals, bars, tf_s)
     rep.sim_entries = len(sim)
 
@@ -248,16 +286,32 @@ def diff_config(config: dict[str, Any], bars: list[dict[str, Any]],
             "LIVE_ENTRY_OUTSIDE_BARS", True,
             f"live position {p['position_id']} at t={p['t']} maps to no bar in window"))
 
-    matched_bars: set[int] = set()
+    matched_bars: set[int] = set()  # bars whose live group was consumed by a sim entry (N match)
+    matched_next_bars: set[int] = set()  # bars whose live group was consumed as an N+1 match
+    # Prefer exact-bar (N) matches over next-bar (N+1) fallback matches: a live
+    # group must not be claimed by two different sim entries. First pass
+    # reserves every exact-N live group so a later sim entry's N+1 fallback
+    # can't steal a group that's the exact match for its own signal bar.
+    exact_claimed = {s["bar_idx"] for s in sim if s["bar_idx"] in live_by_bar}
     for s in sim:
         group = live_by_bar.get(s["bar_idx"])
+        matched_at_next = False
+        if not group:
+            next_bar = s["bar_idx"] + 1
+            if next_bar not in exact_claimed:
+                group = live_by_bar.get(next_bar)
+                if group:
+                    matched_at_next = True
         if not group:
             rep.divergences.append(Divergence(
                 "MISSED_ENTRY", True,
                 f"sim entry {s['side']}@{s['price']:.2f} bar {s['bar_idx']} "
-                f"(t={s['t']}) has no live position"))
+                f"(t={s['t']}) has no live position at bar {s['bar_idx']} or {s['bar_idx'] + 1}"))
             continue
-        matched_bars.add(s["bar_idx"])
+        if matched_at_next:
+            matched_next_bars.add(s["bar_idx"] + 1)
+        else:
+            matched_bars.add(s["bar_idx"])
         # side
         bad_side = [p for p in group if _SIDE_NORM.get(p["side"], "?") != s["side"]]
         if bad_side:
@@ -273,7 +327,15 @@ def diff_config(config: dict[str, Any], bars: list[dict[str, Any]],
                 f"bar {s['bar_idx']}: sim expects {s['fichas']} fichas, live opened {len(group)}"))
         # entry price
         worst = max(abs((p["price"] or 0.0) - s["price"]) for p in group)
-        if worst <= tick:
+        if matched_at_next:
+            rep.matches += 1
+            rep.entry_next_bar += 1
+            rep.entry_slip_cost += worst
+            rep.divergences.append(Divergence(
+                "ENTRY_NEXT_BAR", False,
+                f"bar {s['bar_idx']}: sim entry matched live group at bar {s['bar_idx'] + 1} "
+                f"(next-tick fill), |live-sim| entry px = {worst:.4f}"))
+        elif worst <= tick:
             rep.matches += 1
         elif worst <= tol:
             rep.matches += 1
@@ -289,30 +351,73 @@ def diff_config(config: dict[str, Any], bars: list[dict[str, Any]],
         sim_exit_bars = sorted(e["bar_idx"] for e in s["exits"])
         live_exit_bars = sorted(e["bar_idx"] for p in group for e in p["exits"]
                                 if e["bar_idx"] is not None)
-        if sim_exit_bars and live_exit_bars and sim_exit_bars != live_exit_bars:
+        # allow the same-bar-optimism fallback: a trail exit's live fill can
+        # legitimately land one bar later (fallback market-close next tick) --
+        # don't hard-fail EXIT_BARS_MISMATCH for that specific off-by-one, let
+        # the per-pair price classification below decide SAME_BAR_OPTIMISM vs
+        # OUT_OF_TOL.
+        bars_mismatch = bool(sim_exit_bars and live_exit_bars and sim_exit_bars != live_exit_bars)
+        if bars_mismatch and len(sim_exit_bars) == len(live_exit_bars) and all(
+            e["motivo"] in _TRAIL_EXIT_MOTIVOS for e in s["exits"]
+        ) and all(
+            lb is not None and sb is not None and lb in (sb, sb + 1)
+            for sb, lb in zip(sim_exit_bars, live_exit_bars)
+        ):
+            bars_mismatch = False
+        if bars_mismatch:
             rep.divergences.append(Divergence(
                 "EXIT_BARS_MISMATCH", True,
                 f"bar {s['bar_idx']}: sim exit bars {sim_exit_bars} != live {live_exit_bars}"))
         elif s["exits"]:
-            sim_px = sorted(e["price"] for e in s["exits"])
-            live_px = sorted(e["price"] for p in group for e in p["exits"])
-            if live_px and len(live_px) == len(sim_px):
-                worst_x = max(abs(a - b) for a, b in zip(sim_px, live_px))
+            sim_pairs = sorted(
+                ((e["price"], e["bar_idx"], e["motivo"]) for e in s["exits"]),
+                key=lambda x: x[0])
+            live_pairs = sorted(
+                ((e["price"], e["bar_idx"], e["t"]) for p in group for e in p["exits"]),
+                key=lambda x: x[0])
+            if live_pairs and len(live_pairs) == len(sim_pairs):
+                worst_x = max(abs(a[0] - b[0]) for a, b in zip(sim_pairs, live_pairs))
+                # preserve prior aggregate messages/behavior for the common cases
                 if tick < worst_x <= tol:
                     rep.divergences.append(Divergence(
                         "EXIT_PRICE_WITHIN_TOL", False,
                         f"bar {s['bar_idx']}: exit px worst diff {worst_x:.4f} <= tol"))
                 elif worst_x > tol:
-                    rep.divergences.append(Divergence(
-                        "EXIT_PRICE_OUT_OF_TOL", True,
-                        f"bar {s['bar_idx']}: exit px worst diff {worst_x:.4f} > tol {tol:.4f}"))
+                    for (sim_px, sim_bar_idx, sim_motivo), (live_px, live_bar_idx, live_t) in zip(sim_pairs, live_pairs):
+                        gap = abs(sim_px - live_px)
+                        if gap <= tick:
+                            continue
+                        if gap <= tol:
+                            rep.divergences.append(Divergence(
+                                "EXIT_PRICE_WITHIN_TOL", False,
+                                f"bar {s['bar_idx']}: exit px diff {gap:.4f} <= tol"))
+                            continue
+                        same_bar_or_next = (
+                            live_bar_idx is not None
+                            and sim_bar_idx is not None
+                            and live_bar_idx in (sim_bar_idx, sim_bar_idx + 1)
+                        )
+                        if sim_motivo in _TRAIL_EXIT_MOTIVOS and same_bar_or_next:
+                            rep.same_bar_optimism += 1
+                            rep.same_bar_cost += gap
+                            rep.divergences.append(Divergence(
+                                "SAME_BAR_OPTIMISM", False,
+                                f"bar {s['bar_idx']}: sim exit ({sim_motivo}) px {sim_px:.4f} "
+                                f"vs live px {live_px:.4f} gap {gap:.4f} > tol {tol:.4f} "
+                                f"(live fill bar {live_bar_idx}, fallback next-tick close -- by design)"))
+                        else:
+                            rep.divergences.append(Divergence(
+                                "EXIT_PRICE_OUT_OF_TOL", True,
+                                f"bar {s['bar_idx']}: exit px diff {gap:.4f} > tol {tol:.4f} "
+                                f"(sim motivo {sim_motivo})"))
 
     for bar_idx, group in live_by_bar.items():
-        if bar_idx not in matched_bars:
-            rep.divergences.append(Divergence(
-                "EXTRA_ENTRY", True,
-                f"live opened {len(group)} position(s) on bar {bar_idx} "
-                f"(t={bars[bar_idx]['t']}) where sim has NO entry"))
+        if bar_idx in matched_bars or bar_idx in matched_next_bars:
+            continue
+        rep.divergences.append(Divergence(
+            "EXTRA_ENTRY", True,
+            f"live opened {len(group)} position(s) on bar {bar_idx} "
+            f"(t={bars[bar_idx]['t']}) where sim has NO entry at bar {bar_idx} or {bar_idx - 1}"))
     return rep
 
 
@@ -322,7 +427,9 @@ def _fmt_report(rep: ParityReport) -> str:
     lines = [f"== {rep.config_id} (magic {rep.magic}) -> {rep.verdict} ==",
              f"   bars={rep.n_bars} sim_entries={rep.sim_entries} "
              f"live_entries={rep.live_entries} matched={rep.matches} "
-             f"within_tol={rep.within_tolerance}"]
+             f"within_tol={rep.within_tolerance} "
+             f"same_bar_optimism={rep.same_bar_optimism} same_bar_cost={rep.same_bar_cost:.4f} "
+             f"entry_next_bar={rep.entry_next_bar} entry_slip_cost={rep.entry_slip_cost:.4f}"]
     for d in rep.divergences:
         lines.append(f"   [{'HARD' if d.hard else 'ok  '}] {d.kind}: {d.detail}")
     return "\n".join(lines)
@@ -338,6 +445,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--spread", type=float, default=0.5, help="flat spread model (XAUUSD default 0.5)")
     ap.add_argument("--tick", type=float, default=0.01)
     ap.add_argument("--json", default=None, help="optional path to dump the machine-readable report")
+    ap.add_argument("--warmup-bars", type=int, default=10000,
+                    help="bars loaded BEFORE --start to warm up indicator state "
+                         "(matches the live executor's recompute window default)")
     args = ap.parse_args(argv)
 
     def _parse_dt(s: str) -> datetime:
@@ -355,8 +465,10 @@ def main(argv: list[str] | None = None) -> int:
 
     reports: list[ParityReport] = []
     for cfg in configs:
-        bars = load_bars(Path(args.lake), cfg["kwargs"]["symbol"], cfg["tf"], start, end)
-        if not bars:
+        bars, first_in_window_idx = load_bars_with_warmup(
+            Path(args.lake), cfg["kwargs"]["symbol"], cfg["tf"], start, end, args.warmup_bars)
+        day_bars = bars[first_in_window_idx:]
+        if not day_bars:
             print(f"== {cfg['id']} == NO BARS in lake for {cfg['tf']} {args.start}..{args.end}",
                   file=sys.stderr)
             return 2
@@ -366,7 +478,7 @@ def main(argv: list[str] | None = None) -> int:
             direction_mask = compute_direction_mask(bars)
         deals = load_live_deals(Path(args.db), cfg["magic"] + 1, cfg["magic"] + 3, start, end)
         rep = diff_config(cfg, bars, deals, spread=args.spread, tick=args.tick,
-                          direction_mask=direction_mask)
+                          direction_mask=direction_mask, first_in_window_idx=first_in_window_idx)
         reports.append(rep)
         print(_fmt_report(rep))
 
@@ -376,6 +488,10 @@ def main(argv: list[str] | None = None) -> int:
             "n_bars": r.n_bars, "sim_entries": r.sim_entries,
             "live_entries": r.live_entries, "matches": r.matches,
             "within_tolerance": r.within_tolerance,
+            "same_bar_optimism": r.same_bar_optimism,
+            "same_bar_cost": r.same_bar_cost,
+            "entry_next_bar": r.entry_next_bar,
+            "entry_slip_cost": r.entry_slip_cost,
             "divergences": [{"kind": d.kind, "hard": d.hard, "detail": d.detail}
                             for d in r.divergences],
         } for r in reports], indent=2), encoding="utf-8")

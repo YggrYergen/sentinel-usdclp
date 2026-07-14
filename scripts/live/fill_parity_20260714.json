@@ -1,0 +1,854 @@
+[
+  {
+    "config_id": "SS-M2",
+    "magic": 720010,
+    "verdict": "DIVERGENCE",
+    "n_bars": 88,
+    "sim_entries": 9,
+    "live_entries": 7,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 2.8099999999999454,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 37 (t=1783991640) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.29 bar 40 (t=1783992000) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.11 bar 42 (t=1783992240) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 44 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 45: |live-sim| entry px = 0.6300 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8200 gap 0.9200 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8200 gap 0.9200 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8700 gap 0.9700 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4030.77 bar 56 (t=1783993920) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 69 (t=1783995480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4023.62 bar 78 (t=1783996560) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4024.17 bar 84 (t=1783997280) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 33 (t=1783991160) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 38 (t=1783991760) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 57 (t=1783994040) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 70 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 79 (t=1783996680) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 85 (t=1783997400) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V06D-M2",
+    "magic": 720020,
+    "verdict": "DIVERGENCE",
+    "n_bars": 88,
+    "sim_entries": 6,
+    "live_entries": 6,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 2.6700000000000728,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 37 (t=1783991640) has no live position"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 38: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 44 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 45: |live-sim| entry px = 0.6800 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.7300 gap 0.8300 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8000 gap 0.9000 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.8400 gap 0.9400 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 69 (t=1783995480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4026.05 bar 85 (t=1783997400) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 39 (t=1783991880) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 42 (t=1783992240) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 70 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 86 (t=1783997520) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V15-M2",
+    "magic": 720030,
+    "verdict": "DIVERGENCE",
+    "n_bars": 88,
+    "sim_entries": 5,
+    "live_entries": 5,
+    "matches": 1,
+    "within_tolerance": 1,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 1.7800000000002,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 37 (t=1783991640) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 44 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 45: |live-sim| entry px = 0.0400 <= tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4600 gap 0.5600 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.5100 gap 0.6100 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.5100 gap 0.6100 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 69 (t=1783995480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4023.62 bar 78 (t=1783996560) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 33 (t=1783991160) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 38 (t=1783991760) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 70 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 79 (t=1783996680) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "SS-M5",
+    "magic": 720040,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 1,
+    "live_entries": 3,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 34: |live-sim| entry px = 1.1500 > tol 0.5100"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 26 (t=1783995000) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V06D-M5",
+    "magic": 720050,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 0,
+    "live_entries": 2,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 34 (t=1783997400) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V13-M5",
+    "magic": 720060,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 0,
+    "live_entries": 2,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 34 (t=1783997400) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "SS-M15",
+    "magic": 720070,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V13-M15",
+    "magic": 720080,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06D-M15",
+    "magic": 720090,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06C-M5",
+    "magic": 720100,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 0,
+    "live_entries": 2,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 34 (t=1783997400) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V06C-M15",
+    "magic": 720110,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V06B-M15",
+    "magic": 720120,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V15-M15",
+    "magic": 720130,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V10-M5",
+    "magic": 720140,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 0,
+    "live_entries": 1,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V10-M15",
+    "magic": 720150,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "V13-M2",
+    "magic": 720160,
+    "verdict": "DIVERGENCE",
+    "n_bars": 88,
+    "sim_entries": 6,
+    "live_entries": 6,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 37 (t=1783991640) has no live position"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 38: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 44 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 45: |live-sim| entry px = 0.6500 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 45: exit px worst diff 0.5000 <= tol"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 69 (t=1783995480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4026.05 bar 85 (t=1783997400) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 39 (t=1783991880) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 42 (t=1783992240) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 70 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 86 (t=1783997520) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V09-CTRL-M5",
+    "magic": 720170,
+    "verdict": "DIVERGENCE",
+    "n_bars": 35,
+    "sim_entries": 0,
+    "live_entries": 2,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": [
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 19 (t=1783992900) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 34 (t=1783997400) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V09-CTRL-M15",
+    "magic": 720180,
+    "verdict": "MATCH",
+    "n_bars": 12,
+    "sim_entries": 0,
+    "live_entries": 0,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 0,
+    "same_bar_cost": 0.0,
+    "divergences": []
+  },
+  {
+    "config_id": "SS-M1",
+    "magic": 720190,
+    "verdict": "DIVERGENCE",
+    "n_bars": 175,
+    "sim_entries": 20,
+    "live_entries": 16,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 3,
+    "same_bar_cost": 4.539999999999054,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4019.64 bar 64 (t=1783991040) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.29 bar 81 (t=1783992060) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.04 bar 88 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4024.62 bar 90 (t=1783992600) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4030.77 bar 113 (t=1783993980) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4029.41 bar 123 (t=1783994580) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4029.52 bar 126 (t=1783994760) has no live position"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 127: sim L vs live ['SELL', 'SELL', 'SELL']"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4031.66 bar 129 (t=1783994940) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4030.81 bar 134 (t=1783995240) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4029.56 bar 136 (t=1783995360) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 139 (t=1783995540) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4025.88 bar 145 (t=1783995900) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4023.62 bar 157 (t=1783996620) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 158: |live-sim| entry px = 1.6500 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 158: exit px worst diff 0.4200 <= tol"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4025.09 bar 164 (t=1783997040) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4025.53 bar 166 (t=1783997160) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 167: |live-sim| entry px = 0.7000 > tol 0.5100"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 167: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2100 gap 1.5300 > tol 0.5100 (live fill bar 169, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 167: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2100 gap 1.5300 > tol 0.5100 (live fill bar 169, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 167: sim exit (EXIT_TRAIL) px 4025.7400 vs live px 4024.2600 gap 1.4800 > tol 0.5100 (live fill bar 169, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4023.54 bar 168 (t=1783997280) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4024.30 bar 173 (t=1783997580) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 66 (t=1783991160) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 82 (t=1783992120) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 89 (t=1783992540) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 91 (t=1783992660) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 114 (t=1783994040) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 124 (t=1783994640) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 128 (t=1783994880) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 130 (t=1783995000) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 140 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 146 (t=1783995960) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 165 (t=1783997100) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 169 (t=1783997340) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 174 (t=1783997640) where sim has NO entry"
+      }
+    ]
+  },
+  {
+    "config_id": "V11-M2",
+    "magic": 720200,
+    "verdict": "DIVERGENCE",
+    "n_bars": 88,
+    "sim_entries": 6,
+    "live_entries": 6,
+    "matches": 0,
+    "within_tolerance": 0,
+    "same_bar_optimism": 2,
+    "same_bar_cost": 1.0399999999999636,
+    "divergences": [
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4023.77 bar 37 (t=1783991640) has no live position"
+      },
+      {
+        "kind": "SIDE_MISMATCH",
+        "hard": true,
+        "detail": "bar 38: sim S vs live ['BUY', 'BUY', 'BUY']"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4022.60 bar 44 (t=1783992480) has no live position"
+      },
+      {
+        "kind": "ENTRY_PRICE_OUT_OF_TOL",
+        "hard": true,
+        "detail": "bar 45: |live-sim| entry px = 1.0100 > tol 0.5100"
+      },
+      {
+        "kind": "EXIT_PRICE_WITHIN_TOL",
+        "hard": false,
+        "detail": "bar 45: exit px diff 0.3600 <= tol"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4200 gap 0.5200 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "SAME_BAR_OPTIMISM",
+        "hard": false,
+        "detail": "bar 45: sim exit (EXIT_TRAIL) px 4028.9000 vs live px 4029.4200 gap 0.5200 > tol 0.5100 (live fill bar 47, fallback next-tick close -- by design)"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry S@4028.09 bar 69 (t=1783995480) has no live position"
+      },
+      {
+        "kind": "MISSED_ENTRY",
+        "hard": true,
+        "detail": "sim entry L@4026.05 bar 85 (t=1783997400) has no live position"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 39 (t=1783991880) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 42 (t=1783992240) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 70 (t=1783995600) where sim has NO entry"
+      },
+      {
+        "kind": "EXTRA_ENTRY",
+        "hard": true,
+        "detail": "live opened 3 position(s) on bar 86 (t=1783997520) where sim has NO entry"
+      }
+    ]
+  }
+]

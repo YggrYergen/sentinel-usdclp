@@ -181,10 +181,51 @@ def _side_to_order_type(mt5: Any, side: str) -> Any:
     return mt5.ORDER_TYPE_BUY if side == "L" else mt5.ORDER_TYPE_SELL
 
 
+def _stops_level_points(mt5: Any, symbol: str) -> float:
+    """Broker-legal minimum distance (in PRICE units, not points) between an
+    SL and the current market price: max(trade_stops_level, trade_freeze_level)
+    * point. Falls back to 0.0 if symbol_info is unavailable (never blocks)."""
+    info = mt5.symbol_info(symbol)
+    if info is None:
+        return 0.0
+    stops = float(getattr(info, "trade_stops_level", 0) or 0)
+    freeze = float(getattr(info, "trade_freeze_level", 0) or 0)
+    point = float(getattr(info, "point", 0.0) or 0.0)
+    return max(stops, freeze) * point
+
+
+def _clamp_sl(mt5: Any, symbol: str, side: str, desired_sl: float) -> tuple[str, float]:
+    """Decide the legal handling for a desired SL given the current tick.
+    Returns (mode, value):
+      mode="crossed"  -> value is the market ref price (bid/ask) the ficha
+                          must be closed at (desired SL already at/through
+                          market -- sim would already be out).
+      mode="clamp"    -> value is the clamped SL to send (too close to
+                          market but not crossed).
+      mode="legal"    -> value is the original desired_sl, unmodified."""
+    tick = mt5.symbol_info_tick(symbol)
+    level = _stops_level_points(mt5, symbol)
+    if side == "L":
+        ref = tick.bid
+        if desired_sl >= ref:
+            return "crossed", ref
+        if desired_sl > ref - level:
+            return "clamp", ref - level
+        return "legal", desired_sl
+    else:
+        ref = tick.ask
+        if desired_sl <= ref:
+            return "crossed", ref
+        if desired_sl < ref + level:
+            return "clamp", ref + level
+        return "legal", desired_sl
+
+
 def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    deviation: int = 20, contract_size: float = 100.0,
                    same_bar_cost: dict[str, float] | None = None,
-                   modify_retries: int = 2) -> None:
+                   sl_clamp_cost: dict[str, float] | None = None,
+                   modify_retries: int = 2, open_retries: int = 2) -> None:
     """Send ONE sendable action, or (dry-run) just log the intent. Guard is
     re-asserted by the caller each cycle BEFORE this is reached.
 
@@ -195,7 +236,25 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         price gap (sim exit level vs live market fill) into `same_bar_cost`
         keyed by config_id ("same-bar optimism, by design" -- NOT a divergence).
       * MODIFY failures are retried (`modify_retries`) and logged loudly; a
-        ficha left without a server-side SL is an alarm condition."""
+        ficha left without a server-side SL is an alarm condition.
+      * FALLBACK_CLOSE_INVALID_SL -> the sim's desired SL has already been
+        crossed by the current market price (bid for LONG / ask for SHORT):
+        the sim would already be out, so live market-closes the ficha instead
+        of sending an invalid MODIFY. The $-gap vs the sim's desired SL is
+        accounted into `same_bar_cost` (same semantics as
+        SAME_BAR_EXIT_FALLBACK).
+      * SL_CLAMPED / SL_CLAMPED OPEN -> the desired SL is legal-side but
+        closer to market than the broker's trade_stops_level/
+        trade_freeze_level allow; the MODIFY/OPEN is sent with the closest
+        legal SL. The $-gap between desired and clamped is accounted into
+        `sl_clamp_cost`.
+      * OPEN_SKIPPED_SL_CROSSED -> the sim's desired SL for a new position is
+        already at/through the current market ref (bid for LONG / ask for
+        SHORT): opening now would be an instant stop-out, so the OPEN is
+        skipped entirely (nothing sent); the reconciler re-evaluates next
+        cycle. OPEN retries (`open_retries`, mirrors `modify_retries`) on
+        10016 with a fresh tick + re-clamp each attempt; exhaustion logs an
+        ALARM like MODIFY does."""
     if a.kind == "MISSING_SL_ALARM":
         logger.error("  [ALARM MISSING_SL] %s %s magic=%s ticket=%s -- %s",
                      a.config_id, a.ficha, a.magic, a.ticket, a.reason)
@@ -208,6 +267,33 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         extra = ""
         if a.kind == "SAME_BAR_EXIT_FALLBACK":
             extra = f" sim_fill={a.sim_fill} motivo={a.motivo}"
+        if a.kind == "MODIFY":
+            desired_sl = float(a.sl) if a.sl is not None else 0.0
+            mode, value = _clamp_sl(mt5, symbol, a.side, desired_sl)
+            if mode == "crossed":
+                logger.warning("  [DRY-RUN FALLBACK_CLOSE_INVALID_SL] ticket=%s "
+                               "desired_sl=%s bid/ask=%s (would market-close, not modify)",
+                               a.ticket, desired_sl, value)
+                return
+            if mode == "clamp":
+                logger.warning("  [DRY-RUN SL_CLAMPED] ticket=%s desired=%s clamped=%s "
+                               "gap=%.5f (would modify with clamped sl)",
+                               a.ticket, desired_sl, value, abs(desired_sl - value))
+                return
+        if a.kind == "OPEN":
+            desired_sl = float(a.sl) if a.sl is not None else 0.0
+            mode, value = _clamp_sl(mt5, symbol, a.side, desired_sl)
+            if mode == "crossed":
+                logger.warning("  [DRY-RUN OPEN_SKIPPED_SL_CROSSED] config=%s ficha=%s "
+                               "desired_sl=%s ref=%s (would skip open, not send)",
+                               a.config_id, a.ficha, desired_sl, value)
+                return
+            if mode == "clamp":
+                logger.warning("  [DRY-RUN SL_CLAMPED OPEN] config=%s ficha=%s desired=%s "
+                               "clamped=%s gap=%.5f (would open with clamped sl)",
+                               a.config_id, a.ficha, desired_sl, value,
+                               abs(desired_sl - value))
+                return
         logger.info("  [DRY-RUN would %s] %s %s magic=%s side=%s vol=%s sl=%s%s -- %s",
                     a.kind, a.config_id, a.ficha, a.magic, a.side, a.volume, a.sl,
                     extra, a.reason)
@@ -250,10 +336,44 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                         getattr(r, "retcode", r))
         return
     if a.kind == "MODIFY":
+        desired_sl = float(a.sl) if a.sl is not None else 0.0
         for attempt in range(1, modify_retries + 2):
+            mode, value = _clamp_sl(mt5, symbol, a.side, desired_sl)
+            if mode == "crossed":
+                # sim's stop is already crossed/at market -> live must
+                # market-close, not send an invalid MODIFY.
+                pos = None
+                for p in (mt5.positions_get(ticket=a.ticket) or []):
+                    pos = p
+                if pos is None:
+                    logger.warning("  [MODIFY->CLOSE] ticket %s not found "
+                                   "(already closed?)", a.ticket)
+                    return
+                is_long = a.side == "L"
+                close_req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol,
+                             "volume": float(getattr(pos, "volume", a.volume or 0.0)),
+                             "type": mt5.ORDER_TYPE_SELL if is_long else mt5.ORDER_TYPE_BUY,
+                             "position": int(a.ticket), "price": value,
+                             "deviation": deviation, "magic": int(a.magic),
+                             "comment": f"{a.config_id}:{a.ficha}:fallback_close",
+                             "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
+                r = mt5.order_send(close_req)
+                gap = abs(desired_sl - value) * float(getattr(pos, "volume", a.volume or 0.0)) \
+                    * contract_size
+                if same_bar_cost is not None:
+                    same_bar_cost[a.config_id] = same_bar_cost.get(a.config_id, 0.0) + gap
+                logger.warning("  [FALLBACK_CLOSE_INVALID_SL] ticket=%s desired_sl=%s "
+                               "bid=%s gap$=%.4f -> retcode=%s",
+                               a.ticket, desired_sl, value, gap, getattr(r, "retcode", r))
+                return
+            if mode == "clamp":
+                gap = abs(desired_sl - value)
+                if sl_clamp_cost is not None:
+                    sl_clamp_cost[a.config_id] = sl_clamp_cost.get(a.config_id, 0.0) + gap
+                logger.warning("  [SL_CLAMPED] ticket=%s desired=%s clamped=%s gap=%.5f",
+                               a.ticket, desired_sl, value, gap)
             req = {"action": mt5.TRADE_ACTION_SLTP, "symbol": symbol,
-                   "position": int(a.ticket),
-                   "sl": float(a.sl) if a.sl is not None else 0.0,
+                   "position": int(a.ticket), "sl": float(value),
                    "magic": int(a.magic)}
             r = mt5.order_send(req)
             ok = getattr(r, "retcode", None) in (
@@ -261,25 +381,50 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                 getattr(mt5, "TRADE_RETCODE_DONE_PARTIAL", 10010))
             if ok:
                 logger.info("  [SENT MODIFY] ticket=%s sl=%s -> retcode=%s",
-                            a.ticket, a.sl, getattr(r, "retcode", r))
+                            a.ticket, value, getattr(r, "retcode", r))
                 return
             logger.error("  [MODIFY FAILED attempt %d/%d] ticket=%s sl=%s -> retcode=%s",
-                         attempt, modify_retries + 1, a.ticket, a.sl, getattr(r, "retcode", r))
+                         attempt, modify_retries + 1, a.ticket, value, getattr(r, "retcode", r))
         logger.error("  [ALARM] MODIFY exhausted retries for ticket=%s -- ficha "
                      "may lack a correct server-side SL (intra-bar risk).", a.ticket)
         return
     if a.kind == "OPEN":
-        tick = mt5.symbol_info_tick(symbol)
-        price = tick.ask if a.side == "L" else tick.bid
-        req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol,
-               "volume": float(a.volume), "type": _side_to_order_type(mt5, a.side),
-               "price": price, "sl": float(a.sl) if a.sl is not None else 0.0,
-               "deviation": deviation, "magic": int(a.magic),
-               "comment": f"{a.config_id}:{a.ficha}",
-               "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
-        r = mt5.order_send(req)
-        logger.info("  [SENT OPEN] %s %s magic=%s -> retcode=%s", a.config_id,
-                    a.ficha, a.magic, getattr(r, "retcode", r))
+        desired_sl = float(a.sl) if a.sl is not None else 0.0
+        for attempt in range(1, open_retries + 2):
+            mode, value = _clamp_sl(mt5, symbol, a.side, desired_sl)
+            if mode == "crossed":
+                logger.warning("  [OPEN_SKIPPED_SL_CROSSED] config=%s ficha=%s "
+                               "desired_sl=%s ref=%s", a.config_id, a.ficha,
+                               desired_sl, value)
+                return
+            sl_to_send = value
+            if mode == "clamp":
+                gap = abs(desired_sl - value)
+                if sl_clamp_cost is not None:
+                    sl_clamp_cost[a.config_id] = sl_clamp_cost.get(a.config_id, 0.0) + gap
+                logger.warning("  [SL_CLAMPED OPEN] config=%s ficha=%s desired=%s "
+                               "clamped=%s gap=%.5f", a.config_id, a.ficha,
+                               desired_sl, value, gap)
+            tick = mt5.symbol_info_tick(symbol)
+            price = tick.ask if a.side == "L" else tick.bid
+            req = {"action": mt5.TRADE_ACTION_DEAL, "symbol": symbol,
+                   "volume": float(a.volume), "type": _side_to_order_type(mt5, a.side),
+                   "price": price, "sl": float(sl_to_send),
+                   "deviation": deviation, "magic": int(a.magic),
+                   "comment": f"{a.config_id}:{a.ficha}",
+                   "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
+            r = mt5.order_send(req)
+            retcode = getattr(r, "retcode", None)
+            if retcode == getattr(mt5, "TRADE_RETCODE_INVALID_STOPS", 10016):
+                logger.error("  [OPEN FAILED attempt %d/%d] config=%s ficha=%s "
+                             "sl=%s -> retcode=%s", attempt, open_retries + 1,
+                             a.config_id, a.ficha, sl_to_send, retcode)
+                continue
+            logger.info("  [SENT OPEN] %s %s magic=%s -> retcode=%s", a.config_id,
+                        a.ficha, a.magic, retcode)
+            return
+        logger.error("  [ALARM] OPEN exhausted retries for config=%s ficha=%s -- "
+                     "position may not be open (intra-bar risk).", a.config_id, a.ficha)
 
 
 # --------------------------------------------------------------------------
@@ -287,7 +432,8 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
 # --------------------------------------------------------------------------
 def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
               volume: float, dry_run: bool, deviation: int,
-              same_bar_cost: dict[str, float] | None = None) -> None:
+              same_bar_cost: dict[str, float] | None = None,
+              sl_clamp_cost: dict[str, float] | None = None) -> None:
     """One full reconcile pass over all configs. Re-asserts the guard FIRST,
     re-reads the STOP kill-switch, tracks the 60-total ficha cap."""
     guard_cuenta.assert_demo(mt5)  # re-check every cycle, before any order
@@ -310,7 +456,8 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
                     ", ".join(f"{a.kind}/{a.ficha}" for a in res.actions) or "none")
         for a in res.actions:
             execute_action(mt5, a, symbol=cfg["kwargs"]["symbol"], dry_run=dry_run,
-                           deviation=deviation, same_bar_cost=same_bar_cost)
+                           deviation=deviation, same_bar_cost=same_bar_cost,
+                           sl_clamp_cost=sl_clamp_cost)
         # count fichas the sim wants open (desired) toward the global cap.
         # OPEN + NOOP = one per still-desired ficha (MODIFY is paired with a
         # NOOP-or-open slot, so counting it too would double-count).
@@ -320,6 +467,10 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
         total = sum(same_bar_cost.values())
         logger.info("SAME_BAR cumulative by-design cost (this run): total=$%.4f | %s",
                     total, ", ".join(f"{k}=${v:.4f}" for k, v in sorted(same_bar_cost.items())))
+    if sl_clamp_cost:
+        total = sum(sl_clamp_cost.values())
+        logger.info("SL_CLAMP cumulative gap (this run): total=$%.4f | %s",
+                    total, ", ".join(f"{k}=${v:.4f}" for k, v in sorted(sl_clamp_cost.items())))
 
 
 def _connect(mt5: Any) -> None:
@@ -341,6 +492,23 @@ def _arm_confirm() -> None:
         raise SystemExit("account number mismatch -- aborting (nothing sent).")
 
 
+def _confirm_account_noninteractive(confirm_account: int) -> None:
+    """Non-interactive arm confirmation for supervised/watchdog restarts: the
+    caller must supply the exact sanctioned DEMO account number on the command
+    line (`--confirm-account`). Mismatch (any other number, especially the
+    REAL account) -> loud stderr error, exit code 2, WITHOUT touching MT5.
+    Match -> logged at WARNING for the audit trail, then proceeds like the
+    interactive path."""
+    if confirm_account != guard_cuenta.DEMO_LOGIN:
+        print(f"[FATAL] --confirm-account {confirm_account} does not match the "
+              f"sanctioned DEMO account {guard_cuenta.DEMO_LOGIN} -- refusing to "
+              "arm (nothing sent, MT5 not initialized).", file=sys.stderr)
+        raise SystemExit(2)
+    logger.warning("ARMED mode confirmed NON-INTERACTIVELY via --confirm-account "
+                   "%s (matches sanctioned DEMO account) -- audit trail.",
+                   confirm_account)
+
+
 def main(argv: list[str] | None = None, *, mt5_module: Any = None,
          attach_checker: Callable[[], bool] = _portable_running) -> int:
     ap = argparse.ArgumentParser(description="Guarded live executor for the 20 configs.")
@@ -351,6 +519,9 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     ap.add_argument("--volume", type=float, default=DEFAULT_VOLUME, help="per-ficha volume")
     ap.add_argument("--deviation", type=int, default=20, help="max slippage (points)")
     ap.add_argument("--interval", type=float, default=15.0, help="daemon poll seconds")
+    ap.add_argument("--confirm-account", type=int, default=None,
+                     help="non-interactive arm confirmation: must equal the "
+                          "sanctioned DEMO login; only effective with --arm")
     args = ap.parse_args(argv)
 
     logging.basicConfig(
@@ -370,6 +541,15 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
             return 2
     dry_run = not args.arm
 
+    if args.confirm_account is not None and not args.arm:
+        logger.warning("--confirm-account %s is ignored: --arm was not passed "
+                       "(dry-run proceeds, not armed).", args.confirm_account)
+
+    # Non-interactive arm confirmation (watchdog/supervised restarts): validate
+    # BEFORE the attach check / MT5 import so a mismatch never touches MT5.
+    if args.arm and args.confirm_account is not None:
+        _confirm_account_noninteractive(args.confirm_account)
+
     # ATTACH-ONLY / NEVER LAUNCH: confirm the portable terminal is running
     # BEFORE importing/initializing MetaTrader5.
     if not attach_checker():
@@ -388,7 +568,7 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     logger.info("connected + guard OK: DEMO login %s (dry_run=%s, %d configs, window=%d)",
                 login, dry_run, len(configs), window)
 
-    if args.arm:
+    if args.arm and args.confirm_account is None:
         _arm_confirm()
 
     stop = {"flag": False}
@@ -400,11 +580,12 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     signal.signal(signal.SIGINT, _sigint)
 
     same_bar_cost: dict[str, float] = {}
+    sl_clamp_cost: dict[str, float] = {}
     try:
         while True:
             run_cycle(mt5, configs, window=window, volume=args.volume,
                       dry_run=dry_run, deviation=args.deviation,
-                      same_bar_cost=same_bar_cost)
+                      same_bar_cost=same_bar_cost, sl_clamp_cost=sl_clamp_cost)
             if args.once or stop["flag"]:
                 break
             time.sleep(args.interval)
