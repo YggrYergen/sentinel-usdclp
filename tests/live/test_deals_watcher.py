@@ -5,6 +5,11 @@ absent), idempotent upsert into `deals_raw` by ticket, correct field
 mapping from a stub `mt5_client.history_deals_get(...)`, magic-based
 attribution (strategy/ia/human, B1a-2), and `last_sync` persistence across
 watcher restarts (B1a-2).
+
+Also covers the self-heal reconnect logic added to the standalone runner
+`scripts/live/run_deals_watcher.py` (`_connection_healthy`, `_reconnect`,
+and `main()`'s self-heal integration) -- fully offline via stub `mt5`
+modules, never a real `MetaTrader5` import.
 """
 from __future__ import annotations
 
@@ -12,6 +17,8 @@ import sqlite3
 
 import pytest
 
+from scripts.live import run_deals_watcher as rdw
+from sentinel_engine.live import guard_cuenta
 from sentinel_engine.live.deals_watcher import DealsWatcher, WatchReport
 from sentinel_engine.research.registry2 import ResearchRegistry
 
@@ -399,3 +406,248 @@ def test_reupsert_updates_other_fields_with_new_values(reg):
         assert d["leverage"] == 300  # new non-null value wins
     finally:
         conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Self-heal reconnect: `scripts/live/run_deals_watcher.py`
+# `_connection_healthy` / `_reconnect` / `main()` integration.
+# ---------------------------------------------------------------------------
+
+_WRONG_LOGIN = 999
+
+
+class _AccountInfoLogin:
+    def __init__(self, login):
+        self.login = login
+
+
+class _HealthMt5Stub:
+    """Minimal stub mt5 module for `_connection_healthy`/`_reconnect` unit
+    tests -- not a full runner stub (see `_RunnerMt5Stub` below for `main()`
+    integration tests)."""
+
+    def __init__(self, account_info_fn=None, initialize_results=None,
+                 raise_on_account_info=False):
+        self._account_info_fn = account_info_fn
+        self._initialize_results = list(initialize_results or [])
+        self._raise_on_account_info = raise_on_account_info
+        self.initialize_calls = 0
+        self.shutdown_calls = 0
+
+    def account_info(self):
+        if self._raise_on_account_info:
+            raise RuntimeError("simulated IPC failure")
+        if self._account_info_fn is None:
+            return None
+        return self._account_info_fn()
+
+    def initialize(self, path=None, portable=None):
+        self.initialize_calls += 1
+        if self._initialize_results:
+            return self._initialize_results.pop(0)
+        return True
+
+    def shutdown(self):
+        self.shutdown_calls += 1
+
+    def last_error(self):
+        return (0, "ok")
+
+
+def test_connection_healthy_states():
+    # account_info() returns None -> unhealthy, "no_info".
+    mt5_none = _HealthMt5Stub(account_info_fn=lambda: None)
+    assert rdw._connection_healthy(mt5_none) == (False, "no_info")
+
+    # account_info() raises -> unhealthy, "no_info".
+    mt5_raises = _HealthMt5Stub(raise_on_account_info=True)
+    assert rdw._connection_healthy(mt5_raises) == (False, "no_info")
+
+    # account_info() reports the wrong login -> unhealthy, "wrong_login".
+    mt5_wrong = _HealthMt5Stub(account_info_fn=lambda: _AccountInfoLogin(_WRONG_LOGIN))
+    assert rdw._connection_healthy(mt5_wrong) == (False, "wrong_login")
+
+    # account_info() reports the sanctioned DEMO login -> healthy.
+    mt5_ok = _HealthMt5Stub(account_info_fn=lambda: _AccountInfoLogin(guard_cuenta.DEMO_LOGIN))
+    assert rdw._connection_healthy(mt5_ok) == (True, "ok")
+
+
+def test_reconnect_success_after_one_failure():
+    mt5 = _HealthMt5Stub(
+        account_info_fn=lambda: _AccountInfoLogin(guard_cuenta.DEMO_LOGIN),
+        initialize_results=[False, True],
+    )
+    sleeps = []
+
+    result = rdw._reconnect(
+        mt5, attach_checker=lambda: True, sleep_fn=lambda s: sleeps.append(s))
+
+    assert result is True
+    assert mt5.initialize_calls == 2
+    assert sleeps == [5.0]
+
+
+def test_reconnect_never_launches_when_terminal_gone():
+    mt5 = _HealthMt5Stub(account_info_fn=lambda: _AccountInfoLogin(guard_cuenta.DEMO_LOGIN))
+    sleeps = []
+
+    result = rdw._reconnect(
+        mt5, attach_checker=lambda: False, sleep_fn=lambda s: sleeps.append(s))
+
+    assert result is False
+    assert mt5.initialize_calls == 0
+    assert mt5.shutdown_calls == 1  # shutdown() attempted before the check
+    assert sleeps == []
+
+
+def test_reconnect_wrong_login_aborts():
+    mt5 = _HealthMt5Stub(
+        account_info_fn=lambda: _AccountInfoLogin(_WRONG_LOGIN),
+        initialize_results=[True],
+    )
+    sleeps = []
+
+    result = rdw._reconnect(
+        mt5, attach_checker=lambda: True, sleep_fn=lambda s: sleeps.append(s))
+
+    assert result is False
+    assert mt5.initialize_calls == 1
+    assert sleeps == []
+
+
+# ---------------------------------------------------------------------------
+# `main()` self-heal integration -- reuses the runner-level fake mt5 module
+# shape from tests/scripts/test_run_deals_watcher.py (account_info,
+# history_deals_get, initialize, shutdown, last_error).
+# ---------------------------------------------------------------------------
+
+class _RunnerFakeDeal:
+    def __init__(self, ticket, position_id, symbol, side, volume, price,
+                 profit, magic, time, entry):
+        self.ticket = ticket
+        self.position_id = position_id
+        self.symbol = symbol
+        self.type = 0 if side == "BUY" else 1
+        self.volume = volume
+        self.price = price
+        self.profit = profit
+        self.magic = magic
+        self.time = time
+        self.entry = entry
+
+
+_RUNNER_SAMPLE_DEALS = [
+    _RunnerFakeDeal(1001, 5001, "XAUUSD", "BUY", 0.1, 2400.5, 12.3, 100123, 1750000000, 0),
+]
+
+
+class _RunnerMt5Stub:
+    """Fake `MetaTrader5` module for `main()` self-heal integration tests.
+    `account_info()` calls are counted; the caller supplies a list of
+    logins to report on successive calls (last value repeats once
+    exhausted) so the FIRST loop health check can report unhealthy
+    ("no_info" via None) while startup's `_check_login` (the very first
+    call) still passes."""
+
+    DEAL_TYPE_BUY = 0
+    DEAL_TYPE_SELL = 1
+
+    def __init__(self, account_info_sequence):
+        self._sequence = list(account_info_sequence)
+        self.account_info_calls = 0
+        self.initialize_calls = 0
+        self.shutdown_calls = 0
+        self.history_calls = 0
+
+    def _next_login(self):
+        if self._sequence:
+            value = self._sequence.pop(0)
+        else:
+            value = self._sequence[-1] if self._sequence else guard_cuenta.DEMO_LOGIN
+        return value
+
+    def account_info(self):
+        self.account_info_calls += 1
+        value = self._next_login()
+        if value is None:
+            return None
+        return _AccountInfoLogin(value)
+
+    def initialize(self, path=None, portable=None):
+        self.initialize_calls += 1
+        return True
+
+    def last_error(self):
+        return (0, "ok")
+
+    def history_deals_get(self, from_ts, to_ts):
+        self.history_calls += 1
+        return list(_RUNNER_SAMPLE_DEALS)
+
+    def symbol_info(self, symbol):
+        return None
+
+    def shutdown(self):
+        self.shutdown_calls += 1
+
+
+class _RecordingWatcher:
+    """Stub `DealsWatcher` replacement recording how many times
+    `poll_once()` ran, without touching real DealsWatcher internals."""
+
+    def __init__(self, registry, mt5_client, poll_s=5, attach_checker=None):
+        self.mt5_client = mt5_client
+        self.poll_calls = 0
+
+    def poll_once(self):
+        self.poll_calls += 1
+        return WatchReport(attached=True, deals_seen=1, upserted=1, skipped=False)
+
+
+def test_main_self_heals_then_polls(tmp_path):
+    # Sequence of account_info() logins:
+    #   1) _check_login() at startup -> DEMO_LOGIN (passes)
+    #   2) loop health check #1 -> None ("no_info" -> unhealthy)
+    #   3) _reconnect()'s post-initialize health check -> DEMO_LOGIN (heals)
+    #   4) loop health check #2 (next iteration, but --once already broke)
+    mt5 = _RunnerMt5Stub([guard_cuenta.DEMO_LOGIN, None, guard_cuenta.DEMO_LOGIN])
+    watchers = []
+
+    def watcher_factory(registry, client, poll_s=5, attach_checker=None):
+        w = _RecordingWatcher(registry, client, poll_s=poll_s, attach_checker=attach_checker)
+        watchers.append(w)
+        return w
+
+    rc = rdw.main(
+        ["--db", str(tmp_path / "t.db"), "--once"],
+        mt5_module=mt5, attach_checker=lambda: True,
+        watcher_factory=watcher_factory,
+    )
+
+    assert rc == 0
+    assert len(watchers) == 1
+    assert watchers[0].poll_calls == 1
+    assert mt5.initialize_calls == 2  # startup connect + reconnect
+
+
+def test_main_wrong_login_mid_run_exits_2(tmp_path):
+    # _check_login() at startup passes (DEMO_LOGIN), then the first loop
+    # health check reports the wrong login -> hard exit 2, poll_once never
+    # called.
+    mt5 = _RunnerMt5Stub([guard_cuenta.DEMO_LOGIN, _WRONG_LOGIN])
+    watchers = []
+
+    def watcher_factory(registry, client, poll_s=5, attach_checker=None):
+        w = _RecordingWatcher(registry, client, poll_s=poll_s, attach_checker=attach_checker)
+        watchers.append(w)
+        return w
+
+    rc = rdw.main(
+        ["--db", str(tmp_path / "t.db"), "--once"],
+        mt5_module=mt5, attach_checker=lambda: True,
+        watcher_factory=watcher_factory,
+    )
+
+    assert rc == 2
+    assert len(watchers) == 1
+    assert watchers[0].poll_calls == 0

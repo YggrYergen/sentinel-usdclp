@@ -19,6 +19,16 @@ ACCOUNT GUARD: after connecting, `account_info().login` MUST equal
 must only ever record deals for the sanctioned DEMO account. A mismatch
 exits 2 without recording anything.
 
+SELF-HEAL: at the top of every loop iteration we call `_connection_healthy()`
+to detect a dead MT5 IPC link (e.g. `account_info()` returning None after a
+silent disconnect). An unhealthy-but-attributable connection triggers
+`_reconnect()`, which re-attaches via `mt5.shutdown()` + `mt5.initialize()`
+-- but ONLY after re-confirming the portable terminal is still running
+(ATTACH-ONLY is never violated by the self-heal path). A reconnect that
+surfaces a different account login exits 2 immediately (account guard is
+never bypassed); a reconnect that merely fails to attach is logged and
+retried on the next poll interval -- the daemon never exits for that reason.
+
 USAGE
     python -m scripts.live.run_deals_watcher [--db data/research.db] [--poll 5] [--once]
     python -m scripts.live.run_deals_watcher --once --since 2026-07-14T00:00:00+00:00
@@ -149,6 +159,70 @@ def _connect(mt5: Any) -> None:
                          f"{mt5.last_error()}")
 
 
+def _connection_healthy(mt5: Any) -> tuple[bool, str]:
+    """Cheap health probe for the live MT5 IPC connection. Never raises --
+    any exception from `account_info()` is treated as "no_info" (unhealthy).
+    Returns `(True, "ok")` only when we get an `account_info()` result AND
+    its `login` matches the sanctioned DEMO account; `(False, "wrong_login")`
+    signals the account-guard case specifically (caller must exit, never
+    just retry) and `(False, "no_info")` signals a plain dead/absent
+    connection (caller should attempt `_reconnect()`)."""
+    try:
+        info = mt5.account_info()
+    except Exception:  # noqa: BLE001
+        return False, "no_info"
+    if info is None:
+        return False, "no_info"
+    if getattr(info, "login", None) != guard_cuenta.DEMO_LOGIN:
+        return False, "wrong_login"
+    return True, "ok"
+
+
+def _reconnect(mt5: Any, attach_checker: Callable[[], bool], *,
+               max_attempts: int = 3,
+               sleep_fn: Callable[[float], None] = time.sleep) -> bool:
+    """Attempt to re-attach to the DEMO portable MT5 terminal, self-healing a
+    silently-dead IPC connection. ATTACH-ONLY is preserved: `mt5.initialize()`
+    is NEVER called unless `attach_checker()` confirms the portable terminal
+    process is still running -- if it isn't, we log and give up immediately
+    rather than launching anything. The account guard is also preserved: a
+    reconnect that resolves to a different login aborts immediately (returns
+    False) instead of continuing to retry on the wrong account."""
+    for attempt in range(1, max_attempts + 1):
+        try:
+            mt5.shutdown()
+        except Exception:  # noqa: BLE001
+            pass
+
+        if not attach_checker():
+            logger.error(
+                "portable terminal not running -- cannot re-attach "
+                "(ATTACH-ONLY: we never launch)")
+            return False
+
+        try:
+            ok = mt5.initialize(path=str(PORTABLE_EXE), portable=True)
+        except Exception:  # noqa: BLE001
+            ok = False
+
+        if ok:
+            healthy, why = _connection_healthy(mt5)
+            if healthy:
+                logger.info("reconnected to MT5 (attempt %d)", attempt)
+                return True
+            if why == "wrong_login":
+                logger.error(
+                    "reconnect attempt %d succeeded but account login does "
+                    "not match the sanctioned DEMO account -- aborting "
+                    "reconnect (account guard).", attempt)
+                return False
+
+        logger.warning("reconnect attempt %d/%d failed", attempt, max_attempts)
+        sleep_fn(5.0 * attempt)
+
+    return False
+
+
 def _check_login(mt5: Any) -> int:
     """Verify `account_info().login == guard_cuenta.DEMO_LOGIN`. Returns the
     login on success; caller exits 2 on mismatch/missing info."""
@@ -252,19 +326,41 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     consecutive_errors = 0
     try:
         while True:
-            try:
-                report = watcher.poll_once()
-                consecutive_errors = 0
-                logger.info(
-                    "poll: attached=%s deals_seen=%d upserted=%d skipped=%s",
-                    report.attached, report.deals_seen, report.upserted, report.skipped)
-            except Exception:  # noqa: BLE001 -- never crash-loop silently
-                consecutive_errors += 1
-                logger.exception("poll_once() failed (consecutive=%d)", consecutive_errors)
-                if consecutive_errors >= 5:
+            healthy, why = _connection_healthy(mt5)
+            if why == "wrong_login":
+                logger.error(
+                    "MT5 connection now reports a different account login -- "
+                    "refusing to continue polling (account guard).")
+                return 2
+
+            skip_poll = False
+            if not healthy:
+                logger.warning(
+                    "MT5 connection unhealthy -- attempting self-heal reconnect")
+                if not _reconnect(mt5, attach_checker):
                     logger.error(
-                        "5 consecutive poll failures -- continuing to retry, "
-                        "but this needs investigation.")
+                        "reconnect failed -- will retry next poll interval")
+                    skip_poll = True
+
+            if not skip_poll:
+                try:
+                    report = watcher.poll_once()
+                    consecutive_errors = 0
+                    logger.info(
+                        "poll: attached=%s deals_seen=%d upserted=%d skipped=%s",
+                        report.attached, report.deals_seen, report.upserted, report.skipped)
+                except Exception:  # noqa: BLE001 -- never crash-loop silently
+                    consecutive_errors += 1
+                    logger.exception("poll_once() failed (consecutive=%d)", consecutive_errors)
+                    if consecutive_errors >= 5:
+                        logger.error(
+                            "5 consecutive poll failures -- continuing to retry, "
+                            "but this needs investigation.")
+                        reconnected = _reconnect(mt5, attach_checker)
+                        logger.error("self-heal reconnect after 5 failures: %s",
+                                     "succeeded" if reconnected else "failed")
+                        if reconnected:
+                            consecutive_errors = 0
 
             if args.once or stop["flag"]:
                 break
