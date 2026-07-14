@@ -30,6 +30,9 @@ Each entry: {id, tf, k, kwargs, notes}. `kwargs` are the literal
 data supplied at run time). `direction_filter=True` flags configs (#14/#15)
 that additionally require the caller to compute a SuperTrend-M15
 `direction_mask`; `blocked_hours` (config #20) is already inside `kwargs`.
+
+`LIVE_ROSTER`/`CONFIGS_LIVE` (bottom of this module) pin the trader-selected
+subset of CONFIGS_20 currently authorized to trade live.
 """
 from __future__ import annotations
 
@@ -144,3 +147,13 @@ for _i, _c in enumerate(CONFIGS_20, start=1):
 
 MAGIC_BY_ID: dict[str, int] = {c["id"]: c["magic"] for c in CONFIGS_20}
 assert len(set(MAGIC_BY_ID.values())) == 20, "magics must be unique"
+
+# --- LIVE ROSTER (trader selection 2026-07-14) ---------------------------
+# The subset of CONFIGS_20 currently authorized to trade live. Selected by
+# the trader from the 2026-07-14 diagnostic + candidates evidence (the 3
+# net-positive configs of the first armed sessions plus V15-M15). The other
+# 16 configs remain DEFINED (parity/backtest tooling uses them) but are NOT
+# traded by the live executor when it is started with `--configs live`.
+LIVE_ROSTER: tuple[str, ...] = ("V11-M2", "V15-M2", "V13-M2", "V15-M15")
+CONFIGS_LIVE: list[dict[str, Any]] = [c for c in CONFIGS_20 if c["id"] in LIVE_ROSTER]
+assert len(CONFIGS_LIVE) == len(LIVE_ROSTER), "every LIVE_ROSTER id must exist in CONFIGS_20"

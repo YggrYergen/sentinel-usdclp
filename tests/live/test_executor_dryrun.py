@@ -12,7 +12,7 @@ from scripts.live import run_live_20
 from sentinel_engine.live import guard_cuenta
 from sentinel_engine.live.reconciler import reconcile
 from sentinel_engine.strategies.emasar_variant import simular_variant
-from sentinel_engine.strategies.live_configs_20 import CONFIGS_20
+from sentinel_engine.strategies.live_configs_20 import CONFIGS_20, CONFIGS_LIVE, LIVE_ROSTER
 
 
 # ------------------------- synthetic bars + mock mt5 -------------------------
@@ -474,3 +474,48 @@ def test_open_legal_sl_sent_unchanged(caplog):
     req = mt5.sent[0]
     assert req["action"] == mt5.TRADE_ACTION_DEAL
     assert req["sl"] == pytest.approx(1995.0)
+
+
+# ------------------------- LIVE_ROSTER / --configs live ----------------------
+def test_live_roster_subset_valid():
+    ids_20 = {c["id"] for c in CONFIGS_20}
+    assert len(LIVE_ROSTER) == 4
+    assert len(set(LIVE_ROSTER)) == 4, "LIVE_ROSTER ids must be unique"
+    assert set(LIVE_ROSTER) <= ids_20, "every LIVE_ROSTER id must exist in CONFIGS_20"
+
+    # CONFIGS_LIVE preserves CONFIGS_20 order (not LIVE_ROSTER's declared order).
+    expected_order = [c["id"] for c in CONFIGS_20 if c["id"] in set(LIVE_ROSTER)]
+    assert [c["id"] for c in CONFIGS_LIVE] == expected_order
+
+    # magics preserved: each CONFIGS_LIVE entry is the SAME dict/magic as in CONFIGS_20.
+    magic_by_id_20 = {c["id"]: c["magic"] for c in CONFIGS_20}
+    for c in CONFIGS_LIVE:
+        assert c["magic"] == magic_by_id_20[c["id"]]
+
+
+def test_configs_live_flag_selects_roster(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "live"], mt5_module=mt5,
+                              attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.initialized is True
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(LIVE_ROSTER)} configs" in caplog.text
+    for cid in LIVE_ROSTER:
+        assert f"[{cid}]" in caplog.text
+    # none of the non-roster configs should have been reconciled.
+    non_roster = [c["id"] for c in CONFIGS_20 if c["id"] not in set(LIVE_ROSTER)]
+    for cid in non_roster:
+        assert f"[{cid}]" not in caplog.text
+
+
+def test_configs_live_case_insensitive(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "LIVE"], mt5_module=mt5,
+                              attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.initialized is True
+    assert mt5.sent == []
+    assert f"{len(LIVE_ROSTER)} configs" in caplog.text

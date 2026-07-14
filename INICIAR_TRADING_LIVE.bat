@@ -8,6 +8,7 @@ rem   - Si el ejecutor no corre, lo (re)lanza armado via --confirm-account.
 rem   - Registra cada relanzamiento en scripts\live\watchdog.log.
 rem  Detener todo: cierra esta ventana Y la del ejecutor (o Ctrl-C aqui).
 rem  Pausar solo aperturas: PAUSAR_TRADING.bat (kill-switch STOP).
+rem  Roster: --configs live = LIVE_ROSTER en live_configs_20.py (4 configs).
 rem ============================================================
 setlocal
 cd /d D:\FOREX
@@ -25,7 +26,7 @@ powershell -NoProfile -Command "if (Get-CimInstance Win32_Process | Where-Object
 if errorlevel 1 (
     echo [%date% %time%] Ejecutor no corre - relanzando armado. >> scripts\live\watchdog.log
     echo Relanzando ejecutor armado...
-    python -m scripts.live.run_live_20 --arm --confirm-account 2883015767
+    python -m scripts.live.run_live_20 --arm --confirm-account 2883015767 --configs live
     echo [%date% %time%] Ejecutor termino (exit %errorlevel%). >> scripts\live\watchdog.log
 )
 

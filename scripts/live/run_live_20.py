@@ -52,7 +52,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from sentinel_engine.live import guard_cuenta  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
-from sentinel_engine.strategies.live_configs_20 import CONFIGS_20  # noqa: E402
+from sentinel_engine.strategies.live_configs_20 import CONFIGS_20, LIVE_ROSTER  # noqa: E402
 
 TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
 TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
@@ -512,7 +512,9 @@ def _confirm_account_noninteractive(confirm_account: int) -> None:
 def main(argv: list[str] | None = None, *, mt5_module: Any = None,
          attach_checker: Callable[[], bool] = _portable_running) -> int:
     ap = argparse.ArgumentParser(description="Guarded live executor for the 20 configs.")
-    ap.add_argument("--configs", default="all", help="'all' or comma ids e.g. SS-M5,V10-M15")
+    ap.add_argument("--configs", default="all",
+                     help="'all', 'live' (the LIVE_ROSTER subset) or comma ids "
+                          "e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
     ap.add_argument("--window", type=int, default=DEFAULT_WINDOW, help="trailing bars for the sim")
@@ -532,6 +534,8 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     window = max(args.window, MIN_WINDOW)
     if args.configs.lower() == "all":
         configs = list(CONFIGS_20)
+    elif args.configs.lower() == "live":
+        configs = [c for c in CONFIGS_20 if c["id"] in LIVE_ROSTER]
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]
