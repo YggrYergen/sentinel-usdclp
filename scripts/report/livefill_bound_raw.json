@@ -1,0 +1,2139 @@
+{
+  "ss-m2": {
+    "tf": "M2",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 7218,
+          "net": 40263.6,
+          "pf": 2.5487,
+          "wr": 51.62,
+          "payoff": 2.3702,
+          "maxdd": 800.7,
+          "pct_initsl": 1.04,
+          "pct_trail": 98.96,
+          "trades_per_day": 240.6,
+          "long_pnl": 20935.5,
+          "short_pnl": 19328.1,
+          "long_n": 3657,
+          "short_n": 3561
+        },
+        "live": {
+          "trades": 6390,
+          "net": -30955.2,
+          "pf": 0.6127,
+          "wr": 36.34,
+          "payoff": 1.071,
+          "maxdd": 31684.5,
+          "pct_initsl": 27.61,
+          "pct_trail": 72.39,
+          "trades_per_day": 213.0,
+          "long_pnl": -18213.3,
+          "short_pnl": -12741.9,
+          "long_n": 3258,
+          "short_n": 3132
+        },
+        "delta_net": -71218.8,
+        "pct_net": -176.88,
+        "delta_pf": -1.936,
+        "delta_dd": 30883.8,
+        "same_bar_fallback": {
+          "n_exit_trail": 5682,
+          "n_same_bar_fallback": 5682
+        },
+        "pct_fallback_of_trail_exits": 100.0,
+        "ingested": {
+          "run_id": "sim-report-emasar-lf-ss-m2",
+          "variant_id": "EMS_XAU_LF_SS_M2_M2_IW",
+          "tf": "M2",
+          "trades": 6390,
+          "net": -30955.2,
+          "pf": 0.6127,
+          "wr": 36.34,
+          "payoff": 1.071,
+          "maxdd": 31684.5,
+          "pct_initsl": 27.61,
+          "pct_trail": 72.39,
+          "trades_per_day": 213.0,
+          "long_pnl": -18213.3,
+          "short_pnl": -12741.9,
+          "long_n": 3258,
+          "short_n": 3132
+        }
+      },
+      "W1": {
+        "classic": {
+          "trades": 8085,
+          "net": 27781.2,
+          "pf": 1.87,
+          "wr": 46.79,
+          "payoff": 2.1088,
+          "maxdd": 1270.8,
+          "pct_initsl": 1.63,
+          "pct_trail": 98.37,
+          "trades_per_day": 245.0,
+          "long_pnl": 11366.4,
+          "short_pnl": 16414.8,
+          "long_n": 3918,
+          "short_n": 4167
+        },
+        "live": {
+          "trades": 7176,
+          "net": -38649.0,
+          "pf": 0.5418,
+          "wr": 32.82,
+          "payoff": 1.1063,
+          "maxdd": 38714.4,
+          "pct_initsl": 28.05,
+          "pct_trail": 71.95,
+          "trades_per_day": 217.455,
+          "long_pnl": -16980.3,
+          "short_pnl": -21668.7,
+          "long_n": 3489,
+          "short_n": 3687
+        },
+        "delta_net": -66430.2,
+        "pct_net": -239.12,
+        "delta_pf": -1.3282,
+        "delta_dd": 37443.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 6156,
+          "n_same_bar_fallback": 6156
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 8130,
+          "net": 145926.6,
+          "pf": 7.1846,
+          "wr": 66.27,
+          "payoff": 3.6323,
+          "maxdd": 1000.8,
+          "pct_initsl": 0.81,
+          "pct_trail": 99.19,
+          "trades_per_day": 246.364,
+          "long_pnl": 62824.8,
+          "short_pnl": 83101.8,
+          "long_n": 4044,
+          "short_n": 4086
+        },
+        "live": {
+          "trades": 7416,
+          "net": -26175.9,
+          "pf": 0.8081,
+          "wr": 42.11,
+          "payoff": 1.1093,
+          "maxdd": 26727.6,
+          "pct_initsl": 19.13,
+          "pct_trail": 80.87,
+          "trades_per_day": 224.727,
+          "long_pnl": -7758.6,
+          "short_pnl": -18417.3,
+          "long_n": 3669,
+          "short_n": 3747
+        },
+        "delta_net": -172102.5,
+        "pct_net": -117.94,
+        "delta_pf": -6.3765,
+        "delta_dd": 25726.8,
+        "same_bar_fallback": {
+          "n_exit_trail": 7125,
+          "n_same_bar_fallback": 7125
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "skipped": "no_data"
+      }
+    }
+  },
+  "ss-m5": {
+    "tf": "M5",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 2910,
+          "net": 48849.9,
+          "pf": 8.952,
+          "wr": 69.9,
+          "payoff": 3.829,
+          "maxdd": 128.1,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 97.0,
+          "long_pnl": 23745.6,
+          "short_pnl": 25104.3,
+          "long_n": 1488,
+          "short_n": 1422
+        },
+        "live": {
+          "trades": 2730,
+          "net": -9993.3,
+          "pf": 0.7753,
+          "wr": 41.43,
+          "payoff": 1.092,
+          "maxdd": 10432.8,
+          "pct_initsl": 16.15,
+          "pct_trail": 83.85,
+          "trades_per_day": 91.0,
+          "long_pnl": -7374.6,
+          "short_pnl": -2618.7,
+          "long_n": 1395,
+          "short_n": 1335
+        },
+        "delta_net": -58843.2,
+        "pct_net": -120.46,
+        "delta_pf": -8.1767,
+        "delta_dd": 10304.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 2838,
+          "n_same_bar_fallback": 2838
+        },
+        "pct_fallback_of_trail_exits": 100.0,
+        "ingested": {
+          "run_id": "sim-report-emasar-lf-ss-m5",
+          "variant_id": "EMS_XAU_LF_SS_M5_M5_IW",
+          "tf": "M5",
+          "trades": 2730,
+          "net": -9993.3,
+          "pf": 0.7753,
+          "wr": 41.43,
+          "payoff": 1.092,
+          "maxdd": 10432.8,
+          "pct_initsl": 16.15,
+          "pct_trail": 83.85,
+          "trades_per_day": 91.0,
+          "long_pnl": -7374.6,
+          "short_pnl": -2618.7,
+          "long_n": 1395,
+          "short_n": 1335
+        }
+      },
+      "W1": {
+        "classic": {
+          "trades": 3570,
+          "net": 55170.3,
+          "pf": 7.7427,
+          "wr": 66.72,
+          "payoff": 3.8519,
+          "maxdd": 231.6,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 108.182,
+          "long_pnl": 25462.8,
+          "short_pnl": 29707.5,
+          "long_n": 1821,
+          "short_n": 1749
+        },
+        "live": {
+          "trades": 3288,
+          "net": -17133.3,
+          "pf": 0.6949,
+          "wr": 40.42,
+          "payoff": 1.0228,
+          "maxdd": 17814.3,
+          "pct_initsl": 16.24,
+          "pct_trail": 83.76,
+          "trades_per_day": 99.636,
+          "long_pnl": -8716.5,
+          "short_pnl": -8416.8,
+          "long_n": 1683,
+          "short_n": 1605
+        },
+        "delta_net": -72303.6,
+        "pct_net": -131.06,
+        "delta_pf": -7.0478,
+        "delta_dd": 17582.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 3252,
+          "n_same_bar_fallback": 3252
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 3075,
+          "net": 122599.5,
+          "pf": 31.3457,
+          "wr": 79.51,
+          "payoff": 8.0383,
+          "maxdd": 107.7,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 93.182,
+          "long_pnl": 54101.4,
+          "short_pnl": 68498.1,
+          "long_n": 1554,
+          "short_n": 1521
+        },
+        "live": {
+          "trades": 2913,
+          "net": -1172.4,
+          "pf": 0.9832,
+          "wr": 43.77,
+          "payoff": 1.2562,
+          "maxdd": 5658.0,
+          "pct_initsl": 11.23,
+          "pct_trail": 88.77,
+          "trades_per_day": 88.273,
+          "long_pnl": -579.3,
+          "short_pnl": -593.1,
+          "long_n": 1458,
+          "short_n": 1455
+        },
+        "delta_net": -123771.9,
+        "pct_net": -100.96,
+        "delta_pf": -30.3625,
+        "delta_dd": 5550.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 3147,
+          "n_same_bar_fallback": 3147
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 3066,
+          "net": 51224.4,
+          "pf": 8.0166,
+          "wr": 65.56,
+          "payoff": 4.1519,
+          "maxdd": 294.0,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 95.812,
+          "long_pnl": 20551.8,
+          "short_pnl": 30672.6,
+          "long_n": 1761,
+          "short_n": 1305
+        },
+        "live": {
+          "trades": 2766,
+          "net": -12999.3,
+          "pf": 0.7386,
+          "wr": 39.91,
+          "payoff": 1.1099,
+          "maxdd": 13227.3,
+          "pct_initsl": 19.31,
+          "pct_trail": 80.69,
+          "trades_per_day": 86.438,
+          "long_pnl": -7182.6,
+          "short_pnl": -5816.7,
+          "long_n": 1563,
+          "short_n": 1203
+        },
+        "delta_net": -64223.7,
+        "pct_net": -125.38,
+        "delta_pf": -7.278,
+        "delta_dd": 12933.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 2607,
+          "n_same_bar_fallback": 2607
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "ss-m15": {
+    "tf": "M15",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 1002,
+          "net": 43459.8,
+          "pf": 32.4652,
+          "wr": 80.54,
+          "payoff": 7.7241,
+          "maxdd": 186.6,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 33.4,
+          "long_pnl": 21059.1,
+          "short_pnl": 22400.7,
+          "long_n": 456,
+          "short_n": 546
+        },
+        "live": {
+          "trades": 954,
+          "net": -1124.4,
+          "pf": 0.9579,
+          "wr": 46.86,
+          "payoff": 1.08,
+          "maxdd": 5201.7,
+          "pct_initsl": 11.01,
+          "pct_trail": 88.99,
+          "trades_per_day": 31.8,
+          "long_pnl": 272.7,
+          "short_pnl": -1397.1,
+          "long_n": 432,
+          "short_n": 522
+        },
+        "delta_net": -44584.2,
+        "pct_net": -102.59,
+        "delta_pf": -31.5073,
+        "delta_dd": 5015.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 1050,
+          "n_same_bar_fallback": 1050
+        },
+        "pct_fallback_of_trail_exits": 100.0,
+        "ingested": {
+          "run_id": "sim-report-emasar-lf-ss-m15",
+          "variant_id": "EMS_XAU_LF_SS_M15_M15_IW",
+          "tf": "M15",
+          "trades": 954,
+          "net": -1124.4,
+          "pf": 0.9579,
+          "wr": 46.86,
+          "payoff": 1.08,
+          "maxdd": 5201.7,
+          "pct_initsl": 11.01,
+          "pct_trail": 88.99,
+          "trades_per_day": 31.8,
+          "long_pnl": 272.7,
+          "short_pnl": -1397.1,
+          "long_n": 432,
+          "short_n": 522
+        }
+      },
+      "W1": {
+        "classic": {
+          "trades": 1218,
+          "net": 45869.4,
+          "pf": 26.7491,
+          "wr": 76.6,
+          "payoff": 7.9129,
+          "maxdd": 130.8,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 36.909,
+          "long_pnl": 15282.3,
+          "short_pnl": 30587.1,
+          "long_n": 513,
+          "short_n": 705
+        },
+        "live": {
+          "trades": 1173,
+          "net": -8137.2,
+          "pf": 0.767,
+          "wr": 40.92,
+          "payoff": 1.1074,
+          "maxdd": 10653.3,
+          "pct_initsl": 6.65,
+          "pct_trail": 93.35,
+          "trades_per_day": 35.545,
+          "long_pnl": -8531.1,
+          "short_pnl": 393.9,
+          "long_n": 492,
+          "short_n": 681
+        },
+        "delta_net": -54006.6,
+        "pct_net": -117.74,
+        "delta_pf": -25.9821,
+        "delta_dd": 10522.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 1302,
+          "n_same_bar_fallback": 1302
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 1071,
+          "net": 92148.6,
+          "pf": 123.2779,
+          "wr": 89.08,
+          "payoff": 15.119,
+          "maxdd": 88.5,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 32.455,
+          "long_pnl": 36864.3,
+          "short_pnl": 55284.3,
+          "long_n": 504,
+          "short_n": 567
+        },
+        "live": {
+          "trades": 1056,
+          "net": 9265.8,
+          "pf": 1.2411,
+          "wr": 43.75,
+          "payoff": 1.5957,
+          "maxdd": 6401.7,
+          "pct_initsl": 3.12,
+          "pct_trail": 96.88,
+          "trades_per_day": 32.0,
+          "long_pnl": 1530.6,
+          "short_pnl": 7735.2,
+          "long_n": 495,
+          "short_n": 561
+        },
+        "delta_net": -82882.8,
+        "pct_net": -89.94,
+        "delta_pf": -122.0368,
+        "delta_dd": 6313.2,
+        "same_bar_fallback": {
+          "n_exit_trail": 1239,
+          "n_same_bar_fallback": 1239
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 1104,
+          "net": 47178.6,
+          "pf": 23.2121,
+          "wr": 79.35,
+          "payoff": 5.8825,
+          "maxdd": 306.6,
+          "pct_initsl": 0.54,
+          "pct_trail": 99.46,
+          "trades_per_day": 34.5,
+          "long_pnl": 17325.0,
+          "short_pnl": 29853.6,
+          "long_n": 597,
+          "short_n": 507
+        },
+        "live": {
+          "trades": 1056,
+          "net": 1614.6,
+          "pf": 1.0586,
+          "wr": 43.47,
+          "payoff": 1.37,
+          "maxdd": 3508.2,
+          "pct_initsl": 9.66,
+          "pct_trail": 90.34,
+          "trades_per_day": 33.0,
+          "long_pnl": 492.3,
+          "short_pnl": 1122.3,
+          "long_n": 561,
+          "short_n": 495
+        },
+        "delta_net": -45564.0,
+        "pct_net": -96.58,
+        "delta_pf": -22.1535,
+        "delta_dd": 3201.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 1110,
+          "n_same_bar_fallback": 1110
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "ss-m1": {
+    "tf": "M1",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 13947,
+          "net": 803.4,
+          "pf": 1.0126,
+          "wr": 38.2,
+          "payoff": 1.6301,
+          "maxdd": 8332.5,
+          "pct_initsl": 4.32,
+          "pct_trail": 95.68,
+          "trades_per_day": 464.9,
+          "long_pnl": 230.1,
+          "short_pnl": 573.3,
+          "long_n": 6831,
+          "short_n": 7116
+        },
+        "live": {
+          "trades": 12069,
+          "net": -64096.2,
+          "pf": 0.4792,
+          "wr": 31.34,
+          "payoff": 1.0461,
+          "maxdd": 64224.6,
+          "pct_initsl": 35.4,
+          "pct_trail": 64.6,
+          "trades_per_day": 402.3,
+          "long_pnl": -35264.1,
+          "short_pnl": -28832.1,
+          "long_n": 6000,
+          "short_n": 6069
+        },
+        "delta_net": -64899.6,
+        "pct_net": -8078.12,
+        "delta_pf": -0.5334,
+        "delta_dd": 55892.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 9453,
+          "n_same_bar_fallback": 9453
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 16095,
+          "net": -5115.3,
+          "pf": 0.931,
+          "wr": 36.64,
+          "payoff": 1.6011,
+          "maxdd": 9631.2,
+          "pct_initsl": 4.92,
+          "pct_trail": 95.08,
+          "trades_per_day": 487.727,
+          "long_pnl": -5619.6,
+          "short_pnl": 504.3,
+          "long_n": 7908,
+          "short_n": 8187
+        },
+        "live": {
+          "trades": 13956,
+          "net": -71320.2,
+          "pf": 0.4737,
+          "wr": 30.72,
+          "payoff": 1.0644,
+          "maxdd": 71449.8,
+          "pct_initsl": 35.71,
+          "pct_trail": 64.29,
+          "trades_per_day": 422.909,
+          "long_pnl": -33494.4,
+          "short_pnl": -37825.8,
+          "long_n": 6831,
+          "short_n": 7125
+        },
+        "delta_net": -66204.9,
+        "pct_net": -1294.25,
+        "delta_pf": -0.4573,
+        "delta_dd": 61818.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 10785,
+          "n_same_bar_fallback": 10785
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 4011,
+          "net": 35096.4,
+          "pf": 3.6501,
+          "wr": 56.47,
+          "payoff": 2.7895,
+          "maxdd": 560.7,
+          "pct_initsl": 0.3,
+          "pct_trail": 99.7,
+          "trades_per_day": 121.545,
+          "long_pnl": 18057.3,
+          "short_pnl": 17039.1,
+          "long_n": 1941,
+          "short_n": 2070
+        },
+        "live": {
+          "trades": 3579,
+          "net": -15032.7,
+          "pf": 0.6965,
+          "wr": 40.65,
+          "payoff": 1.0124,
+          "maxdd": 15690.0,
+          "pct_initsl": 25.31,
+          "pct_trail": 74.69,
+          "trades_per_day": 108.455,
+          "long_pnl": -5135.7,
+          "short_pnl": -9897.0,
+          "long_n": 1728,
+          "short_n": 1851
+        },
+        "delta_net": -50129.1,
+        "pct_net": -142.83,
+        "delta_pf": -2.9536,
+        "delta_dd": 15129.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 2673,
+          "n_same_bar_fallback": 2673
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "skipped": "no_data"
+      }
+    }
+  },
+  "v06d-m2": {
+    "tf": "M2",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 7233,
+          "net": 31903.8,
+          "pf": 2.0599,
+          "wr": 46.74,
+          "payoff": 2.3249,
+          "maxdd": 1776.6,
+          "pct_initsl": 1.24,
+          "pct_trail": 98.76,
+          "trades_per_day": 241.1,
+          "long_pnl": 16351.5,
+          "short_pnl": 15552.3,
+          "long_n": 3603,
+          "short_n": 3630
+        },
+        "live": {
+          "trades": 6651,
+          "net": -32144.7,
+          "pf": 0.6106,
+          "wr": 35.32,
+          "payoff": 1.1152,
+          "maxdd": 32796.9,
+          "pct_initsl": 31.21,
+          "pct_trail": 68.79,
+          "trades_per_day": 221.7,
+          "long_pnl": -18218.7,
+          "short_pnl": -13926.0,
+          "long_n": 3309,
+          "short_n": 3342
+        },
+        "delta_net": -64048.5,
+        "pct_net": -200.76,
+        "delta_pf": -1.4493,
+        "delta_dd": 31020.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 5649,
+          "n_same_bar_fallback": 5649
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 8289,
+          "net": 23115.3,
+          "pf": 1.6293,
+          "wr": 44.23,
+          "payoff": 2.04,
+          "maxdd": 1476.6,
+          "pct_initsl": 2.21,
+          "pct_trail": 97.79,
+          "trades_per_day": 251.182,
+          "long_pnl": 9240.3,
+          "short_pnl": 13875.0,
+          "long_n": 4050,
+          "short_n": 4239
+        },
+        "live": {
+          "trades": 7623,
+          "net": -36355.5,
+          "pf": 0.5862,
+          "wr": 33.37,
+          "payoff": 1.1669,
+          "maxdd": 36406.2,
+          "pct_initsl": 31.84,
+          "pct_trail": 68.16,
+          "trades_per_day": 231.0,
+          "long_pnl": -17993.1,
+          "short_pnl": -18362.4,
+          "long_n": 3762,
+          "short_n": 3861
+        },
+        "delta_net": -59470.8,
+        "pct_net": -257.28,
+        "delta_pf": -1.0431,
+        "delta_dd": 34929.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 6219,
+          "n_same_bar_fallback": 6219
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 8067,
+          "net": 132680.4,
+          "pf": 6.0088,
+          "wr": 62.1,
+          "payoff": 3.6413,
+          "maxdd": 1133.1,
+          "pct_initsl": 0.89,
+          "pct_trail": 99.11,
+          "trades_per_day": 244.455,
+          "long_pnl": 56895.0,
+          "short_pnl": 75785.4,
+          "long_n": 3891,
+          "short_n": 4176
+        },
+        "live": {
+          "trades": 7554,
+          "net": -30348.0,
+          "pf": 0.7815,
+          "wr": 39.91,
+          "payoff": 1.175,
+          "maxdd": 32282.1,
+          "pct_initsl": 21.8,
+          "pct_trail": 78.2,
+          "trades_per_day": 228.909,
+          "long_pnl": -7465.5,
+          "short_pnl": -22882.5,
+          "long_n": 3654,
+          "short_n": 3900
+        },
+        "delta_net": -163028.4,
+        "pct_net": -122.87,
+        "delta_pf": -5.2273,
+        "delta_dd": 31149.0,
+        "same_bar_fallback": {
+          "n_exit_trail": 6996,
+          "n_same_bar_fallback": 6996
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "skipped": "no_data"
+      }
+    }
+  },
+  "v06d-m5": {
+    "tf": "M5",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 2853,
+          "net": 46269.3,
+          "pf": 7.5269,
+          "wr": 66.46,
+          "payoff": 3.7515,
+          "maxdd": 204.3,
+          "pct_initsl": 0.11,
+          "pct_trail": 99.89,
+          "trades_per_day": 95.1,
+          "long_pnl": 22198.2,
+          "short_pnl": 24071.1,
+          "long_n": 1389,
+          "short_n": 1464
+        },
+        "live": {
+          "trades": 2703,
+          "net": -9975.6,
+          "pf": 0.7792,
+          "wr": 42.62,
+          "payoff": 1.0471,
+          "maxdd": 10332.9,
+          "pct_initsl": 20.09,
+          "pct_trail": 79.91,
+          "trades_per_day": 90.1,
+          "long_pnl": -5415.0,
+          "short_pnl": -4560.6,
+          "long_n": 1320,
+          "short_n": 1383
+        },
+        "delta_net": -56244.9,
+        "pct_net": -121.56,
+        "delta_pf": -6.7477,
+        "delta_dd": 10128.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 2706,
+          "n_same_bar_fallback": 2706
+        },
+        "pct_fallback_of_trail_exits": 100.0,
+        "ingested": {
+          "run_id": "sim-report-emasar-lf-v06d-m5",
+          "variant_id": "EMS_XAU_LF_V06D_M5_M5_IW",
+          "tf": "M5",
+          "trades": 2703,
+          "net": -9975.6,
+          "pf": 0.7792,
+          "wr": 42.62,
+          "payoff": 1.0471,
+          "maxdd": 10332.9,
+          "pct_initsl": 20.09,
+          "pct_trail": 79.91,
+          "trades_per_day": 90.1,
+          "long_pnl": -5415.0,
+          "short_pnl": -4560.6,
+          "long_n": 1320,
+          "short_n": 1383
+        }
+      },
+      "W1": {
+        "classic": {
+          "trades": 3510,
+          "net": 52719.0,
+          "pf": 6.8536,
+          "wr": 64.87,
+          "payoff": 3.7022,
+          "maxdd": 302.1,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 106.364,
+          "long_pnl": 24223.5,
+          "short_pnl": 28495.5,
+          "long_n": 1659,
+          "short_n": 1851
+        },
+        "live": {
+          "trades": 3300,
+          "net": -17073.0,
+          "pf": 0.6957,
+          "wr": 40.09,
+          "payoff": 1.0365,
+          "maxdd": 18778.5,
+          "pct_initsl": 18.09,
+          "pct_trail": 81.91,
+          "trades_per_day": 100.0,
+          "long_pnl": -6863.7,
+          "short_pnl": -10209.3,
+          "long_n": 1551,
+          "short_n": 1749
+        },
+        "delta_net": -69792.0,
+        "pct_net": -132.38,
+        "delta_pf": -6.1579,
+        "delta_dd": 18476.4,
+        "same_bar_fallback": {
+          "n_exit_trail": 3189,
+          "n_same_bar_fallback": 3189
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 3144,
+          "net": 126467.7,
+          "pf": 29.018,
+          "wr": 79.48,
+          "payoff": 7.4548,
+          "maxdd": 114.3,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 95.273,
+          "long_pnl": 53472.9,
+          "short_pnl": 72994.8,
+          "long_n": 1500,
+          "short_n": 1644
+        },
+        "live": {
+          "trades": 2997,
+          "net": -1509.0,
+          "pf": 0.979,
+          "wr": 45.45,
+          "payoff": 1.1709,
+          "maxdd": 5529.3,
+          "pct_initsl": 11.71,
+          "pct_trail": 88.29,
+          "trades_per_day": 90.818,
+          "long_pnl": 354.9,
+          "short_pnl": -1863.9,
+          "long_n": 1428,
+          "short_n": 1569
+        },
+        "delta_net": -127976.7,
+        "pct_net": -101.19,
+        "delta_pf": -28.039,
+        "delta_dd": 5415.0,
+        "same_bar_fallback": {
+          "n_exit_trail": 3243,
+          "n_same_bar_fallback": 3243
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 3012,
+          "net": 47856.0,
+          "pf": 6.9141,
+          "wr": 63.84,
+          "payoff": 3.8831,
+          "maxdd": 342.6,
+          "pct_initsl": 0.1,
+          "pct_trail": 99.9,
+          "trades_per_day": 94.125,
+          "long_pnl": 18058.2,
+          "short_pnl": 29797.8,
+          "long_n": 1554,
+          "short_n": 1458
+        },
+        "live": {
+          "trades": 2802,
+          "net": -15127.2,
+          "pf": 0.7067,
+          "wr": 39.29,
+          "payoff": 1.0899,
+          "maxdd": 15491.7,
+          "pct_initsl": 21.2,
+          "pct_trail": 78.8,
+          "trades_per_day": 87.562,
+          "long_pnl": -7421.4,
+          "short_pnl": -7705.8,
+          "long_n": 1452,
+          "short_n": 1350
+        },
+        "delta_net": -62983.2,
+        "pct_net": -131.61,
+        "delta_pf": -6.2074,
+        "delta_dd": 15149.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 2577,
+          "n_same_bar_fallback": 2577
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v06d-m15": {
+    "tf": "M15",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 948,
+          "net": 41264.4,
+          "pf": 32.2254,
+          "wr": 80.38,
+          "payoff": 7.7392,
+          "maxdd": 150.3,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.6,
+          "long_pnl": 20753.4,
+          "short_pnl": 20511.0,
+          "long_n": 447,
+          "short_n": 501
+        },
+        "live": {
+          "trades": 918,
+          "net": -452.1,
+          "pf": 0.9819,
+          "wr": 47.71,
+          "payoff": 1.0694,
+          "maxdd": 4768.8,
+          "pct_initsl": 10.78,
+          "pct_trail": 89.22,
+          "trades_per_day": 30.6,
+          "long_pnl": 355.8,
+          "short_pnl": -807.9,
+          "long_n": 429,
+          "short_n": 489
+        },
+        "delta_net": -41716.5,
+        "pct_net": -101.1,
+        "delta_pf": -31.2435,
+        "delta_dd": 4618.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 1017,
+          "n_same_bar_fallback": 1017
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 1149,
+          "net": 43021.8,
+          "pf": 26.0535,
+          "wr": 76.5,
+          "payoff": 7.736,
+          "maxdd": 130.8,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 34.818,
+          "long_pnl": 14123.4,
+          "short_pnl": 28898.4,
+          "long_n": 492,
+          "short_n": 657
+        },
+        "live": {
+          "trades": 1110,
+          "net": -9423.9,
+          "pf": 0.7255,
+          "wr": 40.54,
+          "payoff": 1.0641,
+          "maxdd": 11862.0,
+          "pct_initsl": 6.22,
+          "pct_trail": 93.78,
+          "trades_per_day": 33.636,
+          "long_pnl": -9230.1,
+          "short_pnl": -193.8,
+          "long_n": 474,
+          "short_n": 636
+        },
+        "delta_net": -52445.7,
+        "pct_net": -121.9,
+        "delta_pf": -25.328,
+        "delta_dd": 11731.2,
+        "same_bar_fallback": {
+          "n_exit_trail": 1242,
+          "n_same_bar_fallback": 1242
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 1026,
+          "net": 89971.8,
+          "pf": 122.1252,
+          "wr": 88.89,
+          "payoff": 15.2657,
+          "maxdd": 90.9,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.091,
+          "long_pnl": 36499.8,
+          "short_pnl": 53472.0,
+          "long_n": 498,
+          "short_n": 528
+        },
+        "live": {
+          "trades": 1011,
+          "net": 9551.4,
+          "pf": 1.2561,
+          "wr": 43.32,
+          "payoff": 1.6432,
+          "maxdd": 6064.8,
+          "pct_initsl": 3.26,
+          "pct_trail": 96.74,
+          "trades_per_day": 30.636,
+          "long_pnl": 1846.5,
+          "short_pnl": 7704.9,
+          "long_n": 489,
+          "short_n": 522
+        },
+        "delta_net": -80420.4,
+        "pct_net": -89.38,
+        "delta_pf": -120.8691,
+        "delta_dd": 5973.9,
+        "same_bar_fallback": {
+          "n_exit_trail": 1188,
+          "n_same_bar_fallback": 1188
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 1035,
+          "net": 44865.3,
+          "pf": 26.8069,
+          "wr": 79.42,
+          "payoff": 6.8485,
+          "maxdd": 295.5,
+          "pct_initsl": 0.29,
+          "pct_trail": 99.71,
+          "trades_per_day": 32.344,
+          "long_pnl": 16623.6,
+          "short_pnl": 28241.7,
+          "long_n": 555,
+          "short_n": 480
+        },
+        "live": {
+          "trades": 993,
+          "net": 2926.8,
+          "pf": 1.1159,
+          "wr": 43.81,
+          "payoff": 1.4315,
+          "maxdd": 3555.3,
+          "pct_initsl": 9.67,
+          "pct_trail": 90.33,
+          "trades_per_day": 31.031,
+          "long_pnl": 1086.0,
+          "short_pnl": 1840.8,
+          "long_n": 525,
+          "short_n": 468
+        },
+        "delta_net": -41938.5,
+        "pct_net": -93.48,
+        "delta_pf": -25.691,
+        "delta_dd": 3259.8,
+        "same_bar_fallback": {
+          "n_exit_trail": 1050,
+          "n_same_bar_fallback": 1050
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v13-m5": {
+    "tf": "M5",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 2964,
+          "net": 46264.8,
+          "pf": 6.9168,
+          "wr": 64.57,
+          "payoff": 3.762,
+          "maxdd": 186.0,
+          "pct_initsl": 0.1,
+          "pct_trail": 99.9,
+          "trades_per_day": 98.8,
+          "long_pnl": 22626.9,
+          "short_pnl": 23637.9,
+          "long_n": 1461,
+          "short_n": 1503
+        },
+        "live": {
+          "trades": 2766,
+          "net": -10389.9,
+          "pf": 0.7742,
+          "wr": 42.62,
+          "payoff": 1.0382,
+          "maxdd": 10764.6,
+          "pct_initsl": 21.15,
+          "pct_trail": 78.85,
+          "trades_per_day": 92.2,
+          "long_pnl": -5469.6,
+          "short_pnl": -4920.3,
+          "long_n": 1371,
+          "short_n": 1395
+        },
+        "delta_net": -56654.7,
+        "pct_net": -122.46,
+        "delta_pf": -6.1426,
+        "delta_dd": 10578.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 2748,
+          "n_same_bar_fallback": 2748
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 3669,
+          "net": 53402.7,
+          "pf": 6.5531,
+          "wr": 63.94,
+          "payoff": 3.6788,
+          "maxdd": 316.5,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 111.182,
+          "long_pnl": 24137.1,
+          "short_pnl": 29265.6,
+          "long_n": 1716,
+          "short_n": 1953
+        },
+        "live": {
+          "trades": 3420,
+          "net": -18352.8,
+          "pf": 0.6865,
+          "wr": 39.91,
+          "payoff": 1.0304,
+          "maxdd": 19776.6,
+          "pct_initsl": 18.68,
+          "pct_trail": 81.32,
+          "trades_per_day": 103.636,
+          "long_pnl": -7163.7,
+          "short_pnl": -11189.1,
+          "long_n": 1593,
+          "short_n": 1827
+        },
+        "delta_net": -71755.5,
+        "pct_net": -134.37,
+        "delta_pf": -5.8666,
+        "delta_dd": 19460.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 3261,
+          "n_same_bar_fallback": 3261
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 3249,
+          "net": 129489.0,
+          "pf": 26.3349,
+          "wr": 77.19,
+          "payoff": 7.7493,
+          "maxdd": 129.3,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 98.455,
+          "long_pnl": 55040.7,
+          "short_pnl": 74448.3,
+          "long_n": 1560,
+          "short_n": 1689
+        },
+        "live": {
+          "trades": 3075,
+          "net": -189.9,
+          "pf": 0.9974,
+          "wr": 45.66,
+          "payoff": 1.1828,
+          "maxdd": 5049.0,
+          "pct_initsl": 12.0,
+          "pct_trail": 88.0,
+          "trades_per_day": 93.182,
+          "long_pnl": 529.8,
+          "short_pnl": -719.7,
+          "long_n": 1467,
+          "short_n": 1608
+        },
+        "delta_net": -129678.9,
+        "pct_net": -100.15,
+        "delta_pf": -25.3375,
+        "delta_dd": 4919.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 3315,
+          "n_same_bar_fallback": 3315
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 3177,
+          "net": 49939.8,
+          "pf": 6.6441,
+          "wr": 62.7,
+          "payoff": 3.9024,
+          "maxdd": 349.8,
+          "pct_initsl": 0.09,
+          "pct_trail": 99.91,
+          "trades_per_day": 99.281,
+          "long_pnl": 18765.3,
+          "short_pnl": 31174.5,
+          "long_n": 1650,
+          "short_n": 1527
+        },
+        "live": {
+          "trades": 2910,
+          "net": -14515.2,
+          "pf": 0.7261,
+          "wr": 39.79,
+          "payoff": 1.0949,
+          "maxdd": 14874.3,
+          "pct_initsl": 21.75,
+          "pct_trail": 78.25,
+          "trades_per_day": 90.938,
+          "long_pnl": -6739.5,
+          "short_pnl": -7775.7,
+          "long_n": 1518,
+          "short_n": 1392
+        },
+        "delta_net": -64455.0,
+        "pct_net": -129.07,
+        "delta_pf": -5.918,
+        "delta_dd": 14524.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 2664,
+          "n_same_bar_fallback": 2664
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v13-m15": {
+    "tf": "M15",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 1002,
+          "net": 43027.8,
+          "pf": 30.3785,
+          "wr": 79.34,
+          "payoff": 7.7952,
+          "maxdd": 186.6,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 33.4,
+          "long_pnl": 20893.5,
+          "short_pnl": 22134.3,
+          "long_n": 456,
+          "short_n": 546
+        },
+        "live": {
+          "trades": 954,
+          "net": -1124.4,
+          "pf": 0.9579,
+          "wr": 46.86,
+          "payoff": 1.08,
+          "maxdd": 5201.7,
+          "pct_initsl": 11.01,
+          "pct_trail": 88.99,
+          "trades_per_day": 31.8,
+          "long_pnl": 272.7,
+          "short_pnl": -1397.1,
+          "long_n": 432,
+          "short_n": 522
+        },
+        "delta_net": -44152.2,
+        "pct_net": -102.61,
+        "delta_pf": -29.4206,
+        "delta_dd": 5015.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 1044,
+          "n_same_bar_fallback": 1044
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 1218,
+          "net": 45192.6,
+          "pf": 24.5121,
+          "wr": 75.37,
+          "payoff": 7.8503,
+          "maxdd": 130.8,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 36.909,
+          "long_pnl": 15008.7,
+          "short_pnl": 30183.9,
+          "long_n": 513,
+          "short_n": 705
+        },
+        "live": {
+          "trades": 1167,
+          "net": -8094.0,
+          "pf": 0.7679,
+          "wr": 41.13,
+          "payoff": 1.0991,
+          "maxdd": 10610.1,
+          "pct_initsl": 7.2,
+          "pct_trail": 92.8,
+          "trades_per_day": 35.364,
+          "long_pnl": -8514.6,
+          "short_pnl": 420.6,
+          "long_n": 489,
+          "short_n": 678
+        },
+        "delta_net": -53286.6,
+        "pct_net": -117.91,
+        "delta_pf": -23.7442,
+        "delta_dd": 10479.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 1290,
+          "n_same_bar_fallback": 1290
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 1071,
+          "net": 91709.4,
+          "pf": 114.3474,
+          "wr": 88.24,
+          "payoff": 15.2463,
+          "maxdd": 102.9,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 32.455,
+          "long_pnl": 36698.7,
+          "short_pnl": 55010.7,
+          "long_n": 504,
+          "short_n": 567
+        },
+        "live": {
+          "trades": 1053,
+          "net": 9281.7,
+          "pf": 1.2417,
+          "wr": 43.87,
+          "payoff": 1.5884,
+          "maxdd": 6383.1,
+          "pct_initsl": 3.7,
+          "pct_trail": 96.3,
+          "trades_per_day": 31.909,
+          "long_pnl": 1527.9,
+          "short_pnl": 7753.8,
+          "long_n": 495,
+          "short_n": 558
+        },
+        "delta_net": -82427.7,
+        "pct_net": -89.88,
+        "delta_pf": -113.1057,
+        "delta_dd": 6280.2,
+        "same_bar_fallback": {
+          "n_exit_trail": 1230,
+          "n_same_bar_fallback": 1230
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 1104,
+          "net": 46674.6,
+          "pf": 21.8304,
+          "wr": 78.26,
+          "payoff": 5.9882,
+          "maxdd": 306.6,
+          "pct_initsl": 0.54,
+          "pct_trail": 99.46,
+          "trades_per_day": 34.5,
+          "long_pnl": 17080.2,
+          "short_pnl": 29594.4,
+          "long_n": 597,
+          "short_n": 507
+        },
+        "live": {
+          "trades": 1050,
+          "net": 1989.3,
+          "pf": 1.0733,
+          "wr": 43.71,
+          "payoff": 1.3749,
+          "maxdd": 3513.9,
+          "pct_initsl": 10.57,
+          "pct_trail": 89.43,
+          "trades_per_day": 32.812,
+          "long_pnl": 488.1,
+          "short_pnl": 1501.2,
+          "long_n": 558,
+          "short_n": 492
+        },
+        "delta_net": -44685.3,
+        "pct_net": -95.74,
+        "delta_pf": -20.7571,
+        "delta_dd": 3207.3,
+        "same_bar_fallback": {
+          "n_exit_trail": 1095,
+          "n_same_bar_fallback": 1095
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v15-m2": {
+    "tf": "M2",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 6048,
+          "net": 31181.4,
+          "pf": 2.2692,
+          "wr": 48.02,
+          "payoff": 2.4357,
+          "maxdd": 1116.0,
+          "pct_initsl": 0.79,
+          "pct_trail": 99.21,
+          "trades_per_day": 201.6,
+          "long_pnl": 16405.8,
+          "short_pnl": 14775.6,
+          "long_n": 3093,
+          "short_n": 2955
+        },
+        "live": {
+          "trades": 5571,
+          "net": -26674.5,
+          "pf": 0.6252,
+          "wr": 36.19,
+          "payoff": 1.0996,
+          "maxdd": 27506.7,
+          "pct_initsl": 30.53,
+          "pct_trail": 69.47,
+          "trades_per_day": 185.7,
+          "long_pnl": -15957.6,
+          "short_pnl": -10716.9,
+          "long_n": 2856,
+          "short_n": 2715
+        },
+        "delta_net": -57855.9,
+        "pct_net": -185.55,
+        "delta_pf": -1.644,
+        "delta_dd": 26390.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 4767,
+          "n_same_bar_fallback": 4767
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 6885,
+          "net": 20690.1,
+          "pf": 1.6881,
+          "wr": 44.18,
+          "payoff": 2.1209,
+          "maxdd": 1282.5,
+          "pct_initsl": 1.61,
+          "pct_trail": 98.39,
+          "trades_per_day": 208.636,
+          "long_pnl": 8652.3,
+          "short_pnl": 12037.8,
+          "long_n": 3369,
+          "short_n": 3516
+        },
+        "live": {
+          "trades": 6330,
+          "net": -33887.7,
+          "pf": 0.55,
+          "wr": 33.03,
+          "payoff": 1.1125,
+          "maxdd": 33953.1,
+          "pct_initsl": 30.71,
+          "pct_trail": 69.29,
+          "trades_per_day": 191.818,
+          "long_pnl": -14929.2,
+          "short_pnl": -18958.5,
+          "long_n": 3081,
+          "short_n": 3249
+        },
+        "delta_net": -54577.8,
+        "pct_net": -263.79,
+        "delta_pf": -1.1381,
+        "delta_dd": 32670.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 5232,
+          "n_same_bar_fallback": 5232
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 6762,
+          "net": 120754.8,
+          "pf": 6.6059,
+          "wr": 63.89,
+          "payoff": 3.725,
+          "maxdd": 1014.6,
+          "pct_initsl": 0.75,
+          "pct_trail": 99.25,
+          "trades_per_day": 204.909,
+          "long_pnl": 50194.2,
+          "short_pnl": 70560.6,
+          "long_n": 3288,
+          "short_n": 3474
+        },
+        "live": {
+          "trades": 6327,
+          "net": -21234.9,
+          "pf": 0.8203,
+          "wr": 42.25,
+          "payoff": 1.1205,
+          "maxdd": 22002.3,
+          "pct_initsl": 21.57,
+          "pct_trail": 78.43,
+          "trades_per_day": 191.727,
+          "long_pnl": -4245.9,
+          "short_pnl": -16989.0,
+          "long_n": 3084,
+          "short_n": 3243
+        },
+        "delta_net": -141989.7,
+        "pct_net": -117.59,
+        "delta_pf": -5.7856,
+        "delta_dd": 20987.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 5895,
+          "n_same_bar_fallback": 5895
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "skipped": "no_data"
+      }
+    }
+  },
+  "v06c-m5": {
+    "tf": "M5",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 2853,
+          "net": 45815.7,
+          "pf": 7.3448,
+          "wr": 65.83,
+          "payoff": 3.7663,
+          "maxdd": 209.7,
+          "pct_initsl": 0.11,
+          "pct_trail": 99.89,
+          "trades_per_day": 95.1,
+          "long_pnl": 22003.8,
+          "short_pnl": 23811.9,
+          "long_n": 1389,
+          "short_n": 1464
+        },
+        "live": {
+          "trades": 2703,
+          "net": -9980.4,
+          "pf": 0.7791,
+          "wr": 42.62,
+          "payoff": 1.047,
+          "maxdd": 10337.4,
+          "pct_initsl": 20.31,
+          "pct_trail": 79.69,
+          "trades_per_day": 90.1,
+          "long_pnl": -5417.7,
+          "short_pnl": -4562.7,
+          "long_n": 1320,
+          "short_n": 1383
+        },
+        "delta_net": -55796.1,
+        "pct_net": -121.78,
+        "delta_pf": -6.5657,
+        "delta_dd": 10127.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 2700,
+          "n_same_bar_fallback": 2700
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 3510,
+          "net": 52203.3,
+          "pf": 6.7043,
+          "wr": 64.36,
+          "payoff": 3.7039,
+          "maxdd": 307.5,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 106.364,
+          "long_pnl": 23964.3,
+          "short_pnl": 28239.0,
+          "long_n": 1659,
+          "short_n": 1851
+        },
+        "live": {
+          "trades": 3297,
+          "net": -17031.3,
+          "pf": 0.6962,
+          "wr": 40.13,
+          "payoff": 1.0356,
+          "maxdd": 18734.1,
+          "pct_initsl": 18.2,
+          "pct_trail": 81.8,
+          "trades_per_day": 99.909,
+          "long_pnl": -6863.7,
+          "short_pnl": -10167.6,
+          "long_n": 1551,
+          "short_n": 1746
+        },
+        "delta_net": -69234.6,
+        "pct_net": -132.62,
+        "delta_pf": -6.0081,
+        "delta_dd": 18426.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 3180,
+          "n_same_bar_fallback": 3180
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 3144,
+          "net": 125933.1,
+          "pf": 28.1069,
+          "wr": 78.44,
+          "payoff": 7.7277,
+          "maxdd": 117.0,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 95.273,
+          "long_pnl": 53197.5,
+          "short_pnl": 72735.6,
+          "long_n": 1500,
+          "short_n": 1644
+        },
+        "live": {
+          "trades": 2997,
+          "net": -1512.0,
+          "pf": 0.9789,
+          "wr": 45.45,
+          "payoff": 1.1709,
+          "maxdd": 5529.6,
+          "pct_initsl": 11.81,
+          "pct_trail": 88.19,
+          "trades_per_day": 90.818,
+          "long_pnl": 352.2,
+          "short_pnl": -1864.2,
+          "long_n": 1428,
+          "short_n": 1569
+        },
+        "delta_net": -127445.1,
+        "pct_net": -101.2,
+        "delta_pf": -27.128,
+        "delta_dd": 5412.6,
+        "same_bar_fallback": {
+          "n_exit_trail": 3240,
+          "n_same_bar_fallback": 3240
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 3012,
+          "net": 47407.8,
+          "pf": 6.7416,
+          "wr": 63.25,
+          "payoff": 3.8857,
+          "maxdd": 345.3,
+          "pct_initsl": 0.1,
+          "pct_trail": 99.9,
+          "trades_per_day": 94.125,
+          "long_pnl": 17804.4,
+          "short_pnl": 29603.4,
+          "long_n": 1554,
+          "short_n": 1458
+        },
+        "live": {
+          "trades": 2799,
+          "net": -15118.8,
+          "pf": 0.7067,
+          "wr": 39.34,
+          "payoff": 1.088,
+          "maxdd": 15482.4,
+          "pct_initsl": 21.44,
+          "pct_trail": 78.56,
+          "trades_per_day": 87.469,
+          "long_pnl": -7409.4,
+          "short_pnl": -7709.4,
+          "long_n": 1449,
+          "short_n": 1350
+        },
+        "delta_net": -62526.6,
+        "pct_net": -131.89,
+        "delta_pf": -6.0349,
+        "delta_dd": 15137.1,
+        "same_bar_fallback": {
+          "n_exit_trail": 2559,
+          "n_same_bar_fallback": 2559
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v06c-m15": {
+    "tf": "M15",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 948,
+          "net": 41126.7,
+          "pf": 31.655,
+          "wr": 79.75,
+          "payoff": 7.9137,
+          "maxdd": 150.3,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.6,
+          "long_pnl": 20694.0,
+          "short_pnl": 20432.7,
+          "long_n": 447,
+          "short_n": 501
+        },
+        "live": {
+          "trades": 918,
+          "net": -452.1,
+          "pf": 0.9819,
+          "wr": 47.71,
+          "payoff": 1.0694,
+          "maxdd": 4768.8,
+          "pct_initsl": 10.78,
+          "pct_trail": 89.22,
+          "trades_per_day": 30.6,
+          "long_pnl": 355.8,
+          "short_pnl": -807.9,
+          "long_n": 429,
+          "short_n": 489
+        },
+        "delta_net": -41578.8,
+        "pct_net": -101.1,
+        "delta_pf": -30.6731,
+        "delta_dd": 4618.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 1017,
+          "n_same_bar_fallback": 1017
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 1149,
+          "net": 42792.3,
+          "pf": 25.3249,
+          "wr": 75.98,
+          "payoff": 7.8324,
+          "maxdd": 130.8,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 34.818,
+          "long_pnl": 14028.9,
+          "short_pnl": 28763.4,
+          "long_n": 492,
+          "short_n": 657
+        },
+        "live": {
+          "trades": 1110,
+          "net": -9423.9,
+          "pf": 0.7255,
+          "wr": 40.54,
+          "payoff": 1.0641,
+          "maxdd": 11862.0,
+          "pct_initsl": 6.22,
+          "pct_trail": 93.78,
+          "trades_per_day": 33.636,
+          "long_pnl": -9230.1,
+          "short_pnl": -193.8,
+          "long_n": 474,
+          "short_n": 636
+        },
+        "delta_net": -52216.2,
+        "pct_net": -122.02,
+        "delta_pf": -24.5994,
+        "delta_dd": 11731.2,
+        "same_bar_fallback": {
+          "n_exit_trail": 1242,
+          "n_same_bar_fallback": 1242
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 1026,
+          "net": 89826.0,
+          "pf": 119.7232,
+          "wr": 88.6,
+          "payoff": 15.4099,
+          "maxdd": 93.6,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.091,
+          "long_pnl": 36437.7,
+          "short_pnl": 53388.3,
+          "long_n": 498,
+          "short_n": 528
+        },
+        "live": {
+          "trades": 1011,
+          "net": 9551.4,
+          "pf": 1.2561,
+          "wr": 43.32,
+          "payoff": 1.6432,
+          "maxdd": 6064.8,
+          "pct_initsl": 3.26,
+          "pct_trail": 96.74,
+          "trades_per_day": 30.636,
+          "long_pnl": 1846.5,
+          "short_pnl": 7704.9,
+          "long_n": 489,
+          "short_n": 522
+        },
+        "delta_net": -80274.6,
+        "pct_net": -89.37,
+        "delta_pf": -118.4671,
+        "delta_dd": 5971.2,
+        "same_bar_fallback": {
+          "n_exit_trail": 1188,
+          "n_same_bar_fallback": 1188
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 1035,
+          "net": 44703.3,
+          "pf": 26.1665,
+          "wr": 79.42,
+          "payoff": 6.7804,
+          "maxdd": 295.5,
+          "pct_initsl": 0.29,
+          "pct_trail": 99.71,
+          "trades_per_day": 32.344,
+          "long_pnl": 16545.3,
+          "short_pnl": 28158.0,
+          "long_n": 555,
+          "short_n": 480
+        },
+        "live": {
+          "trades": 993,
+          "net": 2925.6,
+          "pf": 1.1159,
+          "wr": 43.81,
+          "payoff": 1.4314,
+          "maxdd": 3556.5,
+          "pct_initsl": 9.97,
+          "pct_trail": 90.03,
+          "trades_per_day": 31.031,
+          "long_pnl": 1084.8,
+          "short_pnl": 1840.8,
+          "long_n": 525,
+          "short_n": 468
+        },
+        "delta_net": -41777.7,
+        "pct_net": -93.46,
+        "delta_pf": -25.0506,
+        "delta_dd": 3261.0,
+        "same_bar_fallback": {
+          "n_exit_trail": 1047,
+          "n_same_bar_fallback": 1047
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "v06b-m15": {
+    "tf": "M15",
+    "windows": {
+      "IW": {
+        "classic": {
+          "trades": 948,
+          "net": 40897.2,
+          "pf": 30.5074,
+          "wr": 79.43,
+          "payoff": 7.7788,
+          "maxdd": 150.3,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.6,
+          "long_pnl": 20595.0,
+          "short_pnl": 20302.2,
+          "long_n": 447,
+          "short_n": 501
+        },
+        "live": {
+          "trades": 918,
+          "net": -452.1,
+          "pf": 0.9819,
+          "wr": 47.71,
+          "payoff": 1.0694,
+          "maxdd": 4768.8,
+          "pct_initsl": 10.78,
+          "pct_trail": 89.22,
+          "trades_per_day": 30.6,
+          "long_pnl": 355.8,
+          "short_pnl": -807.9,
+          "long_n": 429,
+          "short_n": 489
+        },
+        "delta_net": -41349.3,
+        "pct_net": -101.11,
+        "delta_pf": -29.5255,
+        "delta_dd": 4618.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 1011,
+          "n_same_bar_fallback": 1011
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W1": {
+        "classic": {
+          "trades": 1149,
+          "net": 42409.8,
+          "pf": 24.005,
+          "wr": 75.2,
+          "payoff": 7.7516,
+          "maxdd": 130.8,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 34.818,
+          "long_pnl": 13871.4,
+          "short_pnl": 28538.4,
+          "long_n": 492,
+          "short_n": 657
+        },
+        "live": {
+          "trades": 1107,
+          "net": -9407.4,
+          "pf": 0.7259,
+          "wr": 40.65,
+          "payoff": 1.0598,
+          "maxdd": 11845.5,
+          "pct_initsl": 6.5,
+          "pct_trail": 93.5,
+          "trades_per_day": 33.545,
+          "long_pnl": -9213.6,
+          "short_pnl": -193.8,
+          "long_n": 471,
+          "short_n": 636
+        },
+        "delta_net": -51817.2,
+        "pct_net": -122.18,
+        "delta_pf": -23.2791,
+        "delta_dd": 11714.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 1236,
+          "n_same_bar_fallback": 1236
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W2": {
+        "classic": {
+          "trades": 1026,
+          "net": 89583.0,
+          "pf": 114.9298,
+          "wr": 88.3,
+          "payoff": 15.2225,
+          "maxdd": 98.1,
+          "pct_initsl": 0.0,
+          "pct_trail": 100.0,
+          "trades_per_day": 31.091,
+          "long_pnl": 36334.2,
+          "short_pnl": 53248.8,
+          "long_n": 498,
+          "short_n": 528
+        },
+        "live": {
+          "trades": 1011,
+          "net": 9548.7,
+          "pf": 1.256,
+          "wr": 43.32,
+          "payoff": 1.6431,
+          "maxdd": 6064.8,
+          "pct_initsl": 3.56,
+          "pct_trail": 96.44,
+          "trades_per_day": 30.636,
+          "long_pnl": 1843.8,
+          "short_pnl": 7704.9,
+          "long_n": 489,
+          "short_n": 522
+        },
+        "delta_net": -80034.3,
+        "pct_net": -89.34,
+        "delta_pf": -113.6738,
+        "delta_dd": 5966.7,
+        "same_bar_fallback": {
+          "n_exit_trail": 1185,
+          "n_same_bar_fallback": 1185
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      },
+      "W3": {
+        "classic": {
+          "trades": 1035,
+          "net": 44433.3,
+          "pf": 25.0909,
+          "wr": 78.84,
+          "payoff": 6.734,
+          "maxdd": 295.5,
+          "pct_initsl": 0.29,
+          "pct_trail": 99.71,
+          "trades_per_day": 32.344,
+          "long_pnl": 16414.8,
+          "short_pnl": 28018.5,
+          "long_n": 555,
+          "short_n": 480
+        },
+        "live": {
+          "trades": 990,
+          "net": 2919.9,
+          "pf": 1.1157,
+          "wr": 43.94,
+          "payoff": 1.4235,
+          "maxdd": 3561.0,
+          "pct_initsl": 10.61,
+          "pct_trail": 89.39,
+          "trades_per_day": 30.938,
+          "long_pnl": 1081.8,
+          "short_pnl": 1838.1,
+          "long_n": 522,
+          "short_n": 468
+        },
+        "delta_net": -41513.4,
+        "pct_net": -93.43,
+        "delta_pf": -23.9752,
+        "delta_dd": 3265.5,
+        "same_bar_fallback": {
+          "n_exit_trail": 1038,
+          "n_same_bar_fallback": 1038
+        },
+        "pct_fallback_of_trail_exits": 100.0
+      }
+    }
+  },
+  "_verdicts": {
+    "M5": {
+      "nets_live_iw": {
+        "0.01": -9975.6,
+        "0.10": -9980.4,
+        "0.25": -452.1
+      },
+      "best_factor": "0.25",
+      "verdict": "0.01 DEFLATES to 0.25"
+    },
+    "M15": {
+      "nets_live_iw": {
+        "0.01": -452.1,
+        "0.10": -452.1,
+        "0.25": -452.1
+      },
+      "best_factor": "0.01",
+      "verdict": "family flat"
+    }
+  }
+}
