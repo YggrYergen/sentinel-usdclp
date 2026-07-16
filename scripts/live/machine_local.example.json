@@ -1,0 +1,19 @@
+{
+  "_comment": "Copy this file to machine_local.json (gitignored) on each machine and keep ONLY that machine's block as the actual content -- machine_local.json holds a single object, not both. Shown below are the two machines currently sharing branch 'alvaro', for reference.",
+
+  "_machine_1_example": {
+    "terminal_path": "D:\\FOREX\\MT5_Portable\\terminal64.exe",
+    "portable": true,
+    "demo_login": 2883015767,
+    "terminal_marker": "mt5_portable"
+  },
+
+  "_machine_2_example__TOMACHINE": {
+    "terminal_path": "C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe",
+    "portable": false,
+    "demo_login": 2883016567,
+    "terminal_marker": "capitaria mt5 terminal"
+  },
+
+  "_note": "demo_login MUST be a member of sentinel_engine.live.guard_cuenta.SANCTIONED_DEMO_LOGINS -- machine_local.json can only SELECT a sanctioned login, never add a new one. If machine_local.json is absent entirely, Machine 1's values above are used as the default (see sentinel_engine/live/machine_profile.py)."
+}

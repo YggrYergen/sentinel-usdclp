@@ -13,9 +13,11 @@ CHECKS (all read-only, no state changes, no orders):
   1. portable-terminal-running -- same process-inspection technique as
      `run_live_20._portable_running` (ATTACH-ONLY: we only ever CHECK, never
      launch `terminal64.exe`).
-  2. mt5-attach -- read-only `mt5.initialize(path=..., portable=True)` against
-     the portable exe, immediately followed by `mt5.shutdown()`. We do not
-     hold the connection open.
+  2. mt5-attach -- read-only `mt5.initialize(path=...)` (with `portable=True`
+     only if the machine profile says so -- see
+     `sentinel_engine.live.machine_profile`) against the configured exe,
+     immediately followed by `mt5.shutdown()`. We do not hold the connection
+     open.
   3. account-guard -- delegates to `sentinel_engine.live.guard_cuenta.assert_demo`
      (imported, not duplicated) with `hard_exit=False` so a failure is a normal
      FAIL line here instead of killing the whole preflight run.
@@ -60,13 +62,18 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from sentinel_engine.live import guard_cuenta  # noqa: E402
+from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 
 STOP_FILE = REPO_ROOT / "scripts" / "live" / "STOP"
 AUDIT_LOG = REPO_ROOT / "scripts" / "live" / "run_live_20.audit.log"
 
-# CUENTAS.md: the DEMO portable install. Mirrors run_live_20.PORTABLE_EXE.
-PORTABLE_EXE = Path(r"D:\FOREX\MT5_Portable\terminal64.exe")
-PORTABLE_MARKER = "mt5_portable"
+# CUENTAS.md: the DEMO install. Mirrors run_live_20.PORTABLE_EXE -- sourced
+# from the machine profile so this file serves both machines (see
+# sentinel_engine/live/machine_profile.py).
+_PROFILE = load_profile()
+PORTABLE_EXE = _PROFILE.terminal_path
+PORTABLE_MARKER = _PROFILE.terminal_marker
+PORTABLE_FLAG = _PROFILE.portable
 
 SYMBOL = "XAUUSD"
 MIN_BARS = 100
@@ -176,10 +183,10 @@ def process_running(cmdline_marker: str) -> bool:
 def check_portable_running(report: PreflightReport, *,
                            checker: Callable[[], bool] = portable_running) -> bool:
     ok = checker()
-    detail = ("portable terminal64.exe (D:\\FOREX\\MT5_Portable) is running"
+    detail = (f"terminal64.exe ({PORTABLE_EXE}) is running"
                if ok else
-               "portable terminal NOT detected -- open it by hand via "
-               "D:\\FOREX\\MT5_DEMO_TOMAS.bat (this script never launches it)")
+               f"terminal ({PORTABLE_EXE}) NOT detected -- open it by hand "
+               "(this script never launches it)")
     report.add("portable-terminal-running", ok, detail)
     return ok
 
@@ -187,7 +194,8 @@ def check_portable_running(report: PreflightReport, *,
 def check_mt5_attach(report: PreflightReport, mt5: Any) -> bool:
     """Read-only attach + immediate shutdown. Returns True on success."""
     try:
-        ok = bool(mt5.initialize(path=str(PORTABLE_EXE), portable=True))
+        ok = bool(mt5.initialize(path=str(PORTABLE_EXE), portable=True) if PORTABLE_FLAG
+                  else mt5.initialize(path=str(PORTABLE_EXE)))
     except Exception as exc:  # noqa: BLE001
         report.add("mt5-attach", False, f"initialize() raised {exc!r}")
         return False
@@ -199,7 +207,8 @@ def check_mt5_attach(report: PreflightReport, mt5: Any) -> bool:
             pass
         report.add("mt5-attach", False, f"initialize() returned False (last_error={err})")
         return False
-    report.add("mt5-attach", True, f"initialize(path={PORTABLE_EXE}, portable=True) OK")
+    report.add("mt5-attach", True,
+               f"initialize(path={PORTABLE_EXE}, portable={PORTABLE_FLAG}) OK")
     return True
 
 

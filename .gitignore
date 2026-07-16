@@ -82,3 +82,7 @@ scripts/live/*_local.log
 scripts/live/*_local.log.err
 scripts/live/dryrun_local.log
 scripts/live/dryrun_local.log.err
+
+# Per-machine profile (terminal path/portable/login selection) -- see
+# scripts/live/machine_local.example.json for the tracked template.
+scripts/live/machine_local.json

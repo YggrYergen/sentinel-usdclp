@@ -15,9 +15,11 @@ ATTACH-ONLY / NEVER LAUNCH: mirrors `scripts/live/run_live_20.py`'s
 DEMO portable `terminal64.exe` process is already running.
 
 ACCOUNT GUARD: after connecting, `account_info().login` MUST equal
-`sentinel_engine.live.guard_cuenta.DEMO_LOGIN` (2883015767) -- this watcher
-must only ever record deals for the sanctioned DEMO account. A mismatch
-exits 2 without recording anything.
+`sentinel_engine.live.guard_cuenta.DEMO_LOGIN` (this machine's expected
+login, selected via `sentinel_engine.live.machine_profile` from the
+hard-coded `SANCTIONED_DEMO_LOGINS` set) -- this watcher must only ever
+record deals for the sanctioned DEMO account. A mismatch exits 2 without
+recording anything.
 
 SELF-HEAL: at the top of every loop iteration we call `_connection_healthy()`
 to detect a dead MT5 IPC link (e.g. `account_info()` returning None after a
@@ -48,6 +50,7 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from sentinel_engine.live import guard_cuenta  # noqa: E402
 from sentinel_engine.live.deals_watcher import DealsWatcher  # noqa: E402
+from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.research.registry2 import ResearchRegistry  # noqa: E402
 
 # Same documented meta key DealsWatcher itself persists last_sync under
@@ -57,11 +60,15 @@ from sentinel_engine.research.registry2 import ResearchRegistry  # noqa: E402
 _LAST_SYNC_META_KEY = "deals_watcher.last_sync"
 
 DEFAULT_DB = REPO_ROOT / "data" / "research.db"
-# LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) Capitaria MT5
-# install on this machine, not the teammate's D:\FOREX\MT5_Portable layout.
-# See sentinel_engine/live/guard_cuenta.py for the matching DEMO_LOGIN change.
-PORTABLE_EXE = Path(r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe")
-PORTABLE_MARKER = "capitaria mt5 terminal"
+# MULTI-MACHINE (2026-07-15): terminal path/marker/portable-flag come from
+# the machine profile (sentinel_engine.live.machine_profile), same as
+# run_live_20.py, so this file serves both Machine 1 (portable
+# D:\FOREX\MT5_Portable) and Machine "TOMACHINE" (standard Capitaria
+# install) without either machine's hardcode clobbering the other's.
+_PROFILE = load_profile()
+PORTABLE_EXE = _PROFILE.terminal_path
+PORTABLE_MARKER = _PROFILE.terminal_marker
+PORTABLE_FLAG = _PROFILE.portable
 
 logger = logging.getLogger("run_deals_watcher")
 
@@ -157,9 +164,14 @@ class RealMt5DealsClient:
 def _connect(mt5: Any) -> None:
     """Attach to the DEMO terminal ONLY. Caller has already
     confirmed the process is running (attach guard)."""
-    # LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) install
-    # here; portable=True would detach from the logged-in 2883016567 session.
-    if not mt5.initialize(path=str(PORTABLE_EXE)):
+    # MULTI-MACHINE (2026-07-15): pass portable=True only when this
+    # machine's profile says so (Machine 1's portable install needs it;
+    # Machine "TOMACHINE"'s standard install must not get it, else MT5
+    # would look for a nonexistent portable data dir and detach from the
+    # logged-in session).
+    ok = (mt5.initialize(path=str(PORTABLE_EXE), portable=True) if PORTABLE_FLAG
+          else mt5.initialize(path=str(PORTABLE_EXE)))
+    if not ok:
         raise SystemExit(f"[FATAL] initialize(path={PORTABLE_EXE}) failed: "
                          f"{mt5.last_error()}")
 
@@ -206,8 +218,10 @@ def _reconnect(mt5: Any, attach_checker: Callable[[], bool], *,
             return False
 
         try:
-            # LOCAL MACHINE ADAPTATION (2026-07-14): standard install, no portable=True.
-            ok = mt5.initialize(path=str(PORTABLE_EXE))
+            # MULTI-MACHINE (2026-07-15): see _connect() above -- portable=True
+            # only if this machine's profile says so.
+            ok = (mt5.initialize(path=str(PORTABLE_EXE), portable=True) if PORTABLE_FLAG
+                  else mt5.initialize(path=str(PORTABLE_EXE)))
         except Exception:  # noqa: BLE001
             ok = False
 

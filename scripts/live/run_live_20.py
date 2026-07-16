@@ -4,16 +4,19 @@ full before running.
 
 SAFETY MODEL (every rule -> where enforced)
 -------------------------------------------
-* SINGLE SOURCE OF TRUTH `D:/FOREX/CUENTAS.md`: DEMO 2883015767 (portable) is
-  the ONLY tradable account; REAL 2883011573 is read-only. Enforced by
-  `guard_cuenta.assert_demo`, called after connect and EVERY cycle, before any
-  order.
+* SINGLE SOURCE OF TRUTH `D:/FOREX/CUENTAS.md`: one sanctioned DEMO login per
+  machine (2883015767 portable on Machine 1, 2883016567 standard install on
+  Machine "TOMACHINE" -- both in `guard_cuenta.SANCTIONED_DEMO_LOGINS`,
+  selected per-machine by `sentinel_engine.live.machine_profile`) is the ONLY
+  tradable account; REAL 2883011573 is read-only on every machine. Enforced
+  by `guard_cuenta.assert_demo`, called after connect and EVERY cycle, before
+  any order.
 * ATTACH-ONLY / NEVER LAUNCH: we NEVER call `mt5.initialize()` unless a MT5
-  terminal for the DEMO PORTABLE install is ALREADY running. `_portable_running`
-  inspects process command lines for the portable `terminal64.exe /portable`
-  path (from CUENTAS.md); if not found we print "open the terminal" and exit --
-  `initialize()` is never reached. We attach with `initialize(path=...)` to that
-  exact portable exe, never a bare `initialize()`.
+  terminal for THIS machine's configured install (`machine_profile.load_profile()`)
+  is ALREADY running. `_portable_running` inspects process command lines for
+  the configured `terminal64.exe` path/marker; if not found we print "open
+  the terminal" and exit -- `initialize()` is never reached. We attach with
+  `initialize(path=...)` to that exact exe, never a bare `initialize()`.
 * DRY-RUN BY DEFAULT: without `--arm` every sendable action is LOGGED and NOT
   sent. `--arm` prints a red banner and requires typing the account number to
   confirm.
@@ -50,6 +53,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
 from sentinel_engine.live import guard_cuenta  # noqa: E402
+from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import CONFIGS_20, LIVE_ROSTER  # noqa: E402
@@ -64,12 +68,16 @@ MIN_WINDOW = 3_000
 DEFAULT_VOLUME = 0.01
 
 # CUENTAS.md: the DEMO install. We attach to THIS exe only.
-# LOCAL MACHINE ADAPTATION (2026-07-14): this machine has a standard (non
-# -portable) Capitaria MT5 install, not the teammate's D:\FOREX\MT5_Portable
-# layout. Path and marker updated to match; see guard_cuenta.py for the
-# corresponding DEMO_LOGIN adaptation.
-PORTABLE_EXE = Path(r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe")
-PORTABLE_MARKER = "capitaria mt5 terminal"  # lower-cased path fragment we look for
+# MULTI-MACHINE (2026-07-15): terminal path/marker/portable-flag now come
+# from the machine profile (sentinel_engine.live.machine_profile) so this
+# same tracked file serves both Machine 1 (portable D:\FOREX\MT5_Portable)
+# and Machine "TOMACHINE" (standard Capitaria install) without either
+# machine's hardcode clobbering the other's on merge. See machine_profile.py
+# and guard_cuenta.py (SANCTIONED_DEMO_LOGINS) for the rest of the picture.
+_PROFILE = load_profile()
+PORTABLE_EXE = _PROFILE.terminal_path
+PORTABLE_MARKER = _PROFILE.terminal_marker  # lower-cased path fragment we look for
+PORTABLE_FLAG = _PROFILE.portable
 
 logger = logging.getLogger("run_live_20")
 
@@ -480,11 +488,15 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
 def _connect(mt5: Any) -> None:
     """Attach to the DEMO terminal ONLY. Never launches: the caller
     has already confirmed the terminal process is running."""
-    # LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) install
-    # on this machine -- portable=True would point MT5 at a portable data
-    # directory that doesn't exist here and detach from the logged-in
-    # 2883016567 session, so we drop it.
-    if not mt5.initialize(path=str(PORTABLE_EXE)):
+    # MULTI-MACHINE (2026-07-15): whether to pass portable=True depends on
+    # the machine profile -- Machine 1's portable install needs it; Machine
+    # "TOMACHINE"'s standard install must NOT pass it (portable=True there
+    # would point MT5 at a nonexistent portable data dir and detach from the
+    # logged-in session). We only pass the kwarg at all when the profile
+    # says portable=True, matching the original non-portable call exactly.
+    ok = (mt5.initialize(path=str(PORTABLE_EXE), portable=True) if PORTABLE_FLAG
+          else mt5.initialize(path=str(PORTABLE_EXE)))
+    if not ok:
         raise SystemExit(f"[FATAL] initialize(path={PORTABLE_EXE}) failed: "
                          f"{mt5.last_error()}")
 

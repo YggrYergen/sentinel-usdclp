@@ -20,7 +20,8 @@ WHAT THIS MODULE DOES
      portable terminal by hand") and log the failure to `watchdog.log`.
   2. Launch the executor as a SUBPROCESS, armed with the roster
      (`python -m scripts.live.run_live_20 --arm --confirm-account
-     2883015767 --configs live`), via the injectable `launcher` callable
+     <this machine's guard_cuenta.DEMO_LOGIN, e.g. 2883015767> --configs
+     live`), via the injectable `launcher` callable
      (production default: `subprocess.Popen`). We NEVER call
      `MetaTrader5.initialize()` ourselves -- that happens inside the child
      process, which itself re-checks ATTACH-ONLY before doing so.
