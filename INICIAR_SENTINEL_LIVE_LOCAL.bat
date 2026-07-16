@@ -5,7 +5,8 @@ rem  Starts scripts\live\watchdog_local.ps1 hidden in the background.
 rem  The watchdog then ensures (and keeps alive):
 rem    - MT5 terminal (Capitaria, DEMO 2883016567)
 rem    - deals watcher (position logger)
-rem    - armed executor (--arm --confirm-account 2883016567)
+rem    - canonical supervisor (scripts.live.supervisor_live), which itself
+rem      preflight-gates and arms the executor (--arm 2883016567) with backoff
 rem    - dashboard (FastAPI revamp UI, http://127.0.0.1:8501)
 rem  Safe to run again any time: the watchdog is a singleton (refuses
 rem  to start twice) and only relaunches components that are missing,
