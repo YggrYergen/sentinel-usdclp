@@ -2,7 +2,10 @@
 executor (SENTINEL, 2026-07-13). ORDER-CAPABLE SAFETY MODULE.
 
 SINGLE SOURCE OF TRUTH: `D:/FOREX/CUENTAS.md`.
-  DEMO 2883015767 (portable `D:\\FOREX\\MT5_Portable\\terminal64.exe /portable`)
+  DEMO 2883016567 (this machine's sanctioned 30M CLP demo, server Capitaria-All,
+    standard install `C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe`;
+    adapted 2026-07-14 from the original teammate value 2883015767, which used
+    a portable install on a different machine)
     -> the ONLY account where operating is permitted.
   REAL 2883011573 -> READ-ONLY, NEVER operate.
 
@@ -23,7 +26,8 @@ from typing import Any
 
 # CUENTAS.md single source of truth (2026-07-13). Hard-coded on purpose: the
 # guard must not depend on any mutable config to know which login is tradable.
-DEMO_LOGIN = 2883015767
+DEMO_LOGIN = 2883016567  # this machine's sanctioned 30M CLP demo (Capitaria-All),
+# adapted 2026-07-14; original teammate value was 2883015767 (different machine).
 REAL_LOGIN = 2883011573
 
 # MetaTrader5 ACCOUNT_TRADE_MODE_* enum values (stable API constants):
@@ -39,7 +43,7 @@ class GuardError(RuntimeError):
 
 def assert_demo(mt5_module: Any, *, hard_exit: bool = True) -> int:
     """Verify the account `mt5_module` is currently attached to is the
-    sanctioned DEMO (login 2883015767, trade_mode DEMO). Returns the confirmed
+    sanctioned DEMO (login 2883016567, trade_mode DEMO). Returns the confirmed
     login on success. On ANY failure raises `GuardError`; if `hard_exit` is
     True (default) the process is terminated with `sys.exit(2)` after logging
     -- an order-capable caller must NEVER continue past a failed guard.

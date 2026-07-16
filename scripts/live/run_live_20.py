@@ -63,9 +63,13 @@ DEFAULT_WINDOW = 10_000
 MIN_WINDOW = 3_000
 DEFAULT_VOLUME = 0.01
 
-# CUENTAS.md: the DEMO portable install. We attach to THIS exe only.
-PORTABLE_EXE = Path(r"D:\FOREX\MT5_Portable\terminal64.exe")
-PORTABLE_MARKER = "mt5_portable"  # lower-cased path fragment we look for
+# CUENTAS.md: the DEMO install. We attach to THIS exe only.
+# LOCAL MACHINE ADAPTATION (2026-07-14): this machine has a standard (non
+# -portable) Capitaria MT5 install, not the teammate's D:\FOREX\MT5_Portable
+# layout. Path and marker updated to match; see guard_cuenta.py for the
+# corresponding DEMO_LOGIN adaptation.
+PORTABLE_EXE = Path(r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe")
+PORTABLE_MARKER = "capitaria mt5 terminal"  # lower-cased path fragment we look for
 
 logger = logging.getLogger("run_live_20")
 
@@ -474,9 +478,13 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
 
 
 def _connect(mt5: Any) -> None:
-    """Attach to the DEMO portable terminal ONLY. Never launches: the caller
-    has already confirmed the portable process is running."""
-    if not mt5.initialize(path=str(PORTABLE_EXE), portable=True):
+    """Attach to the DEMO terminal ONLY. Never launches: the caller
+    has already confirmed the terminal process is running."""
+    # LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) install
+    # on this machine -- portable=True would point MT5 at a portable data
+    # directory that doesn't exist here and detach from the logged-in
+    # 2883016567 session, so we drop it.
+    if not mt5.initialize(path=str(PORTABLE_EXE)):
         raise SystemExit(f"[FATAL] initialize(path={PORTABLE_EXE}) failed: "
                          f"{mt5.last_error()}")
 
