@@ -80,8 +80,12 @@ scripts/live/*.pid
 scripts/live/*.lock
 scripts/live/*_local.log
 scripts/live/*_local.log.err
+scripts/live/*_local.out
+scripts/live/*_local.err
 scripts/live/dryrun_local.log
 scripts/live/dryrun_local.log.err
+scripts/live/watchdog.log
+scripts/live/*.bak
 
 # Per-machine profile (terminal path/portable/login selection) -- see
 # scripts/live/machine_local.example.json for the tracked template.

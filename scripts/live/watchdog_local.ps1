@@ -14,9 +14,13 @@
       own watchdog, not an unrelated tool -- attach-only rule is preserved
       for the python scripts, which never start until the account check
       passes);
-    - honors scripts\live\STOP: watcher + dashboard stay healthy, executor
-      relaunch is skipped (existing running executor is left alone -- it
-      honors STOP internally);
+    - keeps the CANONICAL supervisor (scripts.live.supervisor_live) alive,
+      NOT run_live_20 directly -- the supervisor owns the armed executor
+      (preflight gate + backoff + staleness alarm). This avoids duplicate
+      armed executors / double orders;
+    - honors scripts\live\STOP indirectly: the supervisor's own preflight
+      refuses to arm while STOP exists, so the watchdog keeps the supervisor
+      process alive regardless and lets it manage the pause;
     - refuses to run twice (lockfile + cmdline self-check).
 
   Log: scripts\live\watchdog_local.log (append-only, ~5MB rotation cap).
@@ -35,11 +39,11 @@ $PollSec    = 20
 $MaxLogBytes = 5MB
 
 $WatcherPidFile  = Join-Path $LiveDir "deals_watcher.pid"
-$ExecutorPidFile = Join-Path $LiveDir "run_live_20.pid"
+$SupervisorPidFile = Join-Path $LiveDir "supervisor.pid"
 $DashboardPidFile = Join-Path $LiveDir "run_service.pid"
 
 $WatcherLog  = Join-Path $LiveDir "deals_watcher_local.log"
-$ExecutorLog = Join-Path $LiveDir "run_live_local.log"
+$SupervisorLog = Join-Path $LiveDir "supervisor_local.log"
 $DashboardLog = Join-Path $LiveDir "run_service_local.log"
 
 function Write-Log {
@@ -184,29 +188,45 @@ function Ensure-Watcher {
     }
 }
 
-function Ensure-Executor {
+function Ensure-Supervisor {
     param($AcctCheck)
-    $proc = Find-ProcByCmdline 'run_live_20'
+    # We supervise the CANONICAL supervisor (scripts.live.supervisor_live),
+    # NOT run_live_20 directly. The supervisor owns the armed executor: it
+    # runs preflight before every (re)arm, relaunches the executor with
+    # backoff, and alarms if the audit log goes stale. Arming run_live_20
+    # here too would create DUPLICATE armed executors -> double orders.
+    # The supervisor honors the STOP kill-switch internally (its preflight
+    # refuses to arm while STOP exists), so we keep it alive regardless of
+    # STOP and let it manage the pause.
+    $proc = Find-ProcByCmdline 'supervisor_live'
     if ($proc) { return }
-    if (Test-Path $StopFile) {
-        Write-Log "STOP file present -- executor relaunch SKIPPED (paused by kill-switch)."
-        return
-    }
     if (-not $AcctCheck.ok) {
-        Write-Log "SKIP executor relaunch: account guard not OK ($($AcctCheck.detail))."
+        Write-Log "SKIP supervisor relaunch: account guard not OK ($($AcctCheck.detail))."
         return
     }
-    Write-Log "Executor DOWN -- relaunching ARMED (user-authorized)."
+    # ANTI-DUPLICATE: if the supervisor is down, any run_live_20 executor is
+    # ORPHANED (a live supervisor owns its own child). Killing the parent
+    # supervisor on Windows does NOT kill the child, so we must reap orphans
+    # here before relaunching -- otherwise the new supervisor would arm a
+    # SECOND executor -> double orders.
+    $orphans = Get-CimInstance Win32_Process | Where-Object {
+        $_.Name -match '^python(\.exe)?$' -and $_.CommandLine -match 'run_live_20'
+    }
+    foreach ($o in $orphans) {
+        Write-Log "Reaping ORPHANED executor PID $($o.ProcessId) before supervisor relaunch (no live supervisor owns it)."
+        try { Stop-Process -Id $o.ProcessId -Force -ErrorAction Stop } catch { Write-Log "  could not kill $($o.ProcessId): $($_.Exception.Message)" }
+    }
+    Write-Log "Supervisor DOWN -- relaunching (canonical: preflight-gate + armed executor + backoff + staleness alarm)."
     $env:PYTHONPATH = $RepoRoot
-    $cmdLine = "python -m scripts.live.run_live_20 --arm --confirm-account $DemoLogin --configs live >> `"$ExecutorLog`" 2>> `"$ExecutorLog.err`""
+    $cmdLine = "python -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`""
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c",$cmdLine -WorkingDirectory $RepoRoot -WindowStyle Hidden | Out-Null
     Start-Sleep -Seconds 2
-    $newProc = Find-ProcByCmdline 'run_live_20'
+    $newProc = Find-ProcByCmdline 'supervisor_live'
     if ($newProc) {
-        Set-Content -Path $ExecutorPidFile -Value $newProc.ProcessId
-        Write-Log "Executor relaunched: new PID $($newProc.ProcessId)."
+        Set-Content -Path $SupervisorPidFile -Value $newProc.ProcessId
+        Write-Log "Supervisor relaunched: new PID $($newProc.ProcessId)."
     } else {
-        Write-Log "Executor relaunch attempted but process not yet visible (will re-check next cycle)."
+        Write-Log "Supervisor relaunch attempted but process not yet visible (will re-check next cycle)."
     }
 }
 
@@ -241,14 +261,16 @@ try {
     while ($true) {
         try {
             $watcherUp   = [bool](Find-ProcByCmdline 'run_deals_watcher')
-            $executorUp  = [bool](Find-ProcByCmdline 'run_live_20')
+            $supervisorUp = [bool](Find-ProcByCmdline 'supervisor_live')
             $dashListening = $false
             try {
                 if (Get-NetTCPConnection -LocalPort 8501 -State Listen -ErrorAction SilentlyContinue) { $dashListening = $true }
             } catch {}
             $dashboardUp = $dashListening -or [bool](Find-ProcByCmdline 'run_service\.py')
 
-            $needsRelaunch = (-not $watcherUp) -or ((-not $executorUp) -and -not (Test-Path $StopFile)) -or (-not $dashboardUp)
+            # Supervisor is kept alive even under STOP: it correctly refuses to
+            # arm while STOP exists (preflight gate) and resumes when removed.
+            $needsRelaunch = (-not $watcherUp) -or (-not $supervisorUp) -or (-not $dashboardUp)
 
             if ($needsRelaunch) {
                 if (-not (Test-Terminal-Running)) {
@@ -256,14 +278,14 @@ try {
                 }
                 $acct = Wait-ForDemoAccount -TimeoutSec 90
                 if (-not $acct.ok) {
-                    Write-Log "ACCOUNT GUARD FAILED -- will NOT relaunch watcher/executor this cycle. ($($acct.detail))"
+                    Write-Log "ACCOUNT GUARD FAILED -- will NOT relaunch watcher/supervisor this cycle. ($($acct.detail))"
                 }
                 Ensure-Watcher -AcctCheck $acct
-                Ensure-Executor -AcctCheck $acct
+                Ensure-Supervisor -AcctCheck $acct
             } else {
                 # cheap account check just for the log heartbeat is skipped to
                 # avoid needless MT5 IPC churn when everything is healthy.
-                Write-Log "OK: watcher up=$watcherUp executor up=$executorUp dashboard up=$dashboardUp (STOP=$(Test-Path $StopFile))"
+                Write-Log "OK: watcher up=$watcherUp supervisor up=$supervisorUp dashboard up=$dashboardUp (STOP=$(Test-Path $StopFile))"
             }
 
             Ensure-Dashboard
