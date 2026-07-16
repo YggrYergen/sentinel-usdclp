@@ -4,7 +4,7 @@ cd /d "%~dp0"
 
 :: Prefer portable Python if it exists (already set up by a previous run)
 if exist "_python\python.exe" (
-    "_python\python.exe" sentinel\launcher.py
+    "_python\python.exe" -m sentinel.launcher
     pause
     exit /b %ERRORLEVEL%
 )
@@ -26,5 +26,5 @@ if %ERRORLEVEL% NEQ 0 (
     exit /b 1
 )
 
-python sentinel\launcher.py
+python -m sentinel.launcher
 pause

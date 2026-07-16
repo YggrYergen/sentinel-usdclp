@@ -14,6 +14,13 @@ import datetime
 # "api"  = Alpha Vantage / fallback — datos con delay
 DATA_MODE = "mt5"  # Cambiar a "api" si MT5 no está disponible
 
+# Ruta al terminal MT5 específico al que conectarse.
+# IMPORTANTE: En esta máquina hay varios terminales MT5 instalados
+# (FxPro, Pepperstone, OpenTrading, etc.). Fijamos Capitaria para que
+# SENTINEL SIEMPRE se conecte a la cuenta correcta y no a otro broker.
+# Poner None para dejar que MT5 elija el último terminal usado.
+MT5_TERMINAL_PATH = r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe"
+
 # ══════════════════════════════════════════════════════════════
 # INSTRUMENTOS MONITOREADOS
 # ══════════════════════════════════════════════════════════════

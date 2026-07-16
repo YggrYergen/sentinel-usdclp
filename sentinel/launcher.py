@@ -14,7 +14,7 @@ VERSION = "3.7.1"
 PORT = 8501
 URL = f"http://localhost:{PORT}"
 GITHUB_REPO = "YggrYergen/sentinel-usdclp"
-BRANCH = "release"
+BRANCH = "alvaro"
 MIN_PY = (3, 11)
 MAX_PY = (3, 13)
 PORTABLE_PY_VER = "3.12.8"
@@ -302,8 +302,11 @@ class Launcher:
 
     def _relaunch(self, python_exe):
         """Re-launch this script with a different Python. Clean exit from current."""
-        launcher = str(self.sentinel / "launcher.py")
-        self.log(f"  Re-launching: {python_exe} {launcher}")
+        # Run as a module (-m sentinel.launcher) from the repo root, NOT as a
+        # file path: running "python sentinel/launcher.py" puts sentinel/ on
+        # sys.path[0], where the local sentinel/logging/ package shadows the
+        # stdlib `logging` module and crashes at import time.
+        self.log(f"  Re-launching: {python_exe} -m sentinel.launcher")
         self.log("=" * 52)
         self.log("  SWITCHING TO COMPATIBLE PYTHON...")
         self.log("=" * 52)
@@ -315,7 +318,7 @@ class Launcher:
 
         # Run with new Python — replace current process
         result = subprocess.run(
-            [python_exe, launcher],
+            [python_exe, "-m", "sentinel.launcher"],
             cwd=str(self.root)
         )
         sys.exit(result.returncode)
@@ -602,10 +605,11 @@ class Launcher:
 
         # Full check: try importing all key packages
         self.log("  Verifying installed packages...")
-        check_script = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance; print('ALL_OK')"
+        check_script = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance, fastapi, uvicorn, yaml; print('ALL_OK')"
         code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All packages importable")
+            marker.parent.mkdir(parents=True, exist_ok=True)
             marker.write_text(f"verified {datetime.now().isoformat()}")
             return True
 
@@ -627,10 +631,11 @@ class Launcher:
             return False
 
         # Verify after install
-        check_script2 = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance; print('ALL_OK')"
+        check_script2 = "import streamlit, MetaTrader5, pandas, numpy, plotly, ta, scipy, anthropic, yfinance, fastapi, uvicorn, yaml; print('ALL_OK')"
         code, out, _ = self.cmd(f'"{sys.executable}" -c "{check_script2}"')
         if code == 0 and 'ALL_OK' in out:
             self.log("  [OK] All dependencies verified")
+            marker.parent.mkdir(parents=True, exist_ok=True)
             marker.write_text(f"verified {datetime.now().isoformat()}")
         else:
             self.log("  [WARN] Some packages may have issues", "warning")
@@ -687,16 +692,22 @@ class Launcher:
 
     # ── Step 8: Launch ──
     def launch(self):
-        self.log("[8/8] Launching SENTINEL dashboard...")
-        app_entry = self.sentinel / "app.py"
+        self.log("[8/8] Launching SENTINEL revamp UI (FastAPI service)...")
+        # UI revamp: FastAPI backend (sentinel_engine.service) + web/ frontend.
+        # Entrypoint scripts/run_service.py wires the Capitaria-pinned DataFeed
+        # and serves the web/ UI. It imports sentinel_engine/sentinel, so the
+        # repo root MUST be on PYTHONPATH (its own dir becomes sys.path[0]).
+        service_entry = self.root / "scripts" / "run_service.py"
         cmd = [
-            sys.executable, "-m", "streamlit", "run", str(app_entry),
-            "--server.headless", "true",
-            "--server.port", str(PORT),
-            "--browser.gatherUsageStats", "false",
-            "--server.address", "0.0.0.0"
+            sys.executable, str(service_entry),
+            "--host", "127.0.0.1",
+            "--port", str(PORT),
         ]
+        # Ensure repo root is importable regardless of cwd.
+        launch_env = os.environ.copy()
+        launch_env["PYTHONPATH"] = str(self.root) + os.pathsep + launch_env.get("PYTHONPATH", "")
         self.log(f"  Command: {' '.join(cmd)}")
+        self.log(f"  PYTHONPATH: {self.root}")
         self.log(f"  URL: {URL}")
         self.log("")
         self.log("  ============================================")
@@ -714,10 +725,10 @@ class Launcher:
                 self.log_exc("browser_open")
         threading.Thread(target=_browser, daemon=True).start()
 
-        self.log("  Starting Streamlit process...")
+        self.log("  Starting SENTINEL service process...")
         proc = subprocess.Popen(
             cmd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
-            text=True, bufsize=1
+            text=True, bufsize=1, env=launch_env, cwd=str(self.root)
         )
         self.log(f"  PID: {proc.pid}")
 

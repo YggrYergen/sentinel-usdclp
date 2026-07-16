@@ -74,8 +74,27 @@ class DataFeed:
         try:
             import MetaTrader5 as mt5
             self._mt5 = mt5
-            
-            if not mt5.initialize():
+
+            # Fijar el terminal específico (Capitaria) si está configurado,
+            # para no conectar por error a otro broker instalado en la máquina.
+            try:
+                from sentinel.config import MT5_TERMINAL_PATH
+            except Exception:
+                MT5_TERMINAL_PATH = None
+
+            import os as _os
+            initialized = False
+            if MT5_TERMINAL_PATH and _os.path.isfile(MT5_TERMINAL_PATH):
+                initialized = mt5.initialize(path=MT5_TERMINAL_PATH)
+                if not initialized:
+                    logger.warning(
+                        f"MT5 initialize con path Capitaria falló: {mt5.last_error()} "
+                        f"— reintentando sin path"
+                    )
+            if not initialized:
+                initialized = mt5.initialize()
+
+            if not initialized:
                 err = mt5.last_error()
                 logger.warning(f"MT5 initialize falló: {err}")
                 return

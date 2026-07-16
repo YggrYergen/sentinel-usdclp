@@ -74,3 +74,11 @@ MT5_PAPA_SOLO_LECTURA.bat
 MT5_DEMO_TRADING.bat
 MT5_DEMO_TOMAS.bat
 MT5_REAL_PAPA_SOLO_LECTURA.bat
+
+# Live runtime artifacts (per-machine: PIDs, locks, local logs — never committed)
+scripts/live/*.pid
+scripts/live/*.lock
+scripts/live/*_local.log
+scripts/live/*_local.log.err
+scripts/live/dryrun_local.log
+scripts/live/dryrun_local.log.err

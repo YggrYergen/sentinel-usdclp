@@ -57,8 +57,11 @@ from sentinel_engine.research.registry2 import ResearchRegistry  # noqa: E402
 _LAST_SYNC_META_KEY = "deals_watcher.last_sync"
 
 DEFAULT_DB = REPO_ROOT / "data" / "research.db"
-PORTABLE_EXE = Path(r"D:\FOREX\MT5_Portable\terminal64.exe")
-PORTABLE_MARKER = "mt5_portable"
+# LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) Capitaria MT5
+# install on this machine, not the teammate's D:\FOREX\MT5_Portable layout.
+# See sentinel_engine/live/guard_cuenta.py for the matching DEMO_LOGIN change.
+PORTABLE_EXE = Path(r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe")
+PORTABLE_MARKER = "capitaria mt5 terminal"
 
 logger = logging.getLogger("run_deals_watcher")
 
@@ -152,9 +155,11 @@ class RealMt5DealsClient:
 # Connect (attach-only) + account guard.
 # --------------------------------------------------------------------------
 def _connect(mt5: Any) -> None:
-    """Attach to the DEMO portable terminal ONLY. Caller has already
-    confirmed the portable process is running (attach guard)."""
-    if not mt5.initialize(path=str(PORTABLE_EXE), portable=True):
+    """Attach to the DEMO terminal ONLY. Caller has already
+    confirmed the process is running (attach guard)."""
+    # LOCAL MACHINE ADAPTATION (2026-07-14): standard (non-portable) install
+    # here; portable=True would detach from the logged-in 2883016567 session.
+    if not mt5.initialize(path=str(PORTABLE_EXE)):
         raise SystemExit(f"[FATAL] initialize(path={PORTABLE_EXE}) failed: "
                          f"{mt5.last_error()}")
 
@@ -201,7 +206,8 @@ def _reconnect(mt5: Any, attach_checker: Callable[[], bool], *,
             return False
 
         try:
-            ok = mt5.initialize(path=str(PORTABLE_EXE), portable=True)
+            # LOCAL MACHINE ADAPTATION (2026-07-14): standard install, no portable=True.
+            ok = mt5.initialize(path=str(PORTABLE_EXE))
         except Exception:  # noqa: BLE001
             ok = False
 
