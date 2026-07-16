@@ -6,6 +6,8 @@ sleeping.
 """
 from __future__ import annotations
 
+import sys
+
 import pytest
 
 from scripts.live import supervisor_live as sup
@@ -263,6 +265,77 @@ def test_run_supervised_reports_deals_watcher_status_once(tmp_path):
     log_text = cfg.watchdog_log.read_text(encoding="utf-8")
     assert "deals watcher" in log_text.lower()
     assert "not detected" in log_text.lower()
+
+
+# --------------------------------------------------------------------------
+# Console-write-block regression (2026-07-15 incident): the executor must
+# never inherit this process's console, and watchdog logging must not depend
+# on a console echo either.
+# --------------------------------------------------------------------------
+def test_default_launcher_redirects_executor_stdio_to_file(tmp_path, monkeypatch):
+    console_log = tmp_path / "executor_console.log"
+    monkeypatch.setattr(sup, "EXECUTOR_CONSOLE_LOG", console_log)
+
+    captured = {}
+    real_popen = sup.subprocess.Popen
+
+    class _FakePopenResult:
+        def poll(self):
+            return 0
+
+    def fake_popen(argv, **kwargs):
+        captured.update(kwargs)
+        captured["argv"] = argv
+        return _FakePopenResult()
+
+    monkeypatch.setattr(sup.subprocess, "Popen", fake_popen)
+    proc = sup._default_launcher(["python", "-m", "scripts.live.run_live_20"])
+
+    assert proc.poll() == 0
+    assert "stdout" in captured and captured["stdout"] is not None
+    assert "stderr" in captured and captured["stderr"] is not None
+    # Must NOT inherit the parent console: no console-inheriting kwargs set,
+    # and stdout/stderr point at real file objects backed by our log path.
+    assert captured["stdout"] is captured["stderr"]
+    assert console_log.exists()
+    monkeypatch.setattr(sup.subprocess, "Popen", real_popen)
+
+
+def test_log_watchdog_writes_file_only_no_console_handler_required(tmp_path, capsys):
+    """Regression for the 2026-07-15 freeze: `_log_watchdog` used to also call
+    `logger.info(msg)` (a console StreamHandler emit) which can block forever
+    under Windows QuickEdit/conhost stalls. It must now write to watchdog.log
+    ONLY -- no console output is required for the watchdog line to land."""
+    log_path = tmp_path / "watchdog.log"
+    sup._log_watchdog("test message, no console needed", log_path=log_path)
+    assert "test message, no console needed" in log_path.read_text(encoding="utf-8")
+    # No assertion on stdout content: the point is correctness does not
+    # depend on console output succeeding. We only assert this doesn't hang
+    # (implicitly, by the test completing) and the module has no
+    # StreamHandler wired into `logger` by default.
+    assert not any(isinstance(h, __import__("logging").StreamHandler)
+                  for h in sup.logger.handlers)
+
+
+def test_main_does_not_configure_console_stream_handler(tmp_path, monkeypatch):
+    """`main()` must not attach a StreamHandler(stdout) to the root/module
+    logger -- that was the exact mechanism that let a console write-block
+    freeze the supervisor on 2026-07-15."""
+    import logging as _logging
+
+    monkeypatch.setattr(sup, "WATCHDOG_LOG", tmp_path / "watchdog.log")
+
+    def fake_run_supervised(cfg, **kwargs):
+        raise KeyboardInterrupt()
+
+    monkeypatch.setattr(sup, "run_supervised", fake_run_supervised)
+
+    root_handlers_before = list(_logging.getLogger().handlers)
+    sup.main()
+    root_handlers_after = list(_logging.getLogger().handlers)
+    assert not any(isinstance(h, _logging.StreamHandler) and h.stream is sys.stdout
+                  for h in root_handlers_after
+                  if h not in root_handlers_before)
 
 
 def test_run_supervised_never_touches_mt5_module():

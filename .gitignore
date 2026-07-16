@@ -87,3 +87,9 @@ scripts/live/dryrun_local.log.err
 # scripts/live/machine_local.example.json for the tracked template.
 scripts/live/machine_local.json
 scripts/live/run_live_20.audit.log
+scripts/live/watchdog.log
+scripts/live/executor_console.log
+scripts/live/supervisor_console.log
+scripts/live/supervisor_console.err
+scripts/live/watcher_console.log
+scripts/live/watcher_console.err

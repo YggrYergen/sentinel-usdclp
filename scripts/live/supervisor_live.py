@@ -67,6 +67,7 @@ from sentinel_engine.live import guard_cuenta  # noqa: E402
 
 WATCHDOG_LOG = REPO_ROOT / "scripts" / "live" / "watchdog.log"
 AUDIT_LOG = preflight_live.AUDIT_LOG
+EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 
 EXECUTOR_ARGV = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
                  "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
@@ -84,12 +85,17 @@ logger = logging.getLogger("supervisor_live")
 
 
 def _log_watchdog(msg: str, *, log_path: Path = WATCHDOG_LOG) -> None:
-    """Append one UTF-8 timestamped line to watchdog.log AND emit it via the
-    standard logger (console). Never raises -- a logging failure must not
-    take down the supervisor."""
+    """Append one UTF-8 timestamped line to watchdog.log. File-only, on
+    purpose: this used to also echo via `logger.info(msg)` (console,
+    StreamHandler), but on 2026-07-15 a Windows console write blocked
+    forever (QuickEdit selection / conhost stall) and froze this exact
+    call inside `watch_while_running`'s staleness alarm, taking the whole
+    supervisor down along with the executor it was supposed to be
+    watchdogging. watchdog.log (file) is now the sole authoritative sink --
+    it cannot block on a console. Never raises -- a logging failure must
+    not take down the supervisor."""
     ts = datetime.now(timezone.utc).isoformat()
     line = f"[{ts}] {msg}"
-    logger.info(msg)
     try:
         log_path.parent.mkdir(parents=True, exist_ok=True)
         with open(log_path, "a", encoding="utf-8") as fh:
@@ -249,7 +255,21 @@ def run_supervised(
 # Production wiring.
 # --------------------------------------------------------------------------
 def _default_launcher(argv: list[str]) -> subprocess.Popen:
-    return subprocess.Popen(argv, cwd=str(REPO_ROOT))
+    # stdout/stderr are redirected to an append-mode file, NEVER inherited
+    # from this process's console. On 2026-07-15 the executor was launched
+    # with inherited stdio, sharing one console with the supervisor; a
+    # Windows console write-block (QuickEdit selection / conhost stall) hung
+    # BOTH processes simultaneously (the executor's own `logger.info` emit,
+    # and the supervisor's staleness-alarm `logger.info` emit into the same
+    # console). run_live_20.py's audit-log FileHandler remains the primary
+    # record and is unaffected by this -- this redirection only prevents the
+    # executor's own console-bound handlers from ever blocking.
+    EXECUTOR_CONSOLE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with open(EXECUTOR_CONSOLE_LOG, "a", encoding="utf-8", buffering=1) as console_fh:
+        # Popen dup()s the fd/handle for the child; safe to close our copy
+        # (and let the `with` block do so) once the child owns its own.
+        return subprocess.Popen(argv, cwd=str(REPO_ROOT), stdout=console_fh,
+                                stderr=console_fh)
 
 
 def _default_mtime(path: Path) -> float | None:
@@ -264,9 +284,14 @@ def _default_deals_watcher_check() -> bool:
 
 
 def main(argv: list[str] | None = None) -> int:
-    logging.basicConfig(level=logging.INFO,
-                        format="%(asctime)s %(levelname)s %(message)s",
-                        handlers=[logging.StreamHandler(sys.stdout)])
+    # No console StreamHandler here, deliberately: this process may be spawned
+    # with a detached/minimized/inherited console (as it was on 2026-07-15),
+    # and a Windows console write-block (QuickEdit selection / conhost stall)
+    # can hang a console write forever. watchdog.log (via `_log_watchdog`,
+    # file-only) is the sole authoritative log sink for this module -- it
+    # cannot block on a console. `logging` is left at its default (silent)
+    # config; nothing in this module calls `logger.info`/etc. for output that
+    # matters, only `_log_watchdog`.
     cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV)
     _log_watchdog("=== supervisor_live starting ===", log_path=cfg.watchdog_log)
     try:
