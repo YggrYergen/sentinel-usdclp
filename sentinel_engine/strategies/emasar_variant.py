@@ -133,6 +133,9 @@ def simular_variant(
     active_fichas: int = 3,
     pullback_limit: bool = False,
     tp_min_pips: float | None = None,
+    ratchet_lock_frac: float = 0.0,
+    ratchet_arm_r: float = 1.0,
+    ratchet_atr_k: float = 0.0,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -416,6 +419,32 @@ def simular_variant(
     same per-ficha exit block as V-05, right after it, so both TP levels share
     the SL-first collision convention; `tp_min_pips=None`/<=0 skips the block
     entirely and reproduces the classic event stream byte-for-byte.
+
+    F1 profit-ratchet / chandelier (PX-T1; `ratchet_lock_frac`/`ratchet_arm_r`/
+    `ratchet_atr_k`, defaults `0.0`/`1.0`/`0.0` = disabled = EXACT current
+    behavior, byte-identical no-op): a give-back-protection lever -- a RISING
+    FLOOR that locks a fraction of the peak favourable excursion. Per ficha,
+    once `peak_fav` (`f.max_fav`, the running max/min favourable price already
+    tracked) has moved at least `ratchet_arm_r*R` in favour (R = |entry -
+    initial_SL|), the ficha SL is raised to a FLOOR that only ever TIGHTENS
+    (never lowering below the current SL / BE / trail):
+      - fraction form (`ratchet_lock_frac > 0`):
+        `floor = entry + ratchet_lock_frac*(peak_fav - entry)` (long; mirror
+        short). Locks `ratchet_lock_frac` of the peak gain.
+      - chandelier form (`ratchet_atr_k > 0`):
+        `floor = peak_fav - ratchet_atr_k*ATR14[i]` (long; mirror short), using
+        the SAME Wilder ATR14 (`_atr_wilder`, period 14) the engine already
+        computes -- no new indicator.
+    The two forms are MUTUALLY EXCLUSIVE: `ratchet_lock_frac > 0` AND
+    `ratchet_atr_k > 0` raises ValueError. The floor is BELOW price and rises
+    WITH the peak, so it NEVER caps the runner (no ceiling above price). Placed
+    in the per-ficha exit block AFTER the break-even block, as one more
+    max()-with-current-SL floor. Honest under `live_fill_mode`: the raised
+    floor becomes active on the NEXT bar via the existing server-side-SL path
+    (`server_sl_by_tag`), and a floor already violated by the current bar's own
+    close uses the existing same-bar-fallback exit in the trailing block -- no
+    new fill route, no look-ahead. All three defaults reproduce the classic
+    event stream byte-for-byte.
     """
     if active_fichas not in (1, 2, 3):
         raise ValueError(
@@ -432,6 +461,15 @@ def simular_variant(
         if confirm_bar:
             raise ValueError(
                 "pullback_limit does not compose with confirm_bar")
+    # F1 profit-ratchet / chandelier (PX-T1): the two floor FORMS are mutually
+    # exclusive -- fraction (`ratchet_lock_frac>0`) and chandelier
+    # (`ratchet_atr_k>0`) cannot both be active in one config. Both defaulting
+    # to 0.0 is the byte-identical no-op (block skipped entirely below).
+    if ratchet_lock_frac > 0.0 and ratchet_atr_k > 0.0:
+        raise ValueError(
+            "ratchet_lock_frac and ratchet_atr_k are mutually exclusive "
+            f"(fraction vs chandelier form); got lock_frac={ratchet_lock_frac!r}, "
+            f"atr_k={ratchet_atr_k!r}")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -474,8 +512,12 @@ def simular_variant(
     # ficha) with the same Wilder ATR14 the regime logic uses, and ONLY when
     # the floor is active -- so the default 0.0 is a byte-identical no-op with
     # no extra work. ATR14[i] is None during the 14-bar warmup -> no floor.
+    # Shared Wilder ATR14 for the trail floor AND the F1 chandelier ratchet
+    # form (PX-T1). Computed ONCE, and ONLY when at least one consumer is
+    # active, so the all-defaults path (both k==0.0) does no extra work and
+    # stays a byte-identical no-op. ATR14[i] is None during the 14-bar warmup.
     atr14_floor = (_atr_wilder(highs, lows, closes, 14)
-                   if trail_atr_floor_k > 0.0 else None)
+                   if (trail_atr_floor_k > 0.0 or ratchet_atr_k > 0.0) else None)
     # Ficha-count lever (P46; active_fichas): the ORDERED tags opened at every
     # entry site. active_fichas=3 -> the classic full ("F1","F2","F3"), so the
     # entry-site dicts below are byte-identical to before. N=1/2 truncates to
@@ -690,6 +732,69 @@ def simular_variant(
                 if f.lado == -1 and bar["high"] >= be_check:
                     f.abierta = False
                     eventos.append({"idx": i, "lado": lado_txt, "precio": be_check,
+                                    "motivo": "EXIT_TRAIL", "ficha": tag})
+                    continue
+
+            # F1 profit-ratchet / chandelier rising floor (PX-T1; both
+            # ratchet_lock_frac and ratchet_atr_k default 0.0 -> this block is
+            # skipped ENTIRELY, byte-identical no-op). Placed AFTER the BE block
+            # and treated as one more FLOOR that only ever TIGHTENS the SL --
+            # same discipline as break-even/trailing raises, never lowering it.
+            #   - Arm once peak_fav (f.max_fav, the running max/min favourable
+            #     price the engine already tracks) has moved >= ratchet_arm_r*R
+            #     in favour, R = |entry - initial_SL|.
+            #   - fraction form (ratchet_lock_frac>0):
+            #       floor = entry + lock_frac*(peak_fav - entry)   (long; mirror)
+            #   - chandelier form (ratchet_atr_k>0):
+            #       floor = peak_fav - atr_k*ATR14[i]              (long; mirror)
+            #     (the two forms are mutually exclusive -- ValueError above).
+            # The floor is BELOW price and rises WITH the peak, so it NEVER caps
+            # the runner. Honest under live_fill_mode: the raise (like BE/trail)
+            # is knowable only at this bar's close, so it becomes active on the
+            # NEXT bar via server_sl_by_tag; a floor already violated by this
+            # bar's own close is handled by the existing trailing same-bar
+            # fallback below (no new fill route, no look-ahead).
+            if ratchet_lock_frac > 0.0 or ratchet_atr_k > 0.0:
+                r_dist = abs(f.entry - sl_inicial_by_tag[tag])
+                if f.lado == +1:
+                    f.max_fav = max(f.max_fav, bar["high"])
+                    if r_dist > 0.0 and f.max_fav >= f.entry + ratchet_arm_r * r_dist:
+                        if ratchet_lock_frac > 0.0:
+                            ratchet_floor = f.entry + ratchet_lock_frac * (f.max_fav - f.entry)
+                        elif atr14_floor is not None and atr14_floor[i] is not None:
+                            ratchet_floor = f.max_fav - ratchet_atr_k * atr14_floor[i]
+                        else:
+                            ratchet_floor = None
+                        if ratchet_floor is not None and (f.sl is None or ratchet_floor > f.sl):
+                            f.sl = ratchet_floor
+                else:
+                    f.max_fav = min(f.max_fav, bar["low"])
+                    if r_dist > 0.0 and f.max_fav <= f.entry - ratchet_arm_r * r_dist:
+                        if ratchet_lock_frac > 0.0:
+                            ratchet_floor = f.entry - ratchet_lock_frac * (f.entry - f.max_fav)
+                        elif atr14_floor is not None and atr14_floor[i] is not None:
+                            ratchet_floor = f.max_fav + ratchet_atr_k * atr14_floor[i]
+                        else:
+                            ratchet_floor = None
+                        if ratchet_floor is not None and (f.sl is None or ratchet_floor < f.sl):
+                            f.sl = ratchet_floor
+
+                # Re-check: the ratchet-raised SL may already be hit intrabar.
+                # live_fill_mode: the floor was computed from THIS bar's own
+                # high/low (max_fav update above), so like BE/trailing it is
+                # only knowable at close live -- use `sl_check` (the prior
+                # server-side level) for the intrabar test, never the just-
+                # raised f.sl; the same-bar fallback (below, in the trailing
+                # block) then closes a floor violated by this bar's own close.
+                ratchet_check = sl_check if live_fill_mode else f.sl
+                if f.lado == +1 and bar["low"] <= ratchet_check:
+                    f.abierta = False
+                    eventos.append({"idx": i, "lado": lado_txt, "precio": ratchet_check,
+                                    "motivo": "EXIT_TRAIL", "ficha": tag})
+                    continue
+                if f.lado == -1 and bar["high"] >= ratchet_check:
+                    f.abierta = False
+                    eventos.append({"idx": i, "lado": lado_txt, "precio": ratchet_check,
                                     "motivo": "EXIT_TRAIL", "ficha": tag})
                     continue
 

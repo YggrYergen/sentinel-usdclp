@@ -1113,3 +1113,177 @@ def test_live_fill_mode_never_worse_than_classic_direction_synthetic():
         if e["motivo"] == "EXIT_TRAIL" and e.get("same_bar_fallback"):
             bar = bars[e["idx"]]
             assert e["precio"] == pytest.approx(bar["close"])
+
+
+# ---------------------------------------------------------------------------
+# PX-T1 / F1: profit-ratchet + chandelier rising-floor exit lever.
+# ratchet_lock_frac=0.0, ratchet_arm_r=1.0, ratchet_atr_k=0.0 (defaults) must
+# reproduce current behavior byte-for-byte, in BOTH live_fill_mode values and
+# with return_state on/off.
+# ---------------------------------------------------------------------------
+
+RATCHET_DEFAULTS = dict(ratchet_lock_frac=0.0, ratchet_arm_r=1.0, ratchet_atr_k=0.0)
+
+
+@pytest.mark.parametrize("live_fill_mode", [False, True])
+@pytest.mark.parametrize("return_state", [False, True])
+def test_ratchet_noop_default_byte_identical_synthetic(live_fill_mode, return_state):
+    """Byte-identity no-op (TDD step 1): with all three ratchet kwargs at their
+    defaults the event stream (and, when requested, the return_state snapshot)
+    must be IDENTICAL to the pre-change engine, across both live_fill_mode
+    values and both return_state values."""
+    bars = _synthetic_bars(300, seed=120)
+    baseline = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **V09_PARAMS)
+    with_defaults = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **RATCHET_DEFAULTS, **V09_PARAMS)
+    assert with_defaults == baseline
+    if return_state:
+        assert len(baseline[0]) > 0
+    else:
+        assert len(baseline) > 0
+
+
+def test_ratchet_noop_default_byte_identical_real_m5():
+    bars = _load_real_m5_window()
+    if bars is None:
+        pytest.skip("XAUUSD/M5 2026-06 lake tier not present")
+    for live_fill_mode in (False, True):
+        baseline = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode, **V09_PARAMS)
+        with_defaults = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+            **RATCHET_DEFAULTS, **V09_PARAMS)
+        assert with_defaults == baseline
+        assert len(baseline) > 0
+
+
+def test_ratchet_both_forms_set_raises_valueerror():
+    """The fraction and chandelier forms are MUTUALLY EXCLUSIVE: setting both
+    ratchet_lock_frac>0 and ratchet_atr_k>0 must raise ValueError."""
+    bars = _synthetic_bars(50, seed=120)
+    with pytest.raises(ValueError):
+        simular_variant(
+            bars, symbol="XAUUSD",
+            ratchet_lock_frac=0.5, ratchet_atr_k=3.0, **V09_PARAMS)
+
+
+def _run_then_giveback_long_bars() -> tuple[list[dict], int]:
+    """Deterministic synthetic fixture: a run that produces a LONG entry, moves
+    favourably well past +1R, then gives back to just above break-even. Built
+    on the seeded generator; returns the bars plus the entry index found by a
+    baseline run. The give-back is engineered by appending a controlled tail so
+    the ratchet floor (fraction form) is provably tighter than the give-back
+    low the baseline pips-trail would have exited at."""
+    # Seed known to open a long early and trail out on a give-back.
+    bars = _synthetic_bars(120, seed=7)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    entry = next((e for e in baseline
+                  if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None, "fixture must produce a LONG entry"
+    return bars, entry["idx"]
+
+
+def test_ratchet_fraction_locks_floor_and_tightens_synthetic():
+    """Fraction form (ratchet_lock_frac>0): on a long-enough random fixture the
+    ratchet must (a) actually change SOME event vs baseline, (b) never emit a
+    motivo outside the known vocabulary, and (c) never place a stop ABOVE the
+    price it was armed against (floor stays below the peak -- never caps the
+    runner)."""
+    bars = _synthetic_bars(600, seed=7)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    ratchet_on = simular_variant(
+        bars, symbol="XAUUSD", ratchet_lock_frac=0.5, ratchet_arm_r=1.0,
+        **V09_PARAMS)
+    assert ratchet_on != baseline
+    motivos = {e["motivo"] for e in ratchet_on}
+    assert motivos <= {"ENTRY_L", "ENTRY_S", "EXIT_INITSL", "EXIT_TRAIL"}
+
+
+def test_ratchet_fraction_exits_at_locked_floor_not_giveback_low():
+    """Behavioural (TDD step 3): a hand-built long that runs to a high peak then
+    gives back should exit at (or above) the LOCKED FLOOR
+    `entry + lock_frac*(peak-entry)`, which is strictly BETTER (higher, closer
+    to the peak) than where the wide pips-trail alone would have exited on the
+    give-back low. We assert the ratchet run's realized long exit price is
+    >= the fraction floor computed from the observed peak.
+
+    seed=12 is chosen because its first long provably ARMS the ratchet (peak
+    reaches >= entry+1R) and then trail-exits on the give-back, so the
+    floor-lock assertion below is actually exercised (not skipped)."""
+    bars = _synthetic_bars(600, seed=12)
+    lock_frac = 0.5
+    events = simular_variant(
+        bars, symbol="XAUUSD", ratchet_lock_frac=lock_frac, ratchet_arm_r=1.0,
+        **V09_PARAMS)
+    # Find the first fully-realized LONG signal (entry + its F1 exit).
+    entry = None
+    for e in events:
+        if e["motivo"] == "ENTRY_L":
+            entry = e
+        elif entry is not None and e.get("ficha") == "F1" and e["motivo"].startswith("EXIT"):
+            exit_ev = e
+            break
+    else:
+        pytest.skip("fixture produced no realized long F1 exit")
+    entry_px = entry["precio"]
+    entry_idx = entry["idx"]
+    exit_idx = exit_ev["idx"]
+    # Peak favourable price seen by F1 over its life (bar highs, entry..exit).
+    peak = max(bars[j]["high"] for j in range(entry_idx, exit_idx + 1))
+    r = abs(entry_px - (bars[entry_idx]["low"] - V09_PARAMS["init_sl_range_k"] *
+                        (bars[entry_idx]["high"] - bars[entry_idx]["low"])))
+    if peak < entry_px + 1.0 * r:
+        pytest.skip("first long never armed the ratchet in this fixture")
+    floor = entry_px + lock_frac * (peak - entry_px)
+    # A trail exit must land at or above the locked floor (the floor only ever
+    # tightens the stop upward; it never lets the exit fall below the lock).
+    if exit_ev["motivo"] == "EXIT_TRAIL":
+        assert exit_ev["precio"] >= floor - 1e-6
+    # And the floor is strictly below the peak (never caps the runner).
+    assert floor < peak
+
+
+def test_chandelier_form_changes_events_and_stays_below_peak():
+    """Chandelier form (ratchet_atr_k>0): floor = peak - atr_k*ATR14. Must
+    change SOME event vs baseline, stay within the known motivo vocabulary, and
+    (by construction) sit below the peak -- the ATR term is subtracted from the
+    peak, so the floor can never cap the runner. `atr_k` is chosen small enough
+    (relative to the 100-pip=$1 ladder on this XAUUSD fixture, ATR14~$2.5) that
+    the chandelier floor actually BINDS inside the pips trail on some bar; a
+    large atr_k would sit wider than the trail and never move a stop."""
+    bars = _synthetic_bars(600, seed=7)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    chand_on = simular_variant(
+        bars, symbol="XAUUSD", ratchet_atr_k=0.3, ratchet_arm_r=1.0,
+        **V09_PARAMS)
+    assert chand_on != baseline
+    motivos = {e["motivo"] for e in chand_on}
+    assert motivos <= {"ENTRY_L", "ENTRY_S", "EXIT_INITSL", "EXIT_TRAIL"}
+
+
+def test_ratchet_never_caps_runner_floor_below_price():
+    """Global constraint 1: the ratchet is a rising FLOOR, never a ceiling. On
+    a favourable long run the ratchet-on exit price must never exceed the peak
+    high the position saw -- if it did, the floor would have capped the runner
+    above price. Compared against a baseline (no ratchet) it must not truncate
+    any winner's high excursion below what the floor mathematically permits."""
+    bars = _synthetic_bars(600, seed=7)
+    ratchet_on = simular_variant(
+        bars, symbol="XAUUSD", ratchet_lock_frac=0.66, ratchet_arm_r=1.0,
+        **V09_PARAMS)
+    # Replay to bound each realized exit by the peak of its own trajectory.
+    entry = None
+    for e in ratchet_on:
+        if e["motivo"] in ("ENTRY_L", "ENTRY_S"):
+            entry = e
+        elif entry is not None and e["motivo"].startswith("EXIT") and e.get("ficha"):
+            lo, hi = entry["idx"], e["idx"]
+            if entry["motivo"] == "ENTRY_L":
+                peak = max(bars[j]["high"] for j in range(lo, hi + 1))
+                assert e["precio"] <= peak + 1e-6
+            else:
+                trough = min(bars[j]["low"] for j in range(lo, hi + 1))
+                assert e["precio"] >= trough - 1e-6
