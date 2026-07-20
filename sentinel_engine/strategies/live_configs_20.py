@@ -375,3 +375,30 @@ assert all(724000 <= m <= 724099 for m in _golive_band), \
     "go-live band must stay inside 7240xx (clear of reserved 722xxx/723xxx)"
 
 MAGIC_BY_ID_GOLIVE: dict[str, int] = {c["id"]: c["magic"] for c in CONFIGS_GOLIVE}
+
+# --- DEDUP GO-LIVE roster (D121, 2026-07-20) -------------------------------
+# The five M15 SAR configs are ONE signal fivefold (Wave-4 measured 60-77%
+# pairwise signal overlap): fielding all five multiplies a single whipsaw --
+# the demonstrated driver of live round-1's clone-bloc loss (-58,445 CLP, the 5
+# near-clones stopped out together). This DEDUPLICATED roster keeps only the TWO
+# best SAR representatives -- S6-K2P0 (league rank 1, profit leader in-sample
+# AND on the untouched holdout) and S7-TPNONE (rank 2, break-even-at-+1R
+# give-back protection) -- plus the two GENUINELY DISTINCT lines already in the
+# roster: V11-M2 (M2 timeframe, the only live-winner line) and the always-in
+# SuperTrend engine. It drops NO distinct signal, only redundant clones.
+# Magics are inherited UNCHANGED from CONFIGS_GOLIVE (each kept config keeps its
+# 7240x0 magic), so the go-live band + disjointness invariants still hold and
+# open positions on the kept reps re-sync seamlessly on a daemon restart.
+CONFIGS_GOLIVE_DEDUP_IDS: tuple[str, ...] = (
+    "S6-K2P0", "S7-TPNONE", "V11-M2", "SuperTrend-p14x3-M15")
+CONFIGS_GOLIVE_DEDUP: list[dict[str, Any]] = [
+    c for c in CONFIGS_GOLIVE if c["id"] in CONFIGS_GOLIVE_DEDUP_IDS]
+
+assert [c["id"] for c in CONFIGS_GOLIVE_DEDUP] == list(CONFIGS_GOLIVE_DEDUP_IDS), \
+    "dedup roster must preserve CONFIGS_GOLIVE order == the canonical dedup ids"
+assert [c["magic"] for c in CONFIGS_GOLIVE_DEDUP] == [724010, 724020, 724060, 724070], \
+    "dedup roster magics must be inherited unchanged from the go-live block"
+# still exactly one always-in engine (SuperTrend); the other three run simular_variant.
+assert sum(1 for c in CONFIGS_GOLIVE_DEDUP
+           if c.get("engine", "simular_variant") == "simular_variant") == 3, \
+    "dedup roster has exactly three simular_variant configs (the 4th is SuperTrend)"

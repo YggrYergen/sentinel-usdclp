@@ -58,8 +58,8 @@ from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: 
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
-    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER,
-    supertrend_always_in_target)
+    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE,
+    CONFIGS_SHADOW, LIVE_ROSTER, supertrend_always_in_target)
 
 TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
 TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
@@ -725,7 +725,10 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "(the FIXED4 corrected roster only -- what machine-2 "
                           "runs), 'golive' (the GO-LIVE roster: M15 V-15 SAR "
                           "top-5 + V11-M2 + SuperTrend-p14x3-M15 always-in, "
-                          "magics 7240x0), 'live+shadow' "
+                          "magics 7240x0), 'golive-dedup' (D121: the 5 SAR "
+                          "clones collapsed to 2 best reps S6-K2P0+S7-TPNONE, "
+                          "plus V11-M2 + SuperTrend; clone-concentration "
+                          "removed), 'live+shadow' "
                           "(both, 8 configs) or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
@@ -787,6 +790,12 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     elif roster == "golive":
         # GL-T1 GO-LIVE roster: M15 V-15 SAR top-5 + V11-M2 (magics 7240x0).
         configs = list(CONFIGS_GOLIVE)
+    elif roster == "golive-dedup":
+        # DEDUP GO-LIVE (D121): the five M15 SAR clones collapsed to the two
+        # best reps (S6-K2P0 + S7-TPNONE) + the distinct lines (V11-M2,
+        # SuperTrend). Kills clone-concentration whipsaw; drops no distinct
+        # signal. Same 7240x0 magics as golive (kept-rep positions re-sync).
+        configs = list(CONFIGS_GOLIVE_DEDUP)
     elif roster == "live+shadow":
         configs = list(CONFIGS_LIVE) + list(CONFIGS_SHADOW)
     else:
@@ -805,7 +814,7 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     # ADAPTIVE running-min gate: default ON for the go-live roster, OFF else;
     # --adaptive-spread / --no-adaptive-spread override explicitly.
     if args.adaptive_spread is None:
-        adaptive_spread = (roster == "golive")
+        adaptive_spread = roster in ("golive", "golive-dedup")
     else:
         adaptive_spread = args.adaptive_spread
 

@@ -25,6 +25,8 @@ from sentinel_engine.strategies.emasar_variant import simular_variant
 from sentinel_engine.strategies.live_configs_20 import (
     CONFIGS_20,
     CONFIGS_GOLIVE,
+    CONFIGS_GOLIVE_DEDUP,
+    CONFIGS_GOLIVE_DEDUP_IDS,
     CONFIGS_LIVE,
     CONFIGS_SHADOW,
     MAGIC_BY_ID_GOLIVE,
@@ -167,3 +169,33 @@ def test_golive_roster_respects_60_ficha_cap():
     # six ladder configs * 3 fichas + the single always-in SuperTrend = 19.
     assert 6 * 3 + 1 == 19
     assert 19 <= MAX_FICHAS_TOTAL
+
+
+# --------------------------- DEDUP roster (D121) ----------------------------
+def test_golive_dedup_keeps_two_best_sar_reps_plus_distinct_lines():
+    # The 5 SAR clones collapse to the two best reps (S6-K2P0 profit leader +
+    # S7-TPNONE break-even); the distinct lines (V11-M2, SuperTrend) stay.
+    assert [c["id"] for c in CONFIGS_GOLIVE_DEDUP] == list(CONFIGS_GOLIVE_DEDUP_IDS)
+    assert [c["id"] for c in CONFIGS_GOLIVE_DEDUP] == [
+        "S6-K2P0", "S7-TPNONE", "V11-M2", "SuperTrend-p14x3-M15"]
+    # the three redundant clones must be DROPPED.
+    dropped = {"S6-K1P5", "S7-TP1P0", "S7-TPNONE-F2"}
+    assert dropped.isdisjoint({c["id"] for c in CONFIGS_GOLIVE_DEDUP})
+
+
+def test_golive_dedup_magics_inherited_unchanged():
+    # Each kept config keeps its 7240x0 go-live magic (so kept-rep open
+    # positions re-sync on a daemon restart; no re-magicking).
+    assert [c["magic"] for c in CONFIGS_GOLIVE_DEDUP] == [724010, 724020, 724060, 724070]
+    for c in CONFIGS_GOLIVE_DEDUP:
+        assert c["magic"] == MAGIC_BY_ID_GOLIVE[c["id"]]
+
+
+def test_golive_dedup_is_a_strict_subset_of_the_full_golive_roster():
+    full_ids = {c["id"] for c in CONFIGS_GOLIVE}
+    dedup_ids = {c["id"] for c in CONFIGS_GOLIVE_DEDUP}
+    assert dedup_ids < full_ids
+    # dedup configs are the SAME dict objects (verbatim params, no divergence).
+    by_id_full = {c["id"]: c for c in CONFIGS_GOLIVE}
+    for c in CONFIGS_GOLIVE_DEDUP:
+        assert c is by_id_full[c["id"]]

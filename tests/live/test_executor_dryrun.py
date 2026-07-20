@@ -539,6 +539,26 @@ def test_configs_golive_flag_selects_golive_roster(caplog, tmp_path, monkeypatch
         assert f"[{c['id']}]" in caplog.text
 
 
+def test_configs_golive_dedup_flag_selects_four_configs(caplog, tmp_path, monkeypatch):
+    # D121: golive-dedup collapses the 5 SAR clones to 2 reps + the distinct
+    # lines. Adaptive spread-gate must still default ON (same as golive).
+    from sentinel_engine.strategies.live_configs_20 import CONFIGS_GOLIVE_DEDUP
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))  # keep real data/ clean
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive-dedup"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert "4 configs" in caplog.text
+    assert "adaptive_spread=ON" in caplog.text
+    for c in CONFIGS_GOLIVE_DEDUP:
+        assert f"[{c['id']}]" in caplog.text
+    # the three dropped clones must NOT be reconciled under golive-dedup.
+    for dropped in ("S6-K1P5", "S7-TP1P0", "S7-TPNONE-F2"):
+        assert f"[{dropped}]" not in caplog.text
+
+
 # ------------------ SuperTrend always-in 7th go-live strategy (GL-T3) -------
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
     supertrend_always_in_target)
