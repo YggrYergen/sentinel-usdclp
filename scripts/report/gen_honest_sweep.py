@@ -533,7 +533,13 @@ def run_sweep(
     _ensure_honest_fidelity(registry)
 
     # opt trial registry lives beside the league output (temp/real both work).
+    # It is a DERIVED artifact (not the additive-only research registry):
+    # recreated fresh each invocation so trial_count == manifest size exactly
+    # -- a stale trials.db from an interrupted run would otherwise double the
+    # trial family and over-deflate the DSR.
     opt_db = Path(league_json).with_suffix(".trials.db")
+    if opt_db.exists():
+        opt_db.unlink()
     opt_parquet = Path(league_json).parent / "honest_trials_parquet"
     study_id = "honest-sweep-2026-07-19"
     registry_opt = TrialRegistry(opt_db, opt_parquet)

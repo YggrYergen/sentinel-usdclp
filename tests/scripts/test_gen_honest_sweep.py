@@ -209,18 +209,23 @@ def test_second_invocation_skips_persisted_cells(tmp_path, fixture_bars):
     ResearchRegistry(db)
     manifest = _write_manifest(tmp_path, _manifest())
 
+    # SAME league path both times (realistic restart): the derived trials DB
+    # must be rebuilt, keeping the DSR trial family == manifest size.
+    league = tmp_path / "league.json"
     r1 = ghs.run_sweep(
         manifest_path=manifest, db_path=db,
-        league_json=tmp_path / "league1.json", report_md=tmp_path / "r1.md",
+        league_json=league, report_md=tmp_path / "r1.md",
     )
     runs_after_1 = _runs(db)
     nets_1 = {(r["variant_id"], r["periodo_desde"]): r["net"] for r in runs_after_1}
 
     r2 = ghs.run_sweep(
         manifest_path=manifest, db_path=db,
-        league_json=tmp_path / "league2.json", report_md=tmp_path / "r2.md",
+        league_json=league, report_md=tmp_path / "r2.md",
     )
     runs_after_2 = _runs(db)
+    league_2 = json.loads(league.read_text(encoding="utf-8"))
+    assert league_2["n_trials"] == 2  # trial family not inflated by restart
 
     # No new run rows on the second pass; every cell skipped.
     assert len(runs_after_2) == len(runs_after_1) == 3
