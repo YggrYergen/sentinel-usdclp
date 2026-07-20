@@ -20,9 +20,11 @@ WITHIN the span -- no look-ahead), against the LAKE bars' highs/lows:
                      (long) / entry - min(span low) (short).
     MAE            max adverse excursion (price): entry - min(span low) (long) /
                      max(span high) - entry (short).
-    mfe_capture    booked / MFE when MFE > 0 else 0.0; clamped to [_, 1.0]
+    mfe_capture    booked / MFE when MFE > 0 else 0.0; clamped to [0.0, 1.0]
                      (near 1.0 = captured almost the whole swing; low = premature
-                     exit). Never divides by zero.
+                     exit). A trade that booked a loss -- or gave back everything --
+                     on a swing that had upside counts as 0.0 capture (the lower
+                     clamp), not a large negative. Never divides by zero.
     giveback       max(MFE - booked, 0.0) in price units (>=0 for a trade that
                      ever went favourable), converted to USD via the _B1 pnl
                      scaling (lot 0.10, contract 100).
@@ -129,6 +131,9 @@ def paired_fichas(bars: list[dict[str, Any]], kwargs: dict[str, Any]) -> list[di
         for e in p["exits"]:
             fichas.append({
                 "side": p["side"],  # "L" / "S"
+                # Assumption: exit events always carry a ficha tag; the "F1"
+                # default is a defensive guard against a missing/empty tag, not
+                # a semantic choice about which ficha this exit belongs to.
                 "ficha": e.get("ficha") or "F1",
                 "entry_bar_idx": p["bar_idx"],
                 "exit_bar_idx": e["bar_idx"],
@@ -181,11 +186,19 @@ def ficha_metrics(bars: list[dict[str, Any]], ficha: dict[str, Any]) -> dict[str
         mfe_capture = booked / mfe
         if mfe_capture > 1.0:
             mfe_capture = 1.0  # clamp the UPPER end (booked can't beat the swing)
+        elif mfe_capture < 0.0:
+            mfe_capture = 0.0  # clamp the LOWER end: a booked loss on a swing that
+            # had upside is 0.0 capture (not a large negative that tail-dominates
+            # the mean)
     else:
         mfe_capture = 0.0  # MFE == 0 -> no swing to capture; never divide by zero
 
     giveback_price = max(mfe - booked, 0.0)
     giveback_usd = giveback_price * LOT * CONTRACT_SIZE
+    # Two rounding regimes are INTENTIONAL: pnl_usd is scored on the league's
+    # 2-dp-rounded fill prices so it matches _B1 (and thus the honest league net)
+    # EXACTLY; booked/giveback use the UNROUNDED prices because they are
+    # diagnostic excursion metrics, not league-net contributors.
     pnl_usd = _B1._pnl(_SIDE_UI[side], round(entry, 2), round(px_out, 2))
 
     return {

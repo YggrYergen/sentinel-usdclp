@@ -141,6 +141,30 @@ def test_mfe_zero_is_capture_zero_no_divide():
     assert m["giveback_usd"] == pytest.approx(5.0)
 
 
+def test_mfe_capture_clamped_lower_bound_to_zero():
+    """LOWER-BOUND pin: a trade that booked a LARGE LOSS on a swing that DID have
+    a small favourable excursion (MFE > 0) must yield mfe_capture == 0.0 -- NOT a
+    large negative. Before the [0,1] clamp this returned booked/MFE unbounded
+    below (here booked/MFE = -20.5 / 0.5 = -41.0); it is now floored to 0.0."""
+    bars = [
+        _bar(0, 100.0, 100.0, 100.0, 100.0),
+        _bar(1, 100.0, 101.0, 100.0, 100.0),   # entry; small favourable high 101
+        _bar(2, 100.0, 101.0, 79.0, 80.0),      # exit; deep loss (span high still 101)
+    ]
+    # entry bid 100 -> long +0.5 -> 100.5; exit bid 80 -> long px_out 80.0.
+    # booked = 80.0 - 100.5 = -20.5 ; span max high = 101 -> MFE = 101-100.5 = 0.5.
+    # raw booked/MFE = -20.5 / 0.5 = -41.0 -> clamped to 0.0 (the lower bound).
+    ficha = {
+        "side": "L", "ficha": "F1",
+        "entry_bar_idx": 1, "exit_bar_idx": 2,
+        "entry_price": 100.0, "exit_price": 80.0, "exit_reason": "EXIT_INITSL",
+    }
+    m = mfe.ficha_metrics(bars, ficha)
+    assert m["booked"] == pytest.approx(-20.5)
+    assert m["mfe"] == pytest.approx(0.5)
+    assert m["mfe_capture"] == pytest.approx(0.0)  # clamped lower bound, not -41.0
+
+
 def test_mfe_capture_clamped_to_one():
     """booked > MFE (can't normally happen without spread quirks, but the clamp
     is a hard requirement) -> mfe_capture clamps to 1.0, giveback floors at 0."""

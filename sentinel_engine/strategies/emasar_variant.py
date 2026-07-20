@@ -470,8 +470,10 @@ def simular_variant(
         required TOGETHER -- an unbounded hold is refused by the engine itself.
         `max_hold_bars` is reused as the time bound (no second time-bound kwarg).
       - `wait_be_exit = True` (only meaningful when `wait_mae_atr_k > 0`; inert
-        otherwise, no error): once the ficha has been ADVERSE and then RECOVERED
-        to >= entry (long: `f.max_fav >= entry`; mirror short with min/<=), raise
+        otherwise, no error): the floor holds BE-or-better once the ficha is
+        at/above entry -- it arms IMMEDIATELY when the trade is green (long:
+        `f.max_fav >= entry`, and `f.max_fav` initializes at entry, so this is
+        true as soon as price is at/above water; mirror short with min/<=). Raise
         the SL to the break-even floor (`entry + be_offset_pips*pip` long; mirror
         short) so the exit is at BE-or-better rather than chasing the wide stop
         back down. This is a FLOOR that ONLY TIGHTENS (exactly like the BE/ratchet
@@ -900,9 +902,10 @@ def simular_variant(
 
             # F3 bounded stop-and-wait BE-or-better floor (PX-T2; only armed when
             # BOTH wait_mae_atr_k>0 AND wait_be_exit=True -> this block is skipped
-            # ENTIRELY otherwise, byte-identical no-op). Once the ficha has
-            # recovered to >= entry (long; mirror short) after riding the wide
-            # bounded-MAE stop, raise the SL to the break-even floor
+            # ENTIRELY otherwise, byte-identical no-op). Once the ficha is at/above
+            # entry (long; mirror short) -- which, since f.max_fav initializes at
+            # entry, is true as soon as the trade is green (arms immediately) --
+            # raise the SL to the break-even floor
             # (entry + be_offset_pips*pip, long; mirror short) so the exit is at
             # BE-or-better instead of chasing the wide stop back down. One more
             # FLOOR that only ever TIGHTENS -- never loosening the current SL,
