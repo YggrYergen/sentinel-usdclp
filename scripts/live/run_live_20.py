@@ -56,7 +56,8 @@ from sentinel_engine.live import guard_cuenta  # noqa: E402
 from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
-from sentinel_engine.strategies.live_configs_20 import CONFIGS_20, LIVE_ROSTER  # noqa: E402
+from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
+    CONFIGS_20, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER)
 
 TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
 TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
@@ -533,7 +534,9 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
          attach_checker: Callable[[], bool] = _portable_running) -> int:
     ap = argparse.ArgumentParser(description="Guarded live executor for the 20 configs.")
     ap.add_argument("--configs", default="all",
-                     help="'all', 'live' (the LIVE_ROSTER subset) or comma ids "
+                     help="'all', 'live' (the LIVE_ROSTER subset), 'shadow' "
+                          "(the FIXED4 corrected roster only -- what machine-2 "
+                          "runs), 'live+shadow' (both, 8 configs) or comma ids "
                           "e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
@@ -552,10 +555,17 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                   logging.FileHandler(AUDIT_LOG, encoding="utf-8")])
 
     window = max(args.window, MIN_WINDOW)
-    if args.configs.lower() == "all":
+    roster = args.configs.lower()
+    if roster == "all":
         configs = list(CONFIGS_20)
-    elif args.configs.lower() == "live":
-        configs = [c for c in CONFIGS_20 if c["id"] in LIVE_ROSTER]
+    elif roster == "live":
+        configs = list(CONFIGS_LIVE)
+    elif roster == "shadow":
+        # FIXED4 only -- the corrected roster machine-2 arms (D114: the
+        # uncorrected live-4 never runs there).
+        configs = list(CONFIGS_SHADOW)
+    elif roster == "live+shadow":
+        configs = list(CONFIGS_LIVE) + list(CONFIGS_SHADOW)
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]

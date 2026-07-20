@@ -51,6 +51,7 @@ USAGE
 from __future__ import annotations
 
 import logging
+import os
 import subprocess
 import sys
 import time
@@ -69,9 +70,17 @@ WATCHDOG_LOG = REPO_ROOT / "scripts" / "live" / "watchdog.log"
 AUDIT_LOG = preflight_live.AUDIT_LOG
 EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 
+# Roster the supervisor arms the executor with. DEFAULT STAYS `live` so the
+# running machine-1 stack behaves EXACTLY as before. Machine-1 can set
+# SUPERVISOR_CONFIGS=live+shadow for in-process verification; the machine-2
+# pack sets SUPERVISOR_CONFIGS=shadow (D114: machine-2 arms the FIXED4
+# corrected roster ONLY, never the uncorrected live-4). Accepted values mirror
+# run_live_20's `--configs`: live | shadow | live+shadow (or any comma ids).
+SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
+
 EXECUTOR_ARGV = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
                  "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
-                 "--configs", "live"]
+                 "--configs", SUPERVISOR_CONFIGS]
 DEALS_WATCHER_MARKER = "run_deals_watcher"
 
 BACKOFF_INITIAL_S = 30.0

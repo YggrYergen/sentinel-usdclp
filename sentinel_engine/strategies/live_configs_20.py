@@ -157,3 +157,35 @@ assert len(set(MAGIC_BY_ID.values())) == 20, "magics must be unique"
 LIVE_ROSTER: tuple[str, ...] = ("V11-M2", "V15-M2", "V13-M2", "V15-M15")
 CONFIGS_LIVE: list[dict[str, Any]] = [c for c in CONFIGS_20 if c["id"] in LIVE_ROSTER]
 assert len(CONFIGS_LIVE) == len(LIVE_ROSTER), "every LIVE_ROSTER id must exist in CONFIGS_20"
+
+# --- SHADOW ROSTER (FIXED4, Addendum §1.2, D114) -------------------------
+# FIXED4: the live roster with the obvious honesty fixes.
+# Same signals; honest exits. Magics 721010/721020/721030/721040 (+1..+3 fichas).
+# ac_modulate=False   -> no anti-correlation trail modulation (raw trail).
+# live_fill_mode=True  -> honest broker-RESTING SL in open_state (Task A1); the
+#                         reported open_state[tag]["sl"] is one bar behind the
+#                         classic raised trail by design -- the executor uses it
+#                         verbatim as the resting level and must NOT "fix" it.
+# trail_atr_floor_k=1.5-> ATR floor under the flat pip trail (Task A1).
+# Magic base 721000 keeps the shadow band [721010..721043] fully DISJOINT from
+# the live band [720010..720203] and from every other magic block (legacy
+# Sapitos 33xxxx, EMASAR EA 710000, IA 900xxx). Machine-2 runs `--configs
+# shadow` ONLY; the uncorrected live-4 never arms there (D114).
+def _fixed(cfg: dict[str, Any], new_magic: int) -> dict[str, Any]:
+    k = dict(cfg["kwargs"], ac_modulate=False, live_fill_mode=True,
+             trail_atr_floor_k=1.5)
+    return {**cfg, "id": cfg["id"] + "-F", "kwargs": k, "magic": new_magic}
+
+
+CONFIGS_SHADOW: list[dict[str, Any]] = [
+    _fixed(c, 721000 + 10 * (i + 1)) for i, c in enumerate(CONFIGS_LIVE)
+]
+assert len(CONFIGS_SHADOW) == len(CONFIGS_LIVE), "one shadow config per live config"
+assert len({c["id"] for c in CONFIGS_SHADOW}) == len(CONFIGS_SHADOW), \
+    "shadow config ids must be unique"
+assert len({c["magic"] for c in CONFIGS_SHADOW}) == len(CONFIGS_SHADOW), \
+    "shadow magics must be unique"
+# live vs shadow magic bands ([base .. base+3]) must never intersect.
+_live_band = {c["magic"] + o for c in CONFIGS_LIVE for o in range(4)}
+_shadow_band = {c["magic"] + o for c in CONFIGS_SHADOW for o in range(4)}
+assert _live_band.isdisjoint(_shadow_band), "live/shadow magic bands must be disjoint"
