@@ -469,7 +469,9 @@ SKELETON: dict[str, Any] = dict(
     f1_trail_pips=100.0, f2_trail_pips=100.0, f3_trail_pips=100.0,
     ac_modulate=True,
 )
-INIT_SL_RANGE_K = {"M2": 3.0, "M5": 6.0, "M15": 2.5}
+# M1 added additively (Wave-5 V-10 completion): mirrors the init_sl_range_k the
+# batch5 IW V-10 M1 run used (6.0); M2/M5/M15 values unchanged.
+INIT_SL_RANGE_K = {"M1": 6.0, "M2": 3.0, "M5": 6.0, "M15": 2.5}
 
 
 def skeleton_kwargs(tf: str) -> dict[str, Any]:
@@ -503,6 +505,12 @@ CONFIGS: dict[str, dict[str, Any]] = {
     "v06d-m15": dict(tf="M15", extra=dict(ac_modulate_factor=0.01)),
     "v10-m15": dict(tf="M15", extra=dict(ac_modulate_factor=0.25), direction_mask=True),
     "v10-m5": dict(tf="M5", extra=dict(ac_modulate_factor=0.25), direction_mask=True),
+    # Wave-5 V-10 completion (additive): M1/M2 mirror the v10-m5/v10-m15 shape
+    # (same direction_mask=True, same ac_modulate_factor=0.25 lever). These only
+    # run on (TF,window) cells whose M1/M2 parquet lake exists -- gen_v10_completion
+    # SKIPs+documents any window whose bars are absent (never fabricates a net).
+    "v10-m1": dict(tf="M1", extra=dict(ac_modulate_factor=0.25), direction_mask=True),
+    "v10-m2": dict(tf="M2", extra=dict(ac_modulate_factor=0.25), direction_mask=True),
     "v06b-m15": dict(tf="M15", extra=dict(ac_modulate_factor=0.25)),
 }
 
