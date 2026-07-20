@@ -130,6 +130,7 @@ def simular_variant(
     max_hold_bars: int | None = None,
     confirm_bar: bool = False,
     stop_and_reverse: bool = False,
+    active_fichas: int = 3,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -377,7 +378,26 @@ def simular_variant(
     pyramiding deferral (the guard still `continue`s). Long and short are never
     held simultaneously. `stop_and_reverse=False` reproduces the classic event
     stream byte-for-byte.
+
+    Ficha-count lever (P46 escalera; `active_fichas`, default 3 = EXACT current
+    behavior, byte-identical no-op): the escalera "1-vs-2-vs-3 fichas" study
+    needs to SIMULATE with fewer fichas, not post-hoc drop rows (the fichas
+    share trail/BE/SL/reentry state, so dropping F2/F3 events is not equivalent
+    to never opening them). When `active_fichas=N` (1 or 2), EVERY entry site
+    (strict long, strict short, and V-13 re-entry) opens only fichas F1..FN
+    (N=1 -> just F1; N=2 -> F1+F2) instead of the full F1/F2/F3 dict. The
+    exit/trail/BE/SL/AC-decel/time-stop loops already iterate over whatever
+    fichas are present (`for tag in list(fichas.keys())`, `trail_by_tag[tag]`,
+    etc.), so the reduced ladder flows through with no other change: identical
+    signals, identical per-ficha trail params for the fichas that exist, honest
+    under `live_fill_mode` (no new fill route -- the surviving fichas price
+    exactly as they would in the full ladder). `active_fichas=3` builds the
+    classic full dict and is byte-identical to pre-change behavior. Values
+    outside {1, 2, 3} raise ValueError.
     """
+    if active_fichas not in (1, 2, 3):
+        raise ValueError(
+            f"active_fichas must be 1, 2 or 3, got {active_fichas!r}")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -422,6 +442,12 @@ def simular_variant(
     # no extra work. ATR14[i] is None during the 14-bar warmup -> no floor.
     atr14_floor = (_atr_wilder(highs, lows, closes, 14)
                    if trail_atr_floor_k > 0.0 else None)
+    # Ficha-count lever (P46; active_fichas): the ORDERED tags opened at every
+    # entry site. active_fichas=3 -> the classic full ("F1","F2","F3"), so the
+    # entry-site dicts below are byte-identical to before. N=1/2 truncates to
+    # F1..FN; the exit/trail loops iterate over whatever tags exist, so fewer
+    # fichas flow through naturally with no other change.
+    active_tags = ("F1", "F2", "F3")[:active_fichas]
     trail_by_tag = {
         "F1": f1_trail_pips * pip,
         "F2": f2_trail_pips * pip,
@@ -822,17 +848,13 @@ def simular_variant(
                 eventos.append({"idx": i, "lado": lado_txt, "precio": reentry_px,
                                 "motivo": "ENTRY_L" if reentry_lado == +1 else "ENTRY_S", "ficha": None})
                 sl = _sl_inicial(reentry_lado, i)
-                fichas = {
-                    "F1": _Ficha(reentry_lado, reentry_px, sl),
-                    "F2": _Ficha(reentry_lado, reentry_px, sl),
-                    "F3": _Ficha(reentry_lado, reentry_px, sl),
-                }
-                sl_inicial_by_tag = {"F1": sl, "F2": sl, "F3": sl}
-                server_sl_by_tag = {"F1": sl, "F2": sl, "F3": sl}
+                fichas = {t: _Ficha(reentry_lado, reentry_px, sl) for t in active_tags}
+                sl_inicial_by_tag = {t: sl for t in active_tags}
+                server_sl_by_tag = {t: sl for t in active_tags}
                 r_dist = abs(reentry_px - sl)
-                r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
+                r_by_tag = {t: r_dist for t in active_tags}
                 ac_decel_consec_by_tag = {}
-                entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
+                entry_bar_by_tag = {t: i for t in active_tags}
                 signal_exit_motivos = []
                 reentry_count += 1
                 if reentry_count >= reentry_max:
@@ -986,17 +1008,13 @@ def simular_variant(
         if long_ok and allow_long:
             eventos.append({"idx": i, "lado": "L", "precio": px_long, "motivo": "ENTRY_L", "ficha": None})
             sl = _sl_inicial(+1, i)
-            fichas = {
-                "F1": _Ficha(+1, px_long, sl),
-                "F2": _Ficha(+1, px_long, sl),
-                "F3": _Ficha(+1, px_long, sl),
-            }
-            sl_inicial_by_tag = {"F1": sl, "F2": sl, "F3": sl}
-            server_sl_by_tag = {"F1": sl, "F2": sl, "F3": sl}
+            fichas = {t: _Ficha(+1, px_long, sl) for t in active_tags}
+            sl_inicial_by_tag = {t: sl for t in active_tags}
+            server_sl_by_tag = {t: sl for t in active_tags}
             r_dist = abs(px_long - sl)
-            r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
+            r_by_tag = {t: r_dist for t in active_tags}
             ac_decel_consec_by_tag = {}
-            entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
+            entry_bar_by_tag = {t: i for t in active_tags}
             # V-13: a fresh STRICT-gate entry starts a brand-new lineage --
             # any previous re-entry arm/count is unrelated to this signal.
             signal_exit_motivos = []
@@ -1006,17 +1024,13 @@ def simular_variant(
         elif short_ok and allow_short:
             eventos.append({"idx": i, "lado": "S", "precio": px_short, "motivo": "ENTRY_S", "ficha": None})
             sl = _sl_inicial(-1, i)
-            fichas = {
-                "F1": _Ficha(-1, px_short, sl),
-                "F2": _Ficha(-1, px_short, sl),
-                "F3": _Ficha(-1, px_short, sl),
-            }
-            sl_inicial_by_tag = {"F1": sl, "F2": sl, "F3": sl}
-            server_sl_by_tag = {"F1": sl, "F2": sl, "F3": sl}
+            fichas = {t: _Ficha(-1, px_short, sl) for t in active_tags}
+            sl_inicial_by_tag = {t: sl for t in active_tags}
+            server_sl_by_tag = {t: sl for t in active_tags}
             r_dist = abs(px_short - sl)
-            r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
+            r_by_tag = {t: r_dist for t in active_tags}
             ac_decel_consec_by_tag = {}
-            entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
+            entry_bar_by_tag = {t: i for t in active_tags}
             signal_exit_motivos = []
             reentry_armed = False
             reentry_lado = -1
