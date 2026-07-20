@@ -539,6 +539,92 @@ def test_configs_golive_flag_selects_golive_roster(caplog, tmp_path, monkeypatch
         assert f"[{c['id']}]" in caplog.text
 
 
+# ------------------ SuperTrend always-in 7th go-live strategy (GL-T3) -------
+from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
+    supertrend_always_in_target)
+
+
+def _st_config():
+    return next(c for c in CONFIGS_GOLIVE if c["id"] == "SuperTrend-p14x3-M15")
+
+
+def _st_trend_bars(n_up, n_down, tf_secs=900):
+    """Strong up-leg then down-leg so SuperTrend is unambiguously long/short."""
+    out = []
+    t = int(datetime(2026, 6, 2, tzinfo=timezone.utc).timestamp())
+    price = 2000.0
+    for _ in range(n_up):
+        o = price; price += 3.0; c = price
+        out.append({"t": t, "open": o, "high": max(o, c) + 0.5,
+                    "low": min(o, c) - 0.5, "close": c}); t += tf_secs
+    for _ in range(n_down):
+        o = price; price -= 3.0; c = price
+        out.append({"t": t, "open": o, "high": max(o, c) + 0.5,
+                    "low": min(o, c) - 0.5, "close": c}); t += tf_secs
+    return out
+
+
+def test_supertrend_reconciles_to_single_open_when_flat():
+    """Flat account + uptrend => the always-in target is ONE OPEN (F1) long,
+    reconciled through the same reconciler as the ladder configs."""
+    cfg = _st_config()
+    mt5 = MockMT5(_st_trend_bars(60, 0))
+    res, _bar_t = run_live_20.reconcile_config(
+        mt5, cfg, window=3000, volume=0.01, kill_switch=False,
+        total_open_fichas=0)
+    opens = [a for a in res.actions if a.kind == "OPEN"]
+    assert len(opens) == 1, "always-in must reconcile to exactly ONE position"
+    assert opens[0].ficha == "F1"
+    assert opens[0].side == "L"
+    assert opens[0].magic == cfg["magic"] + 1  # F1 slot
+    # SL (the SuperTrend line) sits below the entry price for a long.
+    assert opens[0].sl is not None and opens[0].sl < opens[0].price_ref
+
+
+def test_supertrend_flip_closes_wrong_side_then_reopens():
+    """A LONG live position when the trend has flipped SHORT => the reconciler
+    CLOSEs the long (side mismatch) -- the always-in flip -- with no ladder."""
+    cfg = _st_config()
+    # trend now short (long down-leg), but a LONG position is live in F1.
+    long_pos = _Pos(ticket=901, magic=cfg["magic"] + 1,
+                    type=MockMT5.POSITION_TYPE_BUY, volume=0.01, sl=1990.0)
+    mt5 = MockMT5(_st_trend_bars(30, 60), positions=[long_pos])
+    res, _bar_t = run_live_20.reconcile_config(
+        mt5, cfg, window=3000, volume=0.01, kill_switch=False,
+        total_open_fichas=0)
+    closes = [a for a in res.actions if a.kind == "CLOSE"]
+    assert any(a.ticket == 901 for a in closes), "flip must CLOSE the wrong-side long"
+
+
+def test_supertrend_open_is_spread_gated(caplog):
+    """The SuperTrend OPEN must be spread-gated exactly like any other OPEN:
+    a wide spread SKIPs it."""
+    cfg = _st_config()
+    mt5 = MockMT5(_st_trend_bars(60, 0),
+                  tick=_Tick(bid=2000.0, ask=2001.0),  # spread 1.00 (wide)
+                  symbol_info=_SymbolInfo(trade_stops_level=0, point=0.01))
+    res, _bar_t = run_live_20.reconcile_config(
+        mt5, cfg, window=3000, volume=0.01, kill_switch=False,
+        total_open_fichas=0)
+    open_a = next(a for a in res.actions if a.kind == "OPEN")
+    with caplog.at_level("WARNING"):
+        run_live_20.execute_action(mt5, open_a, symbol="XAUUSD", dry_run=False,
+                                   max_spread_open=0.70)
+    assert mt5.sent == [], "wide-spread SuperTrend OPEN must be gated"
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_supertrend_dry_run_full_cycle_sends_nothing(caplog, tmp_path, monkeypatch):
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    mt5 = MockMT5(_st_trend_bars(60, 0))
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive"], mt5_module=mt5,
+                              attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert "[SuperTrend-p14x3-M15]" in caplog.text
+
+
 # ------------------------- HARD spread-gate (OPEN only) ---------------------
 def _wide_spread_mt5(positions=None, retcodes=None):
     """MockMT5 whose tick spread is WIDE (ask-bid = 1.00 > default gate 0.70)

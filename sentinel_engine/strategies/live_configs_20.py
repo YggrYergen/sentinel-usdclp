@@ -278,17 +278,94 @@ _GOLIVE_V11_M2: dict[str, Any] = {
     "notes": "existing least-negative M2 line, reused verbatim (GL-T1)",
 }
 
-CONFIGS_GOLIVE: list[dict[str, Any]] = [*_GOLIVE_M15, _GOLIVE_V11_M2]
+# --- SuperTrend-p14x3-M15: the 7th GO-LIVE strategy (GL-T3) ----------------
+# ALWAYS-IN, NOT a simular_variant ladder. SuperTrend(atr_period=14, mult=3.0)
+# on M15: the desired live target is a SINGLE position, LONG when the last
+# closed bar's trend is +1 (price above the SuperTrend line) and SHORT when
+# -1 (below), FLIPPING when price crosses the line. The SuperTrend line is the
+# server-side SL. This is the honestly-scored "always-in" engine from Wave-5
+# P34 (`scripts/report/gen_p34_supertrend_honest.py`,
+# `docs/superpowers/research/2026-07-20-wave5-p34-supertrend.md`), reusing the
+# vendored SuperTrend math verbatim (ZERO new indicator code).
+#
+# WHY IT FITS ADDITIVELY (parity-by-construction, no reconciler refactor):
+# the go-live reconciler diffs a `simular_variant(return_state=True)`-shaped
+# snapshot -- {"open": {tag: {side, entry, sl}}, ...} -- against live positions
+# in the config's ficha band. `supertrend_always_in_target` emits that SAME
+# shape with a SINGLE ficha F1 on the SuperTrend side, so the reconciler
+# OPENs it (spread-gated), trails its SL (MODIFY) and, on a trend flip, CLOSEs
+# the old side (live side != desired side) then re-OPENs the opposite next
+# cycle -- the always-in flip -- with NO change to the ladder reconciler. The
+# executor branches on `engine == "supertrend_always_in"` to build the target
+# instead of calling `simular_variant`.
+_ST_ATR_PERIOD = 14
+_ST_MULT = 3.0
+
+
+def supertrend_always_in_target(bars: list[dict[str, Any]]) -> dict[str, Any]:
+    """Always-in SuperTrend(14, 3.0) desired target on the LAST CLOSED bar,
+    in the reconciler's `return_state` snapshot shape.
+
+    Returns {"open": {"F1": {"side","entry","sl","max_fav"}} | {},
+             "last_bar_exits": {}, "last_idx": n-1}. A SINGLE position (F1):
+    LONG when the last bar's SuperTrend trend is +1 (price above the line),
+    SHORT when -1; `sl` is the SuperTrend line (server-side stop). Empty/short
+    bars -> flat ({} open). The vendored `_supertrend_ref.supertrend` + Wilder
+    ATR provide the math verbatim -- no indicator code is re-implemented here.
+    """
+    # Local imports keep this module import-light (the 20-config spec must load
+    # without dragging in the SuperTrend/ATR refs unless the flavor is used).
+    from sentinel_engine.strategies._supertrend_ref import supertrend
+    from sentinel_engine.strategies.emasar_ref import _atr_wilder
+
+    n = len(bars)
+    if n == 0:
+        return {"open": {}, "last_bar_exits": {}, "last_idx": -1}
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr = _atr_wilder(highs, lows, closes, _ST_ATR_PERIOD)
+    # No valid ATR yet (feed shorter than the ATR warmup) -> flat, matching the
+    # honest engine's "first valid ATR bar" open rule.
+    if all(a is None for a in atr):
+        return {"open": {}, "last_bar_exits": {}, "last_idx": n - 1}
+    atr_filled = [a if a is not None else 0.0 for a in atr]
+    trend, line = supertrend(highs, lows, closes, atr_filled, _ST_MULT)
+    side = "L" if trend[-1] == 1 else "S"
+    open_state = {"F1": {"side": side, "entry": closes[-1], "sl": line[-1],
+                         "max_fav": None}}
+    return {"open": open_state, "last_bar_exits": {}, "last_idx": n - 1}
+
+
+_GOLIVE_SUPERTREND: dict[str, Any] = {
+    "id": "SuperTrend-p14x3-M15", "tf": "M15", "k": None,
+    # NOT simular_variant kwargs: the executor builds the always-in target from
+    # `engine` instead. `symbol` is the only kwarg the executor reads (bars +
+    # spread-gate). direction_filter irrelevant for always-in.
+    "kwargs": {"symbol": "XAUUSD"},
+    "engine": "supertrend_always_in",
+    "direction_filter": False,
+    "notes": ("Wave-5 P34 always-in SuperTrend(14,3.0) M15; single flipping "
+              "position, SL=SuperTrend line; reconciled additively (GL-T3)"),
+}
+
+CONFIGS_GOLIVE: list[dict[str, Any]] = [*_GOLIVE_M15, _GOLIVE_V11_M2,
+                                        _GOLIVE_SUPERTREND]
 
 _GOLIVE_MAGIC_BASE = 724000
 for _i, _c in enumerate(CONFIGS_GOLIVE, start=1):
-    _c["magic"] = _GOLIVE_MAGIC_BASE + 10 * _i   # 724010..724060
+    _c["magic"] = _GOLIVE_MAGIC_BASE + 10 * _i   # 724010..724070
 
-assert len(CONFIGS_GOLIVE) == 6, "GO-LIVE roster must be exactly 6 configs"
-assert len({c["id"] for c in CONFIGS_GOLIVE}) == 6, "go-live ids must be unique"
+assert len(CONFIGS_GOLIVE) == 7, "GO-LIVE roster must be exactly 7 configs"
+assert len({c["id"] for c in CONFIGS_GOLIVE}) == 7, "go-live ids must be unique"
 assert [c["magic"] for c in CONFIGS_GOLIVE] == [724010, 724020, 724030, 724040,
-                                                724050, 724060], \
+                                                724050, 724060, 724070], \
     "go-live magics must be the fresh 7240x0 block"
+# Exactly the six ladder configs run simular_variant; the 7th is always-in.
+assert sum(1 for c in CONFIGS_GOLIVE
+           if c.get("engine", "simular_variant") == "simular_variant") == 6, \
+    "exactly six go-live configs run simular_variant (the 7th is SuperTrend)"
+assert _GOLIVE_SUPERTREND["engine"] == "supertrend_always_in"
 # go-live band ([base .. base+3]) must be disjoint from live AND shadow bands
 # AND from the plan-reserved 722xxx/723xxx blocks.
 _golive_band = {c["magic"] + o for c in CONFIGS_GOLIVE for o in range(4)}

@@ -58,7 +58,8 @@ from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: 
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
-    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER)
+    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER,
+    supertrend_always_in_target)
 
 TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
 TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
@@ -235,10 +236,20 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
         logger.warning("[%s] no bars available (market closed / no data)", cfg["id"])
         return None, None
 
-    kwargs = dict(cfg["kwargs"])
-    if cfg.get("direction_filter"):
-        kwargs["direction_mask"] = _direction_mask(bars)
-    _events, desired = simular_variant(bars, return_state=True, **kwargs)
+    # ENGINE FLAVORS (GL-T3): the six ladder configs run simular_variant; the
+    # 7th go-live strategy (SuperTrend-p14x3-M15) is ALWAYS-IN -- a single
+    # flipping position whose desired target is built by
+    # `supertrend_always_in_target`, NOT simular_variant. Both produce the
+    # SAME `return_state` snapshot shape, so the reconciler below is identical
+    # for either (single position vs 3-ficha ladder), and the OPEN spread-gate
+    # applies to the SuperTrend entry exactly like any other.
+    if cfg.get("engine") == "supertrend_always_in":
+        desired = supertrend_always_in_target(bars)
+    else:
+        kwargs = dict(cfg["kwargs"])
+        if cfg.get("direction_filter"):
+            kwargs["direction_mask"] = _direction_mask(bars)
+        _events, desired = simular_variant(bars, return_state=True, **kwargs)
 
     live = fetch_live_positions(mt5, cfg["magic"])
     res = reconcile(cfg["id"], cfg["magic"], desired, live,
@@ -712,8 +723,9 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     ap.add_argument("--configs", default="all",
                      help="'all', 'live' (the LIVE_ROSTER subset), 'shadow' "
                           "(the FIXED4 corrected roster only -- what machine-2 "
-                          "runs), 'golive' (the GL-T1 GO-LIVE roster: M15 V-15 "
-                          "SAR top-5 + V11-M2, magics 7240x0), 'live+shadow' "
+                          "runs), 'golive' (the GO-LIVE roster: M15 V-15 SAR "
+                          "top-5 + V11-M2 + SuperTrend-p14x3-M15 always-in, "
+                          "magics 7240x0), 'live+shadow' "
                           "(both, 8 configs) or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")

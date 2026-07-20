@@ -71,15 +71,17 @@ def _bars(n=500, seed=13):
     return out
 
 
-def test_golive_is_exactly_six_expected_ids():
-    assert len(CONFIGS_GOLIVE) == 6
-    assert [c["id"] for c in CONFIGS_GOLIVE] == list(_GOLIVE_IDS)
-    assert len({c["id"] for c in CONFIGS_GOLIVE}) == 6
+def test_golive_first_six_are_the_ladder_ids():
+    # The six simular_variant ladder configs (GL-T1). The 7th (SuperTrend,
+    # GL-T3) is asserted separately in test_supertrend_golive.py.
+    assert [c["id"] for c in CONFIGS_GOLIVE[:6]] == list(_GOLIVE_IDS)
+    assert len({c["id"] for c in CONFIGS_GOLIVE}) == len(CONFIGS_GOLIVE)
 
 
 def test_golive_magics_are_fresh_7240_block():
-    assert [c["magic"] for c in CONFIGS_GOLIVE] == [724010, 724020, 724030,
-                                                    724040, 724050, 724060]
+    # First six ladder magics unchanged; the always-in 7th takes 724070.
+    assert [c["magic"] for c in CONFIGS_GOLIVE[:6]] == [724010, 724020, 724030,
+                                                        724040, 724050, 724060]
     assert MAGIC_BY_ID_GOLIVE == {c["id"]: c["magic"] for c in CONFIGS_GOLIVE}
 
 
@@ -146,9 +148,15 @@ def test_golive_v11_m2_reused_verbatim_from_configs_20():
     assert got["magic"] == 724060 != src["magic"]
 
 
-def test_golive_configs_all_run_simular_variant():
+def test_golive_ladder_configs_all_run_simular_variant():
+    # Only the simular_variant-engine configs run through simular_variant; the
+    # always-in SuperTrend 7th (engine="supertrend_always_in") does NOT and is
+    # covered by test_supertrend_golive.py instead.
     bars = _bars()
-    for c in CONFIGS_GOLIVE:
+    ladder = [c for c in CONFIGS_GOLIVE
+              if c.get("engine", "simular_variant") == "simular_variant"]
+    assert len(ladder) == 6
+    for c in ladder:
         events = simular_variant(bars, **c["kwargs"])
         assert isinstance(events, list), c["id"]
 
@@ -156,5 +164,6 @@ def test_golive_configs_all_run_simular_variant():
 def test_golive_roster_respects_60_ficha_cap():
     from sentinel_engine.live.reconciler import MAX_FICHAS_TOTAL
 
-    assert len(CONFIGS_GOLIVE) * 3 == 18
-    assert 18 <= MAX_FICHAS_TOTAL
+    # six ladder configs * 3 fichas + the single always-in SuperTrend = 19.
+    assert 6 * 3 + 1 == 19
+    assert 19 <= MAX_FICHAS_TOTAL
