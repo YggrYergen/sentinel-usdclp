@@ -16,14 +16,23 @@ B1a-2 scope (this revision):
       * anything else -> origin="human".
     `origin`/`strategy_id`/`variant_id` are persisted on `deals_raw`
     (columns added additively by `registry2._migrate_additive`).
-  - `last_sync` is now persisted via `ResearchRegistry.get_meta`/`set_meta`
+  - `last_sync` is persisted via `ResearchRegistry.get_meta`/`set_meta`
     (key `"deals_watcher.last_sync"`) instead of held only in memory: the
     constructor loads it at startup (0.0 if never set, e.g. an empty
-    registry) so a process restart resumes from where it left off; after
-    each successful (non-skipped) poll it's updated to `now` (the poll
-    time), NOT the max deal `time` seen -- this stays correct even when
-    `deals_seen == 0` (nothing to derive a max from) and is simpler/safer
-    than trusting broker-clock timestamps for the resume point.
+    registry) so a process restart resumes from where it left off. It is
+    the max deal `time` (broker/server epoch) actually seen, advanced only
+    when a poll returns deals; when `deals_seen == 0` it stays put (nothing
+    to advance to). The incremental query window is anchored to THIS value
+    (broker clock), NOT to wall-clock `now`: MT5 deal timestamps are server
+    time (this broker = UTC-4), so `now = time.time()` (real UTC) sits ~4h
+    AHEAD of the newest deal. An earlier revision built `from_ts` from
+    wall-clock `now - 3600`; that 1h overlap could not bridge the 4h offset,
+    so after the initial `from_ts~=0` full pull every incremental poll asked
+    for a window ~4h too recent and saw ZERO deals -- silent data loss while
+    "attached". Anchoring `from_ts` to the last broker-clock deal time (minus
+    a re-scan overlap) and padding `to_ts` into the future makes the window
+    correct for any broker UTC offset; the idempotent ticket-upsert makes the
+    overlap re-scan harmless.
 
 Windows-safe: no new deps (no psutil) -- the attach guard shells out to
 `tasklist` via `os.popen`, same as any other subprocess call, and the
@@ -55,6 +64,15 @@ _DEAL_COLUMNS = (
 _LAST_SYNC_META_KEY = "deals_watcher.last_sync"
 _IA_MAGIC_LO = 900000
 _IA_MAGIC_HI = 900999
+
+# Incremental-window tuning. `from_ts` reaches back _OVERLAP_S before the last
+# broker-clock deal time we recorded (idempotent upsert absorbs the re-scan);
+# `to_ts` is padded _FUTURE_PAD_S past wall-clock `now` so the window still
+# covers the newest deals no matter which way the broker's UTC offset runs
+# (a history query can never return nonexistent future deals, so padding is
+# free). See the module docstring for the timezone-skew bug this fixes.
+_OVERLAP_S = 300
+_FUTURE_PAD_S = 86400
 
 
 @dataclass
@@ -139,9 +157,13 @@ class DealsWatcher:
             logger.info("DealsWatcher.poll_once: terminal64.exe not found -- skipping cycle")
             return WatchReport(attached=False, deals_seen=0, upserted=0, skipped=True)
 
-        now = time.time()
-        from_ts = self._last_sync - 3600
-        deals = self.mt5_client.history_deals_get(from_ts, now)
+        # from_ts anchored to the last broker-clock deal time (minus overlap),
+        # NOT wall-clock now -- see module docstring / _OVERLAP_S. to_ts padded
+        # into the future so the window covers the newest deals regardless of
+        # the broker's UTC offset direction.
+        from_ts = self._last_sync - _OVERLAP_S
+        to_ts = time.time() + _FUTURE_PAD_S
+        deals = self.mt5_client.history_deals_get(from_ts, to_ts)
 
         # B1c: leverage (account-level, once per poll) + contract_size
         # (per distinct symbol in this batch) -- both are plain reads
@@ -153,11 +175,17 @@ class DealsWatcher:
 
         upserted = self._upsert_deals(deals, leverage, contract_sizes)
 
-        # Persist last_sync = now (poll time), not max(deal.time) -- stays
-        # correct even when deals_seen == 0, and avoids trusting the
-        # broker-clock `time` field as the resume point.
-        self._last_sync = now
-        self.registry.set_meta(_LAST_SYNC_META_KEY, str(now))
+        # Advance the watermark to the newest broker-clock deal time actually
+        # seen (so the next window is in the SAME clock as the deals). Only
+        # advance when deals arrived -- an empty poll leaves it put, so we
+        # never skip past deals that land later at a broker time below `now`.
+        max_seen = max(
+            (d["time"] for d in deals if d.get("time") is not None),
+            default=None,
+        )
+        if max_seen is not None and float(max_seen) > self._last_sync:
+            self._last_sync = float(max_seen)
+            self.registry.set_meta(_LAST_SYNC_META_KEY, str(self._last_sync))
 
         return WatchReport(
             attached=True, deals_seen=len(deals), upserted=upserted, skipped=False

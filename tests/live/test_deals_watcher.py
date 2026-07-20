@@ -159,6 +159,102 @@ def test_deal_fields_are_mapped_correctly(reg):
 
 
 # ---------------------------------------------------------------------------
+# Timezone-skew regression: broker deal timestamps are server time (UTC-4),
+# ~4h behind the wall-clock UTC that poll_once() reads from time.time().
+# The incremental query window must NOT be built so that this offset drops
+# every deal after the first poll. Unlike _StubMt5Client, this stub actually
+# filters by [from_ts, to_ts] like real MT5, so a wrong window is observable
+# as missed deals.
+# ---------------------------------------------------------------------------
+
+class _WindowRespectingClient:
+    def __init__(self, deals):
+        self._deals = list(deals)
+        self.last_window = None
+
+    def add(self, deal):
+        self._deals.append(deal)
+
+    def history_deals_get(self, from_ts, to_ts):
+        self.last_window = (from_ts, to_ts)
+        return [d for d in self._deals if from_ts <= d["time"] <= to_ts]
+
+
+class _FakeClock:
+    def __init__(self, t):
+        self._t = t
+
+    def time(self):
+        return self._t
+
+    def set(self, t):
+        self._t = t
+
+
+def _mk_deal(ticket, t, magic=100123):
+    return {"ticket": ticket, "position_id": 5001, "symbol": "XAUUSD",
+            "side": "BUY", "volume": 0.1, "price": 2400.5, "profit": 1.0,
+            "magic": magic, "time": t, "entry_type": "IN"}
+
+
+_BROKER_OFFSET = 4 * 3600  # server time = wall-clock UTC - 4h (Capitaria)
+
+
+def test_incremental_poll_captures_deals_despite_broker_utc_offset(reg, monkeypatch):
+    """REGRESSION: broker deal.time is server time (UTC-4) = ~4h behind the
+    wall clock poll_once() reads from time.time(). A freshly-arrived deal
+    must still be captured on the SECOND poll -- the old code's
+    `from_ts = last_sync(wall-clock) - 3600` dropped it by the 4h offset, so
+    deals_seen went to 0 forever after the first poll."""
+    from sentinel_engine.live import deals_watcher as dw
+    real_now = 2_000_000_000
+    clock = _FakeClock(real_now)
+    monkeypatch.setattr(dw, "time", clock)
+
+    client = _WindowRespectingClient([_mk_deal(1, real_now - _BROKER_OFFSET)])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    r1 = watcher.poll_once()
+    assert r1.deals_seen == 1  # first poll (from_ts near 0) pulls history
+
+    clock.set(real_now + 10)  # 10s later a new deal closes
+    client.add(_mk_deal(2, real_now + 10 - _BROKER_OFFSET))
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    try:
+        tickets = {row[0] for row in conn.execute("SELECT ticket FROM deals_raw")}
+    finally:
+        conn.close()
+    assert 2 in tickets, "incremental deal dropped by broker UTC offset"
+
+
+def test_poll_backfills_gap_after_downtime(reg, monkeypatch):
+    """After the watcher was down while deals accumulated, the next poll must
+    backfill them (window anchored to last-seen deal time, not wall clock)."""
+    from sentinel_engine.live import deals_watcher as dw
+    real_now = 2_000_000_000
+    clock = _FakeClock(real_now)
+    monkeypatch.setattr(dw, "time", clock)
+
+    client = _WindowRespectingClient([_mk_deal(1, real_now - _BROKER_OFFSET)])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    clock.set(real_now + 2 * 3600)  # 2h downtime; three deals accumulated
+    for i, dt in enumerate((1000, 2000, 3000), start=2):
+        client.add(_mk_deal(i, real_now + dt - _BROKER_OFFSET))
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    try:
+        tickets = {row[0] for row in conn.execute("SELECT ticket FROM deals_raw")}
+    finally:
+        conn.close()
+    assert {1, 2, 3, 4} <= tickets
+
+
+# ---------------------------------------------------------------------------
 # B1a-2: magic attribution matrix
 # ---------------------------------------------------------------------------
 
