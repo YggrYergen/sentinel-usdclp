@@ -132,6 +132,7 @@ def simular_variant(
     stop_and_reverse: bool = False,
     active_fichas: int = 3,
     pullback_limit: bool = False,
+    tp_min_pips: float | None = None,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -395,6 +396,26 @@ def simular_variant(
     exactly as they would in the full ladder). `active_fichas=3` builds the
     classic full dict and is byte-identical to pre-change behavior. Values
     outside {1, 2, 3} raise ValueError.
+
+    Fixed-pip minimum take-profit (Wave6 Family-A; `tp_min_pips`, default None
+    = disabled = EXACT current behavior, byte-identical no-op; a non-positive
+    value <= 0 is treated the same as None): the sim proxy for the live
+    executor's "tightest legal TP" (`max(stops_level, spread)`). At each ficha's
+    fill a FIXED take-profit target is armed at `entry + tp_min_pips*pip` (long)
+    / `entry - tp_min_pips*pip` (short), for ALL fichas F1/F2/F3 -- distinct
+    from the R-multiple `f1_tp_r`/`f2_tp_r` (V-05) which arm F1/F2 only. The
+    target is fixed once armed (derived from the ficha's own `entry`, so it does
+    NOT move as the trail runs). Ordinary per-ficha trailing continues on top;
+    whichever level a bar touches first exits the ficha (tagged EXIT_TP for the
+    fixed-TP hit). CONSERVATIVE same-bar fill: if a single bar would touch BOTH
+    the fixed TP and the initial/trailing SL, the SL takes precedence (the ficha
+    exits at the SL, NOT the TP) -- checked exactly like V-05: the TP fires only
+    when this bar's active SL (`sl_check`, the server-side level under
+    `live_fill_mode`) is NOT also hit. No new fill route invented (touch
+    semantics as today, priced at the fixed TP level on a hit). Checked in the
+    same per-ficha exit block as V-05, right after it, so both TP levels share
+    the SL-first collision convention; `tp_min_pips=None`/<=0 skips the block
+    entirely and reproduces the classic event stream byte-for-byte.
     """
     if active_fichas not in (1, 2, 3):
         raise ValueError(
@@ -587,6 +608,34 @@ def simular_variant(
                                 eventos.append({"idx": i, "lado": lado_txt, "precio": tp_price,
                                                 "motivo": "EXIT_TP", "ficha": tag})
                                 continue
+
+            # Fixed-pip minimum take-profit (Wave6 Family-A; tp_min_pips=None or
+            # <=0 disables this block entirely -> byte-identical no-op). ALL
+            # fichas (F1/F2/F3), distinct from V-05's R-multiple F1/F2-only TP.
+            # Target is FIXED at entry (entry +/- tp_min_pips*pip, derived from
+            # this ficha's own entry so it never moves). Same SL-first collision
+            # convention as V-05: fire only when this bar's active SL (sl_check
+            # -- the server-side level under live_fill_mode) is NOT also hit.
+            if tp_min_pips is not None and tp_min_pips > 0.0:
+                sl_hit_this_bar = (
+                    (f.lado == +1 and bar["low"] <= sl_check)
+                    or (f.lado == -1 and bar["high"] >= sl_check)
+                )
+                if not sl_hit_this_bar:
+                    if f.lado == +1:
+                        tp_min_price = f.entry + tp_min_pips * pip
+                        if bar["high"] >= tp_min_price:
+                            f.abierta = False
+                            eventos.append({"idx": i, "lado": lado_txt, "precio": tp_min_price,
+                                            "motivo": "EXIT_TP", "ficha": tag})
+                            continue
+                    else:
+                        tp_min_price = f.entry - tp_min_pips * pip
+                        if bar["low"] <= tp_min_price:
+                            f.abierta = False
+                            eventos.append({"idx": i, "lado": lado_txt, "precio": tp_min_price,
+                                            "motivo": "EXIT_TP", "ficha": tag})
+                            continue
 
             # Initial SL (still-untouched stop) -- checked before this bar's
             # trailing raise, so a same-bar hit here is tagged EXIT_INITSL.
