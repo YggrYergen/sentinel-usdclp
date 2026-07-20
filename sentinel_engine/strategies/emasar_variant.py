@@ -126,6 +126,7 @@ def simular_variant(
     vol_regime_window: int = 200,
     return_state: bool = False,
     live_fill_mode: bool = False,
+    trail_atr_floor_k: float = 0.0,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -312,7 +313,18 @@ def simular_variant(
     Everything else (entries at close, reentry, sar_adaptive, BE/TP/AC-decel
     when enabled, etc.) is unchanged. `live_fill_mode=False` reproduces the
     classic event stream byte-for-byte (no `same_bar_fallback` key is ever
-    added to events in that mode).
+    added to events in that mode). Under `live_fill_mode=True`, the
+    `return_state` `open` snapshot reports each still-open ficha's SERVER-side
+    SL (the level resting during the last bar, i.e. the i-1 level), not the
+    classic look-ahead `f.sl` just raised from the last bar's own high -- so a
+    live reconciler consuming the state does not chase a one-bar-ahead stop.
+
+    ATR14 trail floor (`trail_atr_floor_k`, default 0.0 = disabled = EXACT
+    current behavior, byte-identical no-op): when > 0.0, every ficha's
+    effective per-bar trailing distance is raised to at least
+    `trail_atr_floor_k * ATR14[i]` (Wilder ATR14, price units, None during the
+    14-bar warmup -> no floor). Applied AFTER the range/pips ladder and any
+    AC-modulate tightening, so it is the last word on the trail distance.
     """
     n = len(bars)
     highs = [b["high"] for b in bars]
@@ -350,6 +362,14 @@ def simular_variant(
         _sar_val, sar_trend = sar_series(highs, lows, sar_step, sar_max)
 
     pip = pip_size(symbol, pipsize_input)
+    # ATR14 trail floor (trail_atr_floor_k>0.0): raise every ficha's effective
+    # per-bar trail distance to at least `trail_atr_floor_k * ATR14[i]` (price
+    # units, same as `trail_efectivo`). Computed here ONCE per bar (not per
+    # ficha) with the same Wilder ATR14 the regime logic uses, and ONLY when
+    # the floor is active -- so the default 0.0 is a byte-identical no-op with
+    # no extra work. ATR14[i] is None during the 14-bar warmup -> no floor.
+    atr14_floor = (_atr_wilder(highs, lows, closes, 14)
+                   if trail_atr_floor_k > 0.0 else None)
     trail_by_tag = {
         "F1": f1_trail_pips * pip,
         "F2": f2_trail_pips * pip,
@@ -395,11 +415,24 @@ def simular_variant(
     reentry_armed = False
     reentry_lado = 0
     reentry_count = 0
+    # live_fill_mode + return_state: the SERVER-side SL a broker is actually
+    # RESTING with DURING the currently-processing bar (the i-1 level, before
+    # this bar's own high/AC raises f.sl). Captured at the START of each bar so
+    # that after the loop it holds the level resting during the LAST bar -- the
+    # honest value the reconciler must consume (the end-of-bar advance at the
+    # bottom of the loop otherwise pushes `server_sl_by_tag` up to the raised
+    # `f.sl`, which is a one-bar-ahead look-ahead). Dead weight otherwise.
+    server_sl_during_bar: dict[str, float] = {}
 
     for i in range(n):
         bar = bars[i]
         px = bar["close"]
         _n_eventos_before_exits = len(eventos)
+        if live_fill_mode and return_state:
+            server_sl_during_bar = {
+                tag: server_sl_by_tag.get(tag, f.sl)
+                for tag, f in fichas.items() if f.abierta
+            }
 
         # ---- 1) exits for open fichas (each trails with its own distance) ----
         for tag in list(fichas.keys()):
@@ -511,6 +544,11 @@ def simular_variant(
             # direction on the current bar, tighten the trail distance.
             if ac_modulate and ac_desacelerando(ac, i, f.lado):
                 trail_efectivo = trail_efectivo * ac_modulate_factor
+            # ATR14 trail floor (trail_atr_floor_k=0.0 default -> atr14_floor is
+            # None -> this block is skipped entirely, byte-identical no-op).
+            if atr14_floor is not None and atr14_floor[i] is not None:
+                trail_efectivo = max(trail_efectivo,
+                                     trail_atr_floor_k * atr14_floor[i])
             if f.lado == +1:
                 f.max_fav = max(f.max_fav, bar["high"])
                 nuevo_sl = f.max_fav - trail_efectivo
@@ -808,9 +846,17 @@ def simular_variant(
         # the broker. When `bars` is empty or the last bar is flat, `fichas`
         # is empty -> {} (desired: no open positions). Only the reconciler
         # passes return_state=True; every other caller/test path is untouched.
+        # live_fill_mode: report the SERVER-side SL the broker is actually
+        # resting with (the level as of the PRIOR bar's close, captured in
+        # `server_sl_during_bar` at the start of the last bar), NOT the classic
+        # `f.sl` that was just raised using the last bar's OWN high -- a live
+        # executor consuming the state would otherwise chase a one-bar-ahead
+        # stop. Classic mode (live_fill_mode=False) is unchanged: reports f.sl.
         open_state = {
             tag: {"side": "L" if f.lado == +1 else "S", "entry": f.entry,
-                  "sl": f.sl, "max_fav": f.max_fav}
+                  "sl": (server_sl_during_bar.get(tag, f.sl)
+                         if live_fill_mode else f.sl),
+                  "max_fav": f.max_fav}
             for tag, f in fichas.items() if f.abierta
         }
         # Same-bar-exit support (live reconciler addendum 2026-07-13): the sim
