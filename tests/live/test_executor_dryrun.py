@@ -519,3 +519,139 @@ def test_configs_live_case_insensitive(caplog):
     assert mt5.initialized is True
     assert mt5.sent == []
     assert f"{len(LIVE_ROSTER)} configs" in caplog.text
+
+
+# ------------------------- GO-LIVE roster (--configs golive) ----------------
+from sentinel_engine.strategies.live_configs_20 import CONFIGS_GOLIVE  # noqa: E402
+
+
+def test_configs_golive_flag_selects_golive_roster(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive"], mt5_module=mt5,
+                              attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.initialized is True
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(CONFIGS_GOLIVE)} configs" in caplog.text
+    for c in CONFIGS_GOLIVE:
+        assert f"[{c['id']}]" in caplog.text
+
+
+# ------------------------- HARD spread-gate (OPEN only) ---------------------
+def _wide_spread_mt5(positions=None, retcodes=None):
+    """MockMT5 whose tick spread is WIDE (ask-bid = 1.00 > default gate 0.70)
+    but whose SL is legal & far from market (so ONLY the spread-gate can block
+    an OPEN, not the SL-clamp path)."""
+    return MockMT5(_bars(50), positions=positions or [],
+                   tick=_Tick(bid=2000.0, ask=2001.0),  # spread 1.00
+                   symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01),
+                   order_send_retcodes=retcodes)
+
+
+def _thin_spread_mt5(positions=None, retcodes=None):
+    """MockMT5 whose tick spread is THIN (ask-bid = 0.20 <= gate 0.70)."""
+    return MockMT5(_bars(50), positions=positions or [],
+                   tick=_Tick(bid=2000.0, ask=2000.2),  # spread 0.20
+                   symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01),
+                   order_send_retcodes=retcodes)
+
+
+def test_spread_gate_skips_open_above_threshold(caplog):
+    mt5 = _wide_spread_mt5()
+    a = _open_action(side="L", sl=1995.0)  # legal SL, far from market
+    with caplog.at_level("WARNING"):
+        run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                                   max_spread_open=0.70)
+    assert mt5.sent == [], "OPEN above the spread threshold must NOT be sent"
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_spread_gate_sends_open_at_or_below_threshold():
+    mt5 = _thin_spread_mt5()
+    a = _open_action(side="L", sl=1995.0)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=0.70)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_DEAL  # market OPEN sent
+
+
+def test_spread_gate_open_exactly_at_threshold_is_sent():
+    # spread == threshold: gate is `spread <= max` -> SENT (boundary inclusive).
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=2000.0, ask=2000.7),  # spread exactly 0.70
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    a = _open_action(side="L", sl=1995.0)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=0.70)
+    assert len(mt5.sent) == 1
+
+
+def test_spread_gate_dry_run_above_threshold_logs_skip_sends_nothing(caplog):
+    mt5 = _wide_spread_mt5()
+    a = _open_action(side="L", sl=1995.0)
+    with caplog.at_level("WARNING"):
+        run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=True,
+                                   max_spread_open=0.70)
+    assert mt5.sent == []
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_spread_gate_none_threshold_disables_gate():
+    # max_spread_open=None -> gate OFF -> wide spread OPEN still sent.
+    mt5 = _wide_spread_mt5()
+    a = _open_action(side="L", sl=1995.0)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=None)
+    assert len(mt5.sent) == 1
+
+
+def test_spread_gate_never_gates_close():
+    # A CLOSE must be sent regardless of a wide spread.
+    pos = _Pos(ticket=777, magic=101, type=MockMT5.POSITION_TYPE_BUY,
+               volume=0.01, sl=1990.0)
+    mt5 = _wide_spread_mt5(positions=[pos])
+    a = Action(kind="CLOSE", config_id="SS-M1", magic=101, ficha="F1",
+               ticket=777, volume=0.01, reason="orphan")
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=0.70)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_DEAL
+    assert mt5.sent[0]["type"] == mt5.ORDER_TYPE_SELL  # closing a LONG
+
+
+def test_spread_gate_never_gates_modify():
+    # A MODIFY (trail SL) must be sent regardless of a wide spread.
+    pos = _Pos(ticket=778, magic=101, type=MockMT5.POSITION_TYPE_BUY,
+               volume=0.01, sl=1990.0)
+    mt5 = _wide_spread_mt5(positions=[pos])
+    a = _modify_action(side="L", sl=1995.0, ticket=778)  # legal SL
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=0.70)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_SLTP  # SL modify, not blocked
+
+
+def test_spread_gate_never_gates_same_bar_exit_fallback():
+    # SAME_BAR_EXIT_FALLBACK (a market exit) must be sent despite a wide spread.
+    pos = _Pos(ticket=779, magic=101, type=MockMT5.POSITION_TYPE_BUY,
+               volume=0.01, sl=1990.0)
+    mt5 = _wide_spread_mt5(positions=[pos])
+    a = Action(kind="SAME_BAR_EXIT_FALLBACK", config_id="SS-M1", magic=101,
+               ficha="F1", side="L", ticket=779, volume=0.01, sim_fill=2001.5,
+               motivo="sar", reason="same-bar exit")
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               max_spread_open=0.70)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_DEAL
+
+
+def test_spread_gate_negative_cli_disables_gate(caplog):
+    # `--max-spread-open -1` disables the gate end-to-end (dry-run smoke).
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive",
+                               "--max-spread-open", "-1"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert "max_spread_open=OFF" in caplog.text

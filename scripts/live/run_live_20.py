@@ -57,7 +57,7 @@ from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
-    CONFIGS_20, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER)
+    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_LIVE, CONFIGS_SHADOW, LIVE_ROSTER)
 
 TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
 TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
@@ -67,6 +67,34 @@ AUDIT_LOG = REPO_ROOT / "scripts" / "live" / "run_live_20.audit.log"
 DEFAULT_WINDOW = 10_000
 MIN_WINDOW = 3_000
 DEFAULT_VOLUME = 0.01
+
+# HARD SPREAD-GATE (GL-T1, OPEN-only) -----------------------------------------
+# An OPEN is SENT only when the current tick spread (ask-bid, PRICE units) is
+# <= this threshold; otherwise it is SKIPPED (logged SPREAD_GATE_SKIP; the
+# reconciler re-evaluates it next cycle). Exits, MODIFY and CLOSE are NEVER
+# gated -- we never abandon risk management or a desired exit over spread.
+#
+# CALIBRATION (XAUUSD, Capitaria DEMO):
+#   The tick_logger XAUUSD spread parquet was never captured on this repo
+#   (`sentinel.config.LOG_TICKS` defaults False; `logs/` is gitignored; the
+#   W8-T1 cycle-spread telemetry capture is queued, not yet run). The only
+#   captured executor-level XAUUSD spread reading is the `spread_snapshot_now`
+#   in `scripts/report/diag_h3h5_spread.json` (DEMO 2883015767, 2026-07-14):
+#       symbol_info.spread = 60 points x point 0.01 = 0.60 USD/oz,
+#       symbol_info_tick.ask - bid = 0.60, spread_float = False (FIXED spread).
+#   A FIXED spread means the observed distribution is a point mass at 0.60 for
+#   that regime (no p05/min variation to fit yet). Per the spec's fallback
+#   rule ("if the captured data is insufficient, pick a conservative default
+#   and say so"), the default is the observed session spread 0.60 + a 0.10
+#   USD/oz margin = 0.70. This:
+#     * ADMITS the observed thin/fixed 0.60 regime (0.60 <= 0.70), so the gate
+#       does not starve the roster of entries under normal conditions, while
+#     * HARD-SKIPPING any genuine widening above 0.70 (the overnight/illiquid
+#       regimes the spread-minimum theory D115 flags as loss-making).
+#   0.70 == "session-min + 0.10", matching the W8-T3 gate grid intent
+#   {min, min+0.05, min+0.10}. RE-CALIBRATE once W8-T1 telemetry lands a real
+#   per-cycle spread series.
+DEFAULT_MAX_SPREAD_OPEN = 0.70
 
 # CUENTAS.md: the DEMO install. We attach to THIS exe only.
 # MULTI-MACHINE (2026-07-15): terminal path/marker/portable-flag now come
@@ -207,6 +235,20 @@ def _stops_level_points(mt5: Any, symbol: str) -> float:
     return max(stops, freeze) * point
 
 
+def _current_spread(mt5: Any, symbol: str) -> float | None:
+    """Current tick spread (ask - bid) in PRICE units, or None if the tick is
+    unavailable (in which case the caller must NOT gate -- fail open on exits,
+    fail closed only where explicitly decided). Read-only."""
+    tick = mt5.symbol_info_tick(symbol)
+    if tick is None:
+        return None
+    bid = getattr(tick, "bid", None)
+    ask = getattr(tick, "ask", None)
+    if bid is None or ask is None:
+        return None
+    return float(ask) - float(bid)
+
+
 def _clamp_sl(mt5: Any, symbol: str, side: str, desired_sl: float) -> tuple[str, float]:
     """Decide the legal handling for a desired SL given the current tick.
     Returns (mode, value):
@@ -238,7 +280,8 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    deviation: int = 20, contract_size: float = 100.0,
                    same_bar_cost: dict[str, float] | None = None,
                    sl_clamp_cost: dict[str, float] | None = None,
-                   modify_retries: int = 2, open_retries: int = 2) -> None:
+                   modify_retries: int = 2, open_retries: int = 2,
+                   max_spread_open: float | None = None) -> None:
     """Send ONE sendable action, or (dry-run) just log the intent. Guard is
     re-asserted by the caller each cycle BEFORE this is reached.
 
@@ -261,6 +304,10 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         trade_freeze_level allow; the MODIFY/OPEN is sent with the closest
         legal SL. The $-gap between desired and clamped is accounted into
         `sl_clamp_cost`.
+      * SPREAD_GATE_SKIP -> (OPEN only) the current tick spread (ask-bid)
+        exceeds `max_spread_open`; the OPEN is SKIPPED entirely (nothing sent)
+        and the reconciler re-evaluates it next cycle. Exits / MODIFY / CLOSE
+        are never gated. A None `max_spread_open` disables the gate.
       * OPEN_SKIPPED_SL_CROSSED -> the sim's desired SL for a new position is
         already at/through the current market ref (bid for LONG / ask for
         SHORT): opening now would be an instant stop-out, so the OPEN is
@@ -276,6 +323,27 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         logger.info("  [%s] %s %s %s -- %s", a.kind, a.config_id, a.ficha,
                     a.side or "", a.reason)
         return
+
+    # HARD SPREAD-GATE (OPEN only): skip a NEW entry when the current tick
+    # spread exceeds the threshold; the reconciler re-evaluates next cycle.
+    # Exits, MODIFY and CLOSE are NEVER gated (they must always be free to run
+    # risk management), so this check is scoped strictly to a.kind == "OPEN"
+    # and runs in BOTH dry-run and armed paths. A missing/None tick spread does
+    # NOT gate (fail-open: we only ever SKIP on an affirmatively-too-wide read).
+    if a.kind == "OPEN" and max_spread_open is not None:
+        spread = _current_spread(mt5, symbol)
+        # tiny epsilon so a spread that equals the threshold (subject to
+        # float ask-bid rounding, e.g. ask-bid = 0.7000000000000455 on ~4000
+        # XAU prices) is treated as AT-threshold => admitted, not skipped. The
+        # gate is `spread <= max`. 1e-6 USD/oz is 1/10000 of a 0.01 tick, far
+        # below any real spread, so it never admits a genuinely wider spread.
+        _SPREAD_EPS = 1e-6
+        if spread is not None and spread > max_spread_open + _SPREAD_EPS:
+            logger.warning("  [SPREAD_GATE_SKIP] config=%s ficha=%s spread=%.5f "
+                           "> max=%.5f (open deferred; reconciler re-evaluates "
+                           "next cycle)", a.config_id, a.ficha, spread,
+                           max_spread_open)
+            return
     if dry_run:
         extra = ""
         if a.kind == "SAME_BAR_EXIT_FALLBACK":
@@ -446,7 +514,8 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
 def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
               volume: float, dry_run: bool, deviation: int,
               same_bar_cost: dict[str, float] | None = None,
-              sl_clamp_cost: dict[str, float] | None = None) -> None:
+              sl_clamp_cost: dict[str, float] | None = None,
+              max_spread_open: float | None = None) -> None:
     """One full reconcile pass over all configs. Re-asserts the guard FIRST,
     re-reads the STOP kill-switch, tracks the 60-total ficha cap."""
     guard_cuenta.assert_demo(mt5)  # re-check every cycle, before any order
@@ -470,7 +539,8 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
         for a in res.actions:
             execute_action(mt5, a, symbol=cfg["kwargs"]["symbol"], dry_run=dry_run,
                            deviation=deviation, same_bar_cost=same_bar_cost,
-                           sl_clamp_cost=sl_clamp_cost)
+                           sl_clamp_cost=sl_clamp_cost,
+                           max_spread_open=max_spread_open)
         # count fichas the sim wants open (desired) toward the global cap.
         # OPEN + NOOP = one per still-desired ficha (MODIFY is paired with a
         # NOOP-or-open slot, so counting it too would double-count).
@@ -536,14 +606,22 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     ap.add_argument("--configs", default="all",
                      help="'all', 'live' (the LIVE_ROSTER subset), 'shadow' "
                           "(the FIXED4 corrected roster only -- what machine-2 "
-                          "runs), 'live+shadow' (both, 8 configs) or comma ids "
-                          "e.g. SS-M5,V10-M15")
+                          "runs), 'golive' (the GL-T1 GO-LIVE roster: M15 V-15 "
+                          "SAR top-5 + V11-M2, magics 7240x0), 'live+shadow' "
+                          "(both, 8 configs) or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
     ap.add_argument("--window", type=int, default=DEFAULT_WINDOW, help="trailing bars for the sim")
     ap.add_argument("--volume", type=float, default=DEFAULT_VOLUME, help="per-ficha volume")
     ap.add_argument("--deviation", type=int, default=20, help="max slippage (points)")
     ap.add_argument("--interval", type=float, default=15.0, help="daemon poll seconds")
+    ap.add_argument("--max-spread-open", type=float, default=DEFAULT_MAX_SPREAD_OPEN,
+                     help="HARD spread-gate (OPEN only, price units): an OPEN is "
+                          "sent only when the current tick spread (ask-bid) <= "
+                          "this; else SKIP (logged SPREAD_GATE_SKIP). Exits/"
+                          f"MODIFY/CLOSE are never gated. Default {DEFAULT_MAX_SPREAD_OPEN} "
+                          "(XAUUSD DEMO calibration). Pass a negative value to "
+                          "DISABLE the gate.")
     ap.add_argument("--confirm-account", type=int, default=None,
                      help="non-interactive arm confirmation: must equal the "
                           "sanctioned DEMO login; only effective with --arm")
@@ -564,6 +642,9 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # FIXED4 only -- the corrected roster machine-2 arms (D114: the
         # uncorrected live-4 never runs there).
         configs = list(CONFIGS_SHADOW)
+    elif roster == "golive":
+        # GL-T1 GO-LIVE roster: M15 V-15 SAR top-5 + V11-M2 (magics 7240x0).
+        configs = list(CONFIGS_GOLIVE)
     elif roster == "live+shadow":
         configs = list(CONFIGS_LIVE) + list(CONFIGS_SHADOW)
     else:
@@ -574,6 +655,8 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
             print(f"unknown config id(s): {sorted(unknown)}", file=sys.stderr)
             return 2
     dry_run = not args.arm
+    # A negative --max-spread-open disables the gate (None => no gating).
+    max_spread_open = None if args.max_spread_open < 0 else args.max_spread_open
 
     if args.confirm_account is not None and not args.arm:
         logger.warning("--confirm-account %s is ignored: --arm was not passed "
@@ -599,8 +682,9 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         import MetaTrader5 as mt5  # noqa: N813 -- only imported once attach-confirmed
     _connect(mt5)
     login = guard_cuenta.assert_demo(mt5)  # hard-exits on any mismatch
-    logger.info("connected + guard OK: DEMO login %s (dry_run=%s, %d configs, window=%d)",
-                login, dry_run, len(configs), window)
+    logger.info("connected + guard OK: DEMO login %s (dry_run=%s, %d configs, "
+                "window=%d, max_spread_open=%s)", login, dry_run, len(configs),
+                window, max_spread_open if max_spread_open is not None else "OFF")
 
     if args.arm and args.confirm_account is None:
         _arm_confirm()
@@ -619,7 +703,8 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         while True:
             run_cycle(mt5, configs, window=window, volume=args.volume,
                       dry_run=dry_run, deviation=args.deviation,
-                      same_bar_cost=same_bar_cost, sl_clamp_cost=sl_clamp_cost)
+                      same_bar_cost=same_bar_cost, sl_clamp_cost=sl_clamp_cost,
+                      max_spread_open=max_spread_open)
             if args.once or stop["flag"]:
                 break
             time.sleep(args.interval)

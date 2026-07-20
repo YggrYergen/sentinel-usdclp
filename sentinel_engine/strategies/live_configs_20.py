@@ -189,3 +189,112 @@ assert len({c["magic"] for c in CONFIGS_SHADOW}) == len(CONFIGS_SHADOW), \
 _live_band = {c["magic"] + o for c in CONFIGS_LIVE for o in range(4)}
 _shadow_band = {c["magic"] + o for c in CONFIGS_SHADOW for o in range(4)}
 assert _live_band.isdisjoint(_shadow_band), "live/shadow magic bands must be disjoint"
+
+# --- GO-LIVE ROSTER (GL-T1, Wave-6 selection 2026-07-20) -----------------
+# The six live-forward OOS candidates chosen from the Wave-6 honest league
+# (`docs/superpowers/research/2026-07-20-wave6-tp-trailhalf-findings.md`,
+# league v3, 225 cells): the FIVE net-positive M15 V-15 SAR-tuned winners
+# (top-5 pooled net across {IW,W1,W2,W3}) plus V11-M2 (the existing
+# least-negative M2 line, reused verbatim from CONFIGS_20).
+#
+# HONESTY FRAMING (D18): none of the five is DSR-significant (DSR 0 / p 1
+# across all 225 trials); they are in-sample winners, sub-luck-bar. This
+# roster is a LIVE-FORWARD OOS TEST on the Capitaria DEMO, not a proven edge.
+# The `tp_min` lever was DECISIVELY REFUTED (most harmful lever tested) and is
+# deliberately ABSENT here.
+#
+# The five SAR winners are built VERBATIM from the manifest cells that
+# produced the honest league (`scripts/report/honest_manifest_full_2026_07_20_v3.json`),
+# so the live params == the honestly-scored params, byte-for-byte:
+#   S6-K2P0      = HON-W2-S6-K2P0-M15-SAR   (rank 1, +49,111.5)
+#   S7-TPNONE    = HON-W2-S7-TPNONE-M15-SAR (rank 2, +32,683.5)
+#   S6-K1P5      = HON-W2-S6-K1P5-M15-SAR   (rank 3, +32,493.0)
+#   S7-TP1P0     = HON-W2-S7-TP1P0-M15-SAR  (rank 4, +30,642.5)
+#   S7-TPNONE-F2 = HON-W2-S7-TPNONE-M15-SAR-F2 (rank 5, +21,789.0)
+# All five share the champion M15 SAR (+vol-target) base (ema 8/20, sar
+# 0.3/0.3 adaptive, f{1,2,3}_trail_pips 100, init_sl_range_k 2.5,
+# vol_regime_window 200, confirm_count 2, confirm_mode 1, ac_modulate_factor
+# 0.25, stop_and_reverse, live_fill_mode) and differ ONLY by the per-cell
+# deltas below (ac_modulate, trail_atr_floor_k, be_at_r, f1_tp_r,
+# active_fichas).
+#
+# MAGICS -- FRESH BLOCK 7240x0 (724010..724060), fichas +1..+3 =>
+# band [724011..724063]. Chosen to be CLEARLY FREE and disjoint from:
+#   * 720xxx classic live band,       * 721xxx FIXED4 shadow band,
+#   * 722xxx (reserved "NEW6" per W8-T6 ops plan), and
+#   * 723xxx (reserved "NEW6-TP suite" per W8-T6 ops plan),
+#   * legacy Sapitos 33xxxx, EMASAR EA 710000, IA 900xxx.
+# 7220xx is the plan's intended NEW6 block, but W8-T6's NEW6 is a DIFFERENT
+# six (top-5 + V15-M15-F, not V11-M2) with a DIFFERENT selection freeze; to
+# avoid clobbering that reserved block (and its 723xxx TP-suite sibling) this
+# GL-T1 roster takes the next clearly-free block, 724xxx. See report.
+_GOLIVE_BASE_M15: dict[str, Any] = dict(
+    _SKELETON,
+    init_sl_range_k=_K_BY_TF["M15"],   # 2.5
+    ac_modulate_factor=0.25,
+    stop_and_reverse=True,
+    live_fill_mode=True,
+    **_ADAPTIVE,
+)
+
+
+def _golive_m15(cid: str, *, ac_modulate: bool, trail_atr_floor_k: float,
+                extra: dict[str, Any] | None = None,
+                notes: str = "") -> dict[str, Any]:
+    """One M15 V-15 SAR go-live winner: champion base + per-cell deltas.
+    kwargs are byte-identical to the honest-league manifest cell."""
+    k = dict(_GOLIVE_BASE_M15, ac_modulate=ac_modulate,
+             trail_atr_floor_k=trail_atr_floor_k)
+    if extra:
+        k.update(extra)
+    return {"id": cid, "tf": "M15", "k": k["init_sl_range_k"],
+            "kwargs": k, "direction_filter": False, "notes": notes}
+
+
+_GOLIVE_M15: list[dict[str, Any]] = [
+    _golive_m15("S6-K2P0", ac_modulate=True, trail_atr_floor_k=2.0,
+                notes="HON-W2-S6-K2P0-M15-SAR (league rank 1)"),
+    _golive_m15("S7-TPNONE", ac_modulate=False, trail_atr_floor_k=1.5,
+                extra=dict(be_at_r=1.0),
+                notes="HON-W2-S7-TPNONE-M15-SAR (league rank 2)"),
+    _golive_m15("S6-K1P5", ac_modulate=True, trail_atr_floor_k=1.5,
+                notes="HON-W2-S6-K1P5-M15-SAR (league rank 3)"),
+    _golive_m15("S7-TP1P0", ac_modulate=False, trail_atr_floor_k=1.5,
+                extra=dict(f1_tp_r=1.0, be_at_r=1.0),
+                notes="HON-W2-S7-TP1P0-M15-SAR (league rank 4)"),
+    _golive_m15("S7-TPNONE-F2", ac_modulate=False, trail_atr_floor_k=1.5,
+                extra=dict(be_at_r=1.0, active_fichas=2),
+                notes="HON-W2-S7-TPNONE-M15-SAR-F2 (league rank 5)"),
+]
+
+# V11-M2: the existing least-negative M2 line -- reuse its CONFIGS_20 live
+# definition verbatim (params + tf + k), only re-magicked into the GO-LIVE
+# block. This preserves its blocked_hours / ac_modulate_factor exactly.
+_V11_M2_SRC = next(c for c in CONFIGS_20 if c["id"] == "V11-M2")
+_GOLIVE_V11_M2: dict[str, Any] = {
+    "id": "V11-M2", "tf": _V11_M2_SRC["tf"], "k": _V11_M2_SRC["k"],
+    "kwargs": dict(_V11_M2_SRC["kwargs"]),
+    "direction_filter": _V11_M2_SRC.get("direction_filter", False),
+    "notes": "existing least-negative M2 line, reused verbatim (GL-T1)",
+}
+
+CONFIGS_GOLIVE: list[dict[str, Any]] = [*_GOLIVE_M15, _GOLIVE_V11_M2]
+
+_GOLIVE_MAGIC_BASE = 724000
+for _i, _c in enumerate(CONFIGS_GOLIVE, start=1):
+    _c["magic"] = _GOLIVE_MAGIC_BASE + 10 * _i   # 724010..724060
+
+assert len(CONFIGS_GOLIVE) == 6, "GO-LIVE roster must be exactly 6 configs"
+assert len({c["id"] for c in CONFIGS_GOLIVE}) == 6, "go-live ids must be unique"
+assert [c["magic"] for c in CONFIGS_GOLIVE] == [724010, 724020, 724030, 724040,
+                                                724050, 724060], \
+    "go-live magics must be the fresh 7240x0 block"
+# go-live band ([base .. base+3]) must be disjoint from live AND shadow bands
+# AND from the plan-reserved 722xxx/723xxx blocks.
+_golive_band = {c["magic"] + o for c in CONFIGS_GOLIVE for o in range(4)}
+assert _golive_band.isdisjoint(_live_band), "go-live/live magic bands must be disjoint"
+assert _golive_band.isdisjoint(_shadow_band), "go-live/shadow magic bands must be disjoint"
+assert all(724000 <= m <= 724099 for m in _golive_band), \
+    "go-live band must stay inside 7240xx (clear of reserved 722xxx/723xxx)"
+
+MAGIC_BY_ID_GOLIVE: dict[str, int] = {c["id"]: c["magic"] for c in CONFIGS_GOLIVE}
