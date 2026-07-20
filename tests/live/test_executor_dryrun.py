@@ -525,7 +525,8 @@ def test_configs_live_case_insensitive(caplog):
 from sentinel_engine.strategies.live_configs_20 import CONFIGS_GOLIVE  # noqa: E402
 
 
-def test_configs_golive_flag_selects_golive_roster(caplog):
+def test_configs_golive_flag_selects_golive_roster(caplog, tmp_path, monkeypatch):
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))  # keep real data/ clean
     mt5 = MockMT5(_bars())
     with caplog.at_level("INFO"):
         rc = run_live_20.main(["--once", "--configs", "golive"], mt5_module=mt5,
@@ -647,11 +648,130 @@ def test_spread_gate_never_gates_same_bar_exit_fallback():
 
 
 def test_spread_gate_negative_cli_disables_gate(caplog):
-    # `--max-spread-open -1` disables the gate end-to-end (dry-run smoke).
+    # `--max-spread-open -1` disables the STATIC hard cap end-to-end (dry-run
+    # smoke). The adaptive gate is still the golive default (adaptive_spread=ON).
     mt5 = MockMT5(_bars())
     with caplog.at_level("INFO"):
         rc = run_live_20.main(["--once", "--configs", "golive",
-                               "--max-spread-open", "-1"],
+                               "--max-spread-open", "-1", "--no-adaptive-spread"],
                               mt5_module=mt5, attach_checker=lambda: True)
     assert rc == 0
     assert "max_spread_open=OFF" in caplog.text
+
+
+# ------------- ADAPTIVE running-min spread-gate (GL-T2) ---------------------
+def _adaptive_threshold_action(spread_threshold, max_spread_open=None,
+                               ask=2000.2, bid=2000.0, dry_run=False):
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=bid, ask=ask),
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    a = _open_action(side="L", sl=1995.0)  # legal SL, far from market
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=dry_run,
+                               max_spread_open=max_spread_open,
+                               spread_threshold=spread_threshold)
+    return mt5
+
+
+def test_adaptive_gate_operates_at_or_below_threshold():
+    # spread 0.20 <= threshold 0.60 -> OPERATE (OPEN sent).
+    mt5 = _adaptive_threshold_action(spread_threshold=0.60, ask=2000.2, bid=2000.0)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_DEAL
+
+
+def test_adaptive_gate_pauses_above_threshold(caplog):
+    # spread 0.80 > threshold 0.60 -> PAUSE (nothing sent, SPREAD_GATE_SKIP).
+    with caplog.at_level("WARNING"):
+        mt5 = _adaptive_threshold_action(spread_threshold=0.60,
+                                         ask=2000.8, bid=2000.0)
+    assert mt5.sent == []
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+# --- CORE REQUIREMENT: with running-min 0.60, admit ONLY 0.60, never 0.61..0.70
+def test_fixed_060_spread_060_is_SENT():
+    thr = 0.60 + run_live_20.DEFAULT_SPREAD_EPS  # tiny eps; threshold ~= 0.60
+    mt5 = _adaptive_threshold_action(spread_threshold=thr, ask=2000.6, bid=2000.0)
+    assert len(mt5.sent) == 1, "spread 0.60 (== running-min) must be SENT"
+
+
+def test_fixed_060_spread_061_is_SKIPPED(caplog):
+    thr = 0.60 + run_live_20.DEFAULT_SPREAD_EPS
+    with caplog.at_level("WARNING"):
+        mt5 = _adaptive_threshold_action(spread_threshold=thr, ask=2000.61, bid=2000.0)
+    assert mt5.sent == [], "spread 0.61 is above running-min 0.60 -> must SKIP"
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_fixed_060_spread_070_is_SKIPPED(caplog):
+    thr = 0.60 + run_live_20.DEFAULT_SPREAD_EPS
+    with caplog.at_level("WARNING"):
+        mt5 = _adaptive_threshold_action(spread_threshold=thr, ask=2000.70, bid=2000.0)
+    assert mt5.sent == [], "spread 0.70 (GL-T1 wrongly admitted) must now SKIP"
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_tighter_of_adaptive_and_hard_cap_binds(caplog):
+    # adaptive threshold 0.90 but hard cap 0.30; spread 0.50 > min(0.90,0.30) -> PAUSE.
+    with caplog.at_level("WARNING"):
+        mt5 = _adaptive_threshold_action(spread_threshold=0.90, max_spread_open=0.30,
+                                         ask=2000.5, bid=2000.0)
+    assert mt5.sent == []
+    assert "SPREAD_GATE_SKIP" in caplog.text
+
+
+def test_adaptive_gate_never_gates_close():
+    pos = _Pos(ticket=901, magic=101, type=MockMT5.POSITION_TYPE_BUY,
+               volume=0.01, sl=1990.0)
+    mt5 = MockMT5(_bars(50), positions=[pos],
+                  tick=_Tick(bid=2000.0, ask=2000.8),  # wide spread 0.80
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    a = Action(kind="CLOSE", config_id="SS-M1", magic=101, ficha="F1",
+               ticket=901, volume=0.01, reason="orphan")
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               spread_threshold=0.62)  # would pause an OPEN
+    assert len(mt5.sent) == 1  # CLOSE still sent
+
+
+def test_adaptive_gate_never_gates_modify():
+    pos = _Pos(ticket=902, magic=101, type=MockMT5.POSITION_TYPE_BUY,
+               volume=0.01, sl=1990.0)
+    mt5 = MockMT5(_bars(50), positions=[pos],
+                  tick=_Tick(bid=2000.0, ask=2000.8),
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    a = _modify_action(side="L", sl=1995.0, ticket=902)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               spread_threshold=0.62)
+    assert len(mt5.sent) == 1
+    assert mt5.sent[0]["action"] == mt5.TRADE_ACTION_SLTP
+
+
+def test_golive_records_spread_and_logs_threshold(tmp_path, monkeypatch, caplog):
+    # end-to-end: golive dry-run records the spread & logs the adaptive threshold;
+    # store written under the redirected (tmp) data dir; ZERO orders sent.
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    mt5 = MockMT5(_bars())  # tick spread = 0.20
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert "adaptive_spread=ON" in caplog.text
+    assert "[spread]" in caplog.text
+    assert (tmp_path / "xauusd_spread_store.json").exists()
+
+
+def test_capture_spread_mode_sends_no_orders(tmp_path, monkeypatch, caplog):
+    # STANDALONE --capture-spread: one pass records a sample, sends NOTHING.
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    mt5 = MockMT5(_bars(), tick=_Tick(bid=2000.0, ask=2000.6))  # spread 0.60
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--capture-spread", "--once"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "capture mode must NEVER send an order"
+    assert "CAPTURE-SPREAD mode" in caplog.text
+    import json
+    store = json.loads((tmp_path / "xauusd_spread_store.json").read_text())
+    assert store["running_min"] == pytest.approx(0.60)
+    assert store["sample_count"] == 1
