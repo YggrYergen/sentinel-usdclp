@@ -831,13 +831,28 @@ class ResearchRegistry:
     def audit(self, actor: str | None, accion: str, detalle: dict[str, Any] | None = None) -> None:
         conn = self._connect()
         try:
-            conn.execute(
-                "INSERT INTO audit_log(ts, actor, accion, detalle_json) VALUES (?, ?, ?, ?)",
-                (_utcnow_iso(), actor, accion, json.dumps(detalle or {}, ensure_ascii=False)),
-            )
+            self.audit_on(conn, actor, accion, detalle)
             conn.commit()
         finally:
             conn.close()
+
+    def audit_on(
+        self,
+        conn: sqlite3.Connection,
+        actor: str | None,
+        accion: str,
+        detalle: dict[str, Any] | None = None,
+    ) -> None:
+        """Write an audit_log row on a CALLER-PROVIDED connection WITHOUT
+        committing (B1 review fix, 2026-07-19): lets a caller make a data
+        write and its audit row atomic in ONE transaction (e.g. the P38
+        validity marker commits `run.validity` UPDATE + audit together, so
+        a crash can never leave a marked row with no audit trail). `audit()`
+        keeps its own-connection auto-commit behavior, now delegating here."""
+        conn.execute(
+            "INSERT INTO audit_log(ts, actor, accion, detalle_json) VALUES (?, ?, ?, ?)",
+            (_utcnow_iso(), actor, accion, json.dumps(detalle or {}, ensure_ascii=False)),
+        )
 
     # ------------------------------------------------------------------
     # M2.4 — variant/strategy management helpers

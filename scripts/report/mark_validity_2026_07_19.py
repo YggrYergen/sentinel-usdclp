@@ -169,6 +169,13 @@ def mark_validity(db_path: Path, dry_run: bool = False) -> dict[str, int]:
     # Real run: the registry constructor performs the additive migration
     # (adds nullable run.validity if absent) -- reuse it rather than
     # duplicating DDL here.
+    #
+    # B1 review fix (2026-07-19): each marking's validity UPDATE and its
+    # audit row are written on ONE connection inside ONE transaction for the
+    # whole batch, committed once at the end. A crash at ANY point leaves
+    # the DB exactly as before (rollback) -- there can never be a marked run
+    # without its audit row (audit rows go through `registry.audit_on`,
+    # which does NOT commit; the sole commit below covers both).
     registry = ResearchRegistry(db_path)
     conn = registry._connect()
     try:
@@ -182,12 +189,15 @@ def mark_validity(db_path: Path, dry_run: bool = False) -> dict[str, int]:
             )
             if cur.rowcount != 1:  # pragma: no cover - concurrent re-mark
                 continue
-            conn.commit()
-            registry.audit(
-                ACTOR, ACCION,
+            registry.audit_on(
+                conn, ACTOR, ACCION,
                 {"run_id": run_id, "label": label, "reason": reason},
             )
             counts[label] += 1
+        conn.commit()  # single atomic commit: all marks + all audits, or none
+    except BaseException:
+        conn.rollback()
+        raise
     finally:
         conn.close()
     return counts

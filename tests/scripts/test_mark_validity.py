@@ -199,6 +199,42 @@ def test_idempotent_second_run_marks_nothing(fixture_db: Path):
     assert _audit_rows(fixture_db) == audits1  # no duplicate audit rows
 
 
+def test_mark_and_audit_are_atomic_under_crash(fixture_db: Path, monkeypatch):
+    """B1 review fix: a crash between a validity UPDATE and its audit row
+    must leave NEITHER committed (one transaction), and a clean re-run must
+    recover everything -- no permanently-marked-but-unaudited row."""
+    calls = {"n": 0}
+    real_audit_on = ResearchRegistry.audit_on
+
+    def flaky_audit_on(self, conn, actor, accion, detalle=None):
+        calls["n"] += 1
+        if calls["n"] == 3:  # crash mid-batch, after some marks succeeded
+            raise RuntimeError("simulated crash between mark and audit")
+        return real_audit_on(self, conn, actor, accion, detalle)
+
+    monkeypatch.setattr(ResearchRegistry, "audit_on", flaky_audit_on)
+    with pytest.raises(RuntimeError):
+        mv.mark_validity(fixture_db, dry_run=False)
+
+    # Atomicity: NOTHING landed -- not even the marks/audits from before the
+    # simulated crash (whole batch is one transaction, rolled back).
+    assert all(lab is None for lab in _validity(fixture_db).values())
+    assert _audit_rows(fixture_db) == []
+
+    # Recovery: a clean re-run marks and audits everything, 1:1.
+    monkeypatch.setattr(ResearchRegistry, "audit_on", real_audit_on)
+    counts = mv.mark_validity(fixture_db, dry_run=False)
+    assert counts == {
+        "DUPLICATE_INGEST": 1,
+        "LOOKAHEAD_CONFIRMED": 4,
+        "REGIME_UNAUDITED": 2,
+    }
+    rows = _audit_rows(fixture_db)
+    assert len(rows) == 7
+    marked = {rid for rid, lab in _validity(fixture_db).items() if lab}
+    assert {d["run_id"] for _, _, d in rows} == marked
+
+
 def test_dry_run_writes_nothing(fixture_db: Path):
     before = _snapshot_runs_sans_validity(fixture_db)
     counts = mv.mark_validity(fixture_db, dry_run=True)
