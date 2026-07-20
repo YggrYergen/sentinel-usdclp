@@ -128,6 +128,7 @@ def simular_variant(
     live_fill_mode: bool = False,
     trail_atr_floor_k: float = 0.0,
     max_hold_bars: int | None = None,
+    confirm_bar: bool = False,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -341,6 +342,24 @@ def simular_variant(
     `live_fill_mode`: priced at the bar close (the honest fill for a
     close-of-bar exit), no new fill route invented. `max_hold_bars=None` (or a
     non-positive value) skips this block entirely.
+
+    Confirmation-bar entry (P54; `confirm_bar`, default False = disabled =
+    EXACT current behavior, byte-identical no-op): when True, a signal raised
+    at bar `i` does NOT enter at `i`. It is held PENDING (function-local state,
+    reset per run) for exactly ONE bar and enters at bar `i+1` ONLY if bar
+    `i+1` confirms the direction beyond the signal bar's own extreme -- LONG
+    confirmed iff `close[i+1] > high[i]` (the signal bar's high), SHORT iff
+    `close[i+1] < low[i]` (the signal bar's low). If bar `i+1` does not confirm,
+    the pending signal is DROPPED (no entry; a one-bar window only, no carry
+    beyond i+1). The deferred entry is priced at the CONFIRMATION bar via the
+    EXISTING entry fill path (for the default entry_timing=0 that is the
+    confirmation bar's own close `px`) -- honest under `live_fill_mode`, no new
+    fill route. The confirmation check is evaluated at the top of the entry
+    section (before the strict-gate signal path), mirroring V-13's re-entry
+    arm; a fresh signal on bar `i` overwrites any (already-dropped) prior
+    pending. Pending state never crosses a run boundary (declared before the
+    bar loop, alongside `reentry_armed`/`entry_bar_by_tag`). `confirm_bar=False`
+    reproduces the classic event stream byte-for-byte.
     """
     n = len(bars)
     highs = [b["high"] for b in bars]
@@ -437,6 +456,14 @@ def simular_variant(
     reentry_armed = False
     reentry_lado = 0
     reentry_count = 0
+    # P54 (confirm_bar): one-bar-deferred pending signal. When confirm_bar is
+    # True, a strict-gate signal on bar i is NOT entered at i -- it is held here
+    # (side + the signal bar's extreme) and, at bar i+1, entered only if i+1's
+    # close confirms beyond that extreme; otherwise dropped (one-bar window).
+    # Function-local, reset per run; dead weight when confirm_bar=False.
+    pending_confirm_lado = 0        # +1 long / -1 short / 0 none pending
+    pending_confirm_high = 0.0      # signal bar's high (long confirm reference)
+    pending_confirm_low = 0.0       # signal bar's low (short confirm reference)
     # live_fill_mode + return_state: the SERVER-side SL a broker is actually
     # RESTING with DURING the currently-processing bar (the i-1 level, before
     # this bar's own high/AC raises f.sl). Captured at the START of each bar so
@@ -837,6 +864,57 @@ def simular_variant(
                 long_ok = False
             if short_ok and mask_i == +1:
                 short_ok = False
+
+        # Confirmation-bar entry (P54; confirm_bar=False disables this block
+        # entirely, preserving current behavior byte-for-byte -- the branch is
+        # never entered and long_ok/short_ok/px_long/px_short flow straight into
+        # the entry block below exactly as before). When True, a bar-i signal
+        # (long_ok/short_ok just computed) does NOT enter at i: it is captured
+        # as PENDING (side + this bar's high/low extreme) for the NEXT bar, and
+        # long_ok/short_ok are cleared so the entry block below does not fire on
+        # the signal bar. Any signal PENDING FROM BAR i-1 is resolved here first:
+        # it enters on THIS bar (via the existing entry block, priced at
+        # px_long/px_short -- the confirmation bar's own fill) IFF this bar's
+        # close confirms beyond the signal bar's extreme (long: close > high,
+        # short: close < low); otherwise it is dropped. One-bar window only: the
+        # pending is consumed (entered or dropped) every bar, never carried past
+        # i+1.
+        if confirm_bar:
+            new_signal_lado = 0
+            if long_ok and allow_long:
+                new_signal_lado = +1
+            elif short_ok and allow_short:
+                new_signal_lado = -1
+
+            # Resolve the pending signal from bar i-1 against THIS bar's close.
+            confirm_long = False
+            confirm_short = False
+            if pending_confirm_lado == +1:
+                confirm_long = px > pending_confirm_high
+            elif pending_confirm_lado == -1:
+                confirm_short = px < pending_confirm_low
+
+            # This bar's own signal (if any) becomes next bar's pending; the
+            # signal bar itself never enters. A fresh signal overwrites any
+            # already-resolved (entered/dropped) prior pending. BUT if this bar
+            # is itself confirming a prior pending (a position is about to
+            # open), the fresh signal is dropped -- it could never be resolved
+            # next bar anyway (the `if fichas: continue` guard would skip it),
+            # so capturing it would leak the pending past its one-bar window.
+            if (confirm_long or confirm_short):
+                pending_confirm_lado = 0
+            elif new_signal_lado != 0:
+                pending_confirm_lado = new_signal_lado
+                pending_confirm_high = bar["high"]
+                pending_confirm_low = bar["low"]
+            else:
+                pending_confirm_lado = 0
+
+            # Only a CONFIRMED pending signal enters on this bar, via the
+            # existing entry block below (px_long/px_short = the confirmation
+            # bar's fill under the active entry_timing).
+            long_ok = confirm_long
+            short_ok = confirm_short
 
         if long_ok and allow_long:
             eventos.append({"idx": i, "lado": "L", "precio": px_long, "motivo": "ENTRY_L", "ficha": None})
