@@ -6,6 +6,7 @@ tolerance) and asserts each is caught as HARD. No DB, no lake, no network --
 exercises the pure `diff_config` core."""
 from __future__ import annotations
 
+import copy
 import json
 import random
 from datetime import datetime, timezone
@@ -401,3 +402,65 @@ def test_warmup_window_passes_full_bars_and_trims_diff(monkeypatch, tmp_path):
     assert rep.n_bars == n_day
     assert rep.verdict == "MATCH", [d.detail for d in rep.hard_divergences]
     assert rep.matches == 1
+
+
+# ---------------------------------------------------------------------------
+# P36 (Wave 6 governance) -- extend the sim<->live parity axis to cover the
+# tp_min_pips fixed-TP lever (commit 0f3e7c0). The `diff_config` core re-runs
+# `simular_variant(**config["kwargs"])`, so a config carrying `tp_min_pips` in
+# its kwargs exercises the EXIT_TP exit path end-to-end. A PERFECT live replay
+# built from that same tp_min-active sim event stream must still verdict MATCH:
+# the fixed-TP exits are a pre-existing (non-trail) level, so live fills them
+# at the exact sim price on the exact sim bar -- no divergence.
+#
+# This is the tp_min coverage of the sim<->live parity axis (the intrabar
+# fill-mode / return_state / carry axes are pinned in
+# tests/strategies/test_emasar_livefill_state.py). No tolerance is needed;
+# the fixed TP is exact.
+# ---------------------------------------------------------------------------
+
+# Wide trails + wide initial stop so fichas HOLD and a small fixed tp_min_pips
+# actually bites (otherwise the trail exits first and no EXIT_TP ever fires).
+CFG_TPMIN = copy.deepcopy(CFG)
+CFG_TPMIN["id"] = f"{CFG['id']}-TPMIN"
+CFG_TPMIN["kwargs"] = dict(
+    CFG["kwargs"],
+    f1_trail_pips=2000.0, f2_trail_pips=2000.0, f3_trail_pips=2000.0,
+    init_sl_range_k=6.0, ac_modulate=False,
+    tp_min_pips=50.0,
+)
+BARS_TPMIN = _synthetic_bars(tf_s=TF_SECONDS[CFG_TPMIN["tf"]])
+DEALS_TPMIN = _fake_live_deals(CFG_TPMIN, BARS_TPMIN)
+
+
+def test_tpmin_config_actually_fires_exit_tp():
+    """Guard: the tp_min-active fixture must genuinely exercise EXIT_TP exits
+    (otherwise the parity cell below would be vacuous vs the no-op default)."""
+    events = simular_variant(BARS_TPMIN, **CFG_TPMIN["kwargs"])
+    n_tp = sum(1 for e in events if e["motivo"] == "EXIT_TP")
+    assert n_tp > 0, "tp_min fixture produced no EXIT_TP exits -- not exercising the lever"
+
+
+def test_tpmin_perfect_replay_is_match():
+    """A perfect live replay of a tp_min-ACTIVE config still verdicts MATCH:
+    the fixed-TP exits reconcile exactly against live at the sim bar/price."""
+    rep = diff_config(CFG_TPMIN, BARS_TPMIN, DEALS_TPMIN)
+    assert rep.verdict == "MATCH", [d.detail for d in rep.hard_divergences]
+    assert rep.sim_entries >= 1
+    assert rep.matches == rep.sim_entries
+    # only the half-spread ENTRY offset is classified; no hard exit divergence.
+    assert all(not d.hard for d in rep.divergences)
+
+
+def test_tpmin_injected_exit_price_out_of_tol_is_hard():
+    """Sanity that the tp_min cell still CATCHES a genuine break: shifting one
+    tp_min exit fill far beyond tolerance must be flagged hard (the parity gate
+    is not silently disabled by the fixed-TP motivo)."""
+    bad = [dict(d) for d in DEALS_TPMIN]
+    for d in bad:
+        if d["entry_type"] == "OUT":
+            d["price"] = d["price"] + 5.0
+            break
+    rep = diff_config(CFG_TPMIN, BARS_TPMIN, bad)
+    assert rep.verdict == "DIVERGENCE"
+    assert any(d.kind == "EXIT_PRICE_OUT_OF_TOL" and d.hard for d in rep.divergences)
