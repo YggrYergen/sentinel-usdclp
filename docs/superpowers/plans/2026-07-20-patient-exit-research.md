@@ -361,7 +361,21 @@ report-only and objective (Sonnet).
 5. **Safety (inviolable):** real broker accounts READ-ONLY; only the sanctioned DEMO (`2883015767`) trades;
    ATTACH-ONLY (never launch an MT5 terminal); golden/parity gate untouchable. Windows 10 AND 11 (pathlib,
    explicit utf-8, no WSL). Implementers never git commit; only the orchestrator commits, task by task.
-6. **No sub-agents spawned by implementers.** Sonnet implementers do not spawn nested agents.
+6. **No sub-agents spawned by implementers.** Implementers do not spawn nested agents.
+7. **ISOLATION from live + legacy research (user directive 2026-07-20).** No task may affect anything
+   already running or any legacy research artifact:
+   - The **live daemon (PID 3880, `--configs golive-dedup`)** must NOT be restarted, killed, or touched;
+     do NOT connect to MT5 or the DEMO account from any implementer; run ONLY the task's scoped pytest gate
+     (never `tests/opt`, never the full suite, never anything armed). The engine edits are additive-no-op so
+     the running process (which already imported the engine) is unaffected regardless.
+   - Patient-exit persists to a **SEPARATE** db `data/patient_exit_research.db` (NEW) — NEVER the shared
+     legacy `data/research.db` (which is additive-only and would be schema-migrated by `_ensure_honest_fidelity`).
+   - Do NOT modify, overwrite, or delete any legacy artifact: `data/research.db`, the existing
+     `scripts/report/honest_manifest_full_2026_07_20_v3.json`, the `2026-07-20-honest-league*.trials.db`
+     files, existing league/research docs, or golden/parity fixtures. Patient-exit writes NEW files only
+     (its own manifest, its own league json/md, its own `.trials.db` derived from the new league-json name).
+   - The byte-identity gate + golden parity (run at the final review) guarantee the engine change does not
+     alter any existing config's scored output — the legacy 225-cell league stays reproducible.
 
 ### PX-T1 — F1 profit-ratchet + chandelier lever (engine)
 - **Files:** `sentinel_engine/strategies/emasar_variant.py` (+ tests in `tests/strategies/`).
