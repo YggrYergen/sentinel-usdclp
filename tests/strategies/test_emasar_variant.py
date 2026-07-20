@@ -1591,3 +1591,245 @@ def test_wait_sl_first_on_same_bar_mae_and_be_recovery():
     assert exit_ev["motivo"] in ("EXIT_INITSL", "EXIT_TRAIL")
     # SL-first: the fill is the stop level (<= entry), never the BE profit.
     assert exit_ev["precio"] <= entry_px + 1e-6
+
+
+# ---------------------------------------------------------------------------
+# PX-T3 / F5: trail-start-delay exit lever (`trail_arm_r`). Default 0.0 arms
+# the trail immediately (max_fav >= entry from entry) and MUST reproduce
+# current behavior byte-for-byte, in BOTH live_fill_mode values and with
+# return_state on/off. When trail_arm_r>0 the per-ficha TRAILING raise does
+# not begin until max_fav reaches entry +/- trail_arm_r*R; the BE / ratchet /
+# wait-BE floors keep their OWN arming conditions (this gate is trailing-only).
+# ---------------------------------------------------------------------------
+
+TRAIL_ARM_DEFAULTS = dict(trail_arm_r=0.0)
+
+
+@pytest.mark.parametrize("live_fill_mode", [False, True])
+@pytest.mark.parametrize("return_state", [False, True])
+def test_trail_arm_noop_default_byte_identical_synthetic(live_fill_mode, return_state):
+    """Byte-identity no-op (TDD step 1): with `trail_arm_r` at its default (0.0)
+    the event stream (and, when requested, the return_state snapshot) must be
+    IDENTICAL to the pre-change engine, across both live_fill_mode values and
+    both return_state values."""
+    bars = _synthetic_bars(300, seed=120)
+    baseline = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **V09_PARAMS)
+    with_defaults = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **TRAIL_ARM_DEFAULTS, **V09_PARAMS)
+    assert with_defaults == baseline
+    if return_state:
+        assert len(baseline[0]) > 0
+    else:
+        assert len(baseline) > 0
+
+
+def test_trail_arm_noop_default_byte_identical_real_m5():
+    bars = _load_real_m5_window()
+    if bars is None:
+        pytest.skip("XAUUSD/M5 2026-06 lake tier not present")
+    for live_fill_mode in (False, True):
+        baseline = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode, **V09_PARAMS)
+        with_defaults = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+            **TRAIL_ARM_DEFAULTS, **V09_PARAMS)
+        assert with_defaults == baseline
+        assert len(baseline) > 0
+
+
+def test_trail_arm_holds_initial_sl_until_armed_synthetic():
+    """Behavioural (TDD step 3, (i)): with `trail_arm_r=1.0`, the trailing stop
+    does NOT tighten above the initial-SL until max_fav reaches +1R. We build a
+    long that runs favourably in gradual steps; over every PRE-ARM bar the
+    engine's SL for F1 must still equal the initial range-SL (the unarmed engine
+    WOULD have trailed upward each bar). We probe the SL via the return_state
+    `open` snapshot as the position climbs.
+
+    Wide trail is NOT used here -- the point is that the ORDINARY trail (which
+    fires every bar once armed) is suppressed until +1R. To read F1's SL as it
+    climbs, we truncate the bars to a growing prefix and inspect the open-state
+    snapshot at each prefix end (all before +1R)."""
+    rnd = random.Random(3)
+    base_epoch = int(datetime(2026, 6, 1, tzinfo=timezone.utc).timestamp())
+
+    def _bar(k, o, h, l, c):
+        return {"t": base_epoch + k * 60, "open": o, "high": h, "low": l, "close": c}
+
+    kwargs = dict(trail_arm_r=1.0, **V09_PARAMS)
+
+    # Seeded warmup to open a long, exactly like the wait-lever fixtures.
+    bars = []
+    price = 4500.0
+    for k in range(60):
+        drift = rnd.uniform(-0.8, 1.6)
+        price += drift
+        o = price - drift
+        c = price
+        h = max(o, c) + abs(rnd.uniform(0.2, 0.8))
+        l = min(o, c) - abs(rnd.uniform(0.2, 0.8))
+        bars.append(_bar(k, o, h, l, c))
+
+    warm = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    entry = next((e for e in warm if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None, "seed=3 fixture must open a long"
+    ei = entry["idx"]
+    entry_px = entry["precio"]
+    rango = bars[ei]["high"] - bars[ei]["low"]
+    init_sl = bars[ei]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+    r = abs(entry_px - init_sl)
+
+    # Truncate to the entry bar (F1/F2/F3 open going into the tail below).
+    bars = bars[:ei + 1]
+    # A GENTLE favourable climb that stays STRICTLY BELOW entry + 1R the whole
+    # way, so the trail must never arm -- F1's SL must stay pinned at init_sl.
+    last_k = len(bars)
+    n_climb = 8
+    step = (0.9 * r) / n_climb  # top of climb ~ +0.9R, safely below +1R
+    hi = entry_px
+    for j in range(1, n_climb + 1):
+        hi = entry_px + step * j
+        o = entry_px + step * (j - 1)
+        # small pullbacks that NEVER reach the initial SL
+        lo = o - 0.1 * step
+        c = hi - 0.05 * step
+        bars.append(_bar(last_k + j - 1, o, hi, lo, c))
+        # max_fav so far is `hi` (< entry + 1R) => still unarmed.
+        assert hi < entry_px + 1.0 * r
+        prefix = bars[:last_k + j]
+        _events, state = simular_variant(
+            prefix, symbol="XAUUSD", return_state=True, **kwargs)
+        f1 = state["open"].get("F1")
+        assert f1 is not None, "F1 must still be open through the pre-arm climb"
+        # Pre-arm: the trailing raise is gated, so F1's SL is still the initial
+        # range-SL (no floor levers active here), NEVER raised by the trail.
+        assert f1["sl"] == pytest.approx(init_sl), (
+            f"pre-arm bar {j}: SL {f1['sl']} moved off init_sl {init_sl}")
+
+
+def test_trail_arm_matches_unarmed_from_arming_bar_onward():
+    """Behavioural (TDD step 3, (ii)): after arming, trailing proceeds normally
+    -- once max_fav is past +trail_arm_r*R the ordinary raise
+    `nuevo_sl = max_fav - trail_efectivo` is applied verbatim. We push a long
+    WELL past +1R and assert F1's raised SL equals `max_fav - trail_pips*pip`
+    (the same value the unarmed trail produces from that peak). A WIDE trail is
+    used so the raised SL sits below the bar's low -- no trail-out / re-entry
+    can contaminate the F1 snapshot; the raise is still observable in the open
+    state, proving the trail resumed from the arming bar onward."""
+    rnd = random.Random(3)
+    base_epoch = int(datetime(2026, 6, 1, tzinfo=timezone.utc).timestamp())
+
+    def _bar(k, o, h, l, c):
+        return {"t": base_epoch + k * 60, "open": o, "high": h, "low": l, "close": c}
+
+    from sentinel_engine.strategies.emasar_variant import pip_size
+    pip = pip_size("XAUUSD", 0.0)
+    trail_pips = 1000.0  # $10 trail distance
+    wide = dict(V09_PARAMS)
+    wide.update(f1_trail_pips=trail_pips, f2_trail_pips=trail_pips,
+                f3_trail_pips=trail_pips)
+    kwargs = dict(trail_arm_r=1.0, **wide)
+    bars = []
+    price = 4500.0
+    for k in range(60):
+        drift = rnd.uniform(-0.8, 1.6)
+        price += drift
+        o = price - drift
+        c = price
+        h = max(o, c) + abs(rnd.uniform(0.2, 0.8))
+        l = min(o, c) - abs(rnd.uniform(0.2, 0.8))
+        bars.append(_bar(k, o, h, l, c))
+
+    warm = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    entry = next((e for e in warm if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None
+    ei = entry["idx"]
+    entry_px = entry["precio"]
+    rango = bars[ei]["high"] - bars[ei]["low"]
+    init_sl = bars[ei]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+    r = abs(entry_px - init_sl)
+
+    bars = bars[:ei + 1]
+    # Push FAR past +1R in one big bar (a large favourable excursion), and set
+    # its LOW just ABOVE the resulting raised SL (peak - $10) so the raise is
+    # observable in the open state without a same-bar trail-out / re-entry.
+    last_k = len(bars)
+    peak = entry_px + 30.0            # huge favourable move, well past +1R
+    raised_sl = peak - trail_pips * pip   # = entry_px + 20.0
+    bar_low = raised_sl + 0.5             # bar low just ABOVE the raised SL
+    bars.append(_bar(last_k, entry_px + 0.1, peak, bar_low, peak - 0.2))
+    assert peak >= entry_px + 1.0 * r        # armed
+    assert raised_sl < bar_low               # raised SL below the bar low: no stop-out
+    assert raised_sl > init_sl               # and above the initial range-SL
+
+    _events, state = simular_variant(
+        bars, symbol="XAUUSD", return_state=True, **kwargs)
+    f1 = state["open"].get("F1")
+    assert f1 is not None, "F1 must still be open after the arming bar"
+    assert f1["entry"] == pytest.approx(entry_px)  # the ORIGINAL F1, not a re-entry
+    # Once armed, the trail applies the ordinary raise: SL = max_fav - trail.
+    assert f1["sl"] == pytest.approx(raised_sl)
+    # And the raise DID move the SL up off the initial range-SL (trail resumed).
+    assert f1["sl"] > init_sl
+
+
+def test_trail_arm_does_not_suppress_be_or_ratchet_floors():
+    """Behavioural (TDD step 3, (iii)): the trailing gate applies to the TRAIL
+    block ONLY. With `trail_arm_r` high (so the ordinary trail is suppressed for
+    a long while) but `be_at_r` active, the break-even floor must still arm on
+    its OWN condition -- the ficha's SL is raised to the BE floor once max_fav
+    reaches +be_at_r*R, even though the trail has not armed. Likewise the ratchet
+    floor arms on its own `ratchet_arm_r`. We assert the BE floor is present in
+    the open snapshot before the trail would have armed."""
+    rnd = random.Random(3)
+    base_epoch = int(datetime(2026, 6, 1, tzinfo=timezone.utc).timestamp())
+
+    def _bar(k, o, h, l, c):
+        return {"t": base_epoch + k * 60, "open": o, "high": h, "low": l, "close": c}
+
+    from sentinel_engine.strategies.emasar_variant import pip_size
+    pip = pip_size("XAUUSD", 0.0)
+    be_offset_pips = 0.5
+    # BE arms at +0.5R; trail gate at a HIGH +5R (so trail stays unarmed here).
+    kwargs = dict(trail_arm_r=5.0, be_at_r=0.5, be_offset_pips=be_offset_pips,
+                  **V09_PARAMS)
+
+    bars = []
+    price = 4500.0
+    for k in range(60):
+        drift = rnd.uniform(-0.8, 1.6)
+        price += drift
+        o = price - drift
+        c = price
+        h = max(o, c) + abs(rnd.uniform(0.2, 0.8))
+        l = min(o, c) - abs(rnd.uniform(0.2, 0.8))
+        bars.append(_bar(k, o, h, l, c))
+
+    warm = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    entry = next((e for e in warm if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None
+    ei = entry["idx"]
+    entry_px = entry["precio"]
+    rango = bars[ei]["high"] - bars[ei]["low"]
+    init_sl = bars[ei]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+    r = abs(entry_px - init_sl)
+    be_floor = entry_px + be_offset_pips * pip
+
+    bars = bars[:ei + 1]
+    last_k = len(bars)
+    # A bar that reaches +0.6R (arms BE) but stays FAR below +5R (trail unarmed),
+    # with a low that never reaches init_sl.
+    hi = entry_px + 0.6 * r
+    bars.append(_bar(last_k, entry_px + 0.1, hi, entry_px + 0.05, hi - 0.1))
+    assert hi < entry_px + 5.0 * r  # trail gate NOT reached
+
+    _events, state = simular_variant(
+        bars, symbol="XAUUSD", return_state=True, **kwargs)
+    f1 = state["open"].get("F1")
+    assert f1 is not None, "F1 must still be open"
+    # BE floor armed on its own condition despite the trail being gated: the SL
+    # is the BE floor (> init_sl), NOT the (suppressed) trailing level.
+    assert f1["sl"] == pytest.approx(be_floor)
+    assert f1["sl"] > init_sl

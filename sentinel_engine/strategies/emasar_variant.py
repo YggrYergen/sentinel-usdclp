@@ -138,6 +138,7 @@ def simular_variant(
     ratchet_atr_k: float = 0.0,
     wait_mae_atr_k: float = 0.0,
     wait_be_exit: bool = False,
+    trail_arm_r: float = 0.0,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -486,6 +487,31 @@ def simular_variant(
     floor already violated by this bar's own close uses the existing trailing
     same-bar fallback -- no new fill route, no look-ahead. Both defaults reproduce
     the classic event stream byte-for-byte.
+
+    F5 trail-start-delay (PX-T3; `trail_arm_r`, default `0.0` = the trail arms
+    immediately = EXACT current behavior, byte-identical no-op): give the runner
+    early room -- the per-ficha TRAILING raise (the pips/range-trail tightening,
+    INCLUDING its ATR-floor term and AC-modulate) does not begin until the ficha
+    has EARNED it. The trailing raise is GATED: it only starts tightening the SL
+    once `f.max_fav` has reached `entry + trail_arm_r*R` (long; mirror short with
+    `<=` and `entry - trail_arm_r*R`), where `R = |entry - initial_SL|` (the same
+    `sl_inicial_by_tag` convention the ratchet arm uses). Before arming, ONLY the
+    initial-SL protects the ficha (plus any OTHER armed floor -- BE, ratchet,
+    wait-BE -- which have their OWN arming conditions; this gate applies to the
+    TRAILING block ALONE and never suppresses those floors). The gate changes
+    WHEN the trail begins raising, NOT how a raise propagates: `f.max_fav` is
+    still updated from this bar's high/low every bar (monotone -- once armed,
+    stays armed, no disarm), the exit checks against the current SL still run, and
+    a stop ALREADY raised by BE/ratchet/wait-BE stays raised (stops never loosen).
+    NEVER caps the runner -- this lever only DELAYS tightening, it never widens an
+    already-raised stop. Default `0.0` means `max_fav >= entry` is true from entry
+    (R>=0), so the trail arms on the very first bar exactly as today -- the raise
+    proceeds unconditionally, reproducing the classic event stream byte-for-byte
+    in BOTH live_fill_mode values and with return_state on/off. Honest under
+    `live_fill_mode` exactly as today (server-side next-bar discipline and the
+    same-bar fallback in the trailing block are untouched; when unarmed no raise
+    is computed, so neither the server-side raise nor the same-bar fallback fires
+    for that ficha this bar).
     """
     if active_fichas not in (1, 2, 3):
         raise ValueError(
@@ -942,8 +968,22 @@ def simular_variant(
                                      trail_atr_floor_k * atr14_floor[i])
             if f.lado == +1:
                 f.max_fav = max(f.max_fav, bar["high"])
+                # F5 trail-start-delay (PX-T3; trail_arm_r=0.0 default -> armed
+                # is unconditionally True from entry, so the raise below runs
+                # exactly as today = byte-identical no-op). Gate the TRAILING
+                # RAISE ONLY: it may tighten f.sl only once max_fav has reached
+                # entry + trail_arm_r*R (R = |entry - initial_SL|, the ratchet-
+                # arm convention). Before arming, f.sl stays at whatever the
+                # initial-SL / BE / ratchet / wait-BE floors set it to (those
+                # floors keep their OWN arming conditions; this gate is trailing
+                # -only). max_fav is still updated (monotone -> stays armed), the
+                # exit checks below still fire, and a stop already raised stays
+                # raised -- the lever only DELAYS tightening, never widens.
+                r_dist_trail = abs(f.entry - sl_inicial_by_tag[tag])
+                trail_armed = (trail_arm_r <= 0.0
+                               or f.max_fav >= f.entry + trail_arm_r * r_dist_trail)
                 nuevo_sl = f.max_fav - trail_efectivo
-                if f.sl is None or nuevo_sl > f.sl:
+                if trail_armed and (f.sl is None or nuevo_sl > f.sl):
                     f.sl = nuevo_sl
                 if live_fill_mode:
                     # Server-side order still resting at the PRIOR level
@@ -973,8 +1013,15 @@ def simular_variant(
                     continue
             else:
                 f.max_fav = min(f.max_fav, bar["low"])
+                # F5 trail-start-delay (PX-T3), short mirror of the long branch:
+                # gate the trailing RAISE ONLY until max_fav (running min) has
+                # reached entry - trail_arm_r*R. trail_arm_r=0.0 -> unconditional
+                # (byte-identical no-op). See the long-branch comment above.
+                r_dist_trail = abs(f.entry - sl_inicial_by_tag[tag])
+                trail_armed = (trail_arm_r <= 0.0
+                               or f.max_fav <= f.entry - trail_arm_r * r_dist_trail)
                 nuevo_sl = f.max_fav + trail_efectivo
-                if f.sl is None or nuevo_sl < f.sl:
+                if trail_armed and (f.sl is None or nuevo_sl < f.sl):
                     f.sl = nuevo_sl
                 if live_fill_mode:
                     if bar["high"] >= sl_check:
