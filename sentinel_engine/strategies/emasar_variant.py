@@ -127,6 +127,7 @@ def simular_variant(
     return_state: bool = False,
     live_fill_mode: bool = False,
     trail_atr_floor_k: float = 0.0,
+    max_hold_bars: int | None = None,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -325,6 +326,21 @@ def simular_variant(
     `trail_atr_floor_k * ATR14[i]` (Wilder ATR14, price units, None during the
     14-bar warmup -> no floor). Applied AFTER the range/pips ladder and any
     AC-modulate tightening, so it is the last word on the trail distance.
+
+    Time-stop exit (P51; `max_hold_bars`, default None = disabled = EXACT
+    current behavior, byte-identical no-op): when set to N (> 0), any ficha
+    still open N bars after its ENTRY bar (bar-count: `i - entry_bar_idx >= N`)
+    is closed at THAT bar's CLOSE price, motivo "time_stop". Per ficha. Checked
+    AFTER the SL/trailing/AC-decel checks each bar, so a same-bar stop-out
+    (EXIT_INITSL/EXIT_TP/EXIT_TRAIL/EXIT_ACDECEL) takes precedence -- the
+    `continue` statements above already skip this ficha for the rest of the bar
+    in that case. `_Ficha` is frozen (`__slots__`, vendored from `emasar_ref`),
+    so the per-ficha entry bar index is tracked out-of-band in
+    `entry_bar_by_tag`, set at every entry site (strict long/short + V-13
+    re-entry) and 1:1 with `fichas` while a position is open. Honest under
+    `live_fill_mode`: priced at the bar close (the honest fill for a
+    close-of-bar exit), no new fill route invented. `max_hold_bars=None` (or a
+    non-positive value) skips this block entirely.
     """
     n = len(bars)
     highs = [b["high"] for b in bars]
@@ -406,6 +422,12 @@ def simular_variant(
     tp_by_tag = {"F1": f1_tp_r, "F2": f2_tp_r}
     # V-07: consecutive-bar AC-deceleration-against-position counter, F3 only.
     ac_decel_consec_by_tag: dict[str, int] = {}
+    # P51 (max_hold_bars): the ENTRY bar index per open ficha, keyed by tag and
+    # reset on every new entry (1:1 with `fichas` while a position is open).
+    # `_Ficha` is frozen (__slots__), so bars-held is derived from this
+    # out-of-band index (`i - entry_bar_by_tag[tag]`). Dead weight when
+    # max_hold_bars is None.
+    entry_bar_by_tag: dict[str, int] = {}
     # V-13: exit-motivo bookkeeping for the CURRENTLY open signal (reset on
     # every new entry), used to detect "all 3 fichas closed, all EXIT_TRAIL"
     # at the moment the last ficha of a signal closes. Re-entry "arm" state
@@ -619,6 +641,21 @@ def simular_variant(
                                     "motivo": "EXIT_ACDECEL", "ficha": tag})
                     continue
 
+            # Time-stop exit (P51; max_hold_bars=None disables this block
+            # entirely, preserving current behavior byte-for-byte). Checked
+            # LAST -- after all SL/trailing/AC-decel checks -- so any same-bar
+            # stop-out (whose `continue` above already skipped this ficha) wins.
+            # Closes at THIS bar's CLOSE (`px`), the honest fill for a
+            # close-of-bar exit (unchanged under live_fill_mode). Bars-held is
+            # `i - entry_bar_by_tag[tag]` (frozen _Ficha carries no counter).
+            if max_hold_bars is not None and max_hold_bars > 0:
+                entry_idx = entry_bar_by_tag.get(tag)
+                if entry_idx is not None and (i - entry_idx) >= max_hold_bars:
+                    f.abierta = False
+                    eventos.append({"idx": i, "lado": lado_txt, "precio": px,
+                                    "motivo": "time_stop", "ficha": tag})
+                    continue
+
         # V-13: record this bar's new EXIT_* motivos against the currently
         # open signal's lineage (reentry_enable=False -> this bookkeeping is
         # harmless dead weight, never read below).
@@ -701,6 +738,7 @@ def simular_variant(
                 r_dist = abs(reentry_px - sl)
                 r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
                 ac_decel_consec_by_tag = {}
+                entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
                 signal_exit_motivos = []
                 reentry_count += 1
                 if reentry_count >= reentry_max:
@@ -813,6 +851,7 @@ def simular_variant(
             r_dist = abs(px_long - sl)
             r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
             ac_decel_consec_by_tag = {}
+            entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
             # V-13: a fresh STRICT-gate entry starts a brand-new lineage --
             # any previous re-entry arm/count is unrelated to this signal.
             signal_exit_motivos = []
@@ -832,6 +871,7 @@ def simular_variant(
             r_dist = abs(px_short - sl)
             r_by_tag = {"F1": r_dist, "F2": r_dist, "F3": r_dist}
             ac_decel_consec_by_tag = {}
+            entry_bar_by_tag = {"F1": i, "F2": i, "F3": i}
             signal_exit_motivos = []
             reentry_armed = False
             reentry_lado = -1
