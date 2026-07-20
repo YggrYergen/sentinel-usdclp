@@ -1,0 +1,1097 @@
+{
+  "_meta": {
+    "base_manifest": "scripts/report/honest_manifest_full_2026_07_20_v3.json (bases only; unchanged)",
+    "bases": {
+      "S6-K2P0": "HON-W2-S6-K2P0-M15-SAR",
+      "S7-TPNONE": "HON-S7-V15-TPNONE-BE1P0-M15"
+    },
+    "cost_model": "flat0.5",
+    "families": {
+      "F1": "profit-ratchet / chandelier rising-floor (problem A: give-back)",
+      "F2": "ATR trailing floor + slow-SAR (problem A: give-back)",
+      "F3": "stop-and-wait MAE budget (problem B: premature exit)",
+      "F4": "partial take-profit ladder (problem B: premature exit)",
+      "F5": "delayed trailing-arm (problem A: give-back)"
+    },
+    "generator": "PX-T5 (hand-authored, bases copied verbatim from honest_manifest_full_2026_07_20_v3.json)",
+    "harness": "scripts/report/gen_honest_sweep.py",
+    "holdout_precommit": {
+      "F1": "PX-RATCHET-L50",
+      "F2": "PX-FLOOR-K3",
+      "F3": "PX-WAIT-MAE2",
+      "F4": "PX-PART-F1TP1",
+      "F5": "PX-TRAIL-ARM1"
+    },
+    "holdout_window": "HOLDOUT-2026-01",
+    "keep_criterion": "Keep a variant only if MFE-capture% > base AND give-back USD < base AND net_honest >= base.",
+    "program": "PATIENT-EXIT",
+    "task": "PATIENT-EXIT program manifest: patient-exit levers (ratchet/chandelier/floor/wait/partial/trail-arm) on the S6-K2P0 base + S7-TPNONE robustness echoes, judged on give-back USD, MFE-capture%, and net_honest under honest fills.",
+    "windows_rule": "M15 -> IW,W1,W2,W3"
+  },
+  "entries": [
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.33,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Locking 33% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S6-K2P0 base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L33",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.5,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Locking 50% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S6-K2P0 base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L50",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.66,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Locking 66% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S6-K2P0 base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L66",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_atr_k": 3.0,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "A chandelier stop trailing 3.0xATR below peak (armed at 1.0R) captures more of the MFE and cuts give-back USD versus the S6-K2P0 base without net_honest loss.",
+        "mechanism": "After arming at ratchet_arm_r*R, the stop rides ratchet_atr_k*ATR under the running peak, so the give-back is capped at a volatility-scaled band rather than the wider fixed trailing distance.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-CHAND-ATR3",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_atr_k": 2.0,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "A chandelier stop trailing 2.0xATR below peak (armed at 1.0R) captures more of the MFE and cuts give-back USD versus the S6-K2P0 base without net_honest loss.",
+        "mechanism": "After arming at ratchet_arm_r*R, the stop rides ratchet_atr_k*ATR under the running peak, so the give-back is capped at a volatility-scaled band rather than the wider fixed trailing distance.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-CHAND-ATR2",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F2",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 64,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 3.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Raising the ATR trailing floor to 3.0xATR with a 64-bar max hold tightens the worst-case give-back USD versus the S6-K2P0 base while keeping net_honest at or above base.",
+        "mechanism": "trail_atr_floor_k widens the minimum trailing distance to k*ATR so the stop never sits closer than that floor, and max_hold_bars caps stale open risk by force-closing trades that have not resolved within 64 bars.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-FLOOR-K3",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F2",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 64,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 4.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Raising the ATR trailing floor to 4.0xATR with a 64-bar max hold tightens the worst-case give-back USD versus the S6-K2P0 base while keeping net_honest at or above base.",
+        "mechanism": "trail_atr_floor_k widens the minimum trailing distance to k*ATR so the stop never sits closer than that floor, and max_hold_bars caps stale open risk by force-closing trades that have not resolved within 64 bars.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-FLOOR-K4",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F2",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 64,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.002,
+          0.03
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "A slower parabolic SAR (step 0.002, max 0.03) trails the stop more gently so more of the MFE is captured, reducing give-back USD versus the S6-K2P0 base without net_honest loss.",
+        "mechanism": "The slow-SAR acceleration factor grows more slowly, keeping the adaptive stop further from price during the run; max_hold_bars=64 caps stale open risk.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-SAR-SLOW",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F3",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 48,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200,
+        "wait_be_exit": true,
+        "wait_mae_atr_k": 2.0
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if MFE-capture% does not improve versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Giving armed trades a 2.0xATR adverse-excursion budget before a break-even exit avoids premature stop-outs on noise, raising MFE-capture% and net_honest versus the S6-K2P0 base.",
+        "mechanism": "Once break-even is reached the stop is held at break-even and the trade is only cut when adverse excursion exceeds wait_mae_atr_k*ATR (wait_be_exit=True), tolerating shallow pullbacks instead of exiting on the first touch; max_hold_bars=48 bounds the wait.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-WAIT-MAE2",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F3",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 48,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200,
+        "wait_be_exit": true,
+        "wait_mae_atr_k": 3.0
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if MFE-capture% does not improve versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Giving armed trades a 3.0xATR adverse-excursion budget before a break-even exit avoids premature stop-outs on noise, raising MFE-capture% and net_honest versus the S6-K2P0 base.",
+        "mechanism": "Once break-even is reached the stop is held at break-even and the trade is only cut when adverse excursion exceeds wait_mae_atr_k*ATR (wait_be_exit=True), tolerating shallow pullbacks instead of exiting on the first touch; max_hold_bars=48 bounds the wait.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-WAIT-MAE3",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F4",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_tp_r": 1.0,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if MFE-capture% does not improve versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Taking the first ficha's profit at 1.0R banks realized give-back-free profit, raising MFE-capture% and net_honest versus the S6-K2P0 base.",
+        "mechanism": "f1_tp_r closes the first ficha at the configured R multiple, banking part of the run and letting the remainder trail, which raises realized MFE-capture% on trades that would otherwise round-trip.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-PART-F1TP1",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F4",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_tp_r": 0.5,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if MFE-capture% does not improve versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Taking the first ficha's profit at 0.5R banks profit sooner, raising MFE-capture% and net_honest versus the S6-K2P0 base.",
+        "mechanism": "f1_tp_r closes the first ficha at the configured R multiple, banking part of the run and letting the remainder trail, which raises realized MFE-capture% on trades that would otherwise round-trip.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-PART-F1TP0P5",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F4",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_tp_r": 1.0,
+        "f1_trail_pips": 100.0,
+        "f2_tp_r": 1.5,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if MFE-capture% does not improve versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "A two-rung take-profit ladder (1.0R then 1.5R) banks two partials before the trailing remainder, raising MFE-capture% and net_honest versus the S6-K2P0 base.",
+        "mechanism": "f1_tp_r and f2_tp_r close the first two fichas at 1.0R and 1.5R respectively; the third ficha keeps trailing, so more of the excursion is realized on partial retraces.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-PART-F1F2",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F5",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "max_hold_bars": 64,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_arm_r": 1.0,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Delaying the trailing stop until the trade reaches 1.0R lets the initial SL breathe early then tightens once in profit, reducing give-back USD versus the S6-K2P0 base without net_honest loss.",
+        "mechanism": "trail_arm_r suppresses the trailing ladder until max-favorable reaches 1.0R; before that the fixed initial SL governs, so early noise does not ratchet the stop; max_hold_bars=64 caps stale open risk.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-TRAIL-ARM1",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "BASE",
+      "kwargs": {
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.25,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "stop_and_reverse": true,
+        "trail_atr_floor_k": 2.0,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Not applicable: this is the control anchor, not a candidate; it is never kept or discarded, only used as the comparison baseline.",
+        "hypothesis": "Unmodified S6-K2P0 base (HON-W2-S6-K2P0-M15-SAR kwargs verbatim) re-priced under honest fills to anchor the give-back/net_honest baseline every F1/F2/F4/F5 variant is judged against.",
+        "mechanism": "No patient-exit lever engaged (all patient-exit kwargs at no-op defaults); this control fixes the reference net_honest and MFE-capture% for the manifest's DSR trial family.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-BASE-S6K2P0",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "BASE",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Not applicable: this is the control anchor, not a candidate; it is never kept or discarded, only used as the comparison baseline.",
+        "hypothesis": "Unmodified S7-TPNONE base (HON-S7-V15-TPNONE-BE1P0-M15 kwargs verbatim) re-priced under honest fills to anchor the baseline for the S7 robustness echoes.",
+        "mechanism": "No patient-exit lever engaged (all patient-exit kwargs at no-op defaults); this control fixes the reference net_honest and MFE-capture% for the S7-echo robustness check.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "B",
+      "tf": "M15",
+      "variant_id": "PX-BASE-S7TPNONE",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.33,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Robustness echo on the S7-TPNONE base: Locking 33% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S7-TPNONE base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L33-S7",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.5,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Robustness echo on the S7-TPNONE base: Locking 50% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S7-TPNONE base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L50-S7",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_lock_frac": 0.66,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Robustness echo on the S7-TPNONE base: Locking 66% of peak favorable excursion once the trade arms at 1.0R reduces per-trade give-back USD versus the S7-TPNONE base without lowering net_honest.",
+        "mechanism": "Once max-favorable reaches ratchet_arm_r*R, the stop is raised to hold ratchet_lock_frac of the peak MFE, so pullbacks surrender a bounded fraction of unrealized profit instead of the full retrace to the trailing stop.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-RATCHET-L66-S7",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_atr_k": 3.0,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Robustness echo on the S7-TPNONE base: A chandelier stop trailing 3.0xATR below peak (armed at 1.0R) captures more of the MFE and cuts give-back USD versus the S7-TPNONE base without net_honest loss.",
+        "mechanism": "After arming at ratchet_arm_r*R, the stop rides ratchet_atr_k*ATR under the running peak, so the give-back is capped at a volatility-scaled band rather than the wider fixed trailing distance.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-CHAND-ATR3-S7",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    },
+    {
+      "family": "F1",
+      "kwargs": {
+        "ac_modulate": false,
+        "ac_modulate_factor": 0.25,
+        "be_at_r": 1.0,
+        "confirm_count": 2,
+        "confirm_mode": 1,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true,
+        "ratchet_arm_r": 1.0,
+        "ratchet_atr_k": 2.0,
+        "require_ema_order": false,
+        "sar_adaptive": true,
+        "sar_fast": [
+          0.3,
+          0.3
+        ],
+        "sar_max": 0.3,
+        "sar_slow": [
+          0.005,
+          0.05
+        ],
+        "sar_step": 0.3,
+        "trail_atr_floor_k": 1.5,
+        "vol_regime_window": 200
+      },
+      "prereg": {
+        "author": "patient-exit-program",
+        "date": "2026-07-20",
+        "discard_if": "Discard if give-back USD is not reduced versus base, or net_honest falls below the base's net_honest.",
+        "hypothesis": "Robustness echo on the S7-TPNONE base: A chandelier stop trailing 2.0xATR below peak (armed at 1.0R) captures more of the MFE and cuts give-back USD versus the S7-TPNONE base without net_honest loss.",
+        "mechanism": "After arming at ratchet_arm_r*R, the stop rides ratchet_atr_k*ATR under the running peak, so the give-back is capped at a volatility-scaled band rather than the wider fixed trailing distance.",
+        "metric": "net_honest+mfe_capture",
+        "threshold": 0.0
+      },
+      "problem": "A",
+      "tf": "M15",
+      "variant_id": "PX-CHAND-ATR2-S7",
+      "windows": [
+        "IW",
+        "W1",
+        "W2",
+        "W3"
+      ]
+    }
+  ]
+}
