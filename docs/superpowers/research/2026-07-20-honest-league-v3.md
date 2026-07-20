@@ -257,7 +257,18 @@ Winner: `HON-W2-S6-K2P0-M15-SAR`
 
 ## Single-touch holdout result
 
-_No holdout has been run yet for this study (deferred -- reported here honestly, not faked)._
+The single-touch holdout was run in Wave 7 (W7-T1) on a GENUINELY UNTOUCHED
+window -- `HOLDOUT-2026-01` (2026-01-05 .. 2026-02-05), a month never loaded by
+any sweep/selection/refit (IW/W1/W2/W3 were all in-sample folds). See
+`docs/superpowers/research/2026-07-20-wave7-single-touch-holdout.md`.
+
+Winner `HON-W2-S6-K2P0-M15-SAR`: net **+16,457.10 USD**, 414 trades, PF 1.392
+(vs its IW +16,099.80 / 450 trades) -- direction HOLDS. All 5 SAR finalists and
+SuperTrend-p14x3-M15 are net-positive on the holdout. This is corroborating,
+NOT decisive: it does not overturn the in-sample **DSR 0.0000 / p=1.0000**
+(the sign persists on one untouched month; it is not a powered significance
+claim). No holdout DSR is computed (one pre-specified config per family --
+nothing to deflate; fabricating a trial family would be dishonest).
 
 ## Per-regime metric breakdown
 
