@@ -855,6 +855,94 @@ class ResearchRegistry:
         )
 
     # ------------------------------------------------------------------
+    # P63 (Wave 6 governance) — automatic AUDIT_REQUIRED flag on too-good runs
+    # ------------------------------------------------------------------
+    def flag_audit_required_if_too_good(
+        self,
+        run_id: str,
+        *,
+        sharpe: float,
+        n_trials: int,
+        trial_sharpe_std: float | None = None,
+    ) -> bool:
+        """Structural "too-good-to-be-true" trigger: if the run's HONEST
+        Sharpe clears the skill-less null-max luck-bar the DSR itself computes
+        for `n_trials` (see `sentinel_engine.opt.registry.too_good_to_be_true`
+        / `AUDIT_REQUIRED_NULL_MAX_MULT`), auto-set `run.validity =
+        'AUDIT_REQUIRED'` and write an audit_log row (actor='honest-program').
+
+        Reuses the EXISTING additive `run.validity` column and the `audit_on`
+        primitive -- no parallel schema. Governance only: it flags, it NEVER
+        touches any score/DSR field (the UPDATE writes `validity` alone).
+
+        Additive-only + idempotent: a run already carrying ANY validity label
+        (AUDIT_REQUIRED from a prior call, or a foreign label like
+        LOOKAHEAD_CONFIRMED) is left untouched and no audit row is written.
+
+        Returns True iff THIS call newly set the flag; False otherwise (not
+        too-good, or already labelled).
+        """
+        # Local import to avoid a research<-opt package import cycle at module
+        # load; the threshold lives with the DSR null it is defined against.
+        from sentinel_engine.opt.registry import (
+            AUDIT_REQUIRED_NULL_MAX_MULT,
+            too_good_to_be_true,
+        )
+
+        if not too_good_to_be_true(
+            sharpe, n_trials, trial_sharpe_std=trial_sharpe_std
+        ):
+            return False
+
+        conn = self._connect()
+        try:
+            conn.execute("BEGIN")
+            # Idempotent + additive-only: mark ONLY while validity is still
+            # NULL (unreviewed). A row already carrying any label is left as-is.
+            cur = conn.execute(
+                "UPDATE run SET validity='AUDIT_REQUIRED' "
+                "WHERE run_id=? AND validity IS NULL",
+                (run_id,),
+            )
+            if cur.rowcount != 1:
+                conn.rollback()
+                return False
+            self.audit_on(conn, "honest-program", "audit-required-flag", {
+                "run_id": run_id,
+                "label": "AUDIT_REQUIRED",
+                "reason": (
+                    "honest Sharpe clears the skill-less null-max luck-bar "
+                    "(too-good-to-be-true; DSR-consistent structural trigger)"
+                ),
+                "sharpe": sharpe,
+                "n_trials": int(n_trials),
+                "trial_sharpe_std": trial_sharpe_std,
+                "null_max_mult": AUDIT_REQUIRED_NULL_MAX_MULT,
+            })
+            conn.commit()
+            return True
+        except BaseException:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
+    def runs_flagged_audit_required(self) -> list[str]:
+        """run_ids currently flagged `AUDIT_REQUIRED` (queryable governance
+        surface), ordered by run_id for determinism."""
+        conn = self._connect()
+        try:
+            return [
+                row[0]
+                for row in conn.execute(
+                    "SELECT run_id FROM run WHERE validity='AUDIT_REQUIRED' "
+                    "ORDER BY run_id"
+                ).fetchall()
+            ]
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
     # M2.4 — variant/strategy management helpers
     # ------------------------------------------------------------------
     def get_strategy(self, strategy_id: str) -> dict[str, Any] | None:

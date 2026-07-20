@@ -14,9 +14,11 @@ import numpy as np
 import pytest
 
 from sentinel_engine.opt.registry import (
+    AUDIT_REQUIRED_NULL_MAX_MULT,
     DeflatedSharpeResult,
     TrialRegistry,
     deflated_sharpe_ratio,
+    too_good_to_be_true,
 )
 
 
@@ -246,6 +248,83 @@ def test_dsr_default_trial_sharpe_std_is_conservative_placeholder():
 # --------------------------------------------------------------------------
 # End-to-end: registry-derived trial count feeds DSR deflation.
 # --------------------------------------------------------------------------
+
+
+# --------------------------------------------------------------------------
+# P63 (Wave 6 governance): the "too-good-to-be-true" trigger, defined
+# HONESTLY against the SAME skill-less null-max luck-bar the DSR uses.
+# --------------------------------------------------------------------------
+
+
+def test_too_good_flags_sharpe_at_or_above_null_max():
+    """A config whose honest Sharpe reaches the level pure luck across all
+    trials searched would be EXPECTED to produce (the DSR's own
+    `expected_max_sharpe_null`) is too-good-to-be-true and must be audited."""
+    n_trials = 200
+    trial_sharpe_std = 0.3
+    null_max = deflated_sharpe_ratio(
+        _synthetic_winner_returns(), n_trials, trial_sharpe_std=trial_sharpe_std
+    ).expected_max_sharpe_null
+    assert null_max > 0.0  # sanity: there IS a positive luck-bar to clear.
+
+    # Exactly AT the luck-bar -> flagged (>= is the honest boundary).
+    assert too_good_to_be_true(
+        sharpe=null_max, n_trials=n_trials, trial_sharpe_std=trial_sharpe_std
+    ) is True
+    # Comfortably ABOVE -> flagged.
+    assert too_good_to_be_true(
+        sharpe=null_max * 2.0, n_trials=n_trials, trial_sharpe_std=trial_sharpe_std
+    ) is True
+
+
+def test_too_good_does_not_flag_below_null_max():
+    """A plausible Sharpe (below the skill-less null-max) is NOT flagged."""
+    n_trials = 200
+    trial_sharpe_std = 0.3
+    null_max = deflated_sharpe_ratio(
+        _synthetic_winner_returns(), n_trials, trial_sharpe_std=trial_sharpe_std
+    ).expected_max_sharpe_null
+    assert too_good_to_be_true(
+        sharpe=null_max * 0.5, n_trials=n_trials, trial_sharpe_std=trial_sharpe_std
+    ) is False
+
+
+def test_too_good_threshold_uses_the_named_constant():
+    """The trigger multiplier is a named module constant, not a buried
+    literal; passing it explicitly reproduces the default behavior."""
+    n_trials = 100
+    trial_sharpe_std = 0.25
+    null_max = deflated_sharpe_ratio(
+        _synthetic_winner_returns(), n_trials, trial_sharpe_std=trial_sharpe_std
+    ).expected_max_sharpe_null
+    boundary = AUDIT_REQUIRED_NULL_MAX_MULT * null_max
+    assert too_good_to_be_true(
+        sharpe=boundary, n_trials=n_trials, trial_sharpe_std=trial_sharpe_std,
+        null_max_mult=AUDIT_REQUIRED_NULL_MAX_MULT,
+    ) is True
+    # Just under the (mult-scaled) bar -> not flagged.
+    assert too_good_to_be_true(
+        sharpe=boundary * 0.999, n_trials=n_trials, trial_sharpe_std=trial_sharpe_std,
+        null_max_mult=AUDIT_REQUIRED_NULL_MAX_MULT,
+    ) is False
+
+
+def test_too_good_is_governance_only_does_not_change_dsr():
+    """Evaluating the too-good trigger must be a pure read: the DSR output
+    for the same inputs is byte-identical before and after (governance flags,
+    it never mutates scoring)."""
+    returns = _synthetic_winner_returns(seed=7, n=80, mean=0.2, std=0.9)
+    before = deflated_sharpe_ratio(returns, n_trials=150, trial_sharpe_std=0.3)
+    _ = too_good_to_be_true(sharpe=5.0, n_trials=150, trial_sharpe_std=0.3)
+    after = deflated_sharpe_ratio(returns, n_trials=150, trial_sharpe_std=0.3)
+    assert before == after
+
+
+def test_too_good_deterministic():
+    """Same inputs -> same verdict, every call."""
+    kwargs = dict(sharpe=1.234, n_trials=321, trial_sharpe_std=0.27)
+    verdicts = {too_good_to_be_true(**kwargs) for _ in range(5)}
+    assert len(verdicts) == 1
 
 
 def test_registry_trial_count_feeds_dsr_end_to_end(tmp_path):

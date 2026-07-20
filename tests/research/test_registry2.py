@@ -422,3 +422,166 @@ def test_get_run_self_heals_null_tf_from_variant_id_suffix(reg):
     })
     run = reg.get_run("R-null-tf")
     assert run["tf"] == "M5"
+
+
+# ---------------------------------------------------------------------
+# P63 (Wave 6 governance): the "too-good-to-be-true" trigger is STRUCTURAL.
+# When a recorded run's honest Sharpe clears the skill-less null-max luck-bar
+# the DSR itself computes for the study's trial count, the registry
+# auto-sets `run.validity='AUDIT_REQUIRED'` (reusing the existing additive
+# validity column + `audit_on` primitive; actor='honest-program'). It is
+# QUERYABLE and NEVER alters scoring/DSR (governance only).
+# ---------------------------------------------------------------------
+
+def _mk_p63_run(reg, run_id, sharpe):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, f"V-{run_id}", {}, "M5", "XAUUSD", "original")
+    reg.insert_run({
+        "run_id": run_id, "variant_id": vid, "engine": "sentinel-sim",
+        "fidelity": "screening", "trades": 100, "net": 5000.0, "sharpe": sharpe,
+        "fecha_corrida": "2026-07-20",
+    })
+    return run_id
+
+
+def test_flag_audit_required_leaves_below_threshold_run_unflagged(reg):
+    """A plausible Sharpe (below the skill-less null-max) is NOT flagged."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-plausible", sharpe=null_max * 0.5)
+
+    flagged = reg.flag_audit_required_if_too_good(
+        "R-plausible", sharpe=null_max * 0.5, n_trials=n_trials, trial_sharpe_std=tstd
+    )
+    assert flagged is False
+    assert reg.get_run("R-plausible")["validity"] is None
+    assert reg.runs_flagged_audit_required() == []
+
+
+def test_flag_audit_required_auto_flags_too_good_run(reg):
+    """An above-threshold run is auto-flagged AUDIT_REQUIRED with an audit
+    row by actor='honest-program' (reusing audit_on + the validity column)."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-toogood", sharpe=null_max * 3.0)
+
+    flagged = reg.flag_audit_required_if_too_good(
+        "R-toogood", sharpe=null_max * 3.0, n_trials=n_trials, trial_sharpe_std=tstd
+    )
+    assert flagged is True
+    assert reg.get_run("R-toogood")["validity"] == "AUDIT_REQUIRED"
+
+    conn = reg._connect()
+    try:
+        rows = conn.execute(
+            "SELECT actor, accion, detalle_json FROM audit_log "
+            "WHERE accion='audit-required-flag'"
+        ).fetchall()
+    finally:
+        conn.close()
+    assert len(rows) == 1
+    actor, accion, dj = rows[0]
+    assert actor == "honest-program"
+    import json as _json
+    detalle = _json.loads(dj)
+    assert detalle["run_id"] == "R-toogood"
+    assert detalle["label"] == "AUDIT_REQUIRED"
+
+
+def test_runs_flagged_audit_required_is_queryable(reg):
+    """The flag is queryable: a flagged run appears, an unflagged one does
+    not."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-clean", sharpe=null_max * 0.4)
+    _mk_p63_run(reg, "R-suspect", sharpe=null_max * 5.0)
+
+    reg.flag_audit_required_if_too_good(
+        "R-clean", sharpe=null_max * 0.4, n_trials=n_trials, trial_sharpe_std=tstd)
+    reg.flag_audit_required_if_too_good(
+        "R-suspect", sharpe=null_max * 5.0, n_trials=n_trials, trial_sharpe_std=tstd)
+
+    flagged = reg.runs_flagged_audit_required()
+    assert flagged == ["R-suspect"]
+
+
+def test_flag_audit_required_additive_only_does_not_touch_scores(reg):
+    """Governance only: flagging changes ONLY `run.validity` -- every other
+    column of the run (net/sharpe/pf/...) is byte-identical afterwards."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-metrics", sharpe=null_max * 4.0)
+
+    def _snapshot_sans_validity():
+        conn = reg._connect()
+        try:
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(run)")
+                    if r[1] != "validity"]
+            sel = ", ".join(f'"{c}"' for c in cols)
+            return conn.execute(f"SELECT {sel} FROM run WHERE run_id='R-metrics'").fetchone()
+        finally:
+            conn.close()
+
+    before = _snapshot_sans_validity()
+    reg.flag_audit_required_if_too_good(
+        "R-metrics", sharpe=null_max * 4.0, n_trials=n_trials, trial_sharpe_std=tstd)
+    after = _snapshot_sans_validity()
+    assert before == after
+
+
+def test_flag_audit_required_idempotent(reg):
+    """A second flagging call writes no new audit row and does not re-mark."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-idem", sharpe=null_max * 3.0)
+
+    assert reg.flag_audit_required_if_too_good(
+        "R-idem", sharpe=null_max * 3.0, n_trials=n_trials, trial_sharpe_std=tstd) is True
+    # Second call: already AUDIT_REQUIRED -> no-op, returns False (nothing new).
+    assert reg.flag_audit_required_if_too_good(
+        "R-idem", sharpe=null_max * 3.0, n_trials=n_trials, trial_sharpe_std=tstd) is False
+
+    conn = reg._connect()
+    try:
+        (n,) = conn.execute(
+            "SELECT COUNT(*) FROM audit_log WHERE accion='audit-required-flag'"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert n == 1
+
+
+def test_flag_audit_required_never_overwrites_foreign_validity(reg):
+    """If a run already carries a different validity label, the too-good flag
+    must NOT overwrite it (additive-only history)."""
+    from sentinel_engine.opt.registry import deflated_sharpe_ratio
+    n_trials, tstd = 200, 0.3
+    null_max = deflated_sharpe_ratio(
+        [0.05, -0.1, 0.2, 0.0, 0.15, -0.05], n_trials, trial_sharpe_std=tstd
+    ).expected_max_sharpe_null
+    _mk_p63_run(reg, "R-foreign", sharpe=null_max * 3.0)
+    conn = reg._connect()
+    try:
+        conn.execute("UPDATE run SET validity='LOOKAHEAD_CONFIRMED' WHERE run_id='R-foreign'")
+        conn.commit()
+    finally:
+        conn.close()
+
+    assert reg.flag_audit_required_if_too_good(
+        "R-foreign", sharpe=null_max * 3.0, n_trials=n_trials, trial_sharpe_std=tstd) is False
+    assert reg.get_run("R-foreign")["validity"] == "LOOKAHEAD_CONFIRMED"

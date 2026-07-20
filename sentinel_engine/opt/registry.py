@@ -352,3 +352,55 @@ def deflated_sharpe_ratio(
         dsr=dsr,
         p_value=p_value,
     )
+
+
+# --------------------------------------------------------------------------
+# P63 (Wave 6 governance): the "too-good-to-be-true" trigger, made STRUCTURAL.
+# --------------------------------------------------------------------------
+
+# Multiplier on the DSR's skill-less null-max ("SR0", `expected_max_sharpe_null`)
+# above which a run is deemed too-good-to-be-true and must be audited. Set to
+# 1.0: a config whose HONEST observed Sharpe merely reaches the level that pure
+# luck across ALL the trials searched would be EXPECTED to produce is already
+# implausible on its own merits -- it clears the same luck-bar the DSR uses to
+# deflate the winner, so flagging at that boundary keeps the governance trigger
+# internally consistent with the honest reference. Named constant (not a magic
+# literal) so the plausibility bound is documented and tunable in one place.
+AUDIT_REQUIRED_NULL_MAX_MULT = 1.0
+
+
+def too_good_to_be_true(
+    sharpe: float,
+    n_trials: int,
+    *,
+    trial_sharpe_std: float | None = None,
+    null_max_mult: float = AUDIT_REQUIRED_NULL_MAX_MULT,
+) -> bool:
+    """Pure, side-effect-free "too-good-to-be-true" verdict for one run's
+    honest Sharpe, keyed off the SAME skill-less null-max luck-bar the
+    deflated Sharpe ratio uses (`expected_max_sharpe_null`, "SR0").
+
+    Returns True iff ``sharpe >= null_max_mult * SR0``, where SR0 is the
+    expected maximum Sharpe achievable by pure luck with `n_trials`
+    independent skill-less attempts (Bailey & Lopez de Prado). Reusing that
+    exact null keeps the governance trigger internally consistent with the
+    honest DSR reference: a config at/above the luck-bar is implausibly good
+    and must be audited.
+
+    This is GOVERNANCE ONLY -- a read-only threshold test. It computes SR0 the
+    same way `deflated_sharpe_ratio` does and NEVER mutates any score/DSR.
+    Deterministic: same inputs -> same verdict.
+    """
+    variance_sr = 1.0 if trial_sharpe_std is None else float(trial_sharpe_std) ** 2
+    if variance_sr <= 0.0:
+        variance_sr = 1.0
+    if int(n_trials) < 2:
+        # SR0 is undefined for a single untried attempt -- with no trial
+        # search there is no luck-bar to clear, so nothing is "too good".
+        return False
+
+    sr0 = math.sqrt(variance_sr) * (
+        (1 - _EULER_MASCHERONI) * norm.ppf(1 - 1.0 / n_trials)
+        + _EULER_MASCHERONI * norm.ppf(1 - 1.0 / (n_trials * math.e))
+    )
+    return float(sharpe) >= float(null_max_mult) * float(sr0)
