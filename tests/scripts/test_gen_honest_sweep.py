@@ -236,3 +236,125 @@ def test_second_invocation_skips_persisted_cells(tmp_path, fixture_bars):
     # Deterministic: nets identical across the two invocations.
     nets_2 = {(r["variant_id"], r["periodo_desde"]): r["net"] for r in runs_after_2}
     assert nets_1 == nets_2
+
+
+# ---------------------------------------------------------------------------
+# B2 review fixes: the honest-fidelity migration must be crash-atomic and must
+# refuse to rebuild run/trade if unnamed indexes/triggers would be lost.
+# ---------------------------------------------------------------------------
+def _seed_run_and_trade(db: Path) -> None:
+    reg = ResearchRegistry(db)
+    sid = reg.upsert_strategy("EMASAR", "emasar", "py")
+    reg.upsert_variant(sid, "VAR_PRE", {}, "M5", "XAUUSD", None)
+    reg.insert_run({
+        "run_id": "pre-existing-run", "variant_id": "VAR_PRE",
+        "engine": "sentinel-sim", "fidelity": "screening",
+        "trades": 1, "net": 42.0, "fecha_corrida": "2026-07-01",
+    })
+    reg.insert_trades("pre-existing-run", [{
+        "trade_id": "pre-t1", "run_id": "pre-existing-run",
+        "ts_in": "2026.07.01 10:00:00", "px_in": 4500.0, "side": "LONG",
+    }])
+
+
+class _CrashingConn:
+    """Proxy that simulates power loss mid-rebuild: executes the migration
+    script only up to (not including) the first DROP TABLE, then dies. With a
+    transactional script (BEGIN...COMMIT) the close() in the harness's
+    `finally` must roll the whole rebuild back."""
+
+    def __init__(self, real: sqlite3.Connection):
+        self._real = real
+
+    def execute(self, *a):
+        return self._real.execute(*a)
+
+    def commit(self):
+        return self._real.commit()
+
+    def close(self):
+        return self._real.close()
+
+    def executescript(self, script: str):
+        assert "BEGIN" in script  # migration must be transactional
+        idx = script.index("DROP TABLE")
+        self._real.executescript(script[:idx])
+        raise sqlite3.OperationalError("simulated power loss mid-rebuild")
+
+
+def test_migration_crash_mid_rebuild_rolls_back(tmp_path, monkeypatch):
+    db = tmp_path / "research.db"
+    _seed_run_and_trade(db)
+
+    def _crash_connect(self):
+        conn = sqlite3.connect(str(db))
+        conn.execute("PRAGMA foreign_keys=ON")
+        return _CrashingConn(conn)
+
+    reg = ResearchRegistry(db)
+    monkeypatch.setattr(ResearchRegistry, "_connect", _crash_connect)
+    with pytest.raises(sqlite3.OperationalError):
+        ghs._ensure_honest_fidelity(reg)
+    monkeypatch.undo()
+
+    # Whole rebuild rolled back: original tables intact, no transients left.
+    conn = sqlite3.connect(str(db))
+    try:
+        names = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "run" in names and "trade" in names
+        assert "run_pre_honest" not in names
+        assert "trade_pre_honest" not in names
+        run_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='run'"
+        ).fetchone()[0]
+        assert "honest-screen" not in run_sql  # migration did NOT half-apply
+        assert conn.execute(
+            "SELECT net FROM run WHERE run_id='pre-existing-run'"
+        ).fetchone()[0] == 42.0
+        assert conn.execute(
+            "SELECT px_in FROM trade WHERE trade_id='pre-t1'"
+        ).fetchone()[0] == 4500.0
+    finally:
+        conn.close()
+
+    # And a clean retry completes the migration.
+    ghs._ensure_honest_fidelity(ResearchRegistry(db))
+    conn = sqlite3.connect(str(db))
+    try:
+        run_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='run'"
+        ).fetchone()[0]
+        assert "honest-screen" in run_sql
+        assert conn.execute("SELECT COUNT(*) FROM run").fetchone()[0] == 1
+        assert conn.execute("SELECT COUNT(*) FROM trade").fetchone()[0] == 1
+    finally:
+        conn.close()
+
+
+def test_migration_refuses_when_extra_index_would_be_lost(tmp_path):
+    db = tmp_path / "research.db"
+    _seed_run_and_trade(db)
+    conn = sqlite3.connect(str(db))
+    try:
+        conn.execute("CREATE INDEX extra_ix_net ON run(net)")
+        conn.commit()
+    finally:
+        conn.close()
+
+    with pytest.raises(RuntimeError, match="refus"):
+        ghs._ensure_honest_fidelity(ResearchRegistry(db))
+
+    # Nothing rebuilt: index still there, enum not widened, rows intact.
+    conn = sqlite3.connect(str(db))
+    try:
+        names = {r[0] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index'")}
+        assert "extra_ix_net" in names
+        run_sql = conn.execute(
+            "SELECT sql FROM sqlite_master WHERE type='table' AND name='run'"
+        ).fetchone()[0]
+        assert "honest-screen" not in run_sql
+        assert conn.execute("SELECT COUNT(*) FROM run").fetchone()[0] == 1
+    finally:
+        conn.close()

@@ -123,11 +123,34 @@ def _ensure_honest_fidelity(registry: ResearchRegistry) -> None:
         ).fetchone()[0]
         if "honest-screen" in run_sql:
             return
+        # Guard (B2 review): the string-patch must provably preserve the
+        # additive columns on the ACTUAL stored DDL, not just in theory.
+        for col in ("validity", "fidelity_ref"):
+            if col not in run_sql:
+                raise RuntimeError(
+                    f"refusing to rebuild run: expected additive column {col!r} "
+                    "not present in the stored run DDL -- schema drifted"
+                )
         patched = run_sql.replace("'live-demo'", "'live-demo','honest-screen'", 1)
         if patched == run_sql:
             raise RuntimeError(
                 "cannot widen run.fidelity CHECK: 'live-demo' anchor not found "
                 "in the run table DDL -- schema drifted, refusing to guess"
+            )
+        # Guard (B2 review): the rebuild only recreates ix_run_variant /
+        # ix_trade_run. Any OTHER index/trigger on run/trade would be silently
+        # lost -- REFUSE instead of proceeding.
+        extras = conn.execute(
+            "SELECT type, name FROM sqlite_master "
+            "WHERE tbl_name IN ('run','trade') AND type IN ('index','trigger') "
+            "AND name NOT LIKE 'sqlite_autoindex%' "
+            "AND name NOT IN ('ix_run_variant','ix_trade_run')"
+        ).fetchall()
+        if extras:
+            raise RuntimeError(
+                "refusing to rebuild run/trade: these schema objects would be "
+                f"silently lost by the rebuild: {extras} -- recreate them in "
+                "this migration (or drop them deliberately) first"
             )
         # SQLite rewrites trade's FK-reference text when `run` is renamed --
         # rebuild `trade` too (verbatim DDL re-pointed at `run`), exactly as
@@ -136,8 +159,12 @@ def _ensure_honest_fidelity(registry: ResearchRegistry) -> None:
             "SELECT sql FROM sqlite_master WHERE type='table' AND name='trade'"
         ).fetchone()[0]
         conn.execute("PRAGMA foreign_keys = OFF")
+        # Crash-atomic (B2 review): explicit BEGIN...COMMIT -- SQLite DDL is
+        # transactional, so power loss anywhere mid-rebuild rolls the WHOLE
+        # rename->recreate->copy->drop back to the original tables.
         conn.executescript(
             f"""
+            BEGIN;
             ALTER TABLE run RENAME TO run_pre_honest;
             {patched};
             INSERT INTO run SELECT * FROM run_pre_honest;
@@ -148,9 +175,9 @@ def _ensure_honest_fidelity(registry: ResearchRegistry) -> None:
             DROP TABLE run_pre_honest;
             CREATE INDEX IF NOT EXISTS ix_run_variant ON run(variant_id);
             CREATE INDEX IF NOT EXISTS ix_trade_run ON trade(run_id);
+            COMMIT;
             """
         )
-        conn.commit()
         conn.execute("PRAGMA foreign_keys = ON")
     finally:
         conn.close()
@@ -248,8 +275,8 @@ def _metrics(trades: list[dict[str, Any]]) -> dict[str, Any]:
     losses = [p for p, _ in pnls if p < 0]
     gross_win = sum(wins)
     gross_loss = -sum(losses)
-    pf = (round(gross_win / gross_loss, 4) if gross_loss > 0
-          else (None if gross_win == 0 else None))  # inf -> None (registry REAL)
+    # No losses -> pf undefined/infinite; stored as NULL (run.pf is REAL).
+    pf = round(gross_win / gross_loss, 4) if gross_loss > 0 else None
     wr = round(100.0 * len(wins) / n, 2) if n else None
     avg_win = (gross_win / len(wins)) if wins else 0.0
     avg_loss = (gross_loss / len(losses)) if losses else 0.0
