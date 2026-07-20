@@ -1,0 +1,59 @@
+{
+  "_note": "content authored by Task B3 -- this file is a placeholder with example entries showing the manifest entry schema the honest-sweep harness (scripts/report/gen_honest_sweep.py) consumes. Every entry MUST carry a `prereg` block (P64): the harness refuses to run un-preregistered cells.",
+  "entries": [
+    {
+      "variant_id": "HON_EXAMPLE_SS_M5",
+      "tf": "M5",
+      "kwargs": {
+        "confirm_mode": 1,
+        "confirm_count": 2,
+        "require_ema_order": false,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "sar_step": 0.3,
+        "sar_max": 0.3,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.01,
+        "init_sl_range_k": 6.0,
+        "reentry_enable": true,
+        "reentry_max": 2,
+        "live_fill_mode": true
+      },
+      "windows": ["IW", "W1", "W2", "W3"],
+      "prereg": {
+        "hypothesis": "EXAMPLE ONLY (B3 replaces): SS-M5 retains positive net under honest live-fill semantics + flat $0.50/round-trip friction across IW and all OOW windows.",
+        "metric": "net_honest",
+        "threshold": 0.0
+      }
+    },
+    {
+      "variant_id": "HON_EXAMPLE_V06D_M15",
+      "tf": "M15",
+      "kwargs": {
+        "confirm_mode": 1,
+        "confirm_count": 2,
+        "require_ema_order": false,
+        "ema_fast": 8,
+        "ema_slow": 20,
+        "sar_step": 0.3,
+        "sar_max": 0.3,
+        "f1_trail_pips": 100.0,
+        "f2_trail_pips": 100.0,
+        "f3_trail_pips": 100.0,
+        "ac_modulate": true,
+        "ac_modulate_factor": 0.01,
+        "init_sl_range_k": 2.5,
+        "live_fill_mode": true
+      },
+      "windows": ["IW", "W1"],
+      "prereg": {
+        "hypothesis": "EXAMPLE ONLY (B3 replaces): V06D-M15 retains positive net under honest live-fill semantics + flat $0.50/round-trip friction on IW and W1.",
+        "metric": "net_honest",
+        "threshold": 0.0
+      }
+    }
+  ]
+}
