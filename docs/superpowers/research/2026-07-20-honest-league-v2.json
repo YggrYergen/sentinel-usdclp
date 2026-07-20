@@ -1,0 +1,2236 @@
+{
+  "study_id": "honest-sweep-2026-07-19",
+  "n_trials": 195,
+  "windows": [
+    "IW",
+    "W1",
+    "W2",
+    "W3"
+  ],
+  "n_folds": 7,
+  "winner": "HON-W2-S6-K2P0-M15-SAR",
+  "selection_reason": "selected as sole best-median-J survivor",
+  "median_J_by_name": {
+    "HON-S1-V15-M2": -34375.2,
+    "HON-S1-V15-M15": 401.99999999999994,
+    "HON-S1-V13-M2": -42812.7,
+    "HON-S1-V11-M2": -30024.9,
+    "HON-S2-SS-M2": -39931.8,
+    "HON-S2-SS-M5": -13594.35,
+    "HON-S2-SS-M15": -1648.5,
+    "HON-S2-SS-M1": -76722.9,
+    "HON-S2-V06D-M2": -41313.0,
+    "HON-S2-V06D-M5": -14936.849999999999,
+    "HON-S2-V06D-M15": -761.4,
+    "HON-S2-V13-M5": -15087.6,
+    "HON-S2-V13-M15": -1452.9,
+    "HON-S2-V15-M2": -34375.2,
+    "HON-S2-V06C-M5": -14927.7,
+    "HON-S2-V06C-M15": -762.0,
+    "HON-S2-V06B-M15": -756.5999999999999,
+    "HON-S3-V15-M15": 401.99999999999994,
+    "HON-S3-V09-CTRL-M15": -1086.6,
+    "HON-S3-V11-M2": -30024.9,
+    "HON-S3-V13-M2": -42812.7,
+    "HON-S3-V09-CTRL-M5": -14007.6,
+    "HON-S4-S1-F0P10-M1": -80126.7,
+    "HON-S4-S1-F0P10-M2": -42993.0,
+    "HON-S4-S1-F0P10-M5": -15205.5,
+    "HON-S4-S1-F0P10-M15": -1649.1,
+    "HON-S4-S1-F0P01-M1": -80950.2,
+    "HON-S4-S1-F0P01-M2": -42976.5,
+    "HON-S4-S1-F0P01-M5": -15265.65,
+    "HON-S4-S1-F0P01-M15": -1648.5,
+    "HON-S4-S2-F0P10-M1": -65091.9,
+    "HON-S4-S2-F0P10-M2": -34513.5,
+    "HON-S4-S2-F0P10-M5": -11706.0,
+    "HON-S4-S2-F0P10-M15": 398.84999999999997,
+    "HON-S4-S2-F0P01-M1": -65667.3,
+    "HON-S4-S2-F0P01-M2": -34306.2,
+    "HON-S4-S2-F0P01-M5": -11712.75,
+    "HON-S4-S2-F0P01-M15": 400.19999999999993,
+    "HON-S4-S3-F0P10-M1": -75793.8,
+    "HON-S4-S3-F0P10-M2": -39873.3,
+    "HON-S4-S3-F0P10-M5": -13500.3,
+    "HON-S4-S3-F0P10-M15": 504.45,
+    "HON-S4-S3-F0P01-M1": -76722.9,
+    "HON-S4-S3-F0P01-M2": -39931.8,
+    "HON-S4-S3-F0P01-M5": -13594.35,
+    "HON-S4-S3-F0P01-M15": 507.9,
+    "HON-S5-V07-ACDECEL-M1": -76831.9,
+    "HON-S5-V07-ACDECEL-M2": -41252.9,
+    "HON-S5-V07-ACDECEL-M5": -15165.7,
+    "HON-S5-V07-ACDECEL-M15": -776.85,
+    "HON-S6-V15-K0P0-AC1-M2": -34375.2,
+    "HON-S6-V15-K0P0-AC0-M2": -34368.0,
+    "HON-S6-V15-K1P5-AC1-M2": -25948.5,
+    "HON-S6-V15-K1P5-AC0-M2": -25948.5,
+    "HON-S6-V15-K2P0-AC1-M2": -13479.0,
+    "HON-S6-V15-K2P0-AC0-M2": -13479.0,
+    "HON-S6-V15-K3P0-AC1-M2": -4923.9,
+    "HON-S6-V15-K3P0-AC0-M2": -4923.9,
+    "HON-S6-V15-K0P0-AC1-M15": 401.99999999999994,
+    "HON-S6-V15-K0P0-AC0-M15": 283.35,
+    "HON-S6-V15-K1P5-AC1-M15": 3259.8,
+    "HON-S6-V15-K1P5-AC0-M15": 3259.8,
+    "HON-S6-V15-K2P0-AC1-M15": 3168.8999999999996,
+    "HON-S6-V15-K2P0-AC0-M15": 3168.8999999999996,
+    "HON-S6-V15-K3P0-AC1-M15": 1767.4499999999998,
+    "HON-S6-V15-K3P0-AC0-M15": 1767.4499999999998,
+    "HON-S6-V13-K0P0-AC1-M2": -42812.7,
+    "HON-S6-V13-K0P0-AC0-M2": -41992.5,
+    "HON-S6-V13-K1P5-AC1-M2": -25277.1,
+    "HON-S6-V13-K1P5-AC0-M2": -25277.1,
+    "HON-S6-V13-K2P0-AC1-M2": -14372.7,
+    "HON-S6-V13-K2P0-AC0-M2": -14372.7,
+    "HON-S6-V13-K3P0-AC1-M2": -10091.1,
+    "HON-S6-V13-K3P0-AC0-M2": -10091.1,
+    "HON-S6-V11-K0P0-AC1-M2": -30024.9,
+    "HON-S6-V11-K0P0-AC0-M2": -29434.2,
+    "HON-S6-V11-K1P5-AC1-M2": -19731.9,
+    "HON-S6-V11-K1P5-AC0-M2": -19731.9,
+    "HON-S6-V11-K2P0-AC1-M2": -10856.1,
+    "HON-S6-V11-K2P0-AC0-M2": -10856.1,
+    "HON-S6-V11-K3P0-AC1-M2": 1678.8,
+    "HON-S6-V11-K3P0-AC0-M2": 1678.8,
+    "HON-S7-V15-TPNONE-BE1P0-M2": -25948.5,
+    "HON-S7-V15-TP1P0-BENONE-M2": -25696.0,
+    "HON-S7-V15-TP1P0-BE1P0-M2": -25696.0,
+    "HON-S7-V15-TP1P5-BENONE-M2": -26466.6,
+    "HON-S7-V15-TP1P5-BE1P0-M2": -26466.6,
+    "HON-S7-V15-TPNONE-BE1P0-M15": 3355.05,
+    "HON-S7-V15-TP1P0-BENONE-M15": 3130.4,
+    "HON-S7-V15-TP1P0-BE1P0-M15": 3193.9,
+    "HON-S7-V15-TP1P5-BENONE-M15": 2951.45,
+    "HON-S7-V15-TP1P5-BE1P0-M15": 2951.45,
+    "HON-S7-V13-TPNONE-BE1P0-M2": -25277.1,
+    "HON-S7-V13-TP1P0-BENONE-M2": -25715.1,
+    "HON-S7-V13-TP1P0-BE1P0-M2": -25715.1,
+    "HON-S7-V13-TP1P5-BENONE-M2": -26032.6,
+    "HON-S7-V13-TP1P5-BE1P0-M2": -26032.6,
+    "HON-S7-V11-TPNONE-BE1P0-M2": -19731.9,
+    "HON-S7-V11-TP1P0-BENONE-M2": -19684.9,
+    "HON-S7-V11-TP1P0-BE1P0-M2": -19684.9,
+    "HON-S7-V11-TP1P5-BENONE-M2": -20128.6,
+    "HON-S7-V11-TP1P5-BE1P0-M2": -20128.6,
+    "HON-GAP-V01-M1": -75537.9,
+    "HON-GAP-V01-M2": -40787.7,
+    "HON-GAP-V01-M5": -14535.9,
+    "HON-GAP-V01-M15": -727.05,
+    "HON-GAP-V01B-M1": -75785.7,
+    "HON-GAP-V01B-M2": -40726.5,
+    "HON-GAP-V01B-M5": -14855.55,
+    "HON-GAP-V01B-M15": -818.55,
+    "HON-GAP-V02-M1": -77495.1,
+    "HON-GAP-V02-M2": -41176.8,
+    "HON-GAP-V02-M5": -15104.099999999999,
+    "HON-GAP-V02-M15": -756.5999999999999,
+    "HON-GAP-V03-M1": -51532.2,
+    "HON-GAP-V03-M2": -28322.2,
+    "HON-GAP-V03-M5": -2837.65,
+    "HON-GAP-V03-M15": 1325.15,
+    "HON-GAP-V04-M1": -64643.6,
+    "HON-GAP-V04-M2": -36187.4,
+    "HON-GAP-V04-M5": -15233.6,
+    "HON-GAP-V04-M15": -193.29999999999995,
+    "HON-GAP-V05-M1": -77465.9,
+    "HON-GAP-V05-M2": -41164.7,
+    "HON-GAP-V05-M5": -15104.099999999999,
+    "HON-GAP-V05-M15": -1151.25,
+    "HON-GAP-V06-M1": -76830.3,
+    "HON-GAP-V06-M2": -41253.3,
+    "HON-GAP-V06-M5": -15166.800000000001,
+    "HON-GAP-V06-M15": -776.85,
+    "HON-GAP-V06B-M1": -77495.1,
+    "HON-GAP-V06B-M2": -41176.8,
+    "HON-GAP-V06C-M1": -77607.3,
+    "HON-GAP-V06C-M2": -41340.0,
+    "HON-GAP-V06D-M1": -78093.9,
+    "HON-GAP-V08-M1": -23360.1,
+    "HON-GAP-V08-M2": -10487.1,
+    "HON-GAP-V08-M5": -5592.0,
+    "HON-GAP-V08-M15": -65.1,
+    "HON-GAP-V09-M1": -75721.5,
+    "HON-GAP-V09-M2": -40623.3,
+    "HON-GAP-V11-M1": -46258.2,
+    "HON-GAP-V11-M5": -15104.099999999999,
+    "HON-GAP-V11-M15": -756.5999999999999,
+    "HON-GAP-V13-M1": -79810.8,
+    "HON-GAP-V14-M1": -39693.0,
+    "HON-GAP-V14-M2": -20690.1,
+    "HON-GAP-V14-M5": -7898.4,
+    "HON-GAP-V14-M15": -1330.2,
+    "HON-GAP-V15-M1": -64994.1,
+    "HON-GAP-V15-M5": -11911.05,
+    "HON-W2-S6-K1P5-M15-TS20": -1718.1,
+    "HON-W2-S6-K1P5-M15-TS40": 3259.8,
+    "HON-W2-S6-K1P5-M15-CONF": -2828.1000000000004,
+    "HON-W2-S6-K1P5-M15-SAR": 6851.700000000001,
+    "HON-W2-S6-K1P5-M15-F1": 1086.6,
+    "HON-W2-S6-K1P5-M15-F2": 2173.2,
+    "HON-W2-S6-K2P0-M15-TS20": -14175.75,
+    "HON-W2-S6-K2P0-M15-TS40": 1266.8999999999999,
+    "HON-W2-S6-K2P0-M15-CONF": -2092.05,
+    "HON-W2-S6-K2P0-M15-SAR": 12966.599999999999,
+    "HON-W2-S6-K2P0-M15-F1": 1056.3000000000002,
+    "HON-W2-S6-K2P0-M15-F2": 2112.6000000000004,
+    "HON-W2-S7-TPNONE-M15-TS20": -1622.85,
+    "HON-W2-S7-TPNONE-M15-TS40": 3355.05,
+    "HON-W2-S7-TPNONE-M15-CONF": -2828.1000000000004,
+    "HON-W2-S7-TPNONE-M15-SAR": 6851.700000000001,
+    "HON-W2-S7-TPNONE-M15-F1": 1118.35,
+    "HON-W2-S7-TPNONE-M15-F2": 2236.7,
+    "HON-W2-S7-TP1P0-M15-TS20": -1052.4,
+    "HON-W2-S7-TP1P0-M15-TS40": 3193.9,
+    "HON-W2-S7-TP1P0-M15-CONF": -2842.6499999999996,
+    "HON-W2-S7-TP1P0-M15-SAR": 6129.2,
+    "HON-W2-S7-TP1P0-M15-F1": 423.95000000000005,
+    "HON-W2-S7-TP1P0-M15-F2": 2075.55,
+    "HON-W2-S1-V11-M2-TS20": -30024.9,
+    "HON-W2-S1-V11-M2-TS40": -30024.9,
+    "HON-W2-S1-V11-M2-CONF": -13671.3,
+    "HON-W2-S1-V11-M2-SAR": -30024.9,
+    "HON-W2-S1-V11-M2-F1": -10008.3,
+    "HON-W2-S1-V11-M2-F2": -20016.6,
+    "HON-W2-S1-V13-M2-TS20": -42812.7,
+    "HON-W2-S1-V13-M2-TS40": -42812.7,
+    "HON-W2-S1-V13-M2-CONF": -15333.9,
+    "HON-W2-S1-V13-M2-SAR": -42812.7,
+    "HON-W2-S1-V13-M2-F1": -14270.9,
+    "HON-W2-S1-V13-M2-F2": -28541.8,
+    "HON-W2-S1-V15-M2-TS20": -34375.2,
+    "HON-W2-S1-V15-M2-TS40": -34375.2,
+    "HON-W2-S1-V15-M2-CONF": -13966.5,
+    "HON-W2-S1-V15-M2-SAR": -34375.2,
+    "HON-W2-S1-V15-M2-F1": -11458.4,
+    "HON-W2-S1-V15-M2-F2": -22916.8,
+    "HON-W2-S7-TPNONE-M15-CONF-TS40": -2828.1000000000004,
+    "HON-W2-S7-TPNONE-M15-SAR-F2": 4567.799999999999
+  },
+  "dominance_by_name": {
+    "HON-S1-V15-M2": 0.0,
+    "HON-S1-V15-M15": 0.5,
+    "HON-S1-V13-M2": 0.0,
+    "HON-S1-V11-M2": 0.0,
+    "HON-S2-SS-M2": 0.0,
+    "HON-S2-SS-M5": 0.0,
+    "HON-S2-SS-M15": 0.25,
+    "HON-S2-SS-M1": 0.0,
+    "HON-S2-V06D-M2": 0.0,
+    "HON-S2-V06D-M5": 0.0,
+    "HON-S2-V06D-M15": 0.5,
+    "HON-S2-V13-M5": 0.0,
+    "HON-S2-V13-M15": 0.25,
+    "HON-S2-V15-M2": 0.0,
+    "HON-S2-V06C-M5": 0.0,
+    "HON-S2-V06C-M15": 0.5,
+    "HON-S2-V06B-M15": 0.5,
+    "HON-S3-V15-M15": 0.5,
+    "HON-S3-V09-CTRL-M15": 0.25,
+    "HON-S3-V11-M2": 0.0,
+    "HON-S3-V13-M2": 0.0,
+    "HON-S3-V09-CTRL-M5": 0.0,
+    "HON-S4-S1-F0P10-M1": 0.0,
+    "HON-S4-S1-F0P10-M2": 0.0,
+    "HON-S4-S1-F0P10-M5": 0.0,
+    "HON-S4-S1-F0P10-M15": 0.25,
+    "HON-S4-S1-F0P01-M1": 0.0,
+    "HON-S4-S1-F0P01-M2": 0.0,
+    "HON-S4-S1-F0P01-M5": 0.0,
+    "HON-S4-S1-F0P01-M15": 0.25,
+    "HON-S4-S2-F0P10-M1": 0.0,
+    "HON-S4-S2-F0P10-M2": 0.0,
+    "HON-S4-S2-F0P10-M5": 0.0,
+    "HON-S4-S2-F0P10-M15": 0.5,
+    "HON-S4-S2-F0P01-M1": 0.0,
+    "HON-S4-S2-F0P01-M2": 0.0,
+    "HON-S4-S2-F0P01-M5": 0.0,
+    "HON-S4-S2-F0P01-M15": 0.5,
+    "HON-S4-S3-F0P10-M1": 0.0,
+    "HON-S4-S3-F0P10-M2": 0.0,
+    "HON-S4-S3-F0P10-M5": 0.0,
+    "HON-S4-S3-F0P10-M15": 0.5,
+    "HON-S4-S3-F0P01-M1": 0.0,
+    "HON-S4-S3-F0P01-M2": 0.0,
+    "HON-S4-S3-F0P01-M5": 0.0,
+    "HON-S4-S3-F0P01-M15": 0.5,
+    "HON-S5-V07-ACDECEL-M1": 0.0,
+    "HON-S5-V07-ACDECEL-M2": 0.0,
+    "HON-S5-V07-ACDECEL-M5": 0.0,
+    "HON-S5-V07-ACDECEL-M15": 0.5,
+    "HON-S6-V15-K0P0-AC1-M2": 0.0,
+    "HON-S6-V15-K0P0-AC0-M2": 0.0,
+    "HON-S6-V15-K1P5-AC1-M2": 0.0,
+    "HON-S6-V15-K1P5-AC0-M2": 0.0,
+    "HON-S6-V15-K2P0-AC1-M2": 0.0,
+    "HON-S6-V15-K2P0-AC0-M2": 0.0,
+    "HON-S6-V15-K3P0-AC1-M2": 0.0,
+    "HON-S6-V15-K3P0-AC0-M2": 0.0,
+    "HON-S6-V15-K0P0-AC1-M15": 0.5,
+    "HON-S6-V15-K0P0-AC0-M15": 0.5,
+    "HON-S6-V15-K1P5-AC1-M15": 1.0,
+    "HON-S6-V15-K1P5-AC0-M15": 1.0,
+    "HON-S6-V15-K2P0-AC1-M15": 0.75,
+    "HON-S6-V15-K2P0-AC0-M15": 0.75,
+    "HON-S6-V15-K3P0-AC1-M15": 0.75,
+    "HON-S6-V15-K3P0-AC0-M15": 0.75,
+    "HON-S6-V13-K0P0-AC1-M2": 0.0,
+    "HON-S6-V13-K0P0-AC0-M2": 0.0,
+    "HON-S6-V13-K1P5-AC1-M2": 0.0,
+    "HON-S6-V13-K1P5-AC0-M2": 0.0,
+    "HON-S6-V13-K2P0-AC1-M2": 0.0,
+    "HON-S6-V13-K2P0-AC0-M2": 0.0,
+    "HON-S6-V13-K3P0-AC1-M2": 0.3333333333333333,
+    "HON-S6-V13-K3P0-AC0-M2": 0.3333333333333333,
+    "HON-S6-V11-K0P0-AC1-M2": 0.0,
+    "HON-S6-V11-K0P0-AC0-M2": 0.0,
+    "HON-S6-V11-K1P5-AC1-M2": 0.0,
+    "HON-S6-V11-K1P5-AC0-M2": 0.0,
+    "HON-S6-V11-K2P0-AC1-M2": 0.0,
+    "HON-S6-V11-K2P0-AC0-M2": 0.0,
+    "HON-S6-V11-K3P0-AC1-M2": 0.6666666666666666,
+    "HON-S6-V11-K3P0-AC0-M2": 0.6666666666666666,
+    "HON-S7-V15-TPNONE-BE1P0-M2": 0.0,
+    "HON-S7-V15-TP1P0-BENONE-M2": 0.0,
+    "HON-S7-V15-TP1P0-BE1P0-M2": 0.0,
+    "HON-S7-V15-TP1P5-BENONE-M2": 0.0,
+    "HON-S7-V15-TP1P5-BE1P0-M2": 0.0,
+    "HON-S7-V15-TPNONE-BE1P0-M15": 1.0,
+    "HON-S7-V15-TP1P0-BENONE-M15": 1.0,
+    "HON-S7-V15-TP1P0-BE1P0-M15": 1.0,
+    "HON-S7-V15-TP1P5-BENONE-M15": 1.0,
+    "HON-S7-V15-TP1P5-BE1P0-M15": 1.0,
+    "HON-S7-V13-TPNONE-BE1P0-M2": 0.0,
+    "HON-S7-V13-TP1P0-BENONE-M2": 0.0,
+    "HON-S7-V13-TP1P0-BE1P0-M2": 0.0,
+    "HON-S7-V13-TP1P5-BENONE-M2": 0.0,
+    "HON-S7-V13-TP1P5-BE1P0-M2": 0.0,
+    "HON-S7-V11-TPNONE-BE1P0-M2": 0.0,
+    "HON-S7-V11-TP1P0-BENONE-M2": 0.0,
+    "HON-S7-V11-TP1P0-BE1P0-M2": 0.0,
+    "HON-S7-V11-TP1P5-BENONE-M2": 0.0,
+    "HON-S7-V11-TP1P5-BE1P0-M2": 0.0,
+    "HON-GAP-V01-M1": 0.0,
+    "HON-GAP-V01-M2": 0.0,
+    "HON-GAP-V01-M5": 0.0,
+    "HON-GAP-V01-M15": 0.5,
+    "HON-GAP-V01B-M1": 0.0,
+    "HON-GAP-V01B-M2": 0.0,
+    "HON-GAP-V01B-M5": 0.0,
+    "HON-GAP-V01B-M15": 0.5,
+    "HON-GAP-V02-M1": 0.0,
+    "HON-GAP-V02-M2": 0.0,
+    "HON-GAP-V02-M5": 0.0,
+    "HON-GAP-V02-M15": 0.5,
+    "HON-GAP-V03-M1": 0.0,
+    "HON-GAP-V03-M2": 0.0,
+    "HON-GAP-V03-M5": 0.5,
+    "HON-GAP-V03-M15": 0.5,
+    "HON-GAP-V04-M1": 0.0,
+    "HON-GAP-V04-M2": 0.0,
+    "HON-GAP-V04-M5": 0.0,
+    "HON-GAP-V04-M15": 0.5,
+    "HON-GAP-V05-M1": 0.0,
+    "HON-GAP-V05-M2": 0.0,
+    "HON-GAP-V05-M5": 0.0,
+    "HON-GAP-V05-M15": 0.5,
+    "HON-GAP-V06-M1": 0.0,
+    "HON-GAP-V06-M2": 0.0,
+    "HON-GAP-V06-M5": 0.0,
+    "HON-GAP-V06-M15": 0.5,
+    "HON-GAP-V06B-M1": 0.0,
+    "HON-GAP-V06B-M2": 0.0,
+    "HON-GAP-V06C-M1": 0.0,
+    "HON-GAP-V06C-M2": 0.0,
+    "HON-GAP-V06D-M1": 0.0,
+    "HON-GAP-V08-M1": 0.0,
+    "HON-GAP-V08-M2": 0.0,
+    "HON-GAP-V08-M5": 0.0,
+    "HON-GAP-V08-M15": 0.5,
+    "HON-GAP-V09-M1": 0.0,
+    "HON-GAP-V09-M2": 0.0,
+    "HON-GAP-V11-M1": 0.0,
+    "HON-GAP-V11-M5": 0.0,
+    "HON-GAP-V11-M15": 0.5,
+    "HON-GAP-V13-M1": 0.0,
+    "HON-GAP-V14-M1": 0.0,
+    "HON-GAP-V14-M2": 0.0,
+    "HON-GAP-V14-M5": 0.0,
+    "HON-GAP-V14-M15": 0.25,
+    "HON-GAP-V15-M1": 0.0,
+    "HON-GAP-V15-M5": 0.0,
+    "HON-W2-S6-K1P5-M15-TS20": 0.25,
+    "HON-W2-S6-K1P5-M15-TS40": 1.0,
+    "HON-W2-S6-K1P5-M15-CONF": 0.25,
+    "HON-W2-S6-K1P5-M15-SAR": 1.0,
+    "HON-W2-S6-K1P5-M15-F1": 1.0,
+    "HON-W2-S6-K1P5-M15-F2": 1.0,
+    "HON-W2-S6-K2P0-M15-TS20": 0.0,
+    "HON-W2-S6-K2P0-M15-TS40": 0.5,
+    "HON-W2-S6-K2P0-M15-CONF": 0.25,
+    "HON-W2-S6-K2P0-M15-SAR": 1.0,
+    "HON-W2-S6-K2P0-M15-F1": 0.75,
+    "HON-W2-S6-K2P0-M15-F2": 0.75,
+    "HON-W2-S7-TPNONE-M15-TS20": 0.25,
+    "HON-W2-S7-TPNONE-M15-TS40": 1.0,
+    "HON-W2-S7-TPNONE-M15-CONF": 0.25,
+    "HON-W2-S7-TPNONE-M15-SAR": 1.0,
+    "HON-W2-S7-TPNONE-M15-F1": 1.0,
+    "HON-W2-S7-TPNONE-M15-F2": 1.0,
+    "HON-W2-S7-TP1P0-M15-TS20": 0.25,
+    "HON-W2-S7-TP1P0-M15-TS40": 1.0,
+    "HON-W2-S7-TP1P0-M15-CONF": 0.25,
+    "HON-W2-S7-TP1P0-M15-SAR": 1.0,
+    "HON-W2-S7-TP1P0-M15-F1": 1.0,
+    "HON-W2-S7-TP1P0-M15-F2": 1.0,
+    "HON-W2-S1-V11-M2-TS20": 0.0,
+    "HON-W2-S1-V11-M2-TS40": 0.0,
+    "HON-W2-S1-V11-M2-CONF": 0.0,
+    "HON-W2-S1-V11-M2-SAR": 0.0,
+    "HON-W2-S1-V11-M2-F1": 0.0,
+    "HON-W2-S1-V11-M2-F2": 0.0,
+    "HON-W2-S1-V13-M2-TS20": 0.0,
+    "HON-W2-S1-V13-M2-TS40": 0.0,
+    "HON-W2-S1-V13-M2-CONF": 0.0,
+    "HON-W2-S1-V13-M2-SAR": 0.0,
+    "HON-W2-S1-V13-M2-F1": 0.0,
+    "HON-W2-S1-V13-M2-F2": 0.0,
+    "HON-W2-S1-V15-M2-TS20": 0.0,
+    "HON-W2-S1-V15-M2-TS40": 0.0,
+    "HON-W2-S1-V15-M2-CONF": 0.0,
+    "HON-W2-S1-V15-M2-SAR": 0.0,
+    "HON-W2-S1-V15-M2-F1": 0.0,
+    "HON-W2-S1-V15-M2-F2": 0.0,
+    "HON-W2-S7-TPNONE-M15-CONF-TS40": 0.25,
+    "HON-W2-S7-TPNONE-M15-SAR-F2": 1.0
+  },
+  "rejected": {
+    "HON-S1-V15-M2": "fold-dominance 0.00% < 70%",
+    "HON-S1-V15-M15": "fold-dominance 50.00% < 70%",
+    "HON-S1-V13-M2": "fold-dominance 0.00% < 70%",
+    "HON-S1-V11-M2": "fold-dominance 0.00% < 70%",
+    "HON-S2-SS-M2": "fold-dominance 0.00% < 70%",
+    "HON-S2-SS-M5": "fold-dominance 0.00% < 70%",
+    "HON-S2-SS-M15": "fold-dominance 25.00% < 70%",
+    "HON-S2-SS-M1": "fold-dominance 0.00% < 70%",
+    "HON-S2-V06D-M2": "fold-dominance 0.00% < 70%",
+    "HON-S2-V06D-M5": "fold-dominance 0.00% < 70%",
+    "HON-S2-V06D-M15": "fold-dominance 50.00% < 70%",
+    "HON-S2-V13-M5": "fold-dominance 0.00% < 70%",
+    "HON-S2-V13-M15": "fold-dominance 25.00% < 70%",
+    "HON-S2-V15-M2": "fold-dominance 0.00% < 70%",
+    "HON-S2-V06C-M5": "fold-dominance 0.00% < 70%",
+    "HON-S2-V06C-M15": "fold-dominance 50.00% < 70%",
+    "HON-S2-V06B-M15": "fold-dominance 50.00% < 70%",
+    "HON-S3-V15-M15": "fold-dominance 50.00% < 70%",
+    "HON-S3-V09-CTRL-M15": "fold-dominance 25.00% < 70%",
+    "HON-S3-V11-M2": "fold-dominance 0.00% < 70%",
+    "HON-S3-V13-M2": "fold-dominance 0.00% < 70%",
+    "HON-S3-V09-CTRL-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P10-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P10-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P10-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P10-M15": "fold-dominance 25.00% < 70%",
+    "HON-S4-S1-F0P01-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P01-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P01-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S1-F0P01-M15": "fold-dominance 25.00% < 70%",
+    "HON-S4-S2-F0P10-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P10-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P10-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P10-M15": "fold-dominance 50.00% < 70%",
+    "HON-S4-S2-F0P01-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P01-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P01-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S2-F0P01-M15": "fold-dominance 50.00% < 70%",
+    "HON-S4-S3-F0P10-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P10-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P10-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P10-M15": "fold-dominance 50.00% < 70%",
+    "HON-S4-S3-F0P01-M1": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P01-M2": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P01-M5": "fold-dominance 0.00% < 70%",
+    "HON-S4-S3-F0P01-M15": "fold-dominance 50.00% < 70%",
+    "HON-S5-V07-ACDECEL-M1": "fold-dominance 0.00% < 70%",
+    "HON-S5-V07-ACDECEL-M2": "fold-dominance 0.00% < 70%",
+    "HON-S5-V07-ACDECEL-M5": "fold-dominance 0.00% < 70%",
+    "HON-S5-V07-ACDECEL-M15": "fold-dominance 50.00% < 70%",
+    "HON-S6-V15-K0P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K0P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K1P5-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K1P5-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K2P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K2P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K3P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K3P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V15-K0P0-AC1-M15": "fold-dominance 50.00% < 70%",
+    "HON-S6-V15-K0P0-AC0-M15": "fold-dominance 50.00% < 70%",
+    "HON-S6-V13-K0P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K0P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K1P5-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K1P5-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K2P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K2P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V13-K3P0-AC1-M2": "fold-dominance 33.33% < 70%",
+    "HON-S6-V13-K3P0-AC0-M2": "fold-dominance 33.33% < 70%",
+    "HON-S6-V11-K0P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K0P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K1P5-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K1P5-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K2P0-AC1-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K2P0-AC0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S6-V11-K3P0-AC1-M2": "fold-dominance 66.67% < 70%",
+    "HON-S6-V11-K3P0-AC0-M2": "fold-dominance 66.67% < 70%",
+    "HON-S7-V15-TPNONE-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V15-TP1P0-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V15-TP1P0-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V15-TP1P5-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V15-TP1P5-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V13-TPNONE-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V13-TP1P0-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V13-TP1P0-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V13-TP1P5-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V13-TP1P5-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V11-TPNONE-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V11-TP1P0-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V11-TP1P0-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V11-TP1P5-BENONE-M2": "fold-dominance 0.00% < 70%",
+    "HON-S7-V11-TP1P5-BE1P0-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V01B-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01B-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01B-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V01B-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V02-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V02-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V02-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V02-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V03-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V03-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V03-M5": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V03-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V04-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V04-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V04-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V04-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V05-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V05-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V05-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V05-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V06-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V06B-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06B-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06C-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06C-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V06D-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V08-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V08-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V08-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V08-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V09-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V09-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V11-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V11-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V11-M15": "fold-dominance 50.00% < 70%",
+    "HON-GAP-V13-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V14-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V14-M2": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V14-M5": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V14-M15": "fold-dominance 25.00% < 70%",
+    "HON-GAP-V15-M1": "fold-dominance 0.00% < 70%",
+    "HON-GAP-V15-M5": "fold-dominance 0.00% < 70%",
+    "HON-W2-S6-K1P5-M15-TS20": "fold-dominance 25.00% < 70%",
+    "HON-W2-S6-K1P5-M15-CONF": "fold-dominance 25.00% < 70%",
+    "HON-W2-S6-K2P0-M15-TS20": "fold-dominance 0.00% < 70%",
+    "HON-W2-S6-K2P0-M15-TS40": "fold-dominance 50.00% < 70%",
+    "HON-W2-S6-K2P0-M15-CONF": "fold-dominance 25.00% < 70%",
+    "HON-W2-S7-TPNONE-M15-TS20": "fold-dominance 25.00% < 70%",
+    "HON-W2-S7-TPNONE-M15-CONF": "fold-dominance 25.00% < 70%",
+    "HON-W2-S7-TP1P0-M15-TS20": "fold-dominance 25.00% < 70%",
+    "HON-W2-S7-TP1P0-M15-CONF": "fold-dominance 25.00% < 70%",
+    "HON-W2-S1-V11-M2-TS20": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V11-M2-TS40": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V11-M2-CONF": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V11-M2-SAR": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V11-M2-F1": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V11-M2-F2": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-TS20": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-TS40": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-CONF": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-SAR": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-F1": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V13-M2-F2": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-TS20": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-TS40": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-CONF": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-SAR": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-F1": "fold-dominance 0.00% < 70%",
+    "HON-W2-S1-V15-M2-F2": "fold-dominance 0.00% < 70%",
+    "HON-W2-S7-TPNONE-M15-CONF-TS40": "fold-dominance 25.00% < 70%"
+  },
+  "tie_pool": [
+    "HON-W2-S6-K2P0-M15-SAR"
+  ],
+  "dsr": {
+    "sharpe": 2.7207428316545195,
+    "n_trials": 195,
+    "expected_max_sharpe_null": 13.587166519241203,
+    "dsr": 0.0,
+    "p_value": 1.0
+  },
+  "entries": {
+    "HON-S1-V15-M2": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-S1-V15-M15": {
+      "window_nets": {
+        "IW": 1277.1,
+        "W1": -5643.3,
+        "W2": 3879.6,
+        "W3": -473.1
+      },
+      "sharpe": -0.059657
+    },
+    "HON-S1-V13-M2": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-S1-V11-M2": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-S2-SS-M2": {
+      "window_nets": {
+        "IW": -39931.8,
+        "W1": -44413.5,
+        "W2": -33920.1
+      },
+      "sharpe": -7.487155
+    },
+    "HON-S2-SS-M5": {
+      "window_nets": {
+        "IW": -12542.1,
+        "W1": -19032.6,
+        "W2": -5589.9,
+        "W3": -14646.6
+      },
+      "sharpe": -2.311356
+    },
+    "HON-S2-SS-M15": {
+      "window_nets": {
+        "IW": -2811.0,
+        "W1": -9582.0,
+        "W2": 6945.3,
+        "W3": -486.0
+      },
+      "sharpe": -0.217628
+    },
+    "HON-S2-SS-M1": {
+      "window_nets": {
+        "IW": -76722.9,
+        "W1": -84513.6,
+        "W2": -15032.7
+      },
+      "sharpe": -1.543554
+    },
+    "HON-S2-V06D-M2": {
+      "window_nets": {
+        "IW": -41313.0,
+        "W1": -43837.2,
+        "W2": -37806.9
+      },
+      "sharpe": -13.533583
+    },
+    "HON-S2-V06D-M5": {
+      "window_nets": {
+        "IW": -12561.6,
+        "W1": -17985.0,
+        "W2": -6033.0,
+        "W3": -17312.1
+      },
+      "sharpe": -2.442486
+    },
+    "HON-S2-V06D-M15": {
+      "window_nets": {
+        "IW": -1943.1,
+        "W1": -10811.7,
+        "W2": 7747.2,
+        "W3": 420.3
+      },
+      "sharpe": -0.149896
+    },
+    "HON-S2-V13-M5": {
+      "window_nets": {
+        "IW": -13595.7,
+        "W1": -19273.2,
+        "W2": -4602.6,
+        "W3": -16579.5
+      },
+      "sharpe": -2.119095
+    },
+    "HON-S2-V13-M15": {
+      "window_nets": {
+        "IW": -2794.5,
+        "W1": -9538.8,
+        "W2": 6961.2,
+        "W3": -111.3
+      },
+      "sharpe": -0.20085
+    },
+    "HON-S2-V15-M2": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-S2-V06C-M5": {
+      "window_nets": {
+        "IW": -12569.1,
+        "W1": -17948.1,
+        "W2": -6038.7,
+        "W3": -17286.3
+      },
+      "sharpe": -2.448682
+    },
+    "HON-S2-V06C-M15": {
+      "window_nets": {
+        "IW": -1943.1,
+        "W1": -10811.7,
+        "W2": 7747.2,
+        "W3": 419.1
+      },
+      "sharpe": -0.149937
+    },
+    "HON-S2-V06B-M15": {
+      "window_nets": {
+        "IW": -1926.6,
+        "W1": -10795.2,
+        "W2": 7744.5,
+        "W3": 413.4
+      },
+      "sharpe": -0.149308
+    },
+    "HON-S3-V15-M15": {
+      "window_nets": {
+        "IW": 1277.1,
+        "W1": -5643.3,
+        "W2": 3879.6,
+        "W3": -473.1
+      },
+      "sharpe": -0.059657
+    },
+    "HON-S3-V09-CTRL-M15": {
+      "window_nets": {
+        "IW": -1999.5,
+        "W1": -10454.4,
+        "W2": 5111.1,
+        "W3": -173.7
+      },
+      "sharpe": -0.290739
+    },
+    "HON-S3-V11-M2": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-S3-V13-M2": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-S3-V09-CTRL-M5": {
+      "window_nets": {
+        "IW": -11981.1,
+        "W1": -17499.0,
+        "W2": -5724.3,
+        "W3": -16034.1
+      },
+      "sharpe": -2.431295
+    },
+    "HON-S4-S1-F0P10-M1": {
+      "window_nets": {
+        "IW": -80126.7,
+        "W1": -91719.6,
+        "W2": -16229.1
+      },
+      "sharpe": -1.542111
+    },
+    "HON-S4-S1-F0P10-M2": {
+      "window_nets": {
+        "IW": -42993.0,
+        "W1": -43643.1,
+        "W2": -38826.3
+      },
+      "sharpe": -16.001195
+    },
+    "HON-S4-S1-F0P10-M5": {
+      "window_nets": {
+        "IW": -13310.1,
+        "W1": -19170.6,
+        "W2": -4575.3,
+        "W3": -17100.9
+      },
+      "sharpe": -2.099148
+    },
+    "HON-S4-S1-F0P10-M15": {
+      "window_nets": {
+        "IW": -2811.0,
+        "W1": -9550.8,
+        "W2": 6945.3,
+        "W3": -487.2
+      },
+      "sharpe": -0.216922
+    },
+    "HON-S4-S1-F0P01-M1": {
+      "window_nets": {
+        "IW": -80950.2,
+        "W1": -92197.2,
+        "W2": -16276.5
+      },
+      "sharpe": -1.541015
+    },
+    "HON-S4-S1-F0P01-M2": {
+      "window_nets": {
+        "IW": -42976.5,
+        "W1": -44316.0,
+        "W2": -39274.2
+      },
+      "sharpe": -16.154761
+    },
+    "HON-S4-S1-F0P01-M5": {
+      "window_nets": {
+        "IW": -13433.7,
+        "W1": -19207.2,
+        "W2": -4569.6,
+        "W3": -17097.6
+      },
+      "sharpe": -2.101264
+    },
+    "HON-S4-S1-F0P01-M15": {
+      "window_nets": {
+        "IW": -2811.0,
+        "W1": -9582.0,
+        "W2": 6945.3,
+        "W3": -486.0
+      },
+      "sharpe": -0.217628
+    },
+    "HON-S4-S2-F0P10-M1": {
+      "window_nets": {
+        "IW": -65091.9,
+        "W1": -74103.3,
+        "W2": -13054.2
+      },
+      "sharpe": -1.539981
+    },
+    "HON-S4-S2-F0P10-M2": {
+      "window_nets": {
+        "IW": -34513.5,
+        "W1": -39402.6,
+        "W2": -27762.9
+      },
+      "sharpe": -5.799022
+    },
+    "HON-S4-S2-F0P10-M5": {
+      "window_nets": {
+        "IW": -9031.8,
+        "W1": -16457.4,
+        "W2": -6074.4,
+        "W3": -14380.2
+      },
+      "sharpe": -2.405472
+    },
+    "HON-S4-S2-F0P10-M15": {
+      "window_nets": {
+        "IW": 1260.6,
+        "W1": -5659.8,
+        "W2": 3884.1,
+        "W3": -462.9
+      },
+      "sharpe": -0.060694
+    },
+    "HON-S4-S2-F0P01-M1": {
+      "window_nets": {
+        "IW": -65667.3,
+        "W1": -74697.9,
+        "W2": -12975.9
+      },
+      "sharpe": -1.53331
+    },
+    "HON-S4-S2-F0P01-M2": {
+      "window_nets": {
+        "IW": -34306.2,
+        "W1": -39618.3,
+        "W2": -28262.1
+      },
+      "sharpe": -5.994723
+    },
+    "HON-S4-S2-F0P01-M5": {
+      "window_nets": {
+        "IW": -9021.3,
+        "W1": -16491.0,
+        "W2": -6062.1,
+        "W3": -14404.2
+      },
+      "sharpe": -2.395775
+    },
+    "HON-S4-S2-F0P01-M15": {
+      "window_nets": {
+        "IW": 1260.6,
+        "W1": -5659.8,
+        "W2": 3772.5,
+        "W3": -460.2
+      },
+      "sharpe": -0.068094
+    },
+    "HON-S4-S3-F0P10-M1": {
+      "window_nets": {
+        "IW": -75793.8,
+        "W1": -83233.5,
+        "W2": -15077.4
+      },
+      "sharpe": -1.552242
+    },
+    "HON-S4-S3-F0P10-M2": {
+      "window_nets": {
+        "IW": -39873.3,
+        "W1": -43820.7,
+        "W2": -32101.8
+      },
+      "sharpe": -6.473524
+    },
+    "HON-S4-S3-F0P10-M5": {
+      "window_nets": {
+        "IW": -12525.0,
+        "W1": -19005.3,
+        "W2": -5949.6,
+        "W3": -14475.6
+      },
+      "sharpe": -2.395859
+    },
+    "HON-S4-S3-F0P10-M15": {
+      "window_nets": {
+        "IW": 1446.3,
+        "W1": -4772.1,
+        "W2": 2597.1,
+        "W3": -437.4
+      },
+      "sharpe": -0.090022
+    },
+    "HON-S4-S3-F0P01-M1": {
+      "window_nets": {
+        "IW": -76722.9,
+        "W1": -84513.6,
+        "W2": -15032.7
+      },
+      "sharpe": -1.543554
+    },
+    "HON-S4-S3-F0P01-M2": {
+      "window_nets": {
+        "IW": -39931.8,
+        "W1": -44413.5,
+        "W2": -33920.1
+      },
+      "sharpe": -7.487155
+    },
+    "HON-S4-S3-F0P01-M5": {
+      "window_nets": {
+        "IW": -12542.1,
+        "W1": -19032.6,
+        "W2": -5589.9,
+        "W3": -14646.6
+      },
+      "sharpe": -2.311356
+    },
+    "HON-S4-S3-F0P01-M15": {
+      "window_nets": {
+        "IW": 1446.3,
+        "W1": -5099.7,
+        "W2": 2485.5,
+        "W3": -430.5
+      },
+      "sharpe": -0.119009
+    },
+    "HON-S5-V07-ACDECEL-M1": {
+      "window_nets": {
+        "IW": -76831.9,
+        "W1": -88401.8,
+        "W2": -15967.6
+      },
+      "sharpe": -1.552216
+    },
+    "HON-S5-V07-ACDECEL-M2": {
+      "window_nets": {
+        "IW": -41252.9,
+        "W1": -43008.0,
+        "W2": -37639.5
+      },
+      "sharpe": -14.844202
+    },
+    "HON-S5-V07-ACDECEL-M5": {
+      "window_nets": {
+        "IW": -12958.2,
+        "W1": -17857.6,
+        "W2": -5600.1,
+        "W3": -17373.2
+      },
+      "sharpe": -2.368775
+    },
+    "HON-S5-V07-ACDECEL-M15": {
+      "window_nets": {
+        "IW": -1934.4,
+        "W1": -10619.7,
+        "W2": 7732.5,
+        "W3": 380.7
+      },
+      "sharpe": -0.146827
+    },
+    "HON-S6-V15-K0P0-AC1-M2": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-S6-V15-K0P0-AC0-M2": {
+      "window_nets": {
+        "IW": -34368.0,
+        "W1": -38410.2,
+        "W2": -27470.7
+      },
+      "sharpe": -6.041095
+    },
+    "HON-S6-V15-K1P5-AC1-M2": {
+      "window_nets": {
+        "IW": -25948.5,
+        "W1": -31086.9,
+        "W2": -14431.2
+      },
+      "sharpe": -2.79308
+    },
+    "HON-S6-V15-K1P5-AC0-M2": {
+      "window_nets": {
+        "IW": -25948.5,
+        "W1": -31086.9,
+        "W2": -14431.2
+      },
+      "sharpe": -2.79308
+    },
+    "HON-S6-V15-K2P0-AC1-M2": {
+      "window_nets": {
+        "IW": -13479.0,
+        "W1": -28278.3,
+        "W2": -1664.4
+      },
+      "sharpe": -1.085422
+    },
+    "HON-S6-V15-K2P0-AC0-M2": {
+      "window_nets": {
+        "IW": -13479.0,
+        "W1": -28278.3,
+        "W2": -1664.4
+      },
+      "sharpe": -1.085422
+    },
+    "HON-S6-V15-K3P0-AC1-M2": {
+      "window_nets": {
+        "IW": -1388.7,
+        "W1": -27471.0,
+        "W2": -4923.9
+      },
+      "sharpe": -0.795904
+    },
+    "HON-S6-V15-K3P0-AC0-M2": {
+      "window_nets": {
+        "IW": -1388.7,
+        "W1": -27471.0,
+        "W2": -4923.9
+      },
+      "sharpe": -0.795904
+    },
+    "HON-S6-V15-K0P0-AC1-M15": {
+      "window_nets": {
+        "IW": 1277.1,
+        "W1": -5643.3,
+        "W2": 3879.6,
+        "W3": -473.1
+      },
+      "sharpe": -0.059657
+    },
+    "HON-S6-V15-K0P0-AC0-M15": {
+      "window_nets": {
+        "IW": 1229.7,
+        "W1": -5517.3,
+        "W2": 3830.7,
+        "W3": -663.0
+      },
+      "sharpe": -0.070921
+    },
+    "HON-S6-V15-K1P5-AC1-M15": {
+      "window_nets": {
+        "IW": 4551.6,
+        "W1": 2094.0,
+        "W2": 2140.5,
+        "W3": 4379.1
+      },
+      "sharpe": 2.424286
+    },
+    "HON-S6-V15-K1P5-AC0-M15": {
+      "window_nets": {
+        "IW": 4551.6,
+        "W1": 2094.0,
+        "W2": 2140.5,
+        "W3": 4379.1
+      },
+      "sharpe": 2.424286
+    },
+    "HON-S6-V15-K2P0-AC1-M15": {
+      "window_nets": {
+        "IW": 6214.8,
+        "W1": 3081.6,
+        "W2": -12594.9,
+        "W3": 3256.2
+      },
+      "sharpe": -0.001242
+    },
+    "HON-S6-V15-K2P0-AC0-M15": {
+      "window_nets": {
+        "IW": 6214.8,
+        "W1": 3081.6,
+        "W2": -12594.9,
+        "W3": 3256.2
+      },
+      "sharpe": -0.001242
+    },
+    "HON-S6-V15-K3P0-AC1-M15": {
+      "window_nets": {
+        "IW": 1847.1,
+        "W1": 1687.8,
+        "W2": -6309.6,
+        "W3": 14094.0
+      },
+      "sharpe": 0.33609
+    },
+    "HON-S6-V15-K3P0-AC0-M15": {
+      "window_nets": {
+        "IW": 1847.1,
+        "W1": 1687.8,
+        "W2": -6309.6,
+        "W3": 14094.0
+      },
+      "sharpe": 0.33609
+    },
+    "HON-S6-V13-K0P0-AC1-M2": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-S6-V13-K0P0-AC0-M2": {
+      "window_nets": {
+        "IW": -41992.5,
+        "W1": -43083.0,
+        "W2": -38354.4
+      },
+      "sharpe": -16.616579
+    },
+    "HON-S6-V13-K1P5-AC1-M2": {
+      "window_nets": {
+        "IW": -25277.1,
+        "W1": -29141.7,
+        "W2": -21165.6
+      },
+      "sharpe": -6.316565
+    },
+    "HON-S6-V13-K1P5-AC0-M2": {
+      "window_nets": {
+        "IW": -25277.1,
+        "W1": -29141.7,
+        "W2": -21165.6
+      },
+      "sharpe": -6.316565
+    },
+    "HON-S6-V13-K2P0-AC1-M2": {
+      "window_nets": {
+        "IW": -14372.7,
+        "W1": -26998.2,
+        "W2": -11677.8
+      },
+      "sharpe": -2.161977
+    },
+    "HON-S6-V13-K2P0-AC0-M2": {
+      "window_nets": {
+        "IW": -14372.7,
+        "W1": -26998.2,
+        "W2": -11677.8
+      },
+      "sharpe": -2.161977
+    },
+    "HON-S6-V13-K3P0-AC1-M2": {
+      "window_nets": {
+        "IW": 5369.4,
+        "W1": -25791.0,
+        "W2": -10091.1
+      },
+      "sharpe": -0.652803
+    },
+    "HON-S6-V13-K3P0-AC0-M2": {
+      "window_nets": {
+        "IW": 5369.4,
+        "W1": -25791.0,
+        "W2": -10091.1
+      },
+      "sharpe": -0.652803
+    },
+    "HON-S6-V11-K0P0-AC1-M2": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-S6-V11-K0P0-AC0-M2": {
+      "window_nets": {
+        "IW": -29434.2,
+        "W1": -36209.1,
+        "W2": -23185.2
+      },
+      "sharpe": -4.545713
+    },
+    "HON-S6-V11-K1P5-AC1-M2": {
+      "window_nets": {
+        "IW": -19731.9,
+        "W1": -24081.0,
+        "W2": -6585.6
+      },
+      "sharpe": -1.844302
+    },
+    "HON-S6-V11-K1P5-AC0-M2": {
+      "window_nets": {
+        "IW": -19731.9,
+        "W1": -24081.0,
+        "W2": -6585.6
+      },
+      "sharpe": -1.844302
+    },
+    "HON-S6-V11-K2P0-AC1-M2": {
+      "window_nets": {
+        "IW": -10856.1,
+        "W1": -27318.6,
+        "W2": -2406.6
+      },
+      "sharpe": -1.067735
+    },
+    "HON-S6-V11-K2P0-AC0-M2": {
+      "window_nets": {
+        "IW": -10856.1,
+        "W1": -27318.6,
+        "W2": -2406.6
+      },
+      "sharpe": -1.067735
+    },
+    "HON-S6-V11-K3P0-AC1-M2": {
+      "window_nets": {
+        "IW": 2612.4,
+        "W1": -23189.1,
+        "W2": 1678.8
+      },
+      "sharpe": -0.430443
+    },
+    "HON-S6-V11-K3P0-AC0-M2": {
+      "window_nets": {
+        "IW": 2612.4,
+        "W1": -23189.1,
+        "W2": 1678.8
+      },
+      "sharpe": -0.430443
+    },
+    "HON-S7-V15-TPNONE-BE1P0-M2": {
+      "window_nets": {
+        "IW": -25948.5,
+        "W1": -31086.9,
+        "W2": -14431.2
+      },
+      "sharpe": -2.79308
+    },
+    "HON-S7-V15-TP1P0-BENONE-M2": {
+      "window_nets": {
+        "IW": -25696.0,
+        "W1": -30618.7,
+        "W2": -15522.6
+      },
+      "sharpe": -3.11035
+    },
+    "HON-S7-V15-TP1P0-BE1P0-M2": {
+      "window_nets": {
+        "IW": -25696.0,
+        "W1": -30618.7,
+        "W2": -15522.6
+      },
+      "sharpe": -3.11035
+    },
+    "HON-S7-V15-TP1P5-BENONE-M2": {
+      "window_nets": {
+        "IW": -26466.6,
+        "W1": -31310.5,
+        "W2": -15726.9
+      },
+      "sharpe": -3.072069
+    },
+    "HON-S7-V15-TP1P5-BE1P0-M2": {
+      "window_nets": {
+        "IW": -26466.6,
+        "W1": -31310.5,
+        "W2": -15726.9
+      },
+      "sharpe": -3.072069
+    },
+    "HON-S7-V15-TPNONE-BE1P0-M15": {
+      "window_nets": {
+        "IW": 4551.6,
+        "W1": 2094.0,
+        "W2": 2331.0,
+        "W3": 4379.1
+      },
+      "sharpe": 2.556258
+    },
+    "HON-S7-V15-TP1P0-BENONE-M15": {
+      "window_nets": {
+        "IW": 3838.9,
+        "W1": 1209.0,
+        "W2": 2837.5,
+        "W3": 3423.3
+      },
+      "sharpe": 2.449156
+    },
+    "HON-S7-V15-TP1P0-BE1P0-M15": {
+      "window_nets": {
+        "IW": 3838.9,
+        "W1": 1209.0,
+        "W2": 2964.5,
+        "W3": 3423.3
+      },
+      "sharpe": 2.472113
+    },
+    "HON-S7-V15-TP1P5-BENONE-M15": {
+      "window_nets": {
+        "IW": 3988.9,
+        "W1": 1987.2,
+        "W2": 1566.4,
+        "W3": 3915.7
+      },
+      "sharpe": 2.258982
+    },
+    "HON-S7-V15-TP1P5-BE1P0-M15": {
+      "window_nets": {
+        "IW": 3988.9,
+        "W1": 1987.2,
+        "W2": 1756.9,
+        "W3": 3915.7
+      },
+      "sharpe": 2.416587
+    },
+    "HON-S7-V13-TPNONE-BE1P0-M2": {
+      "window_nets": {
+        "IW": -25277.1,
+        "W1": -29141.7,
+        "W2": -21152.1
+      },
+      "sharpe": -6.304656
+    },
+    "HON-S7-V13-TP1P0-BENONE-M2": {
+      "window_nets": {
+        "IW": -25715.1,
+        "W1": -28791.6,
+        "W2": -22772.2
+      },
+      "sharpe": -8.558168
+    },
+    "HON-S7-V13-TP1P0-BE1P0-M2": {
+      "window_nets": {
+        "IW": -25715.1,
+        "W1": -28791.6,
+        "W2": -22763.2
+      },
+      "sharpe": -8.544489
+    },
+    "HON-S7-V13-TP1P5-BENONE-M2": {
+      "window_nets": {
+        "IW": -26032.6,
+        "W1": -29318.0,
+        "W2": -23225.2
+      },
+      "sharpe": -8.588861
+    },
+    "HON-S7-V13-TP1P5-BE1P0-M2": {
+      "window_nets": {
+        "IW": -26032.6,
+        "W1": -29318.0,
+        "W2": -23211.7
+      },
+      "sharpe": -8.568925
+    },
+    "HON-S7-V11-TPNONE-BE1P0-M2": {
+      "window_nets": {
+        "IW": -19731.9,
+        "W1": -24081.0,
+        "W2": -6572.1
+      },
+      "sharpe": -1.842277
+    },
+    "HON-S7-V11-TP1P0-BENONE-M2": {
+      "window_nets": {
+        "IW": -19684.9,
+        "W1": -23614.5,
+        "W2": -8504.9
+      },
+      "sharpe": -2.202741
+    },
+    "HON-S7-V11-TP1P0-BE1P0-M2": {
+      "window_nets": {
+        "IW": -19684.9,
+        "W1": -23614.5,
+        "W2": -8495.9
+      },
+      "sharpe": -2.200946
+    },
+    "HON-S7-V11-TP1P5-BENONE-M2": {
+      "window_nets": {
+        "IW": -20128.6,
+        "W1": -24040.7,
+        "W2": -8651.1
+      },
+      "sharpe": -2.201202
+    },
+    "HON-S7-V11-TP1P5-BE1P0-M2": {
+      "window_nets": {
+        "IW": -20128.6,
+        "W1": -24040.7,
+        "W2": -8637.6
+      },
+      "sharpe": -2.198562
+    },
+    "HON-GAP-V01-M1": {
+      "window_nets": {
+        "IW": -75537.9,
+        "W1": -85813.8,
+        "W2": -15286.2
+      },
+      "sharpe": -1.545358
+    },
+    "HON-GAP-V01-M2": {
+      "window_nets": {
+        "IW": -40787.7,
+        "W1": -42635.1,
+        "W2": -36980.1
+      },
+      "sharpe": -13.918286
+    },
+    "HON-GAP-V01-M5": {
+      "window_nets": {
+        "IW": -12058.5,
+        "W1": -17732.4,
+        "W2": -5969.7,
+        "W3": -17013.3
+      },
+      "sharpe": -2.426868
+    },
+    "HON-GAP-V01-M15": {
+      "window_nets": {
+        "IW": -1878.3,
+        "W1": -11077.5,
+        "W2": 7695.6,
+        "W3": 424.2
+      },
+      "sharpe": -0.15617
+    },
+    "HON-GAP-V01B-M1": {
+      "window_nets": {
+        "IW": -75785.7,
+        "W1": -86024.4,
+        "W2": -15096.9
+      },
+      "sharpe": -1.538147
+    },
+    "HON-GAP-V01B-M2": {
+      "window_nets": {
+        "IW": -40726.5,
+        "W1": -42872.7,
+        "W2": -37589.4
+      },
+      "sharpe": -15.203162
+    },
+    "HON-GAP-V01B-M5": {
+      "window_nets": {
+        "IW": -12515.4,
+        "W1": -17475.0,
+        "W2": -5695.5,
+        "W3": -17195.7
+      },
+      "sharpe": -2.400065
+    },
+    "HON-GAP-V01B-M15": {
+      "window_nets": {
+        "IW": -1878.3,
+        "W1": -10681.8,
+        "W2": 7695.6,
+        "W3": 241.2
+      },
+      "sharpe": -0.15284
+    },
+    "HON-GAP-V02-M1": {
+      "window_nets": {
+        "IW": -77495.1,
+        "W1": -89251.2,
+        "W2": -16210.8
+      },
+      "sharpe": -1.554996
+    },
+    "HON-GAP-V02-M2": {
+      "window_nets": {
+        "IW": -41176.8,
+        "W1": -43291.2,
+        "W2": -37270.5
+      },
+      "sharpe": -13.285287
+    },
+    "HON-GAP-V02-M5": {
+      "window_nets": {
+        "IW": -12878.4,
+        "W1": -18026.7,
+        "W2": -6066.0,
+        "W3": -17329.8
+      },
+      "sharpe": -2.467727
+    },
+    "HON-GAP-V02-M15": {
+      "window_nets": {
+        "IW": -1926.6,
+        "W1": -10795.2,
+        "W2": 7744.5,
+        "W3": 413.4
+      },
+      "sharpe": -0.149308
+    },
+    "HON-GAP-V03-M1": {
+      "window_nets": {
+        "IW": -51532.2,
+        "W1": -63093.1,
+        "W2": -7211.7
+      },
+      "sharpe": -1.376796
+    },
+    "HON-GAP-V03-M2": {
+      "window_nets": {
+        "IW": -28322.2,
+        "W1": -29706.6,
+        "W2": -26287.1
+      },
+      "sharpe": -16.339934
+    },
+    "HON-GAP-V03-M5": {
+      "window_nets": {
+        "IW": 2921.2,
+        "W1": -20559.8,
+        "W2": 9142.6,
+        "W3": -8596.5
+      },
+      "sharpe": -0.325921
+    },
+    "HON-GAP-V03-M15": {
+      "window_nets": {
+        "IW": -950.5,
+        "W1": -6191.5,
+        "W2": 11807.4,
+        "W3": 3600.8
+      },
+      "sharpe": 0.270934
+    },
+    "HON-GAP-V04-M1": {
+      "window_nets": {
+        "IW": -64643.6,
+        "W1": -74435.4,
+        "W2": -12645.7
+      },
+      "sharpe": -1.522858
+    },
+    "HON-GAP-V04-M2": {
+      "window_nets": {
+        "IW": -36187.4,
+        "W1": -39487.0,
+        "W2": -35710.6
+      },
+      "sharpe": -18.053873
+    },
+    "HON-GAP-V04-M5": {
+      "window_nets": {
+        "IW": -14004.3,
+        "W1": -16542.7,
+        "W2": -6367.3,
+        "W3": -16462.9
+      },
+      "sharpe": -2.781077
+    },
+    "HON-GAP-V04-M15": {
+      "window_nets": {
+        "IW": -1372.8,
+        "W1": -10853.0,
+        "W2": 8715.8,
+        "W3": 986.2
+      },
+      "sharpe": -0.078256
+    },
+    "HON-GAP-V05-M1": {
+      "window_nets": {
+        "IW": -77465.9,
+        "W1": -89450.9,
+        "W2": -16210.8
+      },
+      "sharpe": -1.553832
+    },
+    "HON-GAP-V05-M2": {
+      "window_nets": {
+        "IW": -41164.7,
+        "W1": -43803.4,
+        "W2": -37177.7
+      },
+      "sharpe": -12.206148
+    },
+    "HON-GAP-V05-M5": {
+      "window_nets": {
+        "IW": -12878.4,
+        "W1": -17954.5,
+        "W2": -6066.0,
+        "W3": -17329.8
+      },
+      "sharpe": -2.473163
+    },
+    "HON-GAP-V05-M15": {
+      "window_nets": {
+        "IW": -2800.5,
+        "W1": -10795.2,
+        "W2": 7664.8,
+        "W3": 498.0
+      },
+      "sharpe": -0.177329
+    },
+    "HON-GAP-V06-M1": {
+      "window_nets": {
+        "IW": -76830.3,
+        "W1": -88373.4,
+        "W2": -15964.2
+      },
+      "sharpe": -1.552274
+    },
+    "HON-GAP-V06-M2": {
+      "window_nets": {
+        "IW": -41253.3,
+        "W1": -43016.1,
+        "W2": -37639.5
+      },
+      "sharpe": -14.825955
+    },
+    "HON-GAP-V06-M5": {
+      "window_nets": {
+        "IW": -12958.2,
+        "W1": -17860.2,
+        "W2": -5600.1,
+        "W3": -17375.4
+      },
+      "sharpe": -2.368494
+    },
+    "HON-GAP-V06-M15": {
+      "window_nets": {
+        "IW": -1934.4,
+        "W1": -10619.7,
+        "W2": 7732.5,
+        "W3": 380.7
+      },
+      "sharpe": -0.146827
+    },
+    "HON-GAP-V06B-M1": {
+      "window_nets": {
+        "IW": -77495.1,
+        "W1": -89251.2,
+        "W2": -16210.8
+      },
+      "sharpe": -1.554996
+    },
+    "HON-GAP-V06B-M2": {
+      "window_nets": {
+        "IW": -41176.8,
+        "W1": -43291.2,
+        "W2": -37270.5
+      },
+      "sharpe": -13.285287
+    },
+    "HON-GAP-V06C-M1": {
+      "window_nets": {
+        "IW": -77607.3,
+        "W1": -89782.8,
+        "W2": -16325.4
+      },
+      "sharpe": -1.555484
+    },
+    "HON-GAP-V06C-M2": {
+      "window_nets": {
+        "IW": -41340.0,
+        "W1": -43362.6,
+        "W2": -37424.7
+      },
+      "sharpe": -13.485166
+    },
+    "HON-GAP-V06D-M1": {
+      "window_nets": {
+        "IW": -78093.9,
+        "W1": -90300.0,
+        "W2": -16294.5
+      },
+      "sharpe": -1.55165
+    },
+    "HON-GAP-V08-M1": {
+      "window_nets": {
+        "IW": -23360.1,
+        "W1": -28466.4,
+        "W2": -3350.4
+      },
+      "sharpe": -1.385535
+    },
+    "HON-GAP-V08-M2": {
+      "window_nets": {
+        "IW": -10487.1,
+        "W1": -11797.2,
+        "W2": -10237.2
+      },
+      "sharpe": -12.937773
+    },
+    "HON-GAP-V08-M5": {
+      "window_nets": {
+        "IW": -4380.0,
+        "W1": -8225.4,
+        "W2": -3524.1,
+        "W3": -6804.0
+      },
+      "sharpe": -2.647526
+    },
+    "HON-GAP-V08-M15": {
+      "window_nets": {
+        "IW": -240.9,
+        "W1": 110.7,
+        "W2": -4441.8,
+        "W3": 2793.6
+      },
+      "sharpe": -0.148715
+    },
+    "HON-GAP-V09-M1": {
+      "window_nets": {
+        "IW": -75721.5,
+        "W1": -85679.4,
+        "W2": -15001.8
+      },
+      "sharpe": -1.537017
+    },
+    "HON-GAP-V09-M2": {
+      "window_nets": {
+        "IW": -40623.3,
+        "W1": -42366.3,
+        "W2": -36427.5
+      },
+      "sharpe": -13.039708
+    },
+    "HON-GAP-V11-M1": {
+      "window_nets": {
+        "IW": -46258.2,
+        "W1": -54798.3,
+        "W2": -6660.0
+      },
+      "sharpe": -1.397929
+    },
+    "HON-GAP-V11-M5": {
+      "window_nets": {
+        "IW": -12878.4,
+        "W1": -18026.7,
+        "W2": -6066.0,
+        "W3": -17329.8
+      },
+      "sharpe": -2.467727
+    },
+    "HON-GAP-V11-M15": {
+      "window_nets": {
+        "IW": -1926.6,
+        "W1": -10795.2,
+        "W2": 7744.5,
+        "W3": 413.4
+      },
+      "sharpe": -0.149308
+    },
+    "HON-GAP-V13-M1": {
+      "window_nets": {
+        "IW": -79810.8,
+        "W1": -91130.1,
+        "W2": -16328.1
+      },
+      "sharpe": -1.548245
+    },
+    "HON-GAP-V14-M1": {
+      "window_nets": {
+        "IW": -39693.0,
+        "W1": -43798.5,
+        "W2": -5535.9
+      },
+      "sharpe": -1.412709
+    },
+    "HON-GAP-V14-M2": {
+      "window_nets": {
+        "IW": -22845.3,
+        "W1": -20690.1,
+        "W2": -11488.2
+      },
+      "sharpe": -3.040696
+    },
+    "HON-GAP-V14-M5": {
+      "window_nets": {
+        "IW": -5619.3,
+        "W1": -9129.6,
+        "W2": -7392.3,
+        "W3": -8404.5
+      },
+      "sharpe": -5.017922
+    },
+    "HON-GAP-V14-M15": {
+      "window_nets": {
+        "IW": -2646.0,
+        "W1": -7979.1,
+        "W2": 131.4,
+        "W3": -14.4
+      },
+      "sharpe": -0.693247
+    },
+    "HON-GAP-V15-M1": {
+      "window_nets": {
+        "IW": -64994.1,
+        "W1": -73425.0,
+        "W2": -12949.8
+      },
+      "sharpe": -1.540463
+    },
+    "HON-GAP-V15-M5": {
+      "window_nets": {
+        "IW": -9377.7,
+        "W1": -16494.3,
+        "W2": -6059.7,
+        "W3": -14444.4
+      },
+      "sharpe": -2.441015
+    },
+    "HON-W2-S6-K1P5-M15-TS20": {
+      "window_nets": {
+        "IW": -2042.7,
+        "W1": -3992.4,
+        "W2": -1393.5,
+        "W3": 1581.3
+      },
+      "sharpe": -0.63286
+    },
+    "HON-W2-S6-K1P5-M15-TS40": {
+      "window_nets": {
+        "IW": 4551.6,
+        "W1": 2094.0,
+        "W2": 2140.5,
+        "W3": 4379.1
+      },
+      "sharpe": 2.424286
+    },
+    "HON-W2-S6-K1P5-M15-CONF": {
+      "window_nets": {
+        "IW": -5681.7,
+        "W1": 78.0,
+        "W2": -4534.8,
+        "W3": -1121.4
+      },
+      "sharpe": -1.029867
+    },
+    "HON-W2-S6-K1P5-M15-SAR": {
+      "window_nets": {
+        "IW": 7382.1,
+        "W1": 6321.3,
+        "W2": 13427.4,
+        "W3": 5362.2
+      },
+      "sharpe": 2.237158
+    },
+    "HON-W2-S6-K1P5-M15-F1": {
+      "window_nets": {
+        "IW": 1517.2,
+        "W1": 698.0,
+        "W2": 713.5,
+        "W3": 1459.7
+      },
+      "sharpe": 2.424286
+    },
+    "HON-W2-S6-K1P5-M15-F2": {
+      "window_nets": {
+        "IW": 3034.4,
+        "W1": 1396.0,
+        "W2": 1427.0,
+        "W3": 2919.4
+      },
+      "sharpe": 2.424286
+    },
+    "HON-W2-S6-K2P0-M15-TS20": {
+      "window_nets": {
+        "IW": -15996.0,
+        "W1": -12355.5,
+        "W2": -20691.0,
+        "W3": -9136.2
+      },
+      "sharpe": -2.929955
+    },
+    "HON-W2-S6-K2P0-M15-TS40": {
+      "window_nets": {
+        "IW": 4949.4,
+        "W1": -722.4,
+        "W2": -12594.9,
+        "W3": 3256.2
+      },
+      "sharpe": -0.161551
+    },
+    "HON-W2-S6-K2P0-M15-CONF": {
+      "window_nets": {
+        "IW": -1031.4,
+        "W1": 726.3,
+        "W2": -13430.7,
+        "W3": -3152.7
+      },
+      "sharpe": -0.665889
+    },
+    "HON-W2-S6-K2P0-M15-SAR": {
+      "window_nets": {
+        "IW": 16099.8,
+        "W1": 16008.3,
+        "W2": 7078.5,
+        "W3": 9924.9
+      },
+      "sharpe": 2.720743
+    },
+    "HON-W2-S6-K2P0-M15-F1": {
+      "window_nets": {
+        "IW": 2071.6,
+        "W1": 1027.2,
+        "W2": -4198.3,
+        "W3": 1085.4
+      },
+      "sharpe": -0.001242
+    },
+    "HON-W2-S6-K2P0-M15-F2": {
+      "window_nets": {
+        "IW": 4143.2,
+        "W1": 2054.4,
+        "W2": -8396.6,
+        "W3": 2170.8
+      },
+      "sharpe": -0.001242
+    },
+    "HON-W2-S7-TPNONE-M15-TS20": {
+      "window_nets": {
+        "IW": -2042.7,
+        "W1": -3992.4,
+        "W2": -1203.0,
+        "W3": 1581.3
+      },
+      "sharpe": -0.611226
+    },
+    "HON-W2-S7-TPNONE-M15-TS40": {
+      "window_nets": {
+        "IW": 4551.6,
+        "W1": 2094.0,
+        "W2": 2331.0,
+        "W3": 4379.1
+      },
+      "sharpe": 2.556258
+    },
+    "HON-W2-S7-TPNONE-M15-CONF": {
+      "window_nets": {
+        "IW": -5681.7,
+        "W1": 78.0,
+        "W2": -4534.8,
+        "W3": -1121.4
+      },
+      "sharpe": -1.029867
+    },
+    "HON-W2-S7-TPNONE-M15-SAR": {
+      "window_nets": {
+        "IW": 7382.1,
+        "W1": 6321.3,
+        "W2": 13617.9,
+        "W3": 5362.2
+      },
+      "sharpe": 2.194184
+    },
+    "HON-W2-S7-TPNONE-M15-F1": {
+      "window_nets": {
+        "IW": 1517.2,
+        "W1": 698.0,
+        "W2": 777.0,
+        "W3": 1459.7
+      },
+      "sharpe": 2.556258
+    },
+    "HON-W2-S7-TPNONE-M15-F2": {
+      "window_nets": {
+        "IW": 3034.4,
+        "W1": 1396.0,
+        "W2": 1554.0,
+        "W3": 2919.4
+      },
+      "sharpe": 2.556258
+    },
+    "HON-W2-S7-TP1P0-M15-TS20": {
+      "window_nets": {
+        "IW": -1535.3,
+        "W1": -4111.5,
+        "W2": -569.5,
+        "W3": 1558.1
+      },
+      "sharpe": -0.495234
+    },
+    "HON-W2-S7-TP1P0-M15-TS40": {
+      "window_nets": {
+        "IW": 3838.9,
+        "W1": 1209.0,
+        "W2": 2964.5,
+        "W3": 3423.3
+      },
+      "sharpe": 2.472113
+    },
+    "HON-W2-S7-TP1P0-M15-CONF": {
+      "window_nets": {
+        "IW": -5771.0,
+        "W1": 467.4,
+        "W2": -4635.2,
+        "W3": -1050.1
+      },
+      "sharpe": -0.934594
+    },
+    "HON-W2-S7-TP1P0-M15-SAR": {
+      "window_nets": {
+        "IW": 6856.4,
+        "W1": 5402.0,
+        "W2": 14281.3,
+        "W3": 4102.8
+      },
+      "sharpe": 1.681866
+    },
+    "HON-W2-S7-TP1P0-M15-F1": {
+      "window_nets": {
+        "IW": 246.3,
+        "W1": 113.2,
+        "W2": 1087.6,
+        "W3": 601.6
+      },
+      "sharpe": 1.176061
+    },
+    "HON-W2-S7-TP1P0-M15-F2": {
+      "window_nets": {
+        "IW": 2321.7,
+        "W1": 511.0,
+        "W2": 2187.5,
+        "W3": 1963.6
+      },
+      "sharpe": 2.087342
+    },
+    "HON-W2-S1-V11-M2-TS20": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-W2-S1-V11-M2-TS40": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-W2-S1-V11-M2-CONF": {
+      "window_nets": {
+        "IW": -11833.2,
+        "W1": -13671.3,
+        "W2": -18122.4
+      },
+      "sharpe": -4.496964
+    },
+    "HON-W2-S1-V11-M2-SAR": {
+      "window_nets": {
+        "IW": -30024.9,
+        "W1": -36208.5,
+        "W2": -22935.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-W2-S1-V11-M2-F1": {
+      "window_nets": {
+        "IW": -10008.3,
+        "W1": -12069.5,
+        "W2": -7645.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-W2-S1-V11-M2-F2": {
+      "window_nets": {
+        "IW": -20016.6,
+        "W1": -24139.0,
+        "W2": -15290.0
+      },
+      "sharpe": -4.475042
+    },
+    "HON-W2-S1-V13-M2-TS20": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-W2-S1-V13-M2-TS40": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-W2-S1-V13-M2-CONF": {
+      "window_nets": {
+        "IW": -13430.1,
+        "W1": -15333.9,
+        "W2": -24684.9
+      },
+      "sharpe": -2.957521
+    },
+    "HON-W2-S1-V13-M2-SAR": {
+      "window_nets": {
+        "IW": -42812.7,
+        "W1": -43582.5,
+        "W2": -38457.9
+      },
+      "sharpe": -15.060304
+    },
+    "HON-W2-S1-V13-M2-F1": {
+      "window_nets": {
+        "IW": -14270.9,
+        "W1": -14527.5,
+        "W2": -12819.3
+      },
+      "sharpe": -15.060304
+    },
+    "HON-W2-S1-V13-M2-F2": {
+      "window_nets": {
+        "IW": -28541.8,
+        "W1": -29055.0,
+        "W2": -25638.6
+      },
+      "sharpe": -15.060304
+    },
+    "HON-W2-S1-V15-M2-TS20": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-W2-S1-V15-M2-TS40": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-W2-S1-V15-M2-CONF": {
+      "window_nets": {
+        "IW": -11634.3,
+        "W1": -13966.5,
+        "W2": -17356.2
+      },
+      "sharpe": -4.976729
+    },
+    "HON-W2-S1-V15-M2-SAR": {
+      "window_nets": {
+        "IW": -34375.2,
+        "W1": -39317.4,
+        "W2": -27635.4
+      },
+      "sharpe": -5.759885
+    },
+    "HON-W2-S1-V15-M2-F1": {
+      "window_nets": {
+        "IW": -11458.4,
+        "W1": -13105.8,
+        "W2": -9211.8
+      },
+      "sharpe": -5.759885
+    },
+    "HON-W2-S1-V15-M2-F2": {
+      "window_nets": {
+        "IW": -22916.8,
+        "W1": -26211.6,
+        "W2": -18423.6
+      },
+      "sharpe": -5.759885
+    },
+    "HON-W2-S7-TPNONE-M15-CONF-TS40": {
+      "window_nets": {
+        "IW": -5681.7,
+        "W1": 78.0,
+        "W2": -4534.8,
+        "W3": -1121.4
+      },
+      "sharpe": -1.029867
+    },
+    "HON-W2-S7-TPNONE-M15-SAR-F2": {
+      "window_nets": {
+        "IW": 4921.4,
+        "W1": 4214.2,
+        "W2": 9078.6,
+        "W3": 3574.8
+      },
+      "sharpe": 2.194184
+    }
+  }
+}
