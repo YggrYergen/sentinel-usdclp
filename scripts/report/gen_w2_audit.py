@@ -95,6 +95,14 @@ _SIG_DROP_KEYS = frozenset({"variant", "live_fill_mode"})
 _TF_RE = re.compile(r"m(\d+)")
 
 
+class AuditEnvError(RuntimeError):
+    """A cell could not be resolved for ENVIRONMENT reasons (bars/lake load
+    failure, fresh re-simulation crash, causal join unverifiable) -- never a
+    forensic finding. The apply pass must ABORT with ZERO writes rather than
+    persist a forensic-sounding verdict for an env problem (B4 review fix,
+    2026-07-20)."""
+
+
 # ---------------------------------------------------------------------------
 # TEST-1 / TEST-2 / TEST-3: pure forensic maths on trades + entry-bar OHLC.
 # ---------------------------------------------------------------------------
@@ -353,10 +361,19 @@ def compute_verdicts(
     conn: sqlite3.Connection,
     simulate_fresh: bool = True,
 ) -> list[dict[str, Any]]:
-    """For every oow2 run, run the forensic protocol and decide PASS/FAIL.
-    Pure reads on `conn`. `simulate_fresh=False` records FRESH cells as
-    'no honest twin (fresh sim skipped)' with no verdict change -- used by the
-    fixture tests, which have no lake data."""
+    """For every oow2 run, run the forensic protocol and decide the verdict:
+    W2_AUDIT_PASS / W2_AUDIT_FAIL / ENV-ERROR. Pure reads on `conn`.
+
+    ENV-ERROR (B4 review fix): a cell whose honest re-pricing OR causal
+    verification could not be completed for environment reasons gets verdict
+    'ENV-ERROR' and label=None -- it can NEVER be persisted as a forensic
+    finding; `audit_w2`'s apply pass aborts if any exists.
+
+    Causal status (B4 review fix): a run WITH persisted trades whose entry-bar
+    join did not happen (bars load raised, join skipped, or 0 bars matched) is
+    'UNVERIFIED' -- never 'clean'. UNVERIFIED blocks a PASS label (the cell
+    becomes ENV-ERROR); a FAIL-leaning cell still FAILs on the honest-net rule
+    with the reason noting causal=UNVERIFIED."""
     oow_runs = _load_oow2_runs(conn)
     honest_twins = _load_honest_twins(conn)
 
@@ -364,55 +381,83 @@ def compute_verdicts(
     for run in oow_runs:
         classic_net = run["net"]
         trades = _load_trades(conn, run["run_id"])
-        ei = entry_improvement(trades, [], SPREAD)  # bars added below only if needed
-        # We only have OHLC when we (re)load bars; for the census we don't need
-        # bars. Entry-improvement needs bars -> compute lazily per cell if the
-        # run has trades (real DB); fixtures have no bars, so it stays 0.
         census = same_bar_exit_census(trades)
 
+        # ---- TEST-4: honest re-pricing (LINK to twin, else FRESH sim). ----
         twin = match_honest_twin(run["params"], run["tf"], honest_twins)
         linked = twin is not None
         honest_net: float | None = None
         twin_run_id: str | None = None
         fresh = False
+        fresh_error: str | None = None
 
         if twin is not None:
             honest_net = twin["net"]
             twin_run_id = twin["run_id"]
         elif simulate_fresh and run["tf"] is not None:
+            fresh = True
             try:
                 honest_net = _fresh_honest_net(run["tf"], run["params"])
-                fresh = True
-            except Exception as exc:  # pragma: no cover - lake/env dependent
-                honest_net = None
-                fresh = True
-                run.setdefault("_error", str(exc))
-
-        # Entry-improvement (TEST-1) needs entry-bar OHLC. Load bars for the
-        # cell's tf/window only when we have real trades AND are simulating
-        # (i.e. running against the real DB, where lake data is present).
-        if simulate_fresh and trades and run["tf"] is not None:
-            try:
-                bars = _bars_for_cell(run["tf"])
-                ei = entry_improvement(trades, bars, SPREAD)
-            except Exception:  # pragma: no cover - lake/env dependent
-                pass
-
-        causal = causal_verdict(ei["mean_signed"])
-
-        if honest_net is None:
-            verdict = {"verdict": "W2_AUDIT_FAIL",
-                       "reason": "no honest twin and fresh re-simulation unavailable"}
+            except Exception as exc:  # env problem -- NEVER a forensic FAIL
+                fresh_error = f"{type(exc).__name__}: {exc}"
+                print(f"[gen_w2_audit] ERROR {run['run_id']}: fresh live-fill "
+                      f"re-simulation failed: {fresh_error}", file=sys.stderr)
         else:
-            verdict = honest_verdict(classic_net, honest_net)
+            fresh_error = ("no honest twin and fresh re-simulation disabled "
+                           "(simulate_fresh=False or tf unknown)")
 
-        label = verdict["verdict"]
-        if label == "W2_AUDIT_FAIL":
-            reason = verdict["reason"]
+        # ---- TEST-1: entry-improvement needs the entry-bar OHLC join. ----
+        ei = {"n_matched": 0, "mean_signed": 0.0, "max_favorable": 0.0}
+        join_error: str | None = None
+        if trades:
+            if run["tf"] is not None and simulate_fresh:
+                try:
+                    bars = _bars_for_cell(run["tf"])
+                    ei = entry_improvement(trades, bars, SPREAD)
+                except Exception as exc:
+                    join_error = (f"entry-bar OHLC load failed: "
+                                  f"{type(exc).__name__}: {exc}")
+                    print(f"[gen_w2_audit] WARN {run['run_id']}: {join_error}",
+                          file=sys.stderr)
+            else:
+                join_error = ("causal join not attempted "
+                              "(tf unknown or fresh sims disabled)")
+
+        # ---- TEST-3: causal status -- verified, UNVERIFIED, or NONCAUSAL. --
+        if not trades:
+            causal_status, causal_note = "clean", "no persisted trades (vacuously clean)"
+        elif join_error is not None:
+            causal_status, causal_note = "UNVERIFIED", join_error
+        elif ei["n_matched"] == 0:
+            causal_status = "UNVERIFIED"
+            causal_note = "run has trades but 0 joined entry bars"
+        else:
+            c = causal_verdict(ei["mean_signed"])
+            causal_status = "clean" if c["clean"] else "NONCAUSAL"
+            causal_note = c["note"]
+
+        # ---- TEST-5: verdict. ENV problems never become forensic labels. ---
+        if honest_net is None:
+            verdict_label = "ENV-ERROR"
+            reason = f"honest re-pricing unavailable: {fresh_error}"
+        else:
+            hv = honest_verdict(classic_net, honest_net)
+            verdict_label, reason = hv["verdict"], hv["reason"]
+            if causal_status == "UNVERIFIED":
+                if verdict_label == "W2_AUDIT_PASS":
+                    # UNVERIFIED causal blocks a PASS: env condition, not verdict.
+                    verdict_label = "ENV-ERROR"
+                    reason = (f"PASS blocked: causal verification unavailable "
+                              f"({causal_note})")
+                else:
+                    reason += f"; causal=UNVERIFIED({causal_note})"
+
+        if verdict_label == "W2_AUDIT_PASS":
+            full_label: str | None = "W2_AUDIT_PASS"
+        elif verdict_label == "W2_AUDIT_FAIL":
             full_label = f"W2_AUDIT_FAIL({reason})"
         else:
-            reason = verdict["reason"]
-            full_label = "W2_AUDIT_PASS"
+            full_label = None  # ENV-ERROR is never persistable; apply aborts.
 
         upgraded = run["validity"] == "REGIME_UNAUDITED"
 
@@ -420,9 +465,12 @@ def compute_verdicts(
             "run_id": run["run_id"], "tf": run["tf"], "classic_net": classic_net,
             "honest_net": honest_net, "linked": linked, "fresh": fresh,
             "twin_run_id": twin_run_id,
-            "entry_improvement": ei["mean_signed"], "causal_clean": causal["clean"],
+            "n_matched": ei["n_matched"],
+            "entry_improvement": ei["mean_signed"],
+            "causal_status": causal_status, "causal_note": causal_note,
+            "causal_clean": causal_status == "clean",
             "same_bar_frac": census["fraction"],
-            "verdict": label, "label": full_label, "reason": reason,
+            "verdict": verdict_label, "label": full_label, "reason": reason,
             "current_validity": run["validity"], "upgraded": upgraded,
         })
     return verdicts
@@ -453,7 +501,13 @@ def audit_w2(db_path: Path, dry_run: bool = False, simulate_fresh: bool = True) 
     """Run the forensic audit and (unless dry_run) upgrade each still
     REGIME_UNAUDITED oow2 run's validity to its W2_AUDIT_* verdict in ONE
     short transaction. Returns the per-cell verdict list. Idempotent: a row no
-    longer REGIME_UNAUDITED is never re-marked and writes no audit row."""
+    longer REGIME_UNAUDITED is never re-marked and writes no audit row.
+
+    B4 review fix: if ANY cell resolved to ENV-ERROR (fresh sim crashed,
+    causal join unverifiable on a PASS-leaning cell, ...), the apply pass
+    raises `AuditEnvError` BEFORE opening the write connection -- zero rows
+    are written for the whole batch. Dry-run returns the verdicts (the table
+    shows the cell as ENV-ERROR) without raising."""
     db_path = Path(db_path)
     if not db_path.exists():
         raise FileNotFoundError(f"registry DB not found: {db_path}")
@@ -473,6 +527,14 @@ def audit_w2(db_path: Path, dry_run: bool = False, simulate_fresh: bool = True) 
         verdicts = compute_verdicts(ro, simulate_fresh=simulate_fresh)
     finally:
         ro.close()
+
+    env_cells = [v for v in verdicts if v["verdict"] == "ENV-ERROR"]
+    if env_cells:
+        detail = "; ".join(f"{v['run_id']} -> {v['reason']}" for v in env_cells)
+        raise AuditEnvError(
+            f"apply ABORTED before any write -- {len(env_cells)} cell(s) "
+            f"unresolvable (environment/verification failure, not a forensic "
+            f"verdict): {detail}")
 
     registry = ResearchRegistry(db_path)  # additive migration (validity column).
     conn = registry._connect()  # noqa: SLF001
@@ -512,21 +574,26 @@ def _print_table(verdicts: list[dict[str, Any]], dry_run: bool) -> None:
     banner = "DRY-RUN (nothing written)" if dry_run else "APPLIED"
     print(f"gen_w2_audit -- {banner}")
     print(f"{'run_id':38} {'tf':4} {'classic_net':>12} {'honest_net':>12} "
-          f"{'src':6} {'causal':7} {'verdict'}")
-    print("-" * 110)
-    n_pass = n_fail = 0
+          f"{'src':6} {'n_matched':>9} {'causal':>10} {'verdict'}")
+    print("-" * 122)
+    n_pass = n_fail = n_env = 0
     for v in sorted(verdicts, key=lambda x: x["run_id"]):
         src = "LINK" if v["linked"] else ("FRESH" if v["fresh"] else "-")
         hn = "n/a" if v["honest_net"] is None else f"{v['honest_net']:+.1f}"
-        causal = "clean" if v["causal_clean"] else "NONCAUSAL"
         print(f"{v['run_id']:38} {v['tf'] or '?':4} {v['classic_net']:>12.1f} "
-              f"{hn:>12} {src:6} {causal:7} {v['verdict']}")
+              f"{hn:>12} {src:6} {v['n_matched']:>9} {v['causal_status']:>10} "
+              f"{v['verdict']}")
         if v["verdict"] == "W2_AUDIT_PASS":
             n_pass += 1
-        else:
+        elif v["verdict"] == "W2_AUDIT_FAIL":
             n_fail += 1
-    print("-" * 110)
-    print(f"TOTAL: {len(verdicts)} cells -- {n_pass} PASS / {n_fail} FAIL")
+        else:
+            n_env += 1
+    print("-" * 122)
+    tail = f" / {n_env} ENV-ERROR" if n_env else ""
+    print(f"TOTAL: {len(verdicts)} cells -- {n_pass} PASS / {n_fail} FAIL{tail}")
+    if n_env:
+        print("  ENV-ERROR cells are NOT persistable; the apply pass would abort.")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -546,6 +613,9 @@ def main(argv: list[str] | None = None) -> int:
         print(f"gen_w2_audit: DB busy/locked beyond {BUSY_TIMEOUT_S}s "
               f"(honest sweep still running?): {exc}", file=sys.stderr)
         return 2
+    except AuditEnvError as exc:
+        print(f"gen_w2_audit: {exc}", file=sys.stderr)
+        return 3
 
     _print_table(verdicts, dry_run=args.dry_run)
     return 0

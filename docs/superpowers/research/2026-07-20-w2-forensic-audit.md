@@ -145,6 +145,16 @@ low-single-digit-thousands is real.
 - **ADDITIVE-ONLY / idempotent:** the sole `UPDATE` touches `validity` and
   only while it is still `REGIME_UNAUDITED`; a second run marks nothing new
   and writes no duplicate audit rows.
+- **ENV-ERROR guard (B4 review):** environment failures are never persisted as
+  forensic verdicts. A cell whose honest re-pricing crashed (FRESH sim raised)
+  or whose causal entry-bar join could not be verified (bars load raised, or
+  `n_matched==0` on a run that has trades) resolves to `ENV-ERROR` with a null
+  label; an UNVERIFIED causal status blocks a PASS. If ANY cell is `ENV-ERROR`,
+  the apply pass raises `AuditEnvError` and aborts **before the first write**
+  (zero rows written), naming the cell. `n_matched` (trades joined to entry
+  bars) is printed per cell so a silent zero-join can never masquerade as
+  "clean". All 17 cells currently join fully (`n_matched` = each run's trade
+  count) — 0 ENV-ERROR.
 
 > **Orchestrator note:** the real write pass is deferred to the orchestrator
 > (run *after* the honest mega-sweep finishes) so LINK matching sees tonight's

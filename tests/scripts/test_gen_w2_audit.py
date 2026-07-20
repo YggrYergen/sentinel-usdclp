@@ -372,6 +372,111 @@ def test_audit_atomic_under_crash(fixture_db: Path, monkeypatch):
     assert len(_audit_rows(fixture_db)) == 2
 
 
+def _add_trade(db: Path, run_id: str, ts_in="2026.03.02 00:15:00",
+               ts_out="2026.03.02 00:20:00") -> None:
+    """Give a fixture run a persisted trade so the causal entry-bar join is
+    ATTEMPTED for it (runs with zero trades are vacuously clean)."""
+    conn = sqlite3.connect(str(db))
+    try:
+        conn.execute(
+            "INSERT INTO trade(trade_id, run_id, origin, ts_in, ts_out, "
+            "px_in, px_out, side, exit_reason, pnl) "
+            "VALUES (?, ?, 'strategy', ?, ?, 100.0, 101.0, 'LONG', "
+            "'EXIT_TRAIL', 10.0)",
+            (f"{run_id}-t1", run_id, ts_in, ts_out),
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+def _raise(exc):
+    raise exc
+
+
+def test_bars_load_failure_is_unverified_and_blocks_pass(
+        fixture_db: Path, monkeypatch):
+    """B4 review fix 1: a swallowed bars-load failure must NEVER default to a
+    'clean' causal verdict. A PASS-leaning cell with UNVERIFIED causal becomes
+    ENV-ERROR (PASS blocked); a FAIL-leaning cell still FAILs on the
+    honest-net rule with the reason noting causal=UNVERIFIED. Apply aborts,
+    zero writes."""
+    _add_trade(fixture_db, "sim-report-emasar-oow2-v06b-m15")  # PASS-leaning
+    _add_trade(fixture_db, "sim-report-emasar-oow2-ss-m5")     # FAIL-leaning
+    monkeypatch.setattr(wa, "_bars_for_cell",
+                        lambda tf: _raise(RuntimeError("lake unavailable")))
+
+    verdicts = wa.audit_w2(fixture_db, dry_run=True)
+    by_id = {v["run_id"]: v for v in verdicts}
+
+    v_pass = by_id["sim-report-emasar-oow2-v06b-m15"]
+    assert v_pass["causal_status"] == "UNVERIFIED"
+    assert v_pass["verdict"] == "ENV-ERROR"      # PASS blocked
+    assert v_pass["label"] is None               # never persistable
+    assert "causal" in v_pass["reason"].lower()
+
+    v_fail = by_id["sim-report-emasar-oow2-ss-m5"]
+    assert v_fail["causal_status"] == "UNVERIFIED"
+    assert v_fail["verdict"] == "W2_AUDIT_FAIL"   # still fails on honest-net
+    assert "UNVERIFIED" in v_fail["reason"]
+
+    # Apply must ABORT before writing anything -- even the resolvable cell.
+    with pytest.raises(wa.AuditEnvError):
+        wa.audit_w2(fixture_db, dry_run=False)
+    v = _validity(fixture_db)
+    assert v["sim-report-emasar-oow2-v06b-m15"] == "REGIME_UNAUDITED"
+    assert v["sim-report-emasar-oow2-ss-m5"] == "REGIME_UNAUDITED"
+    assert _audit_rows(fixture_db) == []
+
+
+def test_zero_joined_bars_is_unverified_not_clean(fixture_db: Path, monkeypatch):
+    """Bars 'load' but join nothing (n_matched==0) while the run HAS trades ->
+    UNVERIFIED, never clean, and PASS is blocked (ENV-ERROR)."""
+    _add_trade(fixture_db, "sim-report-emasar-oow2-v06b-m15")
+    monkeypatch.setattr(wa, "_bars_for_cell", lambda tf: [])
+    verdicts = wa.audit_w2(fixture_db, dry_run=True)
+    v = {x["run_id"]: x for x in verdicts}["sim-report-emasar-oow2-v06b-m15"]
+    assert v["n_matched"] == 0
+    assert v["causal_status"] == "UNVERIFIED"
+    assert v["verdict"] == "ENV-ERROR"
+
+
+def test_fresh_sim_failure_aborts_apply_with_zero_writes(
+        fixture_db: Path, monkeypatch):
+    """B4 review fix 2: a FRESH cell whose re-simulation raises must NOT be
+    persisted as a forensic-sounding FAIL. Dry-run shows ENV-ERROR (label
+    None); apply aborts before ANY write (all cells stay REGIME_UNAUDITED, no
+    audit rows)."""
+    reg = ResearchRegistry(fixture_db)
+    sid = reg.upsert_strategy("EMASAR", "emasar", "python-sim")
+    reg.upsert_variant(sid, "EMS_XAU_OOW_V10_M5_M5_W2", {}, "M5", "XAUUSD", None)
+    reg.insert_run(_mk_run(
+        "sim-report-emasar-oow2-v10-m5", "EMS_XAU_OOW_V10_M5_M5_W2", 68310.6,
+        {"init_sl_range_k": 6.0, "ac_modulate_factor": 0.25,
+         "direction_mask": "supertrend_m15_atr14_mult3.0_prev_closed_bar"}))
+    _mark_regime(fixture_db, "sim-report-emasar-oow2-v10-m5")
+    monkeypatch.setattr(
+        wa, "_fresh_honest_net",
+        lambda tf, params: _raise(RuntimeError("pyarrow exploded")))
+
+    # Dry-run: the env failure is visible as ENV-ERROR, never a FAIL verdict.
+    verdicts = wa.audit_w2(fixture_db, dry_run=True)
+    v = {x["run_id"]: x for x in verdicts}["sim-report-emasar-oow2-v10-m5"]
+    assert v["honest_net"] is None
+    assert v["fresh"] is True
+    assert v["verdict"] == "ENV-ERROR"
+    assert v["label"] is None  # never a persistable label
+
+    # Apply: aborts naming the cell; ZERO writes anywhere.
+    with pytest.raises(wa.AuditEnvError, match="v10-m5"):
+        wa.audit_w2(fixture_db, dry_run=False)
+    vmap = _validity(fixture_db)
+    assert vmap["sim-report-emasar-oow2-v10-m5"] == "REGIME_UNAUDITED"
+    assert vmap["sim-report-emasar-oow2-ss-m5"] == "REGIME_UNAUDITED"
+    assert vmap["sim-report-emasar-oow2-v06b-m15"] == "REGIME_UNAUDITED"
+    assert _audit_rows(fixture_db) == []
+
+
 def test_dry_run_writes_nothing(fixture_db: Path):
     before = _snapshot_sans_validity(fixture_db)
     verdicts = wa.audit_w2(fixture_db, dry_run=True)
