@@ -136,6 +136,8 @@ def simular_variant(
     ratchet_lock_frac: float = 0.0,
     ratchet_arm_r: float = 1.0,
     ratchet_atr_k: float = 0.0,
+    wait_mae_atr_k: float = 0.0,
+    wait_be_exit: bool = False,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -445,6 +447,45 @@ def simular_variant(
     close uses the existing same-bar-fallback exit in the trailing block -- no
     new fill route, no look-ahead. All three defaults reproduce the classic
     event stream byte-for-byte.
+
+    F3 bounded stop-and-wait (PX-T2; `wait_mae_atr_k`/`wait_be_exit`, defaults
+    `0.0`/`False` = disabled = EXACT current behavior, byte-identical no-op): the
+    whipsaw/B-core lever -- instead of dumping a ficha at the worst tick of a
+    range-SL, tolerate a BOUNDED adverse excursion and prefer exiting at
+    break-even-or-better once price recovers. Composed ENTIRELY from OHLC-honest
+    primitives:
+      - `wait_mae_atr_k > 0`: the initial protective stop is a WIDER, explicitly
+        bounded max-adverse-excursion stop at `entry - wait_mae_atr_k*ATR14[i]`
+        (long; mirror short), taken as the WIDER of {this, the existing range-SL}
+        DISTANCES -- i.e. `min()` of the two SL LEVELS for a long (lower = wider)
+        / `max()` for a short (higher = wider). CHOICE: max-distance, so the
+        bounded MAE never TIGHTENS the legal stop, only ever widens it. Reuses
+        the engine's existing Wilder ATR14 (`_atr_wilder`, period 14) -- no new
+        indicator. During the 14-bar ATR warmup (`ATR14[i]` is None) the MAE stop
+        is undefined, so the initial SL FALLS BACK to the range-SL alone.
+      - MANDATORY BOUND (Constraint 2, INVIOLABLE martingale guard): `ValueError`
+        if `wait_mae_atr_k > 0` and `max_hold_bars is None`. A price bound
+        (`wait_mae_atr_k`) and a time bound (`max_hold_bars`, P51) are hard-
+        required TOGETHER -- an unbounded hold is refused by the engine itself.
+        `max_hold_bars` is reused as the time bound (no second time-bound kwarg).
+      - `wait_be_exit = True` (only meaningful when `wait_mae_atr_k > 0`; inert
+        otherwise, no error): once the ficha has been ADVERSE and then RECOVERED
+        to >= entry (long: `f.max_fav >= entry`; mirror short with min/<=), raise
+        the SL to the break-even floor (`entry + be_offset_pips*pip` long; mirror
+        short) so the exit is at BE-or-better rather than chasing the wide stop
+        back down. This is a FLOOR that ONLY TIGHTENS (exactly like the BE/ratchet
+        blocks) -- it NEVER loosens an existing tighter stop, and NEVER caps the
+        runner (it is below price, not a ceiling above it).
+    CONSERVATIVE LOWER BOUND on OHLC: a single bar whose extreme touches BOTH the
+    MAE bound AND the BE-recovery is resolved SL-FIRST (the stop-out is scored
+    before the BE floor arms this bar), which UNDER-states the mechanism's upside
+    -- documented as the honest pessimistic bound. Honest under `live_fill_mode`:
+    the widened initial SL is known at entry (unchanged intrabar semantics), and
+    the BE-recovery raise (computed from this bar's own high/low) becomes active
+    on the NEXT bar via the existing server-side-SL path (`server_sl_by_tag`); a
+    floor already violated by this bar's own close uses the existing trailing
+    same-bar fallback -- no new fill route, no look-ahead. Both defaults reproduce
+    the classic event stream byte-for-byte.
     """
     if active_fichas not in (1, 2, 3):
         raise ValueError(
@@ -470,6 +511,17 @@ def simular_variant(
             "ratchet_lock_frac and ratchet_atr_k are mutually exclusive "
             f"(fraction vs chandelier form); got lock_frac={ratchet_lock_frac!r}, "
             f"atr_k={ratchet_atr_k!r}")
+    # F3 bounded stop-and-wait (PX-T2): the INVIOLABLE martingale guard
+    # (Constraint 2). A positive `wait_mae_atr_k` (wider bounded-MAE price stop)
+    # MUST be paired with a `max_hold_bars` (P51) time bound -- an unbounded hold
+    # is refused by the engine itself. `wait_mae_atr_k` defaulting to 0.0 is the
+    # byte-identical no-op (the wider stop / BE-exit blocks are skipped below);
+    # `wait_be_exit` without `wait_mae_atr_k>0` is inert (no error).
+    if wait_mae_atr_k > 0.0 and max_hold_bars is None:
+        raise ValueError(
+            "wait_mae_atr_k > 0 requires max_hold_bars (bounded waiting only: "
+            "the price bound and the time bound are hard-required together); "
+            f"got wait_mae_atr_k={wait_mae_atr_k!r}, max_hold_bars=None")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -512,12 +564,15 @@ def simular_variant(
     # ficha) with the same Wilder ATR14 the regime logic uses, and ONLY when
     # the floor is active -- so the default 0.0 is a byte-identical no-op with
     # no extra work. ATR14[i] is None during the 14-bar warmup -> no floor.
-    # Shared Wilder ATR14 for the trail floor AND the F1 chandelier ratchet
-    # form (PX-T1). Computed ONCE, and ONLY when at least one consumer is
-    # active, so the all-defaults path (both k==0.0) does no extra work and
-    # stays a byte-identical no-op. ATR14[i] is None during the 14-bar warmup.
+    # Shared Wilder ATR14 for the trail floor (trail_atr_floor_k), the F1
+    # chandelier ratchet form (PX-T1; ratchet_atr_k), AND the F3 bounded-MAE
+    # initial stop (PX-T2; wait_mae_atr_k). Computed ONCE, and ONLY when at least
+    # one consumer is active, so the all-defaults path (every k==0.0) does no
+    # extra work and stays a byte-identical no-op. ATR14[i] is None during the
+    # 14-bar warmup -> the MAE stop falls back to the range-SL alone.
     atr14_floor = (_atr_wilder(highs, lows, closes, 14)
-                   if (trail_atr_floor_k > 0.0 or ratchet_atr_k > 0.0) else None)
+                   if (trail_atr_floor_k > 0.0 or ratchet_atr_k > 0.0
+                       or wait_mae_atr_k > 0.0) else None)
     # Ficha-count lever (P46; active_fichas): the ORDERED tags opened at every
     # entry site. active_fichas=3 -> the classic full ("F1","F2","F3"), so the
     # entry-site dicts below are byte-identical to before. N=1/2 truncates to
@@ -539,6 +594,25 @@ def simular_variant(
         rango = bars[idx]["high"] - bars[idx]["low"]
         return (bars[idx]["low"] - init_sl_range_k * rango) if lado == +1 \
             else (bars[idx]["high"] + init_sl_range_k * rango)
+
+    def _sl_inicial_bounded(lado: int, idx: int, entry_px: float) -> float:
+        """Initial SL for a fill at `entry_px` on bar `idx`. Default
+        (`wait_mae_atr_k==0.0`) returns the plain range-SL `_sl_inicial`, so the
+        no-op path is byte-identical. When `wait_mae_atr_k > 0` (PX-T2), the stop
+        is the WIDER of {range-SL, `entry_px -/+ wait_mae_atr_k*ATR14[idx]`}
+        DISTANCES -- i.e. the LOWER level for a long / HIGHER for a short (a
+        wider, explicitly bounded max-adverse-excursion stop that never tightens
+        the legal stop). During the ATR14 warmup (`atr14_floor[idx]` is None) the
+        MAE stop is undefined, so this falls back to the range-SL alone."""
+        base = _sl_inicial(lado, idx)
+        if wait_mae_atr_k <= 0.0 or atr14_floor is None or atr14_floor[idx] is None:
+            return base
+        atr_dist = wait_mae_atr_k * atr14_floor[idx]
+        if lado == +1:
+            mae_sl = entry_px - atr_dist
+            return min(base, mae_sl)   # wider (lower) of the two levels
+        mae_sl = entry_px + atr_dist
+        return max(base, mae_sl)       # wider (higher) of the two levels
 
     eventos: list[dict[str, Any]] = []
     fichas: dict[str, _Ficha] = {}
@@ -798,6 +872,57 @@ def simular_variant(
                                     "motivo": "EXIT_TRAIL", "ficha": tag})
                     continue
 
+            # F3 bounded stop-and-wait BE-or-better floor (PX-T2; only armed when
+            # BOTH wait_mae_atr_k>0 AND wait_be_exit=True -> this block is skipped
+            # ENTIRELY otherwise, byte-identical no-op). Once the ficha has
+            # recovered to >= entry (long; mirror short) after riding the wide
+            # bounded-MAE stop, raise the SL to the break-even floor
+            # (entry + be_offset_pips*pip, long; mirror short) so the exit is at
+            # BE-or-better instead of chasing the wide stop back down. One more
+            # FLOOR that only ever TIGHTENS -- never loosening the current SL,
+            # never a ceiling above price. Placed AFTER the ratchet block; the
+            # same-bar MAE-stop hit is already resolved by the EXIT_INITSL /
+            # EXIT_TRAIL checks ABOVE (SL-FIRST conservatism -- a bar that both
+            # pierces the wide stop and recovers to BE exits at the stop, the
+            # honest OHLC lower bound). Honest under live_fill_mode: the raise is
+            # knowable only at this bar's close, so like BE/ratchet it becomes
+            # active on the NEXT bar via server_sl_by_tag; a floor already
+            # violated by this bar's own close is handled by the trailing same-
+            # bar fallback below. `be_offset_pips` is shared with the be_at_r
+            # break-even lever (same floor definition).
+            if wait_mae_atr_k > 0.0 and wait_be_exit:
+                if f.lado == +1:
+                    f.max_fav = max(f.max_fav, bar["high"])
+                    if f.max_fav >= f.entry:
+                        be_floor = f.entry + be_offset_pips * pip
+                        if f.sl is None or be_floor > f.sl:
+                            f.sl = be_floor
+                else:
+                    f.max_fav = min(f.max_fav, bar["low"])
+                    if f.max_fav <= f.entry:
+                        be_floor = f.entry - be_offset_pips * pip
+                        if f.sl is None or be_floor < f.sl:
+                            f.sl = be_floor
+
+                # Re-check: the BE-raised SL may already be hit intrabar.
+                # live_fill_mode: BE is computed from THIS bar's high/low (the
+                # max_fav update above), so like BE/ratchet/trailing it is only
+                # knowable at close live -- use `sl_check` (the prior server-side
+                # level) for the intrabar test, never the just-raised f.sl; the
+                # trailing same-bar fallback (below) then closes a floor violated
+                # by this bar's own close.
+                wait_be_check = sl_check if live_fill_mode else f.sl
+                if f.lado == +1 and bar["low"] <= wait_be_check:
+                    f.abierta = False
+                    eventos.append({"idx": i, "lado": lado_txt, "precio": wait_be_check,
+                                    "motivo": "EXIT_TRAIL", "ficha": tag})
+                    continue
+                if f.lado == -1 and bar["high"] >= wait_be_check:
+                    f.abierta = False
+                    eventos.append({"idx": i, "lado": lado_txt, "precio": wait_be_check,
+                                    "motivo": "EXIT_TRAIL", "ficha": tag})
+                    continue
+
             # Per-ficha trailing: SL only tightens toward price; the range-SL
             # is the floor until the trailing overtakes it.
             if trail_mode_ladder == "range":
@@ -1021,7 +1146,7 @@ def simular_variant(
                 lado_txt = "L" if reentry_lado == +1 else "S"
                 eventos.append({"idx": i, "lado": lado_txt, "precio": reentry_px,
                                 "motivo": "ENTRY_L" if reentry_lado == +1 else "ENTRY_S", "ficha": None})
-                sl = _sl_inicial(reentry_lado, i)
+                sl = _sl_inicial_bounded(reentry_lado, i, reentry_px)
                 fichas = {t: _Ficha(reentry_lado, reentry_px, sl) for t in active_tags}
                 sl_inicial_by_tag = {t: sl for t in active_tags}
                 server_sl_by_tag = {t: sl for t in active_tags}
@@ -1234,7 +1359,7 @@ def simular_variant(
 
         if long_ok and allow_long:
             eventos.append({"idx": i, "lado": "L", "precio": px_long, "motivo": "ENTRY_L", "ficha": None})
-            sl = _sl_inicial(+1, i)
+            sl = _sl_inicial_bounded(+1, i, px_long)
             fichas = {t: _Ficha(+1, px_long, sl) for t in active_tags}
             sl_inicial_by_tag = {t: sl for t in active_tags}
             server_sl_by_tag = {t: sl for t in active_tags}
@@ -1250,7 +1375,7 @@ def simular_variant(
             reentry_count = 0
         elif short_ok and allow_short:
             eventos.append({"idx": i, "lado": "S", "precio": px_short, "motivo": "ENTRY_S", "ficha": None})
-            sl = _sl_inicial(-1, i)
+            sl = _sl_inicial_bounded(-1, i, px_short)
             fichas = {t: _Ficha(-1, px_short, sl) for t in active_tags}
             sl_inicial_by_tag = {t: sl for t in active_tags}
             server_sl_by_tag = {t: sl for t in active_tags}

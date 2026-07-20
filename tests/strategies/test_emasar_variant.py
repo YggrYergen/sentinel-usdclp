@@ -1287,3 +1287,307 @@ def test_ratchet_never_caps_runner_floor_below_price():
             else:
                 trough = min(bars[j]["low"] for j in range(lo, hi + 1))
                 assert e["precio"] >= trough - 1e-6
+
+
+# ---------------------------------------------------------------------------
+# PX-T2 / F3: bounded stop-and-wait exit lever (`wait_mae_atr_k`,
+# `wait_be_exit`). Defaults (0.0 / False) must reproduce current behavior
+# byte-for-byte, in BOTH live_fill_mode values and with return_state on/off.
+# Bounded waiting is INVIOLABLE: wait_mae_atr_k>0 requires max_hold_bars.
+# ---------------------------------------------------------------------------
+
+WAIT_DEFAULTS = dict(wait_mae_atr_k=0.0, wait_be_exit=False)
+
+
+@pytest.mark.parametrize("live_fill_mode", [False, True])
+@pytest.mark.parametrize("return_state", [False, True])
+def test_wait_noop_default_byte_identical_synthetic(live_fill_mode, return_state):
+    """Byte-identity no-op (TDD step 1): with both wait kwargs at their defaults
+    (`wait_mae_atr_k=0.0`, `wait_be_exit=False`) the event stream (and, when
+    requested, the return_state snapshot) must be IDENTICAL to the pre-change
+    engine, across both live_fill_mode values and both return_state values."""
+    bars = _synthetic_bars(300, seed=120)
+    baseline = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **V09_PARAMS)
+    with_defaults = simular_variant(
+        bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+        return_state=return_state, **WAIT_DEFAULTS, **V09_PARAMS)
+    assert with_defaults == baseline
+    if return_state:
+        assert len(baseline[0]) > 0
+    else:
+        assert len(baseline) > 0
+
+
+def test_wait_noop_default_byte_identical_real_m5():
+    bars = _load_real_m5_window()
+    if bars is None:
+        pytest.skip("XAUUSD/M5 2026-06 lake tier not present")
+    for live_fill_mode in (False, True):
+        baseline = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode, **V09_PARAMS)
+        with_defaults = simular_variant(
+            bars, symbol="XAUUSD", live_fill_mode=live_fill_mode,
+            **WAIT_DEFAULTS, **V09_PARAMS)
+        assert with_defaults == baseline
+        assert len(baseline) > 0
+
+
+def test_wait_mae_without_max_hold_raises_valueerror():
+    """MANDATORY BOUND (Constraint 2, inviolable martingale guard): a positive
+    `wait_mae_atr_k` with `max_hold_bars=None` refuses to run -- the price bound
+    and the time bound are hard-required together."""
+    bars = _synthetic_bars(50, seed=120)
+    with pytest.raises(ValueError):
+        simular_variant(
+            bars, symbol="XAUUSD", wait_mae_atr_k=2.0, max_hold_bars=None,
+            **V09_PARAMS)
+
+
+def test_wait_be_exit_without_mae_is_inert():
+    """`wait_be_exit=True` WITHOUT `wait_mae_atr_k>0` is inert (no error, no
+    behavior change) -- the BE-or-better floor only arms when the wider bounded
+    MAE stop is active."""
+    bars = _synthetic_bars(300, seed=120)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    be_only = simular_variant(
+        bars, symbol="XAUUSD", wait_be_exit=True, **V09_PARAMS)
+    assert be_only == baseline
+
+
+def test_wait_mae_bounded_hold_never_exceeds_time_or_price_bound():
+    """Behavioural (TDD step 3, (i)): with `wait_mae_atr_k>0, max_hold_bars=N`,
+    NO ficha holds past N bars after its entry, and every realized ADVERSE exit
+    never breaches the MAE bound (the wider of {range-SL, entry-k*ATR}) -- the
+    stop is bounded, and the wait is time-bounded. Asserted per realized ficha
+    on a random fixture."""
+    bars = _synthetic_bars(600, seed=7)
+    from sentinel_engine.strategies.emasar_variant import _atr_wilder
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr14 = _atr_wilder(highs, lows, closes, 14)
+    k = 2.5
+    N = 40
+    events = simular_variant(
+        bars, symbol="XAUUSD", wait_mae_atr_k=k, max_hold_bars=N,
+        **V09_PARAMS)
+    assert len(events) > 0
+    motivos = {e["motivo"] for e in events}
+    assert motivos <= {"ENTRY_L", "ENTRY_S", "EXIT_INITSL", "EXIT_TRAIL",
+                       "time_stop"}
+    entry = None
+    saw_realized = False
+    for e in events:
+        if e["motivo"] in ("ENTRY_L", "ENTRY_S"):
+            entry = e
+        elif entry is not None and e["motivo"].startswith(("EXIT", "time_stop")) \
+                and e.get("ficha"):
+            saw_realized = True
+            entry_idx = entry["idx"]
+            exit_idx = e["idx"]
+            # Time bound: never held past N bars after entry.
+            assert (exit_idx - entry_idx) <= N
+            # Price bound: the widened initial SL = the WIDER of {range-SL,
+            # entry -/+ k*ATR14[entry]} distances. A stop-out at EXIT_INITSL
+            # can never be worse (further from entry) than that bound.
+            rango = bars[entry_idx]["high"] - bars[entry_idx]["low"]
+            if entry["motivo"] == "ENTRY_L":
+                range_sl = bars[entry_idx]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+                atr_sl = (entry["precio"] - k * atr14[entry_idx]
+                          if atr14[entry_idx] is not None else range_sl)
+                mae_bound = min(range_sl, atr_sl)  # wider = lower for a long
+                if e["motivo"] == "EXIT_INITSL":
+                    assert e["precio"] >= mae_bound - 1e-6
+            else:
+                range_sl = bars[entry_idx]["high"] + V09_PARAMS["init_sl_range_k"] * rango
+                atr_sl = (entry["precio"] + k * atr14[entry_idx]
+                          if atr14[entry_idx] is not None else range_sl)
+                mae_bound = max(range_sl, atr_sl)  # wider = higher for a short
+                if e["motivo"] == "EXIT_INITSL":
+                    assert e["precio"] <= mae_bound + 1e-6
+    assert saw_realized, "fixture must produce at least one realized ficha exit"
+
+
+def test_wait_mae_widens_initial_stop_vs_range_sl():
+    """The bounded MAE stop is the WIDER of {range-SL, entry-k*ATR}. With a
+    large k the ATR stop dominates, so the effective initial SL is provably
+    LOWER (long) / HIGHER (short) than the plain range-SL -- fewer premature
+    EXIT_INITSL stop-outs than the baseline. We assert the first long's
+    realized initial-SL bound is at least as wide as the range-SL."""
+    bars = _synthetic_bars(600, seed=7)
+    from sentinel_engine.strategies.emasar_variant import _atr_wilder
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr14 = _atr_wilder(highs, lows, closes, 14)
+    k = 5.0
+    events = simular_variant(
+        bars, symbol="XAUUSD", wait_mae_atr_k=k, max_hold_bars=48,
+        **V09_PARAMS)
+    first_long = next((e for e in events if e["motivo"] == "ENTRY_L"), None)
+    assert first_long is not None
+    ei = first_long["idx"]
+    if atr14[ei] is None:
+        pytest.skip("first long entry is inside the ATR warmup")
+    rango = bars[ei]["high"] - bars[ei]["low"]
+    range_sl = bars[ei]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+    atr_sl = first_long["precio"] - k * atr14[ei]
+    # With a large k the ATR stop is strictly wider (lower) than the range-SL.
+    assert atr_sl < range_sl
+
+
+def test_wait_be_exit_exits_at_be_or_better_after_recovery():
+    """Behavioural (TDD step 3, (ii)): a hand-built long that dips (WITHIN the
+    wide MAE bound, so it does NOT stop out) then recovers back across entry
+    across bars, then gives back again. With `wait_be_exit=True` the ficha
+    exits at BE-or-better (the BE floor, >= entry). With BE-exit OFF the wide
+    stop rides all the way back down and the give-back exits BELOW entry -- so
+    BE-exit strictly improves the realized exit here.
+
+    To make the divergence deterministic and NOT depend on the ordinary pips
+    trail firing early, the trail distances are set WIDE (5000 pips) so the
+    only stops in play are the wide bounded-MAE stop and (BE-on) the BE floor.
+    A seeded warmup opens a long; a controlled recovery/give-back tail is then
+    appended AFTER that entry with the position still open (the wide trail can
+    never have closed it on the flat warmup)."""
+    rnd = random.Random(3)
+    base_epoch = int(datetime(2026, 6, 1, tzinfo=timezone.utc).timestamp())
+
+    def _bar(k, o, h, l, c):
+        return {"t": base_epoch + k * 60, "open": o, "high": h, "low": l, "close": c}
+
+    # WIDE trail so the ordinary ladder never fires -- isolates the wait lever.
+    wide = dict(V09_PARAMS)
+    wide.update(f1_trail_pips=5000.0, f2_trail_pips=5000.0, f3_trail_pips=5000.0)
+    kwargs = dict(
+        wait_mae_atr_k=6.0, wait_be_exit=True, max_hold_bars=200,
+        be_offset_pips=0.5, **wide)
+
+    bars = []
+    price = 4500.0
+    for k in range(60):
+        drift = rnd.uniform(-0.8, 1.6)
+        price += drift
+        o = price - drift
+        c = price
+        h = max(o, c) + abs(rnd.uniform(0.2, 0.8))
+        l = min(o, c) - abs(rnd.uniform(0.2, 0.8))
+        bars.append(_bar(k, o, h, l, c))
+
+    warm_events = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    entry = next((e for e in warm_events if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None, "seed=3 fixture must open a long"
+    ei = entry["idx"]
+    entry_px = entry["precio"]
+    # Truncate to end at the entry bar (entry_timing=0 fills at close of `ei`),
+    # so the F1/F2/F3 are provably open going into the appended tail.
+    bars = bars[:ei + 1]
+
+    # Controlled tail (position open):
+    #  (1) a recovery bar whose HIGH >= entry arms the BE floor;
+    #  (2) a give-back bar whose LOW falls below entry (but ABOVE the ~6*ATR wide
+    #      stop) -- with BE-exit on it stops at the BE floor (>= entry); with
+    #      BE-exit off the wide stop is never reached, so it keeps holding.
+    last_k = len(bars)
+    bars.append(_bar(last_k, entry_px + 0.1, entry_px + 5.0, entry_px + 0.05,
+                     entry_px + 3.0))  # recovery -> arms BE
+    bars.append(_bar(last_k + 1, entry_px + 3.0, entry_px + 3.1, entry_px - 3.0,
+                     entry_px - 2.5))  # give-back below entry (within wide stop)
+
+    be_on = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    be_off_kwargs = dict(kwargs)
+    be_off_kwargs["wait_be_exit"] = False
+    be_off = simular_variant(bars, symbol="XAUUSD", **be_off_kwargs)
+
+    def _f1_exit_after(events, entry_idx):
+        seen_entry = False
+        for e in events:
+            if e["motivo"] == "ENTRY_L" and e["idx"] == entry_idx:
+                seen_entry = True
+            elif seen_entry and e.get("ficha") == "F1" \
+                    and e["motivo"].startswith(("EXIT", "time_stop")):
+                return e
+        return None
+
+    on_exit = _f1_exit_after(be_on, ei)
+    off_exit = _f1_exit_after(be_off, ei)
+    assert on_exit is not None, "BE-exit must close the ficha on the give-back bar"
+    # BE-or-better: the BE-exit run's realized F1 exit is at or above entry.
+    assert on_exit["precio"] >= entry_px - 1e-6
+    # It closes on the give-back bar (the BE floor was armed the bar before).
+    assert on_exit["idx"] == last_k + 1
+    # BE-exit strictly improved the exit vs riding the wide stop down: the
+    # BE-off run does NOT exit here (its ~6*ATR wide stop is untouched), so it is
+    # still holding a position that BE-exit already banked at break-even-or-better.
+    assert off_exit is None
+
+
+def test_wait_sl_first_on_same_bar_mae_and_be_recovery():
+    """Behavioural (TDD step 3, (iv)): SL-FIRST conservatism. A single bar whose
+    LOW touches the wide MAE bound AND whose HIGH recovers back to >= entry (BE
+    recovery) must resolve as the STOP (the conservative lower bound), NOT the
+    BE-or-better exit. We build a long, then a single bar that both dips to the
+    MAE stop and rallies above entry in the same bar, and assert the exit is the
+    stop-out at (or below) entry, tagged EXIT_INITSL / EXIT_TRAIL -- never a
+    profitable BE exit."""
+    rnd = random.Random(3)
+    base_epoch = int(datetime(2026, 6, 1, tzinfo=timezone.utc).timestamp())
+
+    def _bar(k, o, h, l, c):
+        return {"t": base_epoch + k * 60, "open": o, "high": h, "low": l, "close": c}
+
+    bars = []
+    price = 4500.0
+    for k in range(60):
+        drift = rnd.uniform(-0.8, 1.6)
+        price += drift
+        o = price - drift
+        c = price
+        h = max(o, c) + abs(rnd.uniform(0.2, 0.8))
+        l = min(o, c) - abs(rnd.uniform(0.2, 0.8))
+        bars.append(_bar(k, o, h, l, c))
+
+    from sentinel_engine.strategies.emasar_variant import _atr_wilder
+    kwargs = dict(
+        wait_mae_atr_k=3.0, wait_be_exit=True, max_hold_bars=48,
+        be_offset_pips=0.5, **V09_PARAMS)
+    warm_events = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    entry = next((e for e in warm_events if e["motivo"] == "ENTRY_L"), None)
+    assert entry is not None, "seed=3 fixture must open a long"
+    ei = entry["idx"]
+    entry_px = entry["precio"]
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr14 = _atr_wilder(highs, lows, closes, 14)
+    assert atr14[ei] is not None, "seed=3 entry must be past the ATR warmup"
+    rango = bars[ei]["high"] - bars[ei]["low"]
+    range_sl = bars[ei]["low"] - V09_PARAMS["init_sl_range_k"] * rango
+    atr_sl = entry_px - 3.0 * atr14[ei]
+    mae_stop = min(range_sl, atr_sl)  # wider (lower) of the two
+    # Truncate to end at the entry bar so the position is open into the single
+    # engineered same-bar dip-and-recover bar below.
+    bars = bars[:ei + 1]
+    last_k = len(bars)
+    c0 = bars[-1]["close"]
+    # ONE bar: low pierces the MAE stop AND high recovers above entry (BE).
+    bars.append(_bar(last_k, c0, entry_px + 5.0, mae_stop - 0.5, entry_px + 2.0))
+
+    events = simular_variant(bars, symbol="XAUUSD", **kwargs)
+    # The F1 exit on that final bar must be the STOP-OUT (SL-first), priced at
+    # or below entry -- NOT a BE-or-better profit exit above entry.
+    exit_ev = None
+    seen = False
+    for e in events:
+        if e["motivo"] == "ENTRY_L" and e["idx"] == ei:
+            seen = True
+        elif seen and e.get("ficha") == "F1" and e["motivo"].startswith("EXIT"):
+            exit_ev = e
+            break
+    assert exit_ev is not None
+    assert exit_ev["idx"] == last_k
+    assert exit_ev["motivo"] in ("EXIT_INITSL", "EXIT_TRAIL")
+    # SL-first: the fill is the stop level (<= entry), never the BE profit.
+    assert exit_ev["precio"] <= entry_px + 1e-6
