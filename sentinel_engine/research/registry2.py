@@ -244,6 +244,17 @@ class ResearchRegistry:
             conn.execute("ALTER TABLE run ADD COLUMN fidelity_ref TEXT")
             conn.commit()
 
+        # P38 (honest program, 2026-07-19): `run.validity` -- nullable TEXT
+        # validity label ('DUPLICATE_INGEST'|'LOOKAHEAD_CONFIRMED'|
+        # 'REGIME_UNAUDITED'|...). ADDITIVE-ONLY by user directive: the
+        # registry is append-only history -- NULL means valid/unreviewed;
+        # marking NEVER deletes a row nor mutates any original field. Set
+        # exclusively by scripts/report/mark_validity_2026_07_19.py, which
+        # also writes an `audit_log` row per marking.
+        if "validity" not in run_cols:
+            conn.execute("ALTER TABLE run ADD COLUMN validity TEXT")
+            conn.commit()
+
         # B1a-2: `meta` kv table (persisted DealsWatcher.last_sync + any
         # other single-row settings) -- additive, own CREATE TABLE IF NOT
         # EXISTS since it didn't exist in D.5's DDL.
