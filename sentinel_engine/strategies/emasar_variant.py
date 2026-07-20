@@ -129,6 +129,7 @@ def simular_variant(
     trail_atr_floor_k: float = 0.0,
     max_hold_bars: int | None = None,
     confirm_bar: bool = False,
+    stop_and_reverse: bool = False,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -360,6 +361,22 @@ def simular_variant(
     pending. Pending state never crosses a run boundary (declared before the
     bar loop, alongside `reentry_armed`/`entry_bar_by_tag`). `confirm_bar=False`
     reproduces the classic event stream byte-for-byte.
+
+    Stop-and-reverse (P55; `stop_and_reverse`, default False = disabled = EXACT
+    current behavior). Today the `if fichas: continue` choke defers ALL entry
+    evaluation -- including an opposite-direction signal -- while any ficha is
+    open, so a net reverse can only ever happen on a LATER bar via the ordinary
+    exit paths. When `stop_and_reverse=True`, at that choke the strict close-of-
+    bar gates are evaluated for the current bar; if a signal in the OPPOSITE
+    direction to the open position fires, ALL open fichas are closed at THIS
+    bar's CLOSE (`px`, exit_reason `"reverse"`) and the guard is NOT taken, so
+    control falls through into the normal entry section and the opposite
+    direction OPENS on the SAME bar `i` via the existing entry/fill path (priced
+    at `px` under the default entry_timing, honest under `live_fill_mode`, no
+    new fill route). Same-direction signals while open keep the classic no-
+    pyramiding deferral (the guard still `continue`s). Long and short are never
+    held simultaneously. `stop_and_reverse=False` reproduces the classic event
+    stream byte-for-byte.
     """
     n = len(bars)
     highs = [b["high"] for b in bars]
@@ -713,8 +730,58 @@ def simular_variant(
             signal_exit_motivos = []
 
         # ---- 2) entry (no reentry while any ficha is open) ----
+        # Stop-and-reverse (P55; stop_and_reverse=False disables this block
+        # entirely -- the guard collapses to the classic `if fichas: continue`,
+        # preserving current behavior byte-for-byte). When True and a position
+        # is open, evaluate the strict close-of-bar gates for THIS bar; if a
+        # signal OPPOSITE to the open side fires, close ALL open fichas at THIS
+        # bar's close (`px`, motivo "reverse") and DO NOT `continue` -- fall
+        # through so the opposite direction opens on the SAME bar via the normal
+        # entry path below (priced at `px`, honest under live_fill_mode). Same-
+        # direction (or no) signal keeps the classic deferral (`continue`).
         if fichas:
-            continue
+            if not stop_and_reverse:
+                continue
+            open_lado = next(iter(fichas.values())).lado
+            _sar_long, _ = gate_long(
+                bars, ema_f, ema_s, ema5_unused, sar_trend, ao, ac, mom, i,
+                confirm_mode=confirm_mode, use_ema5=False,
+                confirm_count=confirm_count, require_ema_order=require_ema_order)
+            _sar_short, _ = gate_short(
+                bars, ema_f, ema_s, ema5_unused, sar_trend, ao, ac, mom, i,
+                confirm_mode=confirm_mode, use_ema5=False,
+                confirm_count=confirm_count, require_ema_order=require_ema_order)
+            _sar_signal = 0
+            if _sar_long and allow_long:
+                _sar_signal = +1
+            elif _sar_short and allow_short:
+                _sar_signal = -1
+            if _sar_signal == 0 or _sar_signal == open_lado:
+                # No signal, or same-direction: classic no-pyramiding deferral.
+                continue
+            # Opposite-direction signal while open -> net reverse. Close every
+            # open ficha at THIS bar's close, then fall through to open the
+            # opposite direction on the same bar.
+            for tag in list(fichas.keys()):
+                f = fichas[tag]
+                if not f.abierta:
+                    continue
+                f.abierta = False
+                eventos.append({
+                    "idx": i,
+                    "lado": "L" if f.lado == +1 else "S",
+                    "precio": px,
+                    "motivo": "reverse",
+                    "ficha": tag,
+                })
+            if reentry_enable:
+                for ev in eventos[_n_eventos_before_exits:]:
+                    if ev["motivo"].startswith("EXIT"):
+                        signal_exit_motivos.append(ev["motivo"])
+            fichas = {k: v for k, v in fichas.items() if v.abierta}
+            # Any re-entry arm from the closed lineage is moot after a reverse.
+            reentry_armed = False
+            reentry_lado = 0
 
         # V-13: while armed, cancel the arm outright if SAR trend has
         # flipped away from the original signal's direction (checked BEFORE
