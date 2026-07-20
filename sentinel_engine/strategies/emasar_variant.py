@@ -131,6 +131,7 @@ def simular_variant(
     confirm_bar: bool = False,
     stop_and_reverse: bool = False,
     active_fichas: int = 3,
+    pullback_limit: bool = False,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -398,6 +399,18 @@ def simular_variant(
     if active_fichas not in (1, 2, 3):
         raise ValueError(
             f"active_fichas must be 1, 2 or 3, got {active_fichas!r}")
+    # V-12 causal cousin (P33): the strictly-causal resting pullback-LIMIT lever
+    # operates ONLY from the classic close-entry signal path (entry_timing==0)
+    # and does not compose with the other deferred-entry mechanics. Reject the
+    # out-of-scope combos loudly rather than silently mutate those paths.
+    if pullback_limit:
+        if entry_timing != 0:
+            raise ValueError(
+                "pullback_limit requires entry_timing=0 (close-entry signal "
+                f"path); got entry_timing={entry_timing!r}")
+        if confirm_bar:
+            raise ValueError(
+                "pullback_limit does not compose with confirm_bar")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -507,6 +520,13 @@ def simular_variant(
     pending_confirm_lado = 0        # +1 long / -1 short / 0 none pending
     pending_confirm_high = 0.0      # signal bar's high (long confirm reference)
     pending_confirm_low = 0.0       # signal bar's low (short confirm reference)
+    # P33 pullback-LIMIT state (V-12 causal cousin): a signal at bar i places a
+    # resting LIMIT at ema_f[i] for bar i+1 ONLY. side=+1 BUY LIMIT (fill iff
+    # bars[i+1].low<=level) / -1 SELL LIMIT (fill iff bars[i+1].high>=level);
+    # next-bar expiry (never carried past i+1). Dead weight when
+    # pullback_limit=False. Function-local, reset per run.
+    pending_limit_lado = 0          # +1 long / -1 short / 0 none resting
+    pending_limit_level = 0.0       # the LIMIT price = ema_f[signal bar]
     # live_fill_mode + return_state: the SERVER-side SL a broker is actually
     # RESTING with DURING the currently-processing bar (the i-1 level, before
     # this bar's own high/AC raises f.sl). Captured at the START of each bar so
@@ -1004,6 +1024,59 @@ def simular_variant(
             # bar's fill under the active entry_timing).
             long_ok = confirm_long
             short_ok = confirm_short
+
+        # Pullback-LIMIT entry (P33; V-12 causal cousin; pullback_limit=False
+        # disables this block entirely, preserving current behavior byte-for-
+        # byte -- long_ok/short_ok/px_long/px_short flow straight into the entry
+        # block below exactly as before). When True (entry_timing==0 only): a
+        # bar-i signal (long_ok/short_ok just computed) does NOT enter at i. A
+        # resting LIMIT at level=ema_f[i] (known once bar i closes) is captured
+        # for the NEXT bar. Any LIMIT PENDING FROM BAR i-1 is resolved here
+        # first against THIS bar's OHLC (a strictly LATER bar than the signal
+        # bar -- no look-ahead): LONG fills iff bar.low<=level, SHORT iff
+        # bar.high>=level, at price=level; otherwise the order EXPIRES. One-bar
+        # window only: the pending is consumed (filled or expired) every bar,
+        # never carried past i+1. A last-bar signal has no i+1 and drops.
+        if pullback_limit:
+            new_signal_lado = 0
+            if long_ok and allow_long:
+                new_signal_lado = +1
+            elif short_ok and allow_short:
+                new_signal_lado = -1
+
+            # Resolve the resting LIMIT from bar i-1 against THIS bar's OHLC.
+            fill_long = False
+            fill_short = False
+            if pending_limit_lado == +1:
+                fill_long = bar["low"] <= pending_limit_level
+            elif pending_limit_lado == -1:
+                fill_short = bar["high"] >= pending_limit_level
+
+            # This bar's own signal (if any) places NEXT bar's resting LIMIT at
+            # ema_f[i]; the signal bar itself never enters. A fresh signal
+            # overwrites any already-resolved (filled/expired) prior pending. BUT
+            # if this bar is itself filling a prior LIMIT (a position is about to
+            # open), the fresh signal is dropped -- it could never be resolved
+            # next bar (the `if fichas: continue` guard would skip it), so
+            # capturing it would leak the pending past its one-bar window.
+            if fill_long or fill_short:
+                pending_limit_lado = 0
+            elif new_signal_lado != 0:
+                pending_limit_lado = new_signal_lado
+                pending_limit_level = ema_f[i]
+            else:
+                pending_limit_lado = 0
+
+            # Only a FILLED resting LIMIT enters on this bar, priced at the LIMIT
+            # level (NOT the close). The initial SL below still uses signal bar
+            # i's range via _sl_inicial(lado, i), consistent with the sibling
+            # deferred-entry levers.
+            long_ok = fill_long
+            short_ok = fill_short
+            if fill_long:
+                px_long = pending_limit_level
+            if fill_short:
+                px_short = pending_limit_level
 
         if long_ok and allow_long:
             eventos.append({"idx": i, "lado": "L", "precio": px_long, "motivo": "ENTRY_L", "ficha": None})
