@@ -245,26 +245,66 @@ def test_run_supervised_relaunches_with_backoff_and_logs_events(tmp_path):
     assert "backing off 5s" in log_text.lower()
 
 
-def test_run_supervised_reports_deals_watcher_status_once(tmp_path):
+# --------------------------------------------------------------------------
+# deals-watcher survivability: the supervisor now STARTS and KEEPS ALIVE the
+# watcher (not just warns), so `deals_raw` is always being written. Idempotent
+# by cmdline-marker detection -- never doubles an already-running watcher.
+# --------------------------------------------------------------------------
+def test_ensure_watcher_running_launches_when_absent(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              watcher_argv=["python", "-m", "scripts.live.run_deals_watcher", "--poll", "5"])
+    launches = []
+    launched = sup.ensure_watcher_running(
+        cfg, is_running_fn=lambda: False,
+        launcher=lambda argv: launches.append(argv))
+    assert launched is True
+    assert launches == [cfg.watcher_argv]
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "deals watcher" in log_text.lower()
+    assert "launching" in log_text.lower()
+
+
+def test_ensure_watcher_running_noop_when_already_running(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              watcher_argv=["python", "-m", "scripts.live.run_deals_watcher"])
+    launches = []
+    launched = sup.ensure_watcher_running(
+        cfg, is_running_fn=lambda: True,
+        launcher=lambda argv: launches.append(argv))
+    assert launched is False
+    assert launches == []
+
+
+def test_watch_while_running_invokes_watcher_keepalive_each_poll(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_recheck_s=10.0)
+    clock = _FakeClock()
+    proc = _FakeProc(exit_code=0, exit_after_polls=3)  # alive for 2 poll cycles
+    keepalive_calls = {"n": 0}
+
+    rc = sup.watch_while_running(
+        cfg, proc, mtime_fn=lambda p: clock.t, now_fn=clock.now, sleep_fn=clock.sleep,
+        watcher_keepalive=lambda: keepalive_calls.__setitem__("n", keepalive_calls["n"] + 1))
+    assert rc == 0
+    # Keepalive fired on every poll cycle where the process was still alive.
+    assert keepalive_calls["n"] >= 2
+
+
+def test_run_supervised_starts_watcher_at_startup(tmp_path):
     cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
               max_iterations=1)
     clock = _FakeClock()
-    calls = {"n": 0}
-
-    def watcher_check():
-        calls["n"] += 1
-        return False
+    keepalive_calls = {"n": 0}
 
     def launcher(argv):
         return _FakeProc(exit_code=0, exit_after_polls=1)
 
     sup.run_supervised(cfg, preflight_fn=_ok_report, launcher=launcher,
                       mtime_fn=lambda p: clock.t, sleep_fn=clock.sleep, now_fn=clock.now,
-                      deals_watcher_check=watcher_check)
-    assert calls["n"] == 1
-    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
-    assert "deals watcher" in log_text.lower()
-    assert "not detected" in log_text.lower()
+                      watcher_keepalive=lambda: keepalive_calls.__setitem__("n", keepalive_calls["n"] + 1))
+    # Watcher keepalive ran at least once (startup) even though the executor
+    # exited immediately.
+    assert keepalive_calls["n"] >= 1
 
 
 # --------------------------------------------------------------------------

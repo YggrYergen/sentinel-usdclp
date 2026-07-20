@@ -37,9 +37,16 @@ WHAT THIS MODULE DOES
      `scripts/live/run_live_20.audit.log`'s mtime is older than
      `STALE_AFTER_S` (5 minutes), log ALARM lines (repeatable, not just once)
      to both `watchdog.log` and stdout. Does NOT kill the process automatically.
-  5. Startup-only: report whether the deals watcher
-     (`scripts.live.run_deals_watcher`) process appears to be running (via
-     `preflight_live.process_running`) -- warn if absent, never start it.
+  5. Deals-watcher survivability (2026-07-20): the supervisor now STARTS and
+     KEEPS ALIVE the deals watcher (`scripts.live.run_deals_watcher`), not
+     just warns. It (re)launches it at startup and re-checks every poll cycle
+     of `watch_while_running` (~`stale_recheck_s`), so a watcher that dies on
+     a terminal cycle is revived within ~30s instead of staying dead for
+     hours (the 2026-07-16 data-loss incident: nothing restarted it). The
+     check is idempotent by cmdline marker (`process_running`) -- an
+     already-running watcher is never doubled. ATTACH-ONLY is preserved: the
+     watcher process re-checks the terminal before initializing MT5; the
+     supervisor only spawns the python process.
 
 This module contains NO MetaTrader5 order APIs. All MT5-specific read-only
 logic lives in `preflight_live.py` (imported); the executor's own decision
@@ -82,6 +89,9 @@ EXECUTOR_ARGV = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
                  "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
                  "--configs", SUPERVISOR_CONFIGS]
 DEALS_WATCHER_MARKER = "run_deals_watcher"
+# Argv the supervisor (re)launches the read-only deals watcher with. Poll 5s.
+WATCHER_ARGV = [sys.executable, "-m", "scripts.live.run_deals_watcher", "--poll", "5"]
+WATCHER_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "watcher_console.log"
 
 BACKOFF_INITIAL_S = 30.0
 BACKOFF_MAX_S = 600.0  # 10 minutes
@@ -116,6 +126,7 @@ def _log_watchdog(msg: str, *, log_path: Path = WATCHDOG_LOG) -> None:
 @dataclass
 class SupervisorConfig:
     executor_argv: list[str]
+    watcher_argv: list[str] | None = None
     watchdog_log: Path = WATCHDOG_LOG
     audit_log: Path = AUDIT_LOG
     backoff_initial_s: float = BACKOFF_INITIAL_S
@@ -158,21 +169,52 @@ def wait_for_preflight(cfg: SupervisorConfig, *,
 
 
 # --------------------------------------------------------------------------
+# Deals-watcher survivability: (re)launch it if it isn't running.
+# --------------------------------------------------------------------------
+def ensure_watcher_running(cfg: SupervisorConfig, *,
+                           is_running_fn: Callable[[], bool],
+                           launcher: Callable[[list[str]], Any]) -> bool:
+    """(Re)launch the read-only deals watcher if it is not currently running.
+    Idempotent: `is_running_fn` detects an existing watcher by cmdline marker,
+    so an already-running one (including one started by hand) is never
+    doubled. ATTACH-ONLY is preserved -- the watcher process re-checks the
+    terminal before touching MT5; we only spawn the python process. Returns
+    True iff a launch happened. No-op (returns False) when `watcher_argv` is
+    None."""
+    if cfg.watcher_argv is None:
+        return False
+    if is_running_fn():
+        return False
+    _log_watchdog("deals watcher: NOT running -- launching it (survivability, "
+                  "so deals_raw is always being written).",
+                  log_path=cfg.watchdog_log)
+    launcher(cfg.watcher_argv)
+    return True
+
+
+# --------------------------------------------------------------------------
 # Staleness watch: polls while the executor subprocess is alive.
 # --------------------------------------------------------------------------
 def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
                         mtime_fn: Callable[[Path], float | None],
                         now_fn: Callable[[], float] = time.time,
-                        sleep_fn: Callable[[float], None] = time.sleep) -> int:
+                        sleep_fn: Callable[[float], None] = time.sleep,
+                        watcher_keepalive: Callable[[], None] | None = None) -> int:
     """Polls `proc.poll()` every `stale_recheck_s` while the executor runs.
     Logs (repeatable) ALARM lines if the audit log hasn't been touched for
-    more than `stale_after_s`. Returns the process's exit code once it exits.
-    Never kills `proc` itself -- staleness is alarm-only per spec."""
+    more than `stale_after_s`. If `watcher_keepalive` is given, it is invoked
+    on every poll cycle (so a dead deals watcher is revived within
+    ~`stale_recheck_s`, not only between executor relaunches). Returns the
+    process's exit code once it exits. Never kills `proc` itself -- staleness
+    is alarm-only per spec."""
     was_stale = False
     while True:
         rc = proc.poll()
         if rc is not None:
             return rc
+
+        if watcher_keepalive is not None:
+            watcher_keepalive()
 
         mtime = mtime_fn(cfg.audit_log)
         now = now_fn()
@@ -216,19 +258,14 @@ def run_supervised(
     mtime_fn: Callable[[Path], float | None],
     sleep_fn: Callable[[float], None] = time.sleep,
     now_fn: Callable[[], float] = time.time,
-    deals_watcher_check: Callable[[], bool] | None = None,
+    watcher_keepalive: Callable[[], None] | None = None,
 ) -> None:
     """The main supervisor loop. Runs until `cfg.max_iterations` relaunches
-    have happened (production: None = forever / Ctrl-C)."""
-    if deals_watcher_check is not None:
-        if deals_watcher_check():
-            _log_watchdog("deals watcher: RUNNING (informational).", log_path=cfg.watchdog_log)
-        else:
-            _log_watchdog(
-                "deals watcher: NOT detected running. This supervisor will NOT "
-                "start it -- if you want deal-level parity tracking tonight, "
-                "launch it yourself: python -m scripts.live.run_deals_watcher",
-                log_path=cfg.watchdog_log)
+    have happened (production: None = forever / Ctrl-C). If `watcher_keepalive`
+    is given, it is invoked at startup and on every executor poll cycle to
+    keep the deals watcher alive."""
+    if watcher_keepalive is not None:
+        watcher_keepalive()  # start the watcher immediately (survivability)
 
     backoff = cfg.backoff_initial_s
     iterations = 0
@@ -241,13 +278,16 @@ def run_supervised(
             # gives up. Treat as "stop the whole supervisor loop" for tests.
             return
 
+        if watcher_keepalive is not None:
+            watcher_keepalive()  # also revive it between executor relaunches
+
         _log_watchdog(f"launching executor: {' '.join(cfg.executor_argv)}",
                      log_path=cfg.watchdog_log)
         start_ts = now_fn()
         proc = launcher(cfg.executor_argv)
 
         rc = watch_while_running(cfg, proc, mtime_fn=mtime_fn, now_fn=now_fn,
-                                 sleep_fn=sleep_fn)
+                                 sleep_fn=sleep_fn, watcher_keepalive=watcher_keepalive)
         uptime = now_fn() - start_ts
         _log_watchdog(f"executor EXITED with code {rc} after {uptime:.0f}s uptime.",
                      log_path=cfg.watchdog_log)
@@ -281,6 +321,16 @@ def _default_launcher(argv: list[str]) -> subprocess.Popen:
                                 stderr=console_fh)
 
 
+def _default_watcher_launcher(argv: list[str]) -> subprocess.Popen:
+    """Launch the read-only deals watcher as a detached-stdio subprocess (its
+    own console log, never inheriting this process's console -- same rationale
+    as `_default_launcher`). The watcher re-checks ATTACH-ONLY itself."""
+    WATCHER_CONSOLE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with open(WATCHER_CONSOLE_LOG, "a", encoding="utf-8", buffering=1) as console_fh:
+        return subprocess.Popen(argv, cwd=str(REPO_ROOT), stdout=console_fh,
+                                stderr=console_fh)
+
+
 def _default_mtime(path: Path) -> float | None:
     try:
         return path.stat().st_mtime
@@ -301,15 +351,23 @@ def main(argv: list[str] | None = None) -> int:
     # cannot block on a console. `logging` is left at its default (silent)
     # config; nothing in this module calls `logger.info`/etc. for output that
     # matters, only `_log_watchdog`.
-    cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV)
+    cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV, watcher_argv=WATCHER_ARGV)
     _log_watchdog("=== supervisor_live starting ===", log_path=cfg.watchdog_log)
+
+    def _watcher_keepalive() -> None:
+        ensure_watcher_running(
+            cfg,
+            is_running_fn=_default_deals_watcher_check,
+            launcher=_default_watcher_launcher,
+        )
+
     try:
         run_supervised(
             cfg,
             preflight_fn=preflight_live.run_all_checks,
             launcher=_default_launcher,
             mtime_fn=_default_mtime,
-            deals_watcher_check=_default_deals_watcher_check,
+            watcher_keepalive=_watcher_keepalive,
         )
     except KeyboardInterrupt:
         _log_watchdog("Ctrl-C received -- supervisor stopping (executor subprocess, "
