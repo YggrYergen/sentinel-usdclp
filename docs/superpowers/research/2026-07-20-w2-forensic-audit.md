@@ -161,3 +161,20 @@ low-single-digit-thousands is real.
 > fresh honest cells. This document records the `--dry-run` verdicts; the
 > applied run will reproduce them (LINK targets may shift to newer twins of
 > identical signature/net without changing any verdict).
+
+---
+
+## APPLIED — 2026-07-20 (write pass executed)
+
+The write pass ran against `data/research.db` after the mega-sweep finished and
+**reproduced the dry-run verdicts byte-for-byte** (17 cells: 8 PASS / 9 FAIL,
+all causal-clean, every cell fully joined — 0 ENV-ERROR). Registry state after:
+
+- `run.validity`: **8 `W2_AUDIT_PASS`**, **9 `W2_AUDIT_FAIL(<reason>)`**,
+  **0 `REGIME_UNAUDITED`** remaining (all 17 oow2 cells upgraded).
+- `audit_log` (actor `honest-program`, action `validity-mark`): 60 → **77 rows**
+  (+17, one per upgraded cell).
+- **Idempotency confirmed:** a second apply marked nothing new (audit_log stayed
+  at 77, verdict table unchanged).
+- Gate green: `pytest tests/golden/test_parity.py tests/strategies tests/scripts
+  tests/live` → **294 passed**.
