@@ -35,6 +35,7 @@ REPO = Path(r"D:\FOREX")
 sys.path.insert(0, str(REPO))
 from sentinel_engine.lake.ingest_mt5 import ingest_mt5_csv  # noqa: E402
 from sentinel_engine.lake.manifest import build_manifest, write_manifest  # noqa: E402
+from sentinel_engine.lake.mt5_fetch import drop_forming_bar, rates_to_frame  # noqa: E402
 
 PORTABLE = REPO / "MT5_Portable" / "terminal64.exe"
 RAW_ROOT = REPO / "data" / "raw"
@@ -86,20 +87,6 @@ def log(msg: str) -> None:
     print(f"[{datetime.now().strftime('%H:%M:%S')}] {msg}", flush=True)
 
 
-def drop_forming_bar(df: pd.DataFrame, tf_minutes: int, now_epoch: int) -> pd.DataFrame:
-    """Remove the last row of df IFF its bar-open time has not yet closed as of
-    now_epoch, i.e. t + tf_minutes*60 > now_epoch. df must have a tz-aware
-    DatetimeIndex named/representing bar-open time (UTC). Returns df unchanged
-    if empty or if the last bar is already closed."""
-    if df.empty:
-        return df
-    last_t = df.index[-1]
-    t_epoch = int(last_t.timestamp())
-    if t_epoch + tf_minutes * 60 > now_epoch:
-        return df.iloc[:-1]
-    return df
-
-
 def fetch_series(broker_sym: str, mt5_tf: int, mt5) -> pd.DataFrame:
     """Page backward until START_BOUND or history exhausted. Returns a
     tz-aware UTC DatetimeIndex frame with open/high/low/close/volume."""
@@ -110,9 +97,7 @@ def fetch_series(broker_sym: str, mt5_tf: int, mt5) -> pd.DataFrame:
         rates = mt5.copy_rates_from(broker_sym, mt5_tf, anchor, CHUNK)
         if rates is None or len(rates) == 0:
             break
-        df = pd.DataFrame(rates)
-        df["time"] = pd.to_datetime(df["time"], unit="s", utc=True)
-        df = df.set_index("time").sort_index()
+        df = rates_to_frame(rates)  # shared OHLCV shaping (open/high/low/close/volume)
         frames.append(df)
         earliest = df.index[0]
         if earliest <= START_BOUND:
@@ -125,15 +110,7 @@ def fetch_series(broker_sym: str, mt5_tf: int, mt5) -> pd.DataFrame:
         return pd.DataFrame()
     out = pd.concat(frames)
     out = out[~out.index.duplicated(keep="last")].sort_index()
-    out = out[out.index >= START_BOUND]
-    res = pd.DataFrame({
-        "open": out["open"],
-        "high": out["high"],
-        "low": out["low"],
-        "close": out["close"],
-        "volume": out["tick_volume"].astype("int64"),
-    })
-    return res
+    return out[out.index >= START_BOUND]
 
 
 def write_csv(lake_key: str, tf_min: int, df: pd.DataFrame) -> Path:

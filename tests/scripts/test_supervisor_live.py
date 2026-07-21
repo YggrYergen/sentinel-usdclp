@@ -378,6 +378,41 @@ def test_main_does_not_configure_console_stream_handler(tmp_path, monkeypatch):
                   if h not in root_handlers_before)
 
 
+def test_ensure_bars_ingester_running_launches_when_absent(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              bars_ingester_argv=["python", "-m", "scripts.live.run_bars_ingester"])
+    launches = []
+    launched = sup.ensure_bars_ingester_running(
+        cfg, is_running_fn=lambda: False,
+        launcher=lambda argv: launches.append(argv))
+    assert launched is True
+    assert launches == [cfg.bars_ingester_argv]
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "bars ingester" in log_text.lower()
+    assert "launching" in log_text.lower()
+
+
+def test_ensure_bars_ingester_running_noop_when_already_running(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              bars_ingester_argv=["python", "-m", "scripts.live.run_bars_ingester"])
+    launches = []
+    launched = sup.ensure_bars_ingester_running(
+        cfg, is_running_fn=lambda: True,
+        launcher=lambda argv: launches.append(argv))
+    assert launched is False
+    assert launches == []
+
+
+def test_ensure_bars_ingester_running_noop_when_argv_none(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log")
+    launches = []
+    launched = sup.ensure_bars_ingester_running(
+        cfg, is_running_fn=lambda: False,
+        launcher=lambda argv: launches.append(argv))
+    assert launched is False
+    assert launches == []
+
+
 def test_run_supervised_never_touches_mt5_module():
     """Sanity guardrail: supervisor_live must not import MetaTrader5 order
     APIs. We simply assert the module has no `order_send`-shaped attribute

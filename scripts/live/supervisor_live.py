@@ -92,6 +92,10 @@ DEALS_WATCHER_MARKER = "run_deals_watcher"
 # Argv the supervisor (re)launches the read-only deals watcher with. Poll 5s.
 WATCHER_ARGV = [sys.executable, "-m", "scripts.live.run_deals_watcher", "--poll", "5"]
 WATCHER_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "watcher_console.log"
+BARS_INGESTER_MARKER = "run_bars_ingester"
+# Argv the supervisor (re)launches the read-only incremental bars ingester with.
+BARS_INGESTER_ARGV = [sys.executable, "-m", "scripts.live.run_bars_ingester"]
+BARS_INGESTER_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "bars_ingester_console.log"
 
 BACKOFF_INITIAL_S = 30.0
 BACKOFF_MAX_S = 600.0  # 10 minutes
@@ -127,6 +131,7 @@ def _log_watchdog(msg: str, *, log_path: Path = WATCHDOG_LOG) -> None:
 class SupervisorConfig:
     executor_argv: list[str]
     watcher_argv: list[str] | None = None
+    bars_ingester_argv: list[str] | None = None
     watchdog_log: Path = WATCHDOG_LOG
     audit_log: Path = AUDIT_LOG
     backoff_initial_s: float = BACKOFF_INITIAL_S
@@ -189,6 +194,30 @@ def ensure_watcher_running(cfg: SupervisorConfig, *,
                   "so deals_raw is always being written).",
                   log_path=cfg.watchdog_log)
     launcher(cfg.watcher_argv)
+    return True
+
+
+# --------------------------------------------------------------------------
+# Bars-ingester survivability: (re)launch it if it isn't running.
+# --------------------------------------------------------------------------
+def ensure_bars_ingester_running(cfg: SupervisorConfig, *,
+                                 is_running_fn: Callable[[], bool],
+                                 launcher: Callable[[list[str]], Any]) -> bool:
+    """(Re)launch the read-only incremental bars ingester if it is not
+    currently running. Idempotent: `is_running_fn` detects an existing
+    ingester by cmdline marker, so an already-running one (including one
+    started by hand) is never doubled. READ-ONLY is preserved -- the ingester
+    process only reads price history; we only spawn the python process.
+    Returns True iff a launch happened. No-op (returns False) when
+    `bars_ingester_argv` is None."""
+    if cfg.bars_ingester_argv is None:
+        return False
+    if is_running_fn():
+        return False
+    _log_watchdog("bars ingester: NOT running -- launching it (survivability, "
+                  "so the OHLC lake is always kept current).",
+                  log_path=cfg.watchdog_log)
+    launcher(cfg.bars_ingester_argv)
     return True
 
 
@@ -331,6 +360,17 @@ def _default_watcher_launcher(argv: list[str]) -> subprocess.Popen:
                                 stderr=console_fh)
 
 
+def _default_bars_ingester_launcher(argv: list[str]) -> subprocess.Popen:
+    """Launch the read-only incremental bars ingester as a detached-stdio
+    subprocess (its own console log, never inheriting this process's console --
+    same rationale as `_default_launcher`). The ingester only reads price
+    history."""
+    BARS_INGESTER_CONSOLE_LOG.parent.mkdir(parents=True, exist_ok=True)
+    with open(BARS_INGESTER_CONSOLE_LOG, "a", encoding="utf-8", buffering=1) as console_fh:
+        return subprocess.Popen(argv, cwd=str(REPO_ROOT), stdout=console_fh,
+                                stderr=console_fh)
+
+
 def _default_mtime(path: Path) -> float | None:
     try:
         return path.stat().st_mtime
@@ -342,6 +382,10 @@ def _default_deals_watcher_check() -> bool:
     return preflight_live.process_running(DEALS_WATCHER_MARKER)
 
 
+def _default_bars_ingester_check() -> bool:
+    return preflight_live.process_running(BARS_INGESTER_MARKER)
+
+
 def main(argv: list[str] | None = None) -> int:
     # No console StreamHandler here, deliberately: this process may be spawned
     # with a detached/minimized/inherited console (as it was on 2026-07-15),
@@ -351,7 +395,8 @@ def main(argv: list[str] | None = None) -> int:
     # cannot block on a console. `logging` is left at its default (silent)
     # config; nothing in this module calls `logger.info`/etc. for output that
     # matters, only `_log_watchdog`.
-    cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV, watcher_argv=WATCHER_ARGV)
+    cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV, watcher_argv=WATCHER_ARGV,
+                           bars_ingester_argv=BARS_INGESTER_ARGV)
     _log_watchdog("=== supervisor_live starting ===", log_path=cfg.watchdog_log)
 
     def _watcher_keepalive() -> None:
@@ -359,6 +404,11 @@ def main(argv: list[str] | None = None) -> int:
             cfg,
             is_running_fn=_default_deals_watcher_check,
             launcher=_default_watcher_launcher,
+        )
+        ensure_bars_ingester_running(
+            cfg,
+            is_running_fn=_default_bars_ingester_check,
+            launcher=_default_bars_ingester_launcher,
         )
 
     try:
