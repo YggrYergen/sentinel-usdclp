@@ -101,6 +101,14 @@ html, body {
    height:100% something to resolve against; min-height:0 lets flex children
    shrink instead of forcing overflow. */
 #section-review { height: 100%; min-height: 0; }
+/* POSITIONS/Estrategia needs the same viewport anchor as REVIEW: its 2-column
+   live layout puts a flex:1 chart in the right column, whose height chains up
+   through .positions-section { height:100% }. Without height:100% here that
+   percentage has nothing to resolve against, so the chart grows to the LEFT
+   column's content height (the long positions list) and overflows the viewport
+   (~1064px). height:100% + min-height:0 bounds the whole chain to the pane, so
+   the chart fills a viewport-sized area like Trade View (multi-resolution). */
+#section-positions { height: 100%; min-height: 0; }
 
 /* -- placeholder (gated capability) -- */
 .gated-placeholder {
