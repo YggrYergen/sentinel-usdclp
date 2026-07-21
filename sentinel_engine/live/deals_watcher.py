@@ -222,6 +222,39 @@ class DealsWatcher:
             sizes[sym] = getattr(info, "trade_contract_size", None) if info is not None else None
         return sizes
 
+    def _strategy_attr_by_position(
+        self, deals: list[dict[str, Any]], conn: Any
+    ) -> dict[Any, dict[str, Any]]:
+        """position_id -> {strategy_id, variant_id} for every position that has
+        a strategy-attributed deal, drawn from (1) this batch and (2) already
+        persisted rows in `deals_raw`. Used so a magic=0 SL/TP-close OUT can
+        inherit its position's strategy attribution."""
+        attr: dict[Any, dict[str, Any]] = {}
+        # (1) batch-local: any deal whose own magic attributes to a strategy.
+        for deal in deals:
+            pid = deal.get("position_id")
+            if pid is None:
+                continue
+            a = _attribute_magic(self.registry, deal.get("magic"))
+            if a.get("origin") == "strategy":
+                attr[pid] = {"strategy_id": a.get("strategy_id"),
+                             "variant_id": a.get("variant_id")}
+        # (2) DB: positions in this batch not resolved locally (IN persisted on
+        # an earlier poll). One IN() query keyed by the batch's position_ids.
+        unresolved = [d.get("position_id") for d in deals
+                      if d.get("position_id") is not None and d.get("position_id") not in attr]
+        unresolved = list(dict.fromkeys(unresolved))  # de-dup, keep order
+        if unresolved:
+            placeholders = ", ".join("?" for _ in unresolved)
+            rows = conn.execute(
+                f"SELECT position_id, strategy_id, variant_id FROM deals_raw "
+                f"WHERE origin='strategy' AND position_id IN ({placeholders})",
+                tuple(unresolved),
+            ).fetchall()
+            for pid, sid, vid in rows:
+                attr.setdefault(pid, {"strategy_id": sid, "variant_id": vid})
+        return attr
+
     def _upsert_deals(
         self,
         deals: list[dict[str, Any]],
@@ -245,8 +278,22 @@ class DealsWatcher:
         )
         conn = self.registry._connect()
         try:
+            # 2026-07-21: SL/TP-close attribution. MT5 stamps magic=0 on a
+            # stop-loss/take-profit close, so `_attribute_magic` alone tags it
+            # origin="human". Build position_id -> strategy attribution from
+            # the strategy-attributed deals in THIS batch, plus a DB lookup for
+            # positions whose IN was persisted on an earlier poll, so a magic=0
+            # OUT inherits its position's strategy (correct open/closed + P&L).
+            # A position with no strategy IN keeps its own attribution (human).
+            pos_attr = self._strategy_attr_by_position(deals, conn)
             for deal in deals:
                 row = _map_deal(self.registry, deal, leverage, contract_sizes)
+                if row.get("origin") != "strategy":
+                    inherited = pos_attr.get(deal.get("position_id"))
+                    if inherited is not None:
+                        row["origin"] = "strategy"
+                        row["strategy_id"] = inherited["strategy_id"]
+                        row["variant_id"] = inherited["variant_id"]
                 conn.execute(
                     f"INSERT INTO deals_raw({cols}) VALUES ({placeholders}) "
                     f"ON CONFLICT(ticket) DO UPDATE SET {updates}",

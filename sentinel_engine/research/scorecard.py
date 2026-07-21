@@ -85,9 +85,42 @@ def _deal_to_trade(deal: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _deals_to_position_trades(deal_rows: list[Any]) -> list[dict[str, Any]]:
+    """Reconstruct realized POSITIONS from `deals_raw` rows: one trade per
+    CLOSED position (a position with an OUT deal), pnl = sum of that position's
+    deal profits, anchored at its IN deal. This is correct for MT5 SL/TP closes
+    where the realized profit lands on the OUT deal (magic=0) while the IN deal
+    is 0 -- counting each DEAL as a trade doubled `trades` and diluted
+    expectancy/sharpe with the zero-pnl IN rows. Still-OPEN positions (no OUT)
+    are excluded: they have no realized outcome yet."""
+    from datetime import datetime, timezone
+
+    by_pos: dict[Any, list[dict[str, Any]]] = {}
+    for r in deal_rows:
+        d = dict(r)
+        by_pos.setdefault(d.get("position_id"), []).append(d)
+
+    trades: list[dict[str, Any]] = []
+    for deals in by_pos.values():
+        if not any(x.get("entry_type") == "OUT" for x in deals):
+            continue  # still open -> not a realized trade
+        pnl = sum(x.get("profit") or 0.0 for x in deals)
+        ins = [x for x in deals if x.get("entry_type") == "IN"]
+        anchor = min((ins or deals), key=lambda x: x.get("time") or 0)
+        ts = anchor.get("time")
+        ts_in = None
+        if ts is not None:
+            ts_in = datetime.fromtimestamp(float(ts), tz=timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+        trades.append({"pnl": pnl, "ts_in": ts_in, "sl": None,
+                       "px_in": anchor.get("price"), "volume": anchor.get("volume")})
+    trades.sort(key=lambda t: t.get("ts_in") or "")
+    return trades
+
+
 def _real_block(registry, strategy_id: str) -> dict[str, Any]:
     """`real` = deals with `origin='strategy'` attributed to this
-    strategy_id (from `deals_raw`, populated by `DealsWatcher`) plus
+    strategy_id (from `deals_raw`, populated by `DealsWatcher`), reconstructed
+    into realized POSITIONS (one trade per closed position), plus
     forward-session trades (`trade` rows with `session_id` set) belonging
     to this strategy. Both sources are combined into one trade list."""
     conn = registry._connect()
@@ -97,7 +130,7 @@ def _real_block(registry, strategy_id: str) -> dict[str, Any]:
             "SELECT * FROM deals_raw WHERE origin='strategy' AND strategy_id=? ORDER BY time ASC",
             (strategy_id,),
         ).fetchall()
-        trades = [_deal_to_trade(dict(r)) for r in deal_rows]
+        trades = _deals_to_position_trades(deal_rows)
 
         session_rows = conn.execute(
             "SELECT session_id FROM forward_session WHERE strategy_id=?", (strategy_id,)

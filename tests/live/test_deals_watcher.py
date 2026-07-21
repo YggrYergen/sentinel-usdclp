@@ -326,6 +326,91 @@ def test_attribution_human_when_magic_unassigned_and_outside_ia_range(reg):
 
 
 # ---------------------------------------------------------------------------
+# 2026-07-21: SL/TP-close attribution. MT5 stamps magic=0 on a stop-loss /
+# take-profit close deal, so `_attribute_magic` alone would tag it origin=
+# "human" even though it belongs to a strategy position. An OUT deal whose
+# position_id has a strategy-attributed IN must INHERIT that strategy
+# attribution (so open/closed state AND realized P&L attribute correctly).
+# A deal whose position has NO strategy IN stays human ("sin magic = humano").
+# ---------------------------------------------------------------------------
+
+def _mk_alloc(reg):
+    sid = reg.upsert_strategy("EMASAR", "emasar", "mt5")
+    vid = reg.upsert_variant(sid, "V1", {}, "M5", "XAUUSD", "original")
+    magic = reg.allocate_magic(sid, vid)
+    return sid, vid, magic
+
+
+def _fetch(reg, ticket):
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        return dict(conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (ticket,)).fetchone())
+    finally:
+        conn.close()
+
+
+def test_sltp_close_inherits_strategy_from_in_same_batch(reg):
+    """IN (strategy magic) + OUT (magic=0 SL/TP) for the SAME position in one
+    poll: the OUT inherits origin=strategy + strategy_id/variant_id."""
+    sid, vid, magic = _mk_alloc(reg)
+    d_in = {"ticket": 3001, "position_id": 7001, "symbol": "XAUUSD", "side": "BUY",
+            "volume": 0.1, "price": 2400.0, "profit": 0.0, "magic": magic,
+            "time": 1750000000, "entry_type": "IN"}
+    d_out = {"ticket": 3002, "position_id": 7001, "symbol": "XAUUSD", "side": "SELL",
+             "volume": 0.1, "price": 2410.0, "profit": 55.0, "magic": 0,
+             "time": 1750000100, "entry_type": "OUT"}
+    client = _StubMt5Client([d_in, d_out])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    out = _fetch(reg, 3002)
+    assert out["origin"] == "strategy"
+    assert out["strategy_id"] == sid
+    assert out["variant_id"] == vid
+
+
+def test_sltp_close_inherits_strategy_from_in_later_poll(reg):
+    """OUT (magic=0) arriving in a LATER poll than its IN (already persisted)
+    still inherits the strategy attribution via a DB lookup by position_id."""
+    sid, vid, magic = _mk_alloc(reg)
+    d_in = {"ticket": 3101, "position_id": 7101, "symbol": "XAUUSD", "side": "BUY",
+            "volume": 0.1, "price": 2400.0, "profit": 0.0, "magic": magic,
+            "time": 1750000000, "entry_type": "IN"}
+    client = _StubMt5Client([d_in])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    d_out = {"ticket": 3102, "position_id": 7101, "symbol": "XAUUSD", "side": "SELL",
+             "volume": 0.1, "price": 2410.0, "profit": 55.0, "magic": 0,
+             "time": 1750000100, "entry_type": "OUT"}
+    client._deals = [d_out]
+    watcher.poll_once()
+
+    out = _fetch(reg, 3102)
+    assert out["origin"] == "strategy"
+    assert out["strategy_id"] == sid
+    assert out["variant_id"] == vid
+
+
+def test_human_magic0_position_stays_human(reg):
+    """A position with NO strategy IN (human opened + closed, both magic=0)
+    is never reattributed -- 'sin magic = humano'."""
+    d_in = {"ticket": 3201, "position_id": 7201, "symbol": "XAUUSD", "side": "BUY",
+            "volume": 0.1, "price": 2400.0, "profit": 0.0, "magic": 0,
+            "time": 1750000000, "entry_type": "IN"}
+    d_out = {"ticket": 3202, "position_id": 7201, "symbol": "XAUUSD", "side": "SELL",
+             "volume": 0.1, "price": 2410.0, "profit": 55.0, "magic": 0,
+             "time": 1750000100, "entry_type": "OUT"}
+    client = _StubMt5Client([d_in, d_out])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    assert _fetch(reg, 3201)["origin"] == "human"
+    assert _fetch(reg, 3202)["origin"] == "human"
+
+
+# ---------------------------------------------------------------------------
 # B1a-2: last_sync persistence across restarts
 # ---------------------------------------------------------------------------
 

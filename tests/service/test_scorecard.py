@@ -135,6 +135,40 @@ def test_scorecard_real_from_deals_origin_strategy(client, registry):
     assert real["expectancy_r_flag"] == "no_sl_fallback_ccy"
 
 
+def test_scorecard_real_counts_positions_not_deals(client, registry):
+    """2026-07-21: a closed position is ONE realized trade (its IN deal @0 +
+    its OUT deal @pnl), NOT two. Counting each deal inflated `trades` (and
+    diluted expectancy/sharpe with the zero-pnl IN rows). A still-OPEN position
+    (only an IN) is not a realized trade and must be excluded."""
+    sid = registry.upsert_strategy("SARX", "sarx", "mt5")
+    vid = registry.upsert_variant(sid, "SARX_M5_v1", {}, "M5", "XAUUSD", "original")
+    magic = registry.allocate_magic(sid, vid)
+    conn = registry._connect()
+    try:
+        rows = [
+            # position 200: IN (profit 0) + OUT (+30) -> ONE winning trade
+            (10, 200, "XAUUSD", "LONG", 0.1, 100.0, 0.0, magic, 1751328000, "IN", "strategy", sid, vid),
+            (11, 200, "XAUUSD", "SELL", 0.1, 101.0, 30.0, magic, 1751328600, "OUT", "strategy", sid, vid),
+            # position 201: IN (profit 0) + OUT (-10) -> ONE losing trade
+            (12, 201, "XAUUSD", "LONG", 0.1, 100.0, 0.0, magic, 1751414400, "IN", "strategy", sid, vid),
+            (13, 201, "XAUUSD", "SELL", 0.1, 99.0, -10.0, magic, 1751415000, "OUT", "strategy", sid, vid),
+            # position 202: OPEN (only IN) -> NOT a realized trade
+            (14, 202, "XAUUSD", "LONG", 0.1, 100.0, 0.0, magic, 1751500000, "IN", "strategy", sid, vid),
+        ]
+        for row in rows:
+            conn.execute(
+                "INSERT INTO deals_raw(ticket, position_id, symbol, side, volume, price, profit, "
+                "magic, time, entry_type, origin, strategy_id, variant_id) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)", row)
+        conn.commit()
+    finally:
+        conn.close()
+    real = client.get(f"/api/strategies/{sid}/scorecard").json()["floors"]["real"]
+    assert real["trades"] == 2       # two CLOSED positions, not 5 deals
+    assert real["net"] == 20.0       # 30 + (-10); the zero-pnl IN rows add nothing
+    assert real["wr"] == 0.5         # 1 win / 1 loss
+
+
 def test_scorecard_teorico_only_from_baseline_ref_run(client, registry):
     seeds = _seed_strategy_with_deals(registry)
     _seed_baseline_run(registry, seeds["strategy_id"], seeds["variant_id"])

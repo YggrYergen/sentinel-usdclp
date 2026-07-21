@@ -1,9 +1,15 @@
 <#
   scripts\live\watchdog_local.ps1
 
-  Self-healing process watchdog for THIS machine (login 2883016567,
-  Capitaria-All DEMO). Modeled on the teammate's INICIAR_TRADING_LIVE.bat
-  (D:\FOREX, login 2883015767) but adapted fully:
+  Self-healing process watchdog, MACHINE-AWARE (2026-07-21). The terminal
+  path, portable flag and sanctioned DEMO login are resolved at startup from
+  `sentinel_engine.live.machine_profile.load_profile()` -- the SAME source
+  run_live_20.py / run_deals_watcher.py use -- so this one script serves both
+  Machine 1 (portable D:\FOREX\MT5_Portable, login 2883015767) and Machine
+  "TOMACHINE" (standard Capitaria install, login 2883016567) without either
+  machine's hardcode breaking the other. (Previously hardcoded to 2883016567 +
+  the Capitaria path, which silently disabled auto-heal on Machine 1.)
+  Adapted from the teammate's INICIAR_TRADING_LIVE.bat:
     - detects components by full command-line match (Win32_Process),
       not just PID files -- PID files are refreshed on relaunch for
       operator convenience/inspection, never trusted alone;
@@ -33,8 +39,10 @@ $LiveDir    = Join-Path $RepoRoot "scripts\live"
 $LogFile    = Join-Path $LiveDir "watchdog_local.log"
 $LockFile   = Join-Path $LiveDir "watchdog_local.lock"
 $StopFile   = Join-Path $LiveDir "STOP"
-$Terminal   = "C:\Program Files\Capitaria MT5 Terminal\terminal64.exe"
-$DemoLogin  = [int64]2883016567
+# Machine-aware: resolved at startup from machine_profile (see Resolve-MachineProfile).
+$Terminal   = $null
+$DemoLogin  = $null
+$Portable   = $true
 $PollSec    = 20
 $MaxLogBytes = 5MB
 
@@ -60,6 +68,44 @@ function Write-Log {
     }
     Add-Content -Path $LogFile -Value $line
     Write-Output $line
+}
+
+function Resolve-MachineProfile {
+    # Resolve this machine's terminal path / portable flag / sanctioned DEMO
+    # login from machine_profile (single source of truth, shared with the
+    # python stack). Falls back to Machine 1 defaults if the python call fails
+    # for any reason (never leaves the watchdog unconfigured).
+    $env:PYTHONPATH = $RepoRoot
+    $py = @"
+import json
+from sentinel_engine.live.machine_profile import load_profile
+p = load_profile()
+print(json.dumps({"terminal_path": str(p.terminal_path), "portable": bool(p.portable), "demo_login": int(p.demo_login)}))
+"@
+    $tmp = Join-Path $env:TEMP "sentinel_profile_$PID.py"
+    Set-Content -Path $tmp -Value $py -Encoding UTF8
+    try {
+        $out = & python $tmp 2>&1
+        $code = $LASTEXITCODE
+    } finally {
+        Remove-Item $tmp -Force -ErrorAction SilentlyContinue
+    }
+    $line = ($out | Where-Object { $_ -match '"terminal_path"' } | Select-Object -First 1)
+    if ($code -eq 0 -and $line) {
+        try {
+            $prof = $line | ConvertFrom-Json
+            $script:Terminal  = [string]$prof.terminal_path
+            $script:DemoLogin = [int64]$prof.demo_login
+            $script:Portable  = [bool]$prof.portable
+            Write-Log "machine profile: terminal=$Terminal portable=$Portable demo_login=$DemoLogin"
+            return
+        } catch { }
+    }
+    # Fallback = Machine 1 defaults (this repo's origin machine).
+    $script:Terminal  = "D:\FOREX\MT5_Portable\terminal64.exe"
+    $script:DemoLogin = [int64]2883015767
+    $script:Portable  = $true
+    Write-Log "machine profile resolution FAILED ($($out -join ' | ')) -- using Machine 1 defaults."
 }
 
 function Acquire-Singleton {
@@ -116,13 +162,17 @@ function Start-Terminal-IfNeeded {
 
 function Test-DemoAccount {
     # Returns @{ ok = $true/$false; login = <int or $null>; detail = <string> }
+    $portablePy = if ($Portable) { "True" } else { "False" }
     $py = @"
 import sys
 try:
     import MetaTrader5 as mt5
 except Exception as e:
     print('IMPORT_FAIL:' + str(e)); sys.exit(3)
-if not mt5.initialize():
+# Attach the same way the python stack does (machine profile path + portable
+# flag): a bare initialize() can attach to the wrong terminal on a machine
+# that has more than one MT5 install.
+if not mt5.initialize(path=r"$Terminal", portable=$portablePy):
     print('INIT_FAIL:' + str(mt5.last_error())); sys.exit(2)
 info = mt5.account_info()
 mt5.shutdown()
@@ -256,6 +306,7 @@ function Ensure-Dashboard {
 # ---------------------------------------------------------------------
 Acquire-Singleton
 Write-Log "watchdog_local.ps1 started (PID $PID). Poll interval ${PollSec}s."
+Resolve-MachineProfile
 
 try {
     while ($true) {

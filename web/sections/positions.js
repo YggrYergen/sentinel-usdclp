@@ -1,9 +1,11 @@
 // SENTINEL sections/positions.js — POSICIONES section (Task M2.3, plan
-// §D.7-POSICIONES NORMATIVE). Tabs HUMANO · ESTRATEGIA · IA (taxonomy is
-// first-class: all 3 tabs exist even though HUMANO/IA have no data until
-// B4/B5). ESTRATEGIA tab lists forward_session cards; click a card ->
-// its trades table (same columns as REVIEW) + "Ver en chart -> REVIEW"
-// button that hands off appState.selectedRun and switches section.
+// §D.7-POSICIONES NORMATIVE). Tabs HUMANO · ESTRATEGIA · IA.
+// ESTRATEGIA tab (2026-07-21) lists the strategies connected taking REAL
+// positions in MT5 (GET /api/positions?origin=strategy): selectable strategy
+// cards with their real scorecard (net / trades / PF / WR / DD), and for the
+// selected strategy a table of its real positions (ABIERTA/CERRADA, spread at
+// open/close, beneficio, %). Clicking a position opens the live chart+replay
+// panel (buildHumanoDetailPanel) — trade-view, but for reals in vivo.
 // "Re-importar TOKATA" button -> POST /api/ingest/tokata, refresh + toast.
 // Classic script (no ES modules), hangs off window.SENTINEL.sections.positions.
 (function () {
@@ -56,12 +58,6 @@
   const ESTADOS = ["activa", "pausada", "graduada"];
 
   // ---- data fetch (D.6 contracts) ----
-  async function fetchSessions() {
-    const resp = await fetch("/api/forward/sessions");
-    if (!resp.ok) throw new Error(`GET /api/forward/sessions failed: ${resp.status}`);
-    return resp.json();
-  }
-
   async function fetchStrategies() {
     const resp = await fetch("/api/strategies");
     if (!resp.ok) throw new Error(`GET /api/strategies failed: ${resp.status}`);
@@ -107,13 +103,80 @@
     document.head.appendChild(style);
   }
 
+  // ---- ESTRATEGIA live positions CSS (2026-07-21), section-scoped. ----
+  const ESTRATEGIA_LIVE_CSS_ID = "positions-estrategia-live-css";
+  const ESTRATEGIA_LIVE_CSS = `
+    /* Two-column ESTRATEGIA layout: left = cards + positions list, right = chart. */
+    .estrategia-live-root { display: grid; grid-template-columns: minmax(360px, 42%) 1fr; gap: var(--sp-3, 12px); height: 100%; min-height: 0; }
+    .estrategia-live-left { display: grid; grid-template-rows: auto 1fr; gap: var(--sp-3, 12px); min-height: 0; min-width: 0; }
+    .estrategia-live-right { min-height: 0; min-width: 0; display: flex; flex-direction: column; border: var(--border, 1px solid #333); border-radius: var(--radius, 6px); background: var(--bg-1, #0d1117); overflow: hidden; }
+    .estrategia-live-right .positions-humano-panel-host { flex: 1; min-height: 0; display: flex; }
+    .estrategia-live-right .positions-humano-panel { flex: 1; border-top: none; }
+    .estrategia-live-right .positions-humano-panel-chart { flex: 1; min-height: 260px; height: auto; }
+    .estrategia-right-placeholder { flex: 1; display: flex; align-items: center; justify-content: center; text-align: center; padding: 24px; color: var(--text-2, #5c6a7d); font-size: 0.82rem; }
+    .estrategia-cards-scroll { display: flex; flex-direction: column; gap: var(--sp-2, 8px); overflow-y: auto; max-height: 44vh; padding-right: 2px; }
+
+    /* Strategy P&L card — net prominent + color-coded. */
+    .estrategia-scard { cursor: pointer; display: flex; flex-direction: column; gap: 6px; padding: 10px 12px; border: var(--border, 1px solid #333); border-radius: var(--radius, 6px); background: var(--bg-2, #131a24); border-left: 3px solid var(--strat-color, #00bfff); transition: border-color .12s, box-shadow .12s; }
+    .estrategia-scard:hover { box-shadow: 0 0 0 1px var(--accent-celeste, #00bfff) inset; }
+    .estrategia-scard.selected { box-shadow: 0 0 0 2px var(--accent-celeste, #00bfff) inset; background: rgba(0,191,255,0.06); }
+    .estrategia-scard-head { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .estrategia-scard-head .manage-graduated-star { color: var(--accent-amber, #ffb020); }
+    .estrategia-scard-live { margin-left: auto; font-size: 0.58rem; font-weight: 700; letter-spacing: 0.04em; color: var(--accent-green, #26a69a); display: inline-flex; align-items: center; gap: 4px; }
+    .estrategia-scard-live::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--accent-green, #26a69a); box-shadow: 0 0 6px var(--accent-green, #26a69a); }
+    .estrategia-scard-net { display: flex; align-items: baseline; gap: 8px; }
+    .estrategia-scard-net-value { font-family: var(--mono, monospace); font-size: 1.5rem; font-weight: 800; line-height: 1.1; }
+    .estrategia-scard-net-value.pos { color: var(--accent-green, #26a69a); }
+    .estrategia-scard-net-value.neg { color: var(--accent-red, #ef5350); }
+    .estrategia-scard-net-value.flat { color: var(--text-1, #8b98ab); }
+    .estrategia-scard-net-label { font-size: 0.6rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-2, #5c6a7d); }
+    .estrategia-scard-stats { display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 0.7rem; font-family: var(--mono, monospace); color: var(--text-1, #8b98ab); }
+    .estrategia-scard-stats b { color: var(--text-0, #c9d4e3); font-weight: 700; }
+    .estrategia-scard-counts { display: flex; gap: 6px; font-size: 0.62rem; }
+    .estrategia-scard-count { display: inline-flex; align-items: center; gap: 4px; padding: 1px 7px; border-radius: 10px; border: 1px solid transparent; }
+    .estrategia-scard-count.open { color: var(--accent-green, #26a69a); border-color: rgba(38,166,154,0.5); background: rgba(38,166,154,0.1); }
+    .estrategia-scard-count.closed { color: var(--text-1, #8b98ab); border-color: rgba(139,152,171,0.3); }
+    .estrategia-scard-controls { display: flex; gap: 4px; }
+    .estrategia-scard-loading, .estrategia-scard-stats .muted { color: var(--text-2, #5c6a7d); }
+
+    .positions-live-host { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    .positions-estado-badge { display: inline-block; font-size: 0.6rem; font-weight: 700; padding: 1px 5px; border-radius: 3px; letter-spacing: 0.03em; }
+    .positions-estado-abierta { background: rgba(38,166,154,0.18); color: var(--accent-green, #26a69a); border: 1px solid rgba(38,166,154,0.5); }
+    .positions-estado-cerrada { background: rgba(139,152,171,0.12); color: var(--text-2, #5c6a7d); border: 1px solid rgba(139,152,171,0.3); }
+    .positions-live-open { opacity: 0.6; font-style: italic; }
+    .positions-spread-min { color: var(--accent-green, #26a69a); }
+    .positions-live-empty { padding: 16px; opacity: 0.7; font-size: 0.82rem; }
+
+    /* Compact positions vtable that fits the narrow left column (no overflow). */
+    .estrategia-live-left .positions-live-host { min-height: 0; }
+    .estrategia-live-left .positions-vtable { height: 100%; min-height: 0; display: flex; flex-direction: column; }
+    .estrategia-live-left .positions-vtable .vtable-root { display: flex; flex-direction: column; min-height: 0; flex: 1; }
+    .estrategia-live-left .positions-vtable .vtable-cell { font-size: 0.72rem; padding-left: 6px; padding-right: 6px; }
+    .estrategia-live-left .positions-vtable .vtable-th { font-size: 0.62rem; }
+    .estrategia-pos-io { display: flex; flex-direction: column; line-height: 1.25; }
+    .estrategia-pos-io .io-out { color: var(--text-2, #5c6a7d); }
+    .estrategia-pos-sym { display: flex; flex-direction: column; line-height: 1.2; }
+    .estrategia-pos-sym .sym { font-weight: 700; }
+    .estrategia-pos-spread { font-size: 0.7rem; }
+  `;
+
+  function injectEstrategiaLiveCss() {
+    if (document.getElementById(ESTRATEGIA_LIVE_CSS_ID)) return;
+    const style = document.createElement("style");
+    style.id = ESTRATEGIA_LIVE_CSS_ID;
+    style.textContent = ESTRATEGIA_LIVE_CSS;
+    document.head.appendChild(style);
+  }
+
   function scorecardFloorText(block) {
     if (!block) return "sin baseline";
     const fmt = window.SENTINEL.fmt;
     const net = block.net != null ? fmt.signed(block.net) : "--";
     const trades = block.trades != null ? block.trades : "--";
     const pf = block.pf != null ? fmt.num(block.pf) : "--";
-    return `${net} · ${trades} trades · PF ${pf}`;
+    const wr = block.wr != null ? fmt.pct(block.wr) : "--";
+    const dd = block.maxdd_pct != null ? fmt.pct(block.maxdd_pct) : "--";
+    return `${net} · ${trades} trades · PF ${pf} · WR ${wr} · DD ${dd}`;
   }
 
   function renderScorecardFloors(host, card) {
@@ -150,10 +213,17 @@
     });
   }
 
-  function renderStrategyStateCard(strategy, onChanged) {
+  function renderStrategyStateCard(strategy, onChanged, opts) {
+    const options = opts || {};
     const badge = window.SENTINEL.badge;
     const estado = strategy.estado || "activa";
-    const card = el("div", { class: "manage-strategy-card" });
+    const card = el("div", {
+      class: `manage-strategy-card${options.selected ? " selected" : ""}${options.connected ? " connected" : ""}`,
+      "data-strategy-id": strategy.strategy_id,
+    });
+    if (options.onSelect) {
+      card.addEventListener("click", () => options.onSelect(strategy));
+    }
     const stratBadge = badge.strategyBadge({
       familia: strategy.familia,
       name: strategy.familia && strategy.familia.toLowerCase() === (strategy.name || "").toLowerCase() ? "" : strategy.name,
@@ -177,7 +247,8 @@
         class: `manage-estado-btn${e === estado ? " active" : ""}`,
       });
       btn.textContent = e;
-      btn.addEventListener("click", async () => {
+      btn.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
         if (btn.disabled || e === estado) return;
         controls.querySelectorAll("button").forEach((b) => { b.disabled = true; });
         try {
@@ -198,10 +269,122 @@
     return card;
   }
 
-  async function fetchSessionTrades(sessionId) {
-    const resp = await fetch(`/api/forward/${encodeURIComponent(sessionId)}/trades`);
-    if (!resp.ok) throw new Error(`GET /api/forward/${sessionId}/trades failed: ${resp.status}`);
-    return resp.json();
+  // Aggregate open/closed position counts + net across a strategy's groups.
+  function aggregateStrategyGroups(groups) {
+    let net = 0;
+    let open = 0;
+    let closed = 0;
+    let positions = 0;
+    (groups || []).forEach((g) => {
+      net += Number(g.net) || 0;
+      (g.children || []).forEach((c) => {
+        positions += 1;
+        if (c.is_open) open += 1; else closed += 1;
+      });
+    });
+    return { net, open, closed, positions };
+  }
+
+  // Wires the activa/pausada/graduada segmented control into `controls`,
+  // shared by the P&L strategy card (extracted so both cards behave the same).
+  function wireEstadoControls(controls, strategy, onChanged) {
+    const estado = strategy.estado || "activa";
+    ESTADOS.forEach((e) => {
+      const btn = el("button", {
+        type: "button",
+        class: `manage-estado-btn${e === estado ? " active" : ""}`,
+      });
+      btn.textContent = e;
+      btn.addEventListener("click", async (ev) => {
+        ev.stopPropagation();
+        if (btn.disabled || e === estado) return;
+        controls.querySelectorAll("button").forEach((b) => { b.disabled = true; });
+        try {
+          await postEstado(strategy.strategy_id, e);
+          if (window.SENTINEL.toast) {
+            window.SENTINEL.toast.show(`${strategy.name}: estado -> ${e}`, { type: "success" });
+          }
+          if (onChanged) onChanged();
+        } catch (err) {
+          if (window.SENTINEL.toast) {
+            window.SENTINEL.toast.show(`Error cambiando estado: ${err.message}`, { type: "error" });
+          }
+          controls.querySelectorAll("button").forEach((b) => { b.disabled = false; });
+        }
+      });
+      controls.appendChild(btn);
+    });
+  }
+
+  function netValueClass(v) {
+    const n = Number(v);
+    if (!Number.isFinite(n) || n === 0) return "flat";
+    return n > 0 ? "pos" : "neg";
+  }
+
+  // ESTRATEGIA P&L card (2026-07-21 redesign): net result is the headline,
+  // color-coded green/red, with PF · WR · DD and open/closed counts, plus the
+  // estado control and strategy badge/color identity. `agg` is the live
+  // aggregate from this strategy's groups (net + counts); PF/WR/DD come from
+  // the async real scorecard.
+  function renderStrategyPnlCard(strategy, agg, onChanged, opts) {
+    const options = opts || {};
+    const badge = window.SENTINEL.badge;
+    const fmt = window.SENTINEL.fmt;
+    const color = badge.colorForIdx(strategy.color_idx);
+    const card = el("div", {
+      class: `estrategia-scard${options.selected ? " selected" : ""}`,
+      "data-strategy-id": strategy.strategy_id,
+      style: `--strat-color:${color}`,
+    });
+    if (options.onSelect) {
+      card.addEventListener("click", () => options.onSelect(strategy));
+    }
+    const stratBadge = badge.strategyBadge({
+      familia: strategy.familia,
+      name: strategy.familia && strategy.familia.toLowerCase() === (strategy.name || "").toLowerCase() ? "" : strategy.name,
+      color_idx: strategy.color_idx,
+      display_name: strategy.name,
+    });
+    const starHtml = strategy.graduated ? '<span class="manage-graduated-star" title="Graduada">&#9733;</span>' : "";
+    const estado = strategy.estado || "activa";
+    const netCls = netValueClass(agg.net);
+    card.innerHTML = `
+      <div class="estrategia-scard-head">
+        ${starHtml}${stratBadge}
+        <span class="manage-estado-badge manage-estado-${escapeHtml(estado)}">${escapeHtml(estado)}</span>
+        ${options.connected ? '<span class="estrategia-scard-live">EN VIVO</span>' : ""}
+      </div>
+      <div class="estrategia-scard-net">
+        <span class="estrategia-scard-net-value ${netCls} mono">${fmt.signed(agg.net)}</span>
+        <span class="estrategia-scard-net-label">Neto real</span>
+      </div>
+      <div class="estrategia-scard-stats" data-role="scorecard"><span class="muted">PF -- · WR -- · DD --</span></div>
+      <div class="estrategia-scard-counts">
+        <span class="estrategia-scard-count open" title="Posiciones abiertas">● ${agg.open} abiertas</span>
+        <span class="estrategia-scard-count closed" title="Posiciones cerradas">${agg.closed} cerradas</span>
+      </div>
+      <div class="estrategia-scard-controls manage-estado-controls"></div>`;
+    wireEstadoControls(card.querySelector(".manage-estado-controls"), strategy, onChanged);
+
+    // Async real scorecard -> PF · WR · DD (net headline already from groups).
+    const statsHost = card.querySelector('[data-role="scorecard"]');
+    fetchScorecard(strategy.strategy_id).then((data) => {
+      const real = (data.floors && data.floors.real) || null;
+      if (!real) { statsHost.innerHTML = '<span class="muted">sin scorecard</span>'; return; }
+      const pf = real.pf != null ? fmt.num(real.pf) : "--";
+      const wr = real.wr != null ? fmt.pct(real.wr) : "--";
+      const dd = real.maxdd_pct != null ? fmt.pct(real.maxdd_pct) : "--";
+      const trades = real.trades != null ? real.trades : "--";
+      statsHost.innerHTML =
+        `<span>PF <b>${escapeHtml(pf)}</b></span>` +
+        `<span>WR <b>${escapeHtml(wr)}</b></span>` +
+        `<span>DD <b>${escapeHtml(dd)}</b></span>` +
+        `<span>${escapeHtml(String(trades))} trades</span>`;
+    }).catch(() => {
+      statsHost.innerHTML = '<span class="muted">scorecard n/d</span>';
+    });
+    return card;
   }
 
   async function postReimportTokata() {
@@ -273,48 +456,78 @@
     return { abort: () => controller.abort() };
   }
 
-  // ---- trades table columns (same as REVIEW) ----
-  function tradeRowColumns() {
-    const fmt = window.SENTINEL.fmt;
-    return [
-      { key: "n", label: "#", width: "34px", render: (r) => `<span class="mono">${r.__n}</span>` },
-      { key: "side", label: "Lado", width: "56px",
-        render: (r) => `<span class="${(r.side || "").toUpperCase() === "LONG" ? "sentinel-sign-pos" : "sentinel-sign-neg"}">${escapeHtml(r.side || "--")}</span>` },
-      { key: "ts_in", label: "Entrada", width: "1fr", render: (r) => `<span class="mono">${fmt.tsShort(epochOf(r.ts_in))}</span>` },
-      { key: "pnl", label: "PnL", width: "80px", numeric: true,
-        render: (r) => `<span class="${signClass(r.pnl)} mono">${fmt.signed(r.pnl)}</span>` },
-      { key: "exit_reason", label: "Exit", width: "56px",
-        render: (r) => `<span class="mono" title="${escapeHtml(r.exit_reason || "")}">${escapeHtml(exitReasonAbbrev(r.exit_reason))}</span>` },
-    ];
+  // ---- ESTRATEGIA live positions (2026-07-21): real MT5 positions per
+  // connected strategy. Each row is ONE position (a flattened group child),
+  // marked ABIERTA/CERRADA, with the spread captured at open (★ when it was
+  // the running-min the min-spread gate admits) and at close, plus beneficio
+  // and %. Clicking a row opens the same live chart+replay panel the HUMANO
+  // tab uses (buildHumanoDetailPanel) -- the "trade-view for reals". ----
+  function sideOf(group) {
+    return (group && group.side) || "--";
   }
 
-  // ---- session card ----
-  function renderSessionCard(session) {
-    const badge = window.SENTINEL.badge;
-    const fmt = window.SENTINEL.fmt;
-    const card = el("button", {
-      type: "button",
-      class: "positions-session-card",
-      "data-session-id": session.session_id,
-      title: session.display_name || session.session_id,
-    });
-    const stratBadge = badge.strategyBadge({
-      familia: "", // display_name already carries familia · nombre
-      name: session.display_name || session.session_id,
-      color_idx: session.color_idx,
-      display_name: session.display_name || session.session_id,
-    });
-    card.innerHTML = `
-      <div class="positions-card-top">${stratBadge}</div>
-      <div class="positions-card-row mono">
-        <span class="positions-card-perfil">${escapeHtml(session.perfil || "--")}</span>
-        <span class="positions-card-estado">${escapeHtml(session.estado || "--")}</span>
-      </div>
-      <div class="positions-card-row mono">
-        <span class="positions-card-pnl ${signClass(session.pnl_total)}">${fmt.signed(session.pnl_total)}</span>
-        <span class="positions-card-ntrades">${session.n_trades != null ? session.n_trades : "--"} trades</span>
-      </div>`;
-    return card;
+  function sideClass(group) {
+    const s = String(sideOf(group)).toUpperCase();
+    if (s.startsWith("B") || s === "LONG" || s === "L") return "sentinel-sign-pos";
+    if (s.startsWith("S") || s === "SHORT") return "sentinel-sign-neg";
+    return "";
+  }
+
+  function estadoBadgeHtml(isOpen) {
+    return isOpen
+      ? '<span class="positions-estado-badge positions-estado-abierta">ABIERTA</span>'
+      : '<span class="positions-estado-badge positions-estado-cerrada">CERRADA</span>';
+  }
+
+  // Spread-at-open cell: shows the value and a ★ when it was at/under the
+  // learned running-min (spread_open <= spread_open_min + eps), i.e. admitted
+  // by the min-spread OPEN gate. Null (historical position) -> "--".
+  function spreadCellHtml(fmt, spread, spreadMin) {
+    if (spread === null || spread === undefined || Number.isNaN(Number(spread))) {
+      return '<span class="mono">--</span>';
+    }
+    const atMin = spreadMin != null && Number(spread) <= Number(spreadMin) + 1e-6;
+    const star = atMin ? ' <span class="positions-spread-min" title="Spread mínimo (gate)">★</span>' : "";
+    return `<span class="mono">${fmt.num(spread)}${star}</span>`;
+  }
+
+  // Compact columns so the list fits the narrow LEFT column of the two-column
+  // ESTRATEGIA layout without horizontal overflow. Símbolo+Lado are stacked in
+  // one cell, entrada→salida (ts @ px) stacked in one flexible cell, and the
+  // two spreads (apertura ★ / cierre) share one cell. Only two fixed-width
+  // columns + one 1fr → the vtable grid template can't overflow.
+  function symCellHtml(r) {
+    const sym = escapeHtml((r.__group && r.__group.symbol) || "--");
+    const side = escapeHtml(sideOf(r.__group));
+    return `<span class="estrategia-pos-sym mono"><span class="sym">${sym}</span><span class="${sideClass(r.__group)}">${side}</span></span>`;
+  }
+
+  function ioCellHtml(fmt, r) {
+    const inLine = `${fmt.tsShort(epochOf(r.ts_in))} @ ${fmtOrDash(fmt, r.px_in, "price")}`;
+    const outLine = r.is_open
+      ? '<span class="positions-live-open">— abierta —</span>'
+      : `${fmt.tsShort(epochOf(r.ts_out))} @ ${fmtOrDash(fmt, r.px_out, "price")}`;
+    return `<span class="estrategia-pos-io mono"><span>${inLine}</span><span class="io-out">${outLine}</span></span>`;
+  }
+
+  function spreadPairCellHtml(fmt, r) {
+    const open = spreadCellHtml(fmt, r.spread_open, r.spread_open_min);
+    const close = `<span class="mono">${fmtOrDash(fmt, r.spread_close)}</span>`;
+    return `<span class="estrategia-pos-spread">${open} / ${close}</span>`;
+  }
+
+  function livePositionColumns(fmt) {
+    return [
+      { key: "estado", label: "Estado", width: "72px", render: (r) => estadoBadgeHtml(r.is_open) },
+      { key: "symbol", label: "Símbolo", width: "72px", render: (r) => symCellHtml(r) },
+      { key: "io", label: "Entrada → Salida", width: "1fr", render: (r) => ioCellHtml(fmt, r) },
+      { key: "spread", label: "Spread ap.★/ci.", width: "104px",
+        render: (r) => spreadPairCellHtml(fmt, r) },
+      { key: "pnl", label: "Beneficio", width: "82px", numeric: true,
+        render: (r) => `<span class="mono ${signClass(r.pnl)}">${fmt.signed(r.pnl)}</span>` },
+      { key: "pct", label: "%", width: "54px", numeric: true,
+        render: (r) => `<span class="mono">${fmtOrDash(fmt, r.pct, "pct")}</span>` },
+    ];
   }
 
   // ---- IA tab (Task B5): TOP = client-side aggregated card over
@@ -447,11 +660,12 @@
     return fmt.num(value);
   }
 
-  async function fetchPositions(origin, symbol) {
+  async function fetchPositions(origin, symbol, strategyId, limit) {
     const params = new URLSearchParams();
     if (origin) params.set("origin", origin);
     if (symbol) params.set("symbol", symbol);
-    params.set("limit", "200");
+    if (strategyId) params.set("strategy_id", strategyId);
+    params.set("limit", String(limit || 200));
     const resp = await fetch(`/api/positions?${params.toString()}`);
     if (!resp.ok) throw new Error(`GET /api/positions failed: ${resp.status}`);
     return resp.json();
@@ -562,26 +776,35 @@
     const tfSec = PANEL_TF_SEC[tf] || 300;
 
     let chartInst = null;
-    let histAdapter = null;
     let panelBarSource = null;
     const symbol = (selection.group && selection.group.symbol) || "";
-    if (window.SENTINEL.chart && window.SENTINEL.adapters) {
+    if (window.SENTINEL.chart) {
       chartInst = window.SENTINEL.chart.create(chartHost, { symbol, tf });
-      if (chartInst && window.SENTINEL.chartData && window.SENTINEL.chartData.createBarSource && window.SENTINEL.adapters.HistAdapter) {
-        panelBarSource = window.SENTINEL.chartData.createBarSource({ symbol, tf });
-        histAdapter = window.SENTINEL.adapters.HistAdapter(chartInst, panelBarSource);
+      // Register + SELECT the position so the chart behaves EXACTLY like Trade
+      // View: chart.selectTrade owns scale/glow/RECENTER (entry->exit span at
+      // ~80% width, gap-immune) plus the entry/exit markers and the dotted
+      // connector line between them. Works for OPEN positions too -- ts_out is
+      // null, so selectTrade centers on the entry bar (no exit marker yet).
+      if (chartInst && tIn != null) {
+        const trade = {
+          trade_id: child.position_id,
+          signal_id: child.position_id,
+          side: child.side,
+          ts_in: tIn,
+          px_in: child.px_in,
+          ts_out: tOut,          // null while the position is still open
+          px_out: child.px_out,
+          sl: child.sl,
+          tp: child.tp,
+        };
+        chartInst.addTradeMarkers([trade], null, { dim: false });
+        Promise.resolve(chartInst.selectTrade(trade)).catch(() => { /* noop */ });
       }
-      if (histAdapter && tIn != null && tOut != null) {
-        histAdapter.ensureWindow(tIn - 30 * tfSec, tOut + 30 * tfSec).then(() => {
-          histAdapter.setSignals([{
-            signal_id: child.position_id,
-            side: child.side,
-            ts_in: tIn,
-            px_in: child.px_in,
-            ts_out: tOut,
-            px_out: child.px_out,
-          }]);
-        }).catch(() => { /* noop: chart degrades to empty */ });
+      // Optional replay source (only when adapters + chartData are present):
+      // the Replay button reveals this same window bar-by-bar.
+      if (chartInst && window.SENTINEL.adapters && window.SENTINEL.chartData
+          && window.SENTINEL.chartData.createBarSource) {
+        panelBarSource = window.SENTINEL.chartData.createBarSource({ symbol, tf });
       }
     } else {
       chartHost.innerHTML = '<div class="positions-panel-chart-unavailable">Chart no disponible.</div>';
@@ -802,10 +1025,6 @@
     };
   }
 
-  function renderEmptySessions(host) {
-    host.innerHTML = '<div class="positions-empty">Sin sesiones forward</div>';
-  }
-
   // ---- main render ----
   function render(mountEl) {
     mountEl.innerHTML = "";
@@ -829,11 +1048,16 @@
     const appState = (window.SENTINEL.appState = window.SENTINEL.appState || {});
 
     let activeTab = "estrategia";
-    let sessions = [];
-    let sessionsById = {};
-    let selectedSessionId = null;
+    let selectedStrategyId = null;   // persists across re-renders (reimport/estado)
+    let strategyGroups = {};         // strategy_id -> [position group]
     let vt = null;
+    let posPanelHandle = null;       // live chart+replay panel teardown
     let humanoTabHandle = null;
+    let estrategiaPollTimer = null;  // live refresh of the SELECTED strategy
+
+    function clearEstrategiaPoll() {
+      if (estrategiaPollTimer) { clearInterval(estrategiaPollTimer); estrategiaPollTimer = null; }
+    }
 
     function renderTabs() {
       tabsHost.innerHTML = "";
@@ -855,7 +1079,9 @@
     }
 
     function renderBody() {
+      clearEstrategiaPoll();
       if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } vt = null; }
+      if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } posPanelHandle = null; }
       if (humanoTabHandle) { try { humanoTabHandle.teardown(); } catch (e) { /* noop */ } humanoTabHandle = null; }
       body.innerHTML = "";
       if (activeTab === "ia") {
@@ -869,129 +1095,221 @@
       renderEstrategiaTab();
     }
 
+    // ESTRATEGIA tab (2026-07-21): live REAL MT5 positions per connected
+    // strategy. Top = selectable strategy cards (scorecard real floor: net /
+    // trades / PF / WR / DD). Selecting one lists its real positions
+    // (ABIERTA/CERRADA, spread at open/close, beneficio, %); clicking a
+    // position opens the live chart+replay panel (buildHumanoDetailPanel).
     function renderEstrategiaTab() {
-      body.innerHTML = '<div class="positions-loading">Cargando sesiones forward&hellip;</div>';
-      loadSessions();
+      body.innerHTML = '<div class="positions-loading">Cargando estrategias en vivo&hellip;</div>';
+      loadEstrategiaLive();
     }
 
-    async function loadSessions() {
+    async function loadEstrategiaLive() {
+      injectEstrategiaLiveCss();
+
       let strategies = [];
       try {
         const stratResp = await fetchStrategies();
         strategies = stratResp.strategies || [];
       } catch (e) {
-        // Strategy state panel is additive; sessions can still render if
-        // /api/strategies is unavailable.
+        // Strategy panel is additive; positions can still render without it.
       }
 
+      let groups = [];
       try {
-        const resp = await fetchSessions();
-        sessions = resp.sessions || [];
+        // High limit: show ALL real strategy positions (current + past), not
+        // just the most recent 200 (the roster can accumulate hundreds).
+        const posBody = await fetchPositions("strategy", "", "", 5000);
+        groups = posBody.groups || [];
       } catch (e) {
         body.innerHTML =
-          '<div class="positions-error">Error cargando sesiones forward.' +
+          '<div class="positions-error">Error cargando posiciones en vivo.' +
           '<button type="button" class="positions-retry-btn">Reintentar</button></div>';
         const btn = body.querySelector(".positions-retry-btn");
         if (btn) btn.addEventListener("click", renderEstrategiaTab);
-        if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error cargando /api/forward/sessions", { type: "error" });
+        if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error cargando /api/positions?origin=strategy", { type: "error" });
         return;
       }
 
-      sessionsById = {};
-      sessions.forEach((s) => { sessionsById[s.session_id] = s; });
+      strategyGroups = {};
+      groups.forEach((g) => {
+        const sid = g.strategy_id;
+        if (!sid) return;
+        (strategyGroups[sid] = strategyGroups[sid] || []).push(g);
+      });
+
+      // ROBUST FILTER: only strategies that actually have live positions (are
+      // present in strategyGroups). Everything else in /api/strategies is a
+      // stale artifact (smoke/pedro/sapitos/stac/emasar/…) and must NOT show.
+      const liveStrategies = sortStrategiesGraduatedFirst(strategies)
+        .filter((s) => Array.isArray(strategyGroups[s.strategy_id]) && strategyGroups[s.strategy_id].length);
 
       body.innerHTML = "";
-      const wrap = el("div", { class: "positions-estrategia-wrap" });
 
-      if (strategies.length) {
-        const stratPanel = el("div", { class: "manage-strategy-panel" });
-        stratPanel.appendChild(el("div", { class: "manage-strategy-panel-title", text: "Estrategias" }));
-        const stratCards = el("div", { class: "manage-strategy-cards" });
-        sortStrategiesGraduatedFirst(strategies).forEach((s) => {
-          stratCards.appendChild(renderStrategyStateCard(s, renderEstrategiaTab));
+      if (!liveStrategies.length) {
+        body.innerHTML =
+          '<div class="positions-live-empty">Ninguna estrategia con posiciones reales en vivo por ahora.</div>';
+        return;
+      }
+
+      // Two-column layout (mirrors REVIEW): LEFT = strategy P&L cards (top) +
+      // positions list (below); RIGHT = live chart for the selected position.
+      const root = el("div", { class: "estrategia-live-root" });
+      const leftCol = el("div", { class: "estrategia-live-left" });
+      const rightCol = el("div", { class: "estrategia-live-right" });
+      root.appendChild(leftCol);
+      root.appendChild(rightCol);
+      body.appendChild(root);
+
+      const cardsWrap = el("div", { class: "manage-strategy-panel" });
+      cardsWrap.appendChild(el("div", { class: "manage-strategy-panel-title", text: "Estrategias en vivo" }));
+      const cardsScroll = el("div", { class: "estrategia-cards-scroll" });
+      cardsWrap.appendChild(cardsScroll);
+
+      const posWrap = el("div", { class: "positions-live-host" });
+      posWrap.appendChild(el("div", { class: "manage-strategy-panel-title", text: "Posiciones en vivo" }));
+      const posHost = el("div", { class: "positions-live-host" });
+      posWrap.appendChild(posHost);
+
+      leftCol.appendChild(cardsWrap);
+      leftCol.appendChild(posWrap);
+
+      // RIGHT column: the live chart+replay panel host (buildHumanoDetailPanel
+      // mounts here). Placeholder until a position is chosen.
+      const panelHost = el("div", { class: "positions-humano-panel-host" });
+      rightCol.appendChild(panelHost);
+      function showRightPlaceholder() {
+        panelHost.innerHTML =
+          '<div class="estrategia-right-placeholder">Elegí una posición de la lista para ver su gráfico con la entrada y la salida marcadas.</div>';
+      }
+      showRightPlaceholder();
+
+      // Flatten a strategy's groups into position rows (one row per group
+      // child), each keeping a ref to its parent group for symbol/side + chart
+      // context. Order: OPEN positions first, then most-recent entry first.
+      function flattenPositionRows(gs) {
+        const rows = [];
+        (gs || []).forEach((g) => {
+          (g.children || []).forEach((c) => {
+            rows.push(Object.assign({ __group: g }, c));
+          });
         });
-        stratPanel.appendChild(stratCards);
-        body.appendChild(stratPanel);
-      }
-
-      if (!sessions.length) {
-        const sessionsHost = el("div", {});
-        renderEmptySessions(sessionsHost);
-        body.appendChild(sessionsHost);
-        return;
-      }
-
-      const sessionsHeader = el("div", { class: "manage-strategy-panel-title", text: "Sesiones forward" });
-      wrap.appendChild(sessionsHeader);
-      const cardsHost = el("div", { class: "positions-cards" });
-      const detailHost = el("div", { class: "positions-detail" });
-      wrap.appendChild(cardsHost);
-      wrap.appendChild(detailHost);
-      body.appendChild(wrap);
-
-      sessions.forEach((session) => {
-        const card = renderSessionCard(session);
-        card.addEventListener("click", () => {
-          cardsHost.querySelectorAll(".positions-session-card").forEach((c) => c.classList.remove("active"));
-          card.classList.add("active");
-          selectedSessionId = session.session_id;
-          loadSessionTrades(session, detailHost);
+        rows.sort((a, b) => {
+          if (!!b.is_open - !!a.is_open) return (!!b.is_open) - (!!a.is_open);
+          return (epochOf(b.ts_in) || 0) - (epochOf(a.ts_in) || 0);
         });
-        cardsHost.appendChild(card);
-      });
-
-      if (selectedSessionId && sessionsById[selectedSessionId]) {
-        const activeCard = cardsHost.querySelector(`.positions-session-card[data-session-id="${CSS.escape(selectedSessionId)}"]`);
-        if (activeCard) activeCard.classList.add("active");
-        loadSessionTrades(sessionsById[selectedSessionId], detailHost);
-      } else {
-        detailHost.innerHTML = '<div class="positions-detail-empty">Elegí una sesión arriba.</div>';
-      }
-    }
-
-    async function loadSessionTrades(session, detailHost) {
-      detailHost.innerHTML = '<div class="positions-detail-loading">Cargando trades&hellip;</div>';
-      let tradesBody;
-      try {
-        tradesBody = await fetchSessionTrades(session.session_id);
-      } catch (e) {
-        detailHost.innerHTML = '<div class="positions-detail-error">Error cargando trades de la sesión.</div>';
-        if (window.SENTINEL.toast) window.SENTINEL.toast.show("Error cargando /api/forward/{session_id}/trades", { type: "error" });
-        return;
+        return rows;
       }
 
-      const trades = tradesBody.trades || [];
-      detailHost.innerHTML = "";
-
-      const header = el("div", { class: "positions-detail-header" });
-      const stratBadge = window.SENTINEL.badge.strategyBadge({
-        familia: "",
-        name: session.display_name || session.session_id,
-        color_idx: session.color_idx,
-        display_name: session.display_name || session.session_id,
-      });
-      header.innerHTML = `${stratBadge}<button type="button" class="positions-view-review-btn">Ver en chart &rarr; REVIEW</button>`;
-      header.querySelector(".positions-view-review-btn").addEventListener("click", () => {
-        window.SENTINEL.appState = window.SENTINEL.appState || {};
-        window.SENTINEL.appState.selectedRun = session.session_id;
-        const reviewBtn = document.querySelector('.nav-btn[data-section="review"]');
-        if (reviewBtn) reviewBtn.click();
-      });
-      detailHost.appendChild(header);
-
-      if (!trades.length) {
-        detailHost.appendChild(el("div", { class: "positions-detail-empty", text: "Esta sesión no tiene trades." }));
-        return;
+      function renderPositionsArea() {
+        if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } vt = null; }
+        if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } posPanelHandle = null; }
+        showRightPlaceholder();
+        posHost.innerHTML = "";
+        if (!selectedStrategyId) {
+          posHost.innerHTML = '<div class="positions-live-empty">Elegí una estrategia arriba.</div>';
+          return;
+        }
+        const gs = strategyGroups[selectedStrategyId] || [];
+        if (!gs.length) {
+          posHost.innerHTML = '<div class="positions-live-empty">Esta estrategia todavía no tomó posiciones reales.</div>';
+          return;
+        }
+        const rows = flattenPositionRows(gs);
+        const tableEl = el("div", { class: "positions-vtable" });
+        posHost.appendChild(tableEl);
+        vt = window.SENTINEL.vtable.createVTable(tableEl, {
+          columns: livePositionColumns(window.SENTINEL.fmt),
+          rows: rows,
+          // vtable stores data-key as a STRING and compares it with === to
+          // rowKey(row) on click; a numeric position_id would never match the
+          // string dataset value, so onRowClick never fired (rows appeared
+          // unselectable). Stringify to keep the comparison sound.
+          rowKey: (r) => String(r.position_id),
+          onRowClick: (r) => {
+            const selection = { kind: "child", group: r.__group, child: r };
+            window.SENTINEL.appState = window.SENTINEL.appState || {};
+            window.SENTINEL.appState.selectedPosition = selection;
+            if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } posPanelHandle = null; }
+            // On close, restore the placeholder in the right column.
+            posPanelHandle = buildHumanoDetailPanel(panelHost, selection, () => {
+              posPanelHandle = null;
+              showRightPlaceholder();
+            });
+          },
+        });
       }
 
-      const tableEl = el("div", { class: "positions-vtable" });
-      detailHost.appendChild(tableEl);
-      const rowsForTable = trades.map((t, i) => Object.assign({ __n: i + 1 }, t));
-      vt = window.SENTINEL.vtable.createVTable(tableEl, {
-        columns: tradeRowColumns(),
-        rows: rowsForTable,
-        rowKey: (r) => r.trade_id,
+      function highlightSelected() {
+        cardsScroll.querySelectorAll(".estrategia-scard").forEach((c) => {
+          c.classList.toggle("selected", c.getAttribute("data-strategy-id") === selectedStrategyId);
+        });
+      }
+
+      // Live VISUAL refresh (bug d): re-fetch ONLY the selected strategy's
+      // positions and update the list + that card's counts/net in place, so
+      // opens/closes appear without a manual reload. Does NOT touch the open
+      // chart panel (buildHumanoDetailPanel) or any other strategy. The DB
+      // itself is always real-time (deals watcher) independent of this poll;
+      // this only drives what the operator currently sees. No selection -> the
+      // caller never starts the timer, so nothing polls.
+      async function refreshSelected() {
+        if (!selectedStrategyId) return;
+        let groups;
+        try {
+          const posBody = await fetchPositions("strategy", "", selectedStrategyId, 5000);
+          groups = posBody.groups || [];
+        } catch (e) {
+          return; // transient; the next tick retries
+        }
+        if (!selectedStrategyId) return; // selection changed while fetching
+        strategyGroups[selectedStrategyId] = groups;
+        if (vt) vt.setRows(flattenPositionRows(groups));
+        // Update the selected card's net + open/closed counts in place.
+        const agg = aggregateStrategyGroups(groups);
+        const card = cardsScroll.querySelector(
+          `.estrategia-scard[data-strategy-id="${selectedStrategyId}"]`);
+        if (card) {
+          const netEl = card.querySelector(".estrategia-scard-net-value");
+          if (netEl) {
+            netEl.textContent = window.SENTINEL.fmt.signed(agg.net);
+            netEl.className = `estrategia-scard-net-value ${netValueClass(agg.net)} mono`;
+          }
+          const openEl = card.querySelector(".estrategia-scard-count.open");
+          const closedEl = card.querySelector(".estrategia-scard-count.closed");
+          if (openEl) openEl.textContent = `● ${agg.open} abiertas`;
+          if (closedEl) closedEl.textContent = `${agg.closed} cerradas`;
+        }
+      }
+
+      function startEstrategiaPoll() {
+        clearEstrategiaPoll();
+        estrategiaPollTimer = setInterval(refreshSelected, 5000);
+      }
+
+      liveStrategies.forEach((s) => {
+        const agg = aggregateStrategyGroups(strategyGroups[s.strategy_id]);
+        const card = renderStrategyPnlCard(s, agg, renderEstrategiaTab, {
+          selected: s.strategy_id === selectedStrategyId,
+          connected: true,
+          onSelect: () => {
+            selectedStrategyId = s.strategy_id;
+            highlightSelected();
+            renderPositionsArea();
+          },
+        });
+        cardsScroll.appendChild(card);
       });
+
+      // Auto-select the first live strategy on first entry.
+      if (!selectedStrategyId || !strategyGroups[selectedStrategyId]) {
+        selectedStrategyId = liveStrategies[0].strategy_id;
+      }
+      highlightSelected();
+      renderPositionsArea();
+      // Start the live visual refresh now that a strategy is selected.
+      startEstrategiaPoll();
     }
 
     reimportBtn.addEventListener("click", async () => {
@@ -1020,7 +1338,9 @@
     state = {
       root,
       teardown: () => {
+        clearEstrategiaPoll();
         if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } }
+        if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } }
         if (humanoTabHandle) { try { humanoTabHandle.teardown(); } catch (e) { /* noop */ } }
       },
     };

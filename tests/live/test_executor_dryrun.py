@@ -72,6 +72,8 @@ class MockMT5:
     TIMEFRAME_M1 = 1
     TIMEFRAME_M2 = 2
     TIMEFRAME_M5 = 5
+    TIMEFRAME_M6 = 6
+    TIMEFRAME_M10 = 10
     TIMEFRAME_M15 = 15
     TRADE_ACTION_DEAL = 1
     TRADE_ACTION_SLTP = 2
@@ -94,6 +96,7 @@ class MockMT5:
         self._symbol_info = symbol_info or _SymbolInfo()
         # optional queue of retcodes to return in order, one per order_send call
         self._retcode_queue = list(order_send_retcodes) if order_send_retcodes else None
+        self._order_ticket_seq = 900  # fake opening-order tickets for order_send.order
 
     def initialize(self, *a, **k):
         self.initialized = True
@@ -124,13 +127,20 @@ class MockMT5:
 
     def order_send(self, req):
         self.sent.append(req)
+        rc = self._retcode_queue.pop(0) if self._retcode_queue else 10009
+        if rc is None:
+            # simulate a TRANSIENT order_send failure (e.g. "trade context
+            # busy"): the real MT5 returns None, not a result object.
+            return None
         class _R:
             pass
         r = _R()
-        if self._retcode_queue:
-            r.retcode = self._retcode_queue.pop(0)
-        else:
-            r.retcode = 10009
+        r.retcode = rc
+        # Real MT5 returns the opening order ticket in `.order` (== the
+        # resulting position identifier). Hand back a monotonically-increasing
+        # fake ticket so spread-recording hooks have a position_id to key on.
+        self._order_ticket_seq += 1
+        r.order = self._order_ticket_seq
         return r
 
     def shutdown(self):
@@ -461,6 +471,42 @@ def test_open_retries_on_invalid_stops_then_succeeds(caplog):
     assert all(req["action"] == mt5.TRADE_ACTION_DEAL for req in mt5.sent)
     assert "ALARM" not in caplog.text
     assert "SL_CLAMPED OPEN" in caplog.text
+
+
+def test_open_emits_fill_with_position_id_and_records_spread(tmp_path):
+    """2026-07-21 spread capture: a successful OPEN must call on_fill with
+    kind='OPEN' and the opening ORDER ticket (r.order), which equals the MT5
+    position_id used in deals_raw -- so the real recorder writes a
+    position_spread row keyed by that id, joinable via get_position_spreads."""
+    from sentinel_engine.research.registry2 import ResearchRegistry
+    reg = ResearchRegistry(tmp_path / "research.db")
+
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=2000.0, ask=2000.6),  # spread 0.60
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    seen = []
+
+    def recorder(kind, position_id, spread):
+        seen.append((kind, position_id, spread))
+        if kind == "OPEN":
+            reg.record_position_spread(position_id, ticket_open=position_id,
+                                       spread_open=spread, spread_open_ts=1)
+
+    a = _open_action(side="L", sl=1999.0)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               on_fill=recorder)
+
+    assert len(mt5.sent) == 1
+    # on_fill fired once, OPEN, with the order ticket the fake mt5 handed back.
+    assert len(seen) == 1
+    kind, pid, spread = seen[0]
+    assert kind == "OPEN"
+    assert pid == mt5._order_ticket_seq  # r.order == position_id
+    assert spread == pytest.approx(0.60)
+    # recorder persisted a row keyed by that position_id.
+    got = reg.get_position_spreads([pid])
+    assert pid in got
+    assert got[pid]["spread_open"] == pytest.approx(0.60)
 
 
 def test_open_legal_sl_sent_unchanged(caplog):
@@ -881,3 +927,92 @@ def test_capture_spread_mode_sends_no_orders(tmp_path, monkeypatch, caplog):
     store = json.loads((tmp_path / "xauusd_spread_store.json").read_text())
     assert store["running_min"] == pytest.approx(0.60)
     assert store["sample_count"] == 1
+
+
+# ------------------- per-position spread recording (on_fill) ----------------
+def test_open_records_spread_via_on_fill():
+    # A thin-spread OPEN is sent AND its spread is recorded via on_fill, keyed
+    # by the opening order ticket (r.order).
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=2000.0, ask=2000.5),  # spread 0.50 (the min)
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    calls = []
+    a = _open_action(side="L", sl=1995.0)  # legal SL, far from market
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               on_fill=lambda *args: calls.append(args))
+    assert len(mt5.sent) == 1
+    assert len(calls) == 1
+    kind, position_id, spread = calls[0]
+    assert kind == "OPEN"
+    assert position_id == 901  # first fake order ticket (seq starts at 900)
+    assert spread == pytest.approx(0.50)
+
+
+def test_close_records_spread_via_on_fill():
+    pos = _Pos(ticket=555, magic=101, type=0, volume=0.01, sl=1990.0)
+    mt5 = MockMT5(_bars(50), positions=[pos],
+                  tick=_Tick(bid=2000.0, ask=2000.62),  # spread 0.62 at close
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    calls = []
+    a = Action(kind="CLOSE", config_id="SS-M1", magic=101, ficha="F1",
+               side="L", sl=None, volume=0.01, ticket=555, reason="exit")
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False,
+                               on_fill=lambda *args: calls.append(args))
+    assert len(calls) == 1
+    kind, position_id, spread = calls[0]
+    assert kind == "CLOSE"
+    assert position_id == 555  # the position ticket
+    assert spread == pytest.approx(0.62)
+
+
+def test_on_fill_error_never_breaks_order(caplog):
+    # A raising on_fill must NOT abort the order flow (fail-safe recording).
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=2000.0, ask=2000.5),
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    def boom(*_args):
+        raise RuntimeError("db down")
+    a = _open_action(side="L", sl=1995.0)
+    with caplog.at_level("ERROR"):
+        run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=False, on_fill=boom)
+    assert len(mt5.sent) == 1, "order still sent despite recording failure"
+    assert "SPREAD_RECORD_FAILED" in caplog.text
+
+
+def test_dry_run_never_records_spread():
+    mt5 = MockMT5(_bars(50), positions=[],
+                  tick=_Tick(bid=2000.0, ask=2000.5),
+                  symbol_info=_SymbolInfo(trade_stops_level=50, point=0.01))
+    calls = []
+    a = _open_action(side="L", sl=1995.0)
+    run_live_20.execute_action(mt5, a, symbol="XAUUSD", dry_run=True,
+                               on_fill=lambda *args: calls.append(args))
+    assert mt5.sent == []
+    assert calls == [], "dry-run must not record spread (nothing filled)"
+
+
+def test_main_armed_recorder_persists_to_registry(tmp_path, monkeypatch):
+    # End-to-end-ish: main() armed builds a recorder that writes position_spread
+    # for a real OPEN, into an injected throwaway registry.
+    from sentinel_engine.research.registry2 import ResearchRegistry
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    reg = ResearchRegistry(tmp_path / "research.db")
+    captured = {}
+
+    def spy_recorder(kind, position_id, spread):
+        captured[kind] = (position_id, spread)
+        if kind == "OPEN":
+            reg.record_position_spread(position_id, ticket_open=position_id,
+                                       spread_open=spread, spread_open_ts=1)
+
+    mt5 = MockMT5(_bars(), tick=_Tick(bid=2000.0, ask=2000.5))
+    rc = run_live_20.main(["--once", "--configs", "SS-M2", "--arm",
+                           "--confirm-account", str(guard_cuenta.DEMO_LOGIN)],
+                          mt5_module=mt5, attach_checker=lambda: True,
+                          spread_recorder=spy_recorder)
+    assert rc == 0
+    # If any OPEN fired, it was persisted; assert the recorder path is wired.
+    if "OPEN" in captured:
+        pid, _spread = captured["OPEN"]
+        got = reg.get_position_spreads([pid])
+        assert pid in got

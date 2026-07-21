@@ -59,10 +59,12 @@ from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
     CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE,
-    CONFIGS_SHADOW, LIVE_ROSTER, supertrend_always_in_target)
+    CONFIGS_SHADOW, CONFIGS_TK, LIVE_ROSTER, supertrend_always_in_target)
+from sentinel_engine.strategies.tk_momentum import (  # noqa: E402
+    tk_momentum_5_8_target)
 
-TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M15": 15}
-TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M15": 900}
+TF_MT5_MINUTES = {"M1": 1, "M2": 2, "M5": 5, "M6": 6, "M10": 10, "M15": 15}
+TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M6": 360, "M10": 600, "M15": 900}
 
 STOP_FILE = REPO_ROOT / "scripts" / "live" / "STOP"
 AUDIT_LOG = REPO_ROOT / "scripts" / "live" / "run_live_20.audit.log"
@@ -179,11 +181,16 @@ def _portable_running(marker: str = PORTABLE_MARKER) -> bool:
 # --------------------------------------------------------------------------
 # Live rates + positions (thin adapters over the injected mt5 module).
 # --------------------------------------------------------------------------
-def fetch_bars(mt5: Any, symbol: str, tf: str, window: int) -> list[dict[str, Any]]:
-    """Latest `window` bars, EXCLUDING the still-forming bar (we act on the
-    last CLOSED bar only). Returns the sim's bar dict shape {t,open,high,low,
-    close}. `copy_rates_from_pos(symbol, timeframe, 0, window+1)` then drop the
-    forming bar."""
+def fetch_bars(mt5: Any, symbol: str, tf: str, window: int,
+               *, include_forming: bool = False) -> list[dict[str, Any]]:
+    """Latest `window` bars in the sim's bar dict shape {t,open,high,low,close}.
+    `copy_rates_from_pos(symbol, timeframe, 0, window+1)`.
+
+    By default EXCLUDES the still-forming bar (close-driven engines act on the
+    last CLOSED bar only). With `include_forming=True` the still-forming bar is
+    KEPT as the last element (its OHLC reflect the elapsed part of the bar, its
+    close = the current price) -- this is what the INTRABAR TK-Momentum path
+    uses to evaluate the signal live, without waiting for the bar to close."""
     timeframe = getattr(mt5, f"TIMEFRAME_{tf}")
     rates = mt5.copy_rates_from_pos(symbol, timeframe, 0, window + 1)
     if rates is None or len(rates) < 2:
@@ -191,8 +198,8 @@ def fetch_bars(mt5: Any, symbol: str, tf: str, window: int) -> list[dict[str, An
     bars = [{"t": int(r["time"]), "open": float(r["open"]),
              "high": float(r["high"]), "low": float(r["low"]),
              "close": float(r["close"])} for r in rates]
-    # last element is the forming bar -> drop it; keep closed bars only.
-    return bars[:-1]
+    # last element is the forming bar: keep it only for the intrabar path.
+    return bars if include_forming else bars[:-1]
 
 
 def fetch_live_positions(mt5: Any, base_magic: int) -> list[dict[str, Any]]:
@@ -231,7 +238,12 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
     """Fetch bars + live positions, run the sim to the last CLOSED bar, diff.
     Returns (result, closed_bar_t). result is None if no bars available."""
     symbol = cfg["kwargs"]["symbol"]
-    bars = fetch_bars(mt5, symbol, cfg["tf"], window)
+    # INTRABAR (TK-Momentum, 2026-07-21 trader request): evaluate the signal on
+    # the still-forming bar (current price) instead of waiting for the bar to
+    # close, so a position is taken the moment the conditions are met live.
+    intrabar = (cfg.get("engine") == "tk_momentum"
+                and cfg["kwargs"].get("intrabar", False))
+    bars = fetch_bars(mt5, symbol, cfg["tf"], window, include_forming=intrabar)
     if not bars:
         logger.warning("[%s] no bars available (market closed / no data)", cfg["id"])
         return None, None
@@ -245,6 +257,18 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
     # applies to the SuperTrend entry exactly like any other.
     if cfg.get("engine") == "supertrend_always_in":
         desired = supertrend_always_in_target(bars)
+    elif cfg.get("engine") == "tk_momentum":
+        # TK-Momentum-5-8-short (2026-07-21): single-position SMA/MOM engine,
+        # same return_state snapshot shape -> same reconciler path.
+        desired = tk_momentum_5_8_target(
+            bars, trail_usd=cfg["kwargs"].get("trail_usd", 0.5))
+        # SINGLE-POSITION INVARIANT (trader 2026-07-21 "solo una posicion,
+        # nunca mas de una"): the engine is single-slot by construction, but
+        # guard it here too so a future engine change can NEVER open a 2nd
+        # TK ficha in live. Fail closed rather than send extra orders.
+        assert len(desired.get("open", {})) <= 1, (
+            "TK-Momentum must never desire more than one open position "
+            f"(got {list(desired.get('open', {}))})")
     else:
         kwargs = dict(cfg["kwargs"])
         if cfg.get("direction_filter"):
@@ -255,6 +279,22 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
     res = reconcile(cfg["id"], cfg["magic"], desired, live,
                     volume=volume, bar_t=bars[-1]["t"], kill_switch=kill_switch,
                     total_open_fichas=total_open_fichas)
+    # SINGLE-POSITION EXECUTION GUARD (tk_momentum, trader 2026-07-21 "solo una
+    # posicion"): NEVER send an OPEN while any live position already exists on
+    # this magic. On a side-flip the reconciler emits CLOSE+OPEN in the same
+    # cycle (it optimistically assumes the close lands); if that close
+    # transiently fails the reopen would DOUBLE the book. Here we only allow an
+    # OPEN from a genuinely FLAT book (len(live)==0) -- so a flip becomes
+    # "close this cycle, open once the book is confirmed flat next cycle", and
+    # the live count can never exceed 1 even if a close fails. Defense-in-depth
+    # complementing the CLOSE retry in execute_action.
+    if cfg.get("engine") == "tk_momentum" and res is not None and len(live) >= 1:
+        dropped = [a for a in res.actions if a.kind == "OPEN"]
+        if dropped:
+            res.actions = [a for a in res.actions if a.kind != "OPEN"]
+            logger.info("[%s] single-position guard: suppressed %d OPEN(s) while "
+                        "%d live position(s) still on the book (open only when flat)",
+                        cfg["id"], len(dropped), len(live))
     return res, bars[-1]["t"]
 
 
@@ -282,14 +322,17 @@ def _current_spread(mt5: Any, symbol: str) -> float | None:
     """Current tick spread (ask - bid) in PRICE units, or None if the tick is
     unavailable (in which case the caller must NOT gate -- fail open on exits,
     fail closed only where explicitly decided). Read-only."""
-    tick = mt5.symbol_info_tick(symbol)
-    if tick is None:
+    try:
+        tick = mt5.symbol_info_tick(symbol)
+        if tick is None:
+            return None
+        bid = getattr(tick, "bid", None)
+        ask = getattr(tick, "ask", None)
+        if bid is None or ask is None:
+            return None
+        return float(ask) - float(bid)
+    except Exception:  # noqa: BLE001 - a tick read must never abort a fill/gate
         return None
-    bid = getattr(tick, "bid", None)
-    ask = getattr(tick, "ask", None)
-    if bid is None or ask is None:
-        return None
-    return float(ask) - float(bid)
 
 
 def _clamp_sl(mt5: Any, symbol: str, side: str, desired_sl: float) -> tuple[str, float]:
@@ -324,8 +367,10 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    same_bar_cost: dict[str, float] | None = None,
                    sl_clamp_cost: dict[str, float] | None = None,
                    modify_retries: int = 2, open_retries: int = 2,
+                   close_retries: int = 2,
                    max_spread_open: float | None = None,
-                   spread_threshold: float | None = None) -> None:
+                   spread_threshold: float | None = None,
+                   on_fill: Callable[[str, Any, float | None], None] | None = None) -> None:
     """Send ONE sendable action, or (dry-run) just log the intent. Guard is
     re-asserted by the caller each cycle BEFORE this is reached.
 
@@ -367,6 +412,18 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         logger.info("  [%s] %s %s %s -- %s", a.kind, a.config_id, a.ficha,
                     a.side or "", a.reason)
         return
+
+    def _emit_fill(kind: str, position_id: Any, spread: float | None) -> None:
+        """Best-effort spread recording (2026-07-21): persist the spread at
+        fill so the UI/audit can show it. NEVER lets a recording error break
+        or alter the order flow -- fail-safe, logged loudly on failure."""
+        if on_fill is None:
+            return
+        try:
+            on_fill(kind, position_id, spread)
+        except Exception as exc:  # noqa: BLE001 - recording must never abort trading
+            logger.error("  [SPREAD_RECORD_FAILED] kind=%s position_id=%s -> %s",
+                         kind, position_id, exc)
 
     # SPREAD-GATE (OPEN only): skip a NEW entry when the current tick spread
     # exceeds the effective cap; the reconciler re-evaluates next cycle. Two
@@ -452,7 +509,25 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                "position": int(a.ticket), "price": price, "deviation": deviation,
                "magic": int(a.magic), "comment": f"{a.config_id}:{a.ficha}:close",
                "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
-        r = mt5.order_send(req)
+        # CLOSE is NOT fire-and-forget (2026-07-21 incident): mt5.order_send can
+        # transiently return None (e.g. "trade context busy" when a close fires
+        # right after another config's order in the same cycle). A dropped close
+        # leaves the position open while the reconciler optimistically reopens
+        # -> unbounded accumulation. Retry on None/non-DONE, log last_error
+        # (previously a blind spot), refresh the price, then verify removal.
+        done_rc = getattr(mt5, "TRADE_RETCODE_DONE", 10009)
+        r = None
+        for attempt in range(1, close_retries + 2):
+            r = mt5.order_send(req)
+            if r is not None and getattr(r, "retcode", None) == done_rc:
+                break
+            logger.error("  [CLOSE FAILED attempt %d/%d] ticket=%s -> retcode=%s "
+                         "last_error=%s", attempt, close_retries + 1, a.ticket,
+                         getattr(r, "retcode", r), mt5.last_error())
+            rtick = mt5.symbol_info_tick(symbol)
+            if rtick is not None:
+                price = rtick.bid if is_long else rtick.ask
+                req["price"] = price
         if a.kind == "SAME_BAR_EXIT_FALLBACK":
             # by-design cost = (live market fill - sim fill) in P&L terms; the
             # gap is the "same-bar optimism" the sim enjoyed. side is the
@@ -470,6 +545,16 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         else:
             logger.info("  [SENT CLOSE] ticket=%s -> retcode=%s", a.ticket,
                         getattr(r, "retcode", r))
+        # Record the spread at close (best-effort). Keyed by the position
+        # ticket, which is `deals_raw.position_id` for this position.
+        if r is not None and getattr(r, "retcode", None) == done_rc:
+            _emit_fill("CLOSE", a.ticket, _current_spread(mt5, symbol))
+        # Verify removal: a position still on the book after all retries is an
+        # ALARM (the single-position guard in reconcile_config will keep the
+        # book from growing, but this surfaces the failed close loudly).
+        if mt5.positions_get(ticket=a.ticket):
+            logger.error("  [ALARM] CLOSE did not remove ticket=%s after %d attempts "
+                         "-- still open (accumulation risk).", a.ticket, close_retries + 1)
         return
     if a.kind == "MODIFY":
         desired_sl = float(a.sl) if a.sl is not None else 0.0
@@ -558,6 +643,9 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                 continue
             logger.info("  [SENT OPEN] %s %s magic=%s -> retcode=%s", a.config_id,
                         a.ficha, a.magic, retcode)
+            # Record the spread at open (best-effort). The opening order ticket
+            # (`r.order`) is the MT5 position identifier == `deals_raw.position_id`.
+            _emit_fill("OPEN", getattr(r, "order", None), _current_spread(mt5, symbol))
             return
         logger.error("  [ALARM] OPEN exhausted retries for config=%s ficha=%s -- "
                      "position may not be open (intra-bar risk).", a.config_id, a.ficha)
@@ -572,7 +660,8 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
               sl_clamp_cost: dict[str, float] | None = None,
               max_spread_open: float | None = None,
               spread_store: SpreadStore | None = None,
-              spread_eps: float = DEFAULT_SPREAD_EPS) -> None:
+              spread_eps: float = DEFAULT_SPREAD_EPS,
+              on_fill: Callable[[str, Any, float | None], None] | None = None) -> None:
     """One full reconcile pass over all configs. Re-asserts the guard FIRST,
     re-reads the STOP kill-switch, tracks the 60-total ficha cap.
 
@@ -623,7 +712,8 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
                            deviation=deviation, same_bar_cost=same_bar_cost,
                            sl_clamp_cost=sl_clamp_cost,
                            max_spread_open=max_spread_open,
-                           spread_threshold=spread_threshold_by_symbol.get(sym))
+                           spread_threshold=spread_threshold_by_symbol.get(sym),
+                           on_fill=on_fill)
         # count fichas the sim wants open (desired) toward the global cap.
         # OPEN + NOOP = one per still-desired ficha (MODIFY is paired with a
         # NOOP-or-open slot, so counting it too would double-count).
@@ -718,7 +808,9 @@ def _confirm_account_noninteractive(confirm_account: int) -> None:
 
 
 def main(argv: list[str] | None = None, *, mt5_module: Any = None,
-         attach_checker: Callable[[], bool] = _portable_running) -> int:
+         attach_checker: Callable[[], bool] = _portable_running,
+         registry: Any = None,
+         spread_recorder: Callable[[str, Any, float | None], None] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Guarded live executor for the 20 configs.")
     ap.add_argument("--configs", default="all",
                      help="'all', 'live' (the LIVE_ROSTER subset), 'shadow' "
@@ -729,7 +821,10 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "clones collapsed to 2 best reps S6-K2P0+S7-TPNONE, "
                           "plus V11-M2 + SuperTrend; clone-concentration "
                           "removed), 'live+shadow' "
-                          "(both, 8 configs) or comma ids e.g. SS-M5,V10-M15")
+                          "(both, 8 configs), 'tk-momentum' (the trader's "
+                          "isolated TK-Momentum-5-8-short live-forward test on "
+                          "XAUUSD, magic 999999999) or comma ids e.g. "
+                          "SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
     ap.add_argument("--window", type=int, default=DEFAULT_WINDOW, help="trailing bars for the sim")
@@ -798,6 +893,23 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         configs = list(CONFIGS_GOLIVE_DEDUP)
     elif roster == "live+shadow":
         configs = list(CONFIGS_LIVE) + list(CONFIGS_SHADOW)
+    elif roster == "live+tk":
+        # SUPERVISED roster (2026-07-21): the `live` classic roster PLUS the
+        # trader's TK-Momentum-5-8-short, run together in ONE auto-healing
+        # supervised executor (SUPERVISOR_CONFIGS=live+tk). TK keeps its own
+        # engine (intrabar) + all-nines magic; per-config dispatch handles it.
+        configs = list(CONFIGS_LIVE) + list(CONFIGS_TK)
+    elif roster == "golive-dedup+tk":
+        # SUPERVISED roster (2026-07-21 user decision): the DEDUP go-live roster
+        # (S6-K2P0, S7-TPNONE, V11-M2, SuperTrend) PLUS TK-Momentum, in ONE
+        # auto-healing supervised executor (SUPERVISOR_CONFIGS=golive-dedup+tk).
+        # Adaptive spread-gate stays ON (see below) to preserve golive-dedup's
+        # behavior; TK keeps its intrabar engine + all-nines magic.
+        configs = list(CONFIGS_GOLIVE_DEDUP) + list(CONFIGS_TK)
+    elif roster in ("tk-momentum", "tk"):
+        # TK-Momentum-5-8-short (2026-07-21): the trader's isolated live-forward
+        # roster, magic 999999999. Runs as its OWN process alongside the rest.
+        configs = list(CONFIGS_TK)
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]
@@ -814,7 +926,7 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     # ADAPTIVE running-min gate: default ON for the go-live roster, OFF else;
     # --adaptive-spread / --no-adaptive-spread override explicitly.
     if args.adaptive_spread is None:
-        adaptive_spread = roster in ("golive", "golive-dedup")
+        adaptive_spread = roster in ("golive", "golive-dedup", "golive-dedup+tk")
     else:
         adaptive_spread = args.adaptive_spread
 
@@ -877,6 +989,29 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     if args.arm and args.confirm_account is None:
         _arm_confirm()
 
+    # Per-position spread recorder (2026-07-21): persist spread at open/close
+    # into `position_spread` so the UI/audit can show it. Only wired when we
+    # actually send orders (dry-run never fills); injectable for tests.
+    recorder = spread_recorder
+    if recorder is None and not dry_run:
+        from sentinel_engine.research.registry2 import ResearchRegistry
+        _reg = registry if registry is not None else ResearchRegistry()
+
+        def recorder(kind: str, position_id: Any, spread: float | None) -> None:
+            if position_id is None:
+                return
+            ts = int(time.time())
+            running_min = spread_store.running_min if spread_store is not None else None
+            if kind == "OPEN":
+                _reg.record_position_spread(
+                    position_id, ticket_open=position_id, spread_open=spread,
+                    spread_open_min=running_min, spread_open_ts=ts,
+                )
+            else:
+                _reg.record_position_spread(
+                    position_id, spread_close=spread, spread_close_ts=ts,
+                )
+
     same_bar_cost: dict[str, float] = {}
     sl_clamp_cost: dict[str, float] = {}
     try:
@@ -885,7 +1020,8 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                       dry_run=dry_run, deviation=args.deviation,
                       same_bar_cost=same_bar_cost, sl_clamp_cost=sl_clamp_cost,
                       max_spread_open=max_spread_open,
-                      spread_store=spread_store, spread_eps=args.spread_eps)
+                      spread_store=spread_store, spread_eps=args.spread_eps,
+                      on_fill=recorder)
             if args.once or stop["flag"]:
                 break
             time.sleep(args.interval)

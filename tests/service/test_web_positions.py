@@ -17,10 +17,13 @@ def test_sections_positions_js_served(app_factory):
         assert resp.status_code == 200
 
 
-def test_positions_js_references_forward_sessions_endpoint():
+def test_positions_js_estrategia_uses_live_strategy_positions_endpoint():
+    # ESTRATEGIA now shows REAL live MT5 positions per strategy, not forward
+    # sessions. The old /api/forward/* handoff is gone.
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "/api/forward/sessions" in text
-    assert "/api/forward/" in text
+    assert "/api/forward" not in text
+    assert 'fetchPositions("strategy"' in text
+    assert 'params.set("strategy_id"' in text
 
 
 def test_positions_js_has_three_provenance_tabs():
@@ -52,20 +55,23 @@ def test_positions_js_registers_sentinel_namespace():
 
 
 def test_positions_js_has_honest_empty_states():
-    # B4/B5 landed: the "future feature" placeholder copy is gone; the
-    # surviving honest empty states are IA (paper engine pending, Wave D)
-    # and the forward-sessions list.
+    # Honest empty states: IA (paper engine pending, Wave D) and the live
+    # ESTRATEGIA positions area (no real positions taken yet).
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
     assert "Disponible al activar live/IA (B4/B5)" not in text
     assert "Sin posiciones IA aún" in text
-    assert "Sin sesiones forward" in text
+    assert "todavía no tomó posiciones reales" in text
 
 
-def test_positions_js_handoff_to_review_via_appstate():
+def test_positions_js_selecting_position_opens_live_chart_panel():
+    # ESTRATEGIA no longer hands off to REVIEW (backtest). Clicking a live
+    # position sets appState.selectedPosition and opens the live chart+replay
+    # panel (buildHumanoDetailPanel), same component the HUMANO tab uses.
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
     assert "appState" in text
-    assert "selectedRun" in text
-    assert 'data-section="review"' in text
+    assert "selectedPosition" in text
+    assert "buildHumanoDetailPanel(panelHost" in text
+    assert "onRowClick" in text
 
 
 def test_positions_js_uses_badge_helper():
@@ -140,23 +146,31 @@ def test_positions_js_humano_injects_scoped_style():
 
 # ---- B3b: expanded detail panel + replay -----------------------------------
 
-def test_positions_js_humano_panel_uses_hist_adapter_and_chart_create():
+def test_positions_js_humano_panel_uses_chart_create_and_select_trade():
+    # 2026-07-21: the panel now drives the chart exactly like Trade View --
+    # chart.create + selectTrade (owns recenter/glow/markers/connector),
+    # instead of the old HistAdapter.ensureWindow/setSignals path that never
+    # centered the selected position.
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "window.SENTINEL.adapters" in text
-    assert "HistAdapter" in text
     assert "window.SENTINEL.chart" in text
     assert "chart.create" in text
+    assert "selectTrade" in text
 
 
-def test_positions_js_humano_panel_windows_30_bars_around_entry_exit():
+def test_positions_js_humano_panel_centers_on_selected_trade():
+    # selectTrade recenters the entry->exit span to ~80% width (gap-immune),
+    # the same behavior Trade View gives; addTradeMarkers registers the trade
+    # so its entry/exit markers + dotted connector render.
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "30" in text
-    assert "ensureWindow" in text
+    assert "addTradeMarkers" in text
+    assert "selectTrade" in text
 
 
-def test_positions_js_humano_panel_sets_signals_with_entry_exit():
+def test_positions_js_humano_panel_marks_entry_exit_trade():
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "setSignals" in text
+    assert "ts_in" in text
+    assert "ts_out" in text
+    assert "addTradeMarkers" in text
 
 
 def test_positions_js_humano_panel_has_replay_button_using_replay_adapter():
@@ -193,7 +207,7 @@ def test_positions_js_humano_panel_degrades_clean_without_adapters_or_chart():
     same as chart.js's `window.SENTINEL.adapters &&` guard)."""
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
     assert "window.SENTINEL.adapters &&" in text or "window.SENTINEL.adapters&&" in text
-    assert "window.SENTINEL.chart &&" in text or "window.SENTINEL.chart&&" in text
+    assert "if (window.SENTINEL.chart)" in text or "window.SENTINEL.chart &&" in text
 
 
 # ---- B4: ESTRATEGIA two-floor + labels -----------------------------------
@@ -215,9 +229,50 @@ def test_positions_js_teorico_null_shows_sin_baseline():
     assert "sin baseline" in text
 
 
-def test_positions_js_sessions_header_renamed():
+def test_positions_js_live_positions_header():
     text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
-    assert "Sesiones forward" in text
+    assert "Posiciones en vivo" in text
+
+
+def test_positions_js_estrategia_shows_open_closed_and_spread():
+    # Live positions mark ABIERTA/CERRADA and surface the spread at open/close.
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "ABIERTA" in text
+    assert "CERRADA" in text
+    assert "spread_open" in text
+    assert "spread_close" in text
+    assert "spread_open_min" in text  # ★ min-spread marker input
+
+
+def test_positions_js_estrategia_scorecard_shows_wr_and_dd():
+    # Per-strategy aggregate must include WR and DD (net/PF already present).
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "WR" in text
+    assert "DD" in text
+    assert "maxdd_pct" in text
+    assert "block.wr" in text
+
+
+def test_positions_js_estrategia_live_refreshes_selected_only():
+    # bug d (2026-07-21): the ESTRATEGIA tab polls /api/positions for the
+    # SELECTED strategy only (visual refresh on open/close); the DB stays
+    # real-time via the watcher independently. The poll must be a timer that
+    # is cleared on teardown / tab switch, and must fetch by strategy_id.
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "refreshSelected" in text
+    assert "setInterval" in text
+    assert "clearEstrategiaPoll" in text
+    # fetches ONLY the selected strategy (strategy_id passed through).
+    assert "fetchPositions(\"strategy\", \"\", selectedStrategyId" in text
+    # updates the list in place without tearing the chart panel.
+    assert "vt.setRows(" in text
+
+
+def test_positions_js_strategy_cards_selectable():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "data-strategy-id" in text
+    assert "onSelect" in text
+    assert "selectedStrategyId" in text
 
 
 def test_positions_js_tf_badge_present():
