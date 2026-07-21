@@ -85,7 +85,8 @@ def test_positions_shape_single_position(client, registry):
     assert len(body["groups"]) == 1
     group = body["groups"][0]
     assert set(group.keys()) == {
-        "group_id", "symbol", "side", "magic", "first_in", "last_out", "net", "lots", "children",
+        "group_id", "symbol", "side", "magic", "strategy_id", "first_in", "last_out",
+        "is_open", "net", "lots", "children",
     }
     assert group["symbol"] == "EURUSD"
     assert group["side"] == "buy"
@@ -98,7 +99,8 @@ def test_positions_shape_single_position(client, registry):
     child = group["children"][0]
     assert set(child.keys()) == {
         "position_id", "ts_in", "ts_out", "px_in", "px_out", "volume", "pnl",
-        "pct", "mae", "mfe", "needs_excursions", "fills",
+        "pct", "mae", "mfe", "needs_excursions", "is_open",
+        "spread_open", "spread_open_min", "spread_close", "fills",
     }
     assert child["position_id"] == 100
     assert child["ts_in"] == 1000
@@ -238,6 +240,63 @@ def test_positions_pct_null_when_margin_inputs_missing(client, registry):
     assert resp.status_code == 200
     child = resp.json()["groups"][0]["children"][0]
     assert child["pct"] is None
+
+
+def test_positions_filter_by_strategy_id(client, registry):
+    _insert_deals(registry, [
+        _deal(1, 100, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800001, 1000, "IN", "strategy", "strat_a", "var_a"),
+        _deal(2, 100, "XAUUSD", "buy", 0.1, 4005.0, 5.0, 800001, 1100, "OUT", "strategy", "strat_a", "var_a"),
+        _deal(3, 200, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800002, 2000, "IN", "strategy", "strat_b", "var_b"),
+        _deal(4, 200, "XAUUSD", "buy", 0.1, 4010.0, 10.0, 800002, 2100, "OUT", "strategy", "strat_b", "var_b"),
+    ])
+    resp = client.get("/api/positions", params={"origin": "strategy", "strategy_id": "strat_b"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["groups"]) == 1
+    group = body["groups"][0]
+    assert group["strategy_id"] == "strat_b"
+    assert group["children"][0]["position_id"] == 200
+
+
+def test_positions_is_open_when_no_out_deal(client, registry):
+    # An OPEN with no matching OUT deal -> still open.
+    _insert_deals(registry, [
+        _deal(1, 100, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800001, 1000, "IN", "strategy", "strat_a"),
+    ])
+    resp = client.get("/api/positions", params={"origin": "strategy"})
+    body = resp.json()
+    group = body["groups"][0]
+    assert group["is_open"] is True
+    assert group["children"][0]["is_open"] is True
+    assert group["children"][0]["ts_out"] is None
+
+
+def test_positions_join_spread_when_recorded(client, registry):
+    _insert_deals(registry, [
+        _deal(1, 100, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800001, 1000, "IN", "strategy", "strat_a"),
+        _deal(2, 100, "XAUUSD", "buy", 0.1, 4005.0, 5.0, 800001, 1100, "OUT", "strategy", "strat_a"),
+    ])
+    registry.record_position_spread(
+        100, ticket_open=100, spread_open=0.50, spread_open_min=0.50, spread_open_ts=1000,
+        spread_close=0.62, spread_close_ts=1100,
+    )
+    resp = client.get("/api/positions", params={"origin": "strategy"})
+    child = resp.json()["groups"][0]["children"][0]
+    assert child["spread_open"] == 0.50
+    assert child["spread_open_min"] == 0.50
+    assert child["spread_close"] == 0.62
+
+
+def test_positions_spread_null_when_not_recorded(client, registry):
+    _insert_deals(registry, [
+        _deal(1, 100, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800001, 1000, "IN", "strategy", "strat_a"),
+        _deal(2, 100, "XAUUSD", "buy", 0.1, 4005.0, 5.0, 800001, 1100, "OUT", "strategy", "strat_a"),
+    ])
+    resp = client.get("/api/positions", params={"origin": "strategy"})
+    child = resp.json()["groups"][0]["children"][0]
+    assert child["spread_open"] is None
+    assert child["spread_open_min"] is None
+    assert child["spread_close"] is None
 
 
 def test_positions_pct_null_when_leverage_zero(client, registry):

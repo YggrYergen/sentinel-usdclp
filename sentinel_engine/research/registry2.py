@@ -92,6 +92,18 @@ CREATE TABLE IF NOT EXISTS jobs(
   run_id TEXT, error TEXT, created_at TEXT NOT NULL, updated_at TEXT NOT NULL);
 """
 
+# Live-strategy positions (2026-07-21): per-position spread at open/close,
+# captured by the live executor (`scripts/live/run_live_20.py`) so the UI can
+# show it and it can be audited against the min-spread OPEN gate. Keyed by
+# `position_id` (== the opening order ticket in MT5, == `deals_raw.position_id`).
+# Additive, own CREATE TABLE IF NOT EXISTS -- same pattern as `_JOBS_DDL`.
+_POSITION_SPREAD_DDL = """
+CREATE TABLE IF NOT EXISTS position_spread(
+  position_id INTEGER PRIMARY KEY, ticket_open INTEGER,
+  spread_open REAL, spread_open_min REAL, spread_open_ts INTEGER,
+  spread_close REAL, spread_close_ts INTEGER);
+"""
+
 # C1a: `news_items` table (CT-5 news feed cache). Additive, own CREATE
 # TABLE IF NOT EXISTS -- same pattern as `_JOBS_DDL`.
 _NEWS_ITEMS_DDL = """
@@ -303,6 +315,11 @@ class ResearchRegistry:
         # C1a: `news_items` table (CT-5). Additive, own CREATE TABLE IF NOT
         # EXISTS.
         conn.executescript(_NEWS_ITEMS_DDL)
+        conn.commit()
+
+        # Live-strategy positions (2026-07-21): `position_spread` table.
+        # Additive, own CREATE TABLE IF NOT EXISTS.
+        conn.executescript(_POSITION_SPREAD_DDL)
         conn.commit()
 
         # B6: any job left `queued`/`running` from a prior process (crash or
@@ -822,6 +839,70 @@ class ResearchRegistry:
                 (key, str(value)),
             )
             conn.commit()
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # position_spread — per-position spread at open/close (live executor)
+    # ------------------------------------------------------------------
+    def record_position_spread(
+        self,
+        position_id: int,
+        *,
+        ticket_open: int | None = None,
+        spread_open: float | None = None,
+        spread_open_min: float | None = None,
+        spread_open_ts: int | None = None,
+        spread_close: float | None = None,
+        spread_close_ts: int | None = None,
+    ) -> None:
+        """Upsert the spread captured for a live position, keyed by
+        `position_id`. Called twice by the executor: once at OPEN (open
+        fields) and once at CLOSE (close fields). Only the fields passed
+        non-`None` are written, so the CLOSE call never clobbers the OPEN
+        fields (and vice-versa). Idempotent per `position_id`."""
+        fields = {
+            "ticket_open": ticket_open,
+            "spread_open": spread_open,
+            "spread_open_min": spread_open_min,
+            "spread_open_ts": spread_open_ts,
+            "spread_close": spread_close,
+            "spread_close_ts": spread_close_ts,
+        }
+        set_cols = {k: v for k, v in fields.items() if v is not None}
+        conn = self._connect()
+        try:
+            # Ensure the row exists, then update only the provided columns.
+            conn.execute(
+                "INSERT INTO position_spread(position_id) VALUES (?) "
+                "ON CONFLICT(position_id) DO NOTHING",
+                (position_id,),
+            )
+            if set_cols:
+                assignments = ", ".join(f"{c}=?" for c in set_cols)
+                conn.execute(
+                    f"UPDATE position_spread SET {assignments} WHERE position_id=?",
+                    (*set_cols.values(), position_id),
+                )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_position_spreads(self, position_ids: list[int]) -> dict[int, dict[str, Any]]:
+        """`position_spread` rows for the given ids, keyed by `position_id`.
+        Missing ids are simply absent from the result (callers default to
+        null spread). Returns `{}` for an empty id list (no query)."""
+        if not position_ids:
+            return {}
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            placeholders = ", ".join("?" for _ in position_ids)
+            rows = conn.execute(
+                f"SELECT * FROM position_spread WHERE position_id IN ({placeholders})",
+                tuple(position_ids),
+            ).fetchall()
+            return {row["position_id"]: dict(row) for row in rows}
         finally:
             conn.close()
 

@@ -50,7 +50,12 @@ def _compute_pct(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> float |
     return profit / margin
 
 
-def _pos_to_dict(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[str, Any]:
+def _pos_to_dict(
+    pos: Any,
+    margin_inputs: dict[Any, tuple[Any, Any]],
+    spreads: dict[Any, dict[str, Any]],
+) -> dict[str, Any]:
+    spread = spreads.get(pos.position_id) or {}
     return {
         "position_id": pos.position_id,
         "ts_in": pos.entry_time,
@@ -63,6 +68,11 @@ def _pos_to_dict(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[st
         "mae": pos.mae,
         "mfe": pos.mfe,
         "needs_excursions": pos.needs_excursions,
+        # is_open: a position with no exit fill is still open in MT5.
+        "is_open": pos.exit_time is None,
+        "spread_open": spread.get("spread_open"),
+        "spread_open_min": spread.get("spread_open_min"),
+        "spread_close": spread.get("spread_close"),
         "fills": [
             {
                 "ticket": f.get("ticket"),
@@ -76,17 +86,32 @@ def _pos_to_dict(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[st
     }
 
 
-def _group_to_dict(group: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> dict[str, Any]:
+def _group_to_dict(
+    group: Any,
+    margin_inputs: dict[Any, tuple[Any, Any]],
+    spreads: dict[Any, dict[str, Any]],
+    strategy_by_position: dict[Any, Any],
+) -> dict[str, Any]:
+    # strategy_id: all children of a group share symbol/side/magic, so they
+    # share the same attribution; take it from the first child's IN deal.
+    strat_id = None
+    for child in group.children:
+        strat_id = strategy_by_position.get(child.position_id)
+        if strat_id is not None:
+            break
     return {
         "group_id": group.group_id,
         "symbol": group.symbol,
         "side": group.side,
         "magic": group.magic,
+        "strategy_id": strat_id,
         "first_in": group.first_in,
         "last_out": group.last_out,
+        # is_open at the group level: any child still open keeps the group open.
+        "is_open": any(c.exit_time is None for c in group.children),
         "net": group.net,
         "lots": group.lots,
-        "children": [_pos_to_dict(p, margin_inputs) for p in group.children],
+        "children": [_pos_to_dict(p, margin_inputs, spreads) for p in group.children],
     }
 
 
@@ -94,7 +119,12 @@ def build_router(registry) -> APIRouter:
     r = APIRouter()
 
     @r.get("/api/positions")
-    def get_positions(origin: str | None = None, symbol: str | None = None, limit: int = 200) -> dict[str, Any]:
+    def get_positions(
+        origin: str | None = None,
+        symbol: str | None = None,
+        strategy_id: str | None = None,
+        limit: int = 200,
+    ) -> dict[str, Any]:
         conn = registry._connect()  # noqa: SLF001 - same pattern as registry2's own query methods
         conn.row_factory = sqlite3.Row
         try:
@@ -106,6 +136,9 @@ def build_router(registry) -> APIRouter:
             if symbol:
                 clauses.append("symbol = ?")
                 params.append(symbol)
+            if strategy_id:
+                clauses.append("strategy_id = ?")
+                params.append(strategy_id)
             where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
             rows = conn.execute(f"SELECT * FROM deals_raw {where}", params).fetchall()
         finally:
@@ -126,10 +159,27 @@ def build_router(registry) -> APIRouter:
             if d.get("entry_type") == "IN"
         }
 
+        # strategy_id per position: from each position's IN deal (grouping
+        # doesn't carry attribution columns onto the Position dataclass).
+        strategy_by_position = {
+            d["position_id"]: d.get("strategy_id")
+            for d in deals
+            if d.get("entry_type") == "IN"
+        }
+
         groups = group_positions(deals)
         groups.sort(key=lambda g: g.first_in, reverse=True)
         groups = groups[:limit]
 
-        return {"groups": [_group_to_dict(g, margin_inputs) for g in groups]}
+        # LEFT JOIN position_spread for the positions actually returned.
+        shown_ids = [c.position_id for g in groups for c in g.children]
+        spreads = registry.get_position_spreads(shown_ids)
+
+        return {
+            "groups": [
+                _group_to_dict(g, margin_inputs, spreads, strategy_by_position)
+                for g in groups
+            ]
+        }
 
     return r
