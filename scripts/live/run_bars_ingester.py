@@ -15,10 +15,16 @@ READ-ONLY toward MT5: only `copy_rates_from_pos` / `symbol_info` /
 `symbol_select` (all read-only). NEVER sends an order -- there is no
 order-sending call anywhere in this file.
 
-ATTACH note: unlike the deals-watcher this initializes a portable terminal
-directly (mirroring `mt5_dump_history.py`), which is the established pattern
-for the read-only history dumper. On a transient MT5 hiccup it logs and
-re-initializes on the next cycle rather than crashing.
+ATTACH-ONLY / NEVER LAUNCH: mirrors `scripts/live/run_deals_watcher.py`'s
+`_portable_running` pattern -- this daemon NEVER calls `mt5.initialize()`
+unless the portable/standard terminal process is already confirmed running
+via the injected `attach_checker`. Every loop iteration re-checks the
+attach guard BEFORE touching MT5; if the terminal is not running we log and
+skip the cycle (no connect, no crash, no exit) -- unlike the one-shot
+deals-watcher runner, this is a durable daemon and must survive the
+terminal being closed and self-attach again once the user reopens it. On a
+transient MT5 hiccup (attach guard True but `initialize()` fails) it logs
+and re-attempts on the next cycle rather than crashing.
 
 MT5 is INJECTABLE: `run_cycle(mt5, lake_root, ...)` takes the client so tests
 wire a fake and the CLI wires the real `MetaTrader5` module. This module
@@ -35,7 +41,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -45,6 +51,7 @@ sys.path.insert(0, str(REPO_ROOT))
 from sentinel_engine.lake.mt5_fetch import drop_forming_bar, rates_to_frame  # noqa: E402
 from sentinel_engine.lake.store import read_bars, write_bars  # noqa: E402
 from sentinel_engine.lake.tiers import build_tiers  # noqa: E402
+from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 
 # Reuse the one-shot dumper's authoritative lake_key -> broker-symbol map, so
 # the daemon stays current on EXACTLY the same symbol set (the 3 rolled
@@ -52,10 +59,19 @@ from sentinel_engine.lake.tiers import build_tiers  # noqa: E402
 sys.path.insert(0, str(REPO_ROOT / "scripts"))
 from mt5_dump_history import SYMBOL_MAP  # noqa: E402
 
-PORTABLE = REPO_ROOT / "MT5_Portable" / "terminal64.exe"
 DEFAULT_LAKE_ROOT = REPO_ROOT / "data" / "lake"
 DEFAULT_INTERVAL_S = 300
 DEFAULT_TAIL_BARS = 1500
+# MULTI-MACHINE (2026-07-15 pattern, applied here 2026-07-21): terminal
+# path/marker/portable-flag come from the machine profile
+# (sentinel_engine.live.machine_profile), same as run_deals_watcher.py and
+# run_live_20.py, so this file serves both Machine 1 (portable
+# D:\FOREX\MT5_Portable) and Machine "TOMACHINE" (standard Capitaria
+# install) without either machine's hardcode clobbering the other's.
+_PROFILE = load_profile()
+PORTABLE_EXE = _PROFILE.terminal_path
+PORTABLE_MARKER = _PROFILE.terminal_marker
+PORTABLE_FLAG = _PROFILE.portable
 
 
 def log(msg: str) -> None:
@@ -141,15 +157,55 @@ def run_cycle(mt5: Any, lake_root: Path, *, symbol_map: dict[str, str],
     return changed
 
 
+# --------------------------------------------------------------------------
+# Attach guard (NEVER LAUNCH) -- copied verbatim from
+# run_deals_watcher._portable_running.
+# --------------------------------------------------------------------------
+def _portable_running(marker: str = PORTABLE_MARKER) -> bool:
+    """True iff a running process' command line references the DEMO portable
+    install path. Uses WMIC (fallback: PowerShell CIM) so we don't confuse
+    the REAL terminal (same image name, different path)."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["wmic", "process", "where", "name='terminal64.exe'",
+             "get", "CommandLine,ExecutablePath", "/format:list"],
+            capture_output=True, text=True, timeout=20,
+        ).stdout
+    except Exception:  # noqa: BLE001
+        out = ""
+    if out:
+        return any(marker in line.lower() for line in out.splitlines())
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"name='terminal64.exe'\" "
+             "| Select-Object -ExpandProperty CommandLine"],
+            capture_output=True, text=True, timeout=25,
+        ).stdout
+    except Exception:  # noqa: BLE001
+        out = ""
+    return any(marker in line.lower() for line in out.splitlines())
+
+
 def _connect(mt5: Any) -> bool:
-    """Initialize the portable terminal (read-only). Returns True on success."""
-    if not mt5.initialize(path=str(PORTABLE)):
+    """Attach to the terminal ONLY (read-only). Caller has already confirmed
+    the process is running (attach guard). Returns True on success."""
+    # MULTI-MACHINE (2026-07-15 pattern): pass portable=True only when this
+    # machine's profile says so (Machine 1's portable install needs it;
+    # Machine "TOMACHINE"'s standard install must not get it, else MT5
+    # would look for a nonexistent portable data dir and detach from the
+    # logged-in session).
+    ok = (mt5.initialize(path=str(PORTABLE_EXE), portable=True) if PORTABLE_FLAG
+          else mt5.initialize(path=str(PORTABLE_EXE)))
+    if not ok:
         log(f"initialize FAILED: {mt5.last_error()}")
         return False
     return True
 
 
-def main(argv: list[str] | None = None, *, mt5_module: Any = None) -> int:
+def main(argv: list[str] | None = None, *, mt5_module: Any = None,
+         attach_checker: Callable[[], bool] = _portable_running) -> int:
     ap = argparse.ArgumentParser(
         description="Durable incremental OHLC bars ingester (read-only).")
     ap.add_argument("--interval", type=int, default=DEFAULT_INTERVAL_S,
@@ -177,28 +233,37 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None) -> int:
     if mt5 is None:
         import MetaTrader5 as mt5  # noqa: N813 -- only imported when actually running
 
-    connected = _connect(mt5)
-    timeframes: dict[int, int] = _build_timeframes(mt5) if connected else {}
+    connected = False
+    timeframes: dict[int, int] = {}
     log(f"bars ingester up: interval={args.interval}s tail_bars={args.tail_bars} "
         f"symbols={len(symbol_map)} lake_root={lake_root}")
 
     try:
         while True:
-            if not connected:
-                # transient MT5 outage: try to re-init before this cycle.
-                connected = _connect(mt5)
-                if connected:
-                    timeframes = _build_timeframes(mt5)
-            if connected:
-                try:
-                    changed = run_cycle(mt5, lake_root, symbol_map=symbol_map,
-                                        timeframes=timeframes, tail_bars=args.tail_bars)
-                    log(f"cycle done: {len(changed)} symbol(s) re-tiered")
-                except Exception as exc:  # noqa: BLE001 -- never crash the daemon
-                    log(f"!! cycle FAILED: {exc} -- will re-init and retry next cycle")
-                    connected = False
+            # ATTACH-ONLY / NEVER LAUNCH: re-check at the TOP of every loop
+            # iteration, even on the very first one -- unlike the one-shot
+            # deals-watcher runner, this daemon must SURVIVE the terminal
+            # being closed (at startup or mid-run) and simply keep skipping
+            # cycles until attach_checker() confirms it is running again.
+            if not attach_checker():
+                log("portable terminal not running -- skipping cycle "
+                    "(ATTACH-ONLY: we never launch)")
+                connected = False
             else:
-                log("MT5 not connected -- will retry next cycle")
+                if not connected:
+                    connected = _connect(mt5)
+                    if connected:
+                        timeframes = _build_timeframes(mt5)
+                if connected:
+                    try:
+                        changed = run_cycle(mt5, lake_root, symbol_map=symbol_map,
+                                            timeframes=timeframes, tail_bars=args.tail_bars)
+                        log(f"cycle done: {len(changed)} symbol(s) re-tiered")
+                    except Exception as exc:  # noqa: BLE001 -- never crash the daemon
+                        log(f"!! cycle FAILED: {exc} -- will re-init and retry next cycle")
+                        connected = False
+                else:
+                    log("MT5 not connected -- will retry next cycle")
 
             if args.once:
                 break

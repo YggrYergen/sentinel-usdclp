@@ -6,6 +6,8 @@ connects real MetaTrader5, NEVER touches the real `data/lake`.
 """
 from __future__ import annotations
 
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import pytest
@@ -35,11 +37,13 @@ class FakeMt5:
         # rates_by_key: {(broker_sym, mt5_tf): list of (t,o,h,l,c,tv)}
         self._rates = rates_by_key
         self.calls = []
+        self.initialize_calls = []
         self.initialized = False
         for name, val in _TF_CONSTS.items():
             setattr(self, name, val)
 
     def initialize(self, path=None, **kw):
+        self.initialize_calls.append({"path": path, **kw})
         self.initialized = True
         return True
 
@@ -161,3 +165,100 @@ def test_module_does_not_import_metatrader5_at_top():
     src = open(ing.__file__, encoding="utf-8").read()
     assert "import MetaTrader5" not in src.split("def ")[0]  # not at module top
     assert "order_send" not in src  # read-only
+
+
+# --------------------------------------------------------------------------
+# ATTACH-ONLY tests: the daemon must NEVER call initialize() unless the
+# injected attach_checker() confirms the portable terminal is already
+# running (mirrors tests/live/test_run_deals_watcher.py's pattern).
+# --------------------------------------------------------------------------
+def test_main_skips_cycle_when_attach_checker_false(tmp_path, monkeypatch):
+    lake_root = tmp_path / "lake"
+    fake = FakeMt5({})
+    run_cycle_calls = []
+    monkeypatch.setattr(ing, "run_cycle",
+                        lambda *a, **kw: run_cycle_calls.append(1) or [])
+
+    rc = ing.main(
+        ["--once", "--lake-root", str(lake_root)],
+        mt5_module=fake, attach_checker=lambda: False)
+
+    assert rc == 0
+    assert fake.initialize_calls == []  # NEVER launched
+    assert run_cycle_calls == []  # cycle never ran
+
+
+def test_main_connects_and_runs_cycle_when_attach_checker_true(tmp_path, monkeypatch):
+    lake_root = tmp_path / "lake"
+    fake = FakeMt5({})
+    run_cycle_calls = []
+    monkeypatch.setattr(ing, "run_cycle",
+                        lambda *a, **kw: run_cycle_calls.append(1) or [])
+
+    rc = ing.main(
+        ["--once", "--lake-root", str(lake_root)],
+        mt5_module=fake, attach_checker=lambda: True)
+
+    assert rc == 0
+    assert len(fake.initialize_calls) == 1
+    assert run_cycle_calls == [1]
+
+
+def test_connect_uses_machine_profile_portable_true(tmp_path, monkeypatch):
+    fake = FakeMt5({})
+    monkeypatch.setattr(ing, "PORTABLE_EXE", Path(r"D:\FOREX\MT5_Portable\terminal64.exe"))
+    monkeypatch.setattr(ing, "PORTABLE_FLAG", True)
+
+    ing._connect(fake)
+
+    assert fake.initialize_calls == [
+        {"path": r"D:\FOREX\MT5_Portable\terminal64.exe", "portable": True}]
+
+
+def test_connect_uses_machine_profile_portable_false(tmp_path, monkeypatch):
+    fake = FakeMt5({})
+    monkeypatch.setattr(ing, "PORTABLE_EXE",
+                        Path(r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe"))
+    monkeypatch.setattr(ing, "PORTABLE_FLAG", False)
+
+    ing._connect(fake)
+
+    assert fake.initialize_calls == [
+        {"path": r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe"}]
+
+
+def test_main_survives_terminal_closed_at_startup_then_self_attaches(tmp_path, monkeypatch):
+    """Daemon semantics (unlike the one-shot deals-watcher): must NOT exit
+    when attach_checker() is False at startup -- it loops and self-attaches
+    once the checker flips True on a later cycle."""
+    lake_root = tmp_path / "lake"
+    fake = FakeMt5({})
+    run_cycle_calls = []
+
+    def _fake_run_cycle(*a, **kw):
+        run_cycle_calls.append(1)
+        return []
+
+    monkeypatch.setattr(ing, "run_cycle", _fake_run_cycle)
+    monkeypatch.setattr(ing.time, "sleep", lambda s: None)
+
+    # attach_checker: False, False, True, then stop the daemon (simulates
+    # Ctrl-C / bounded run) once the successful cycle has happened.
+    responses = iter([False, False, True])
+
+    def _checker():
+        try:
+            return next(responses)
+        except StopIteration:
+            # third call already returned True and ran the cycle; force the
+            # loop to end by raising the same signal main()'s SIGINT handler
+            # would produce -- simplest deterministic stop is KeyboardInterrupt.
+            raise KeyboardInterrupt()
+
+    rc = ing.main(
+        ["--lake-root", str(lake_root), "--interval", "0"],
+        mt5_module=fake, attach_checker=_checker)
+
+    assert run_cycle_calls == [1]
+    assert len(fake.initialize_calls) == 1
+    assert rc == 0
