@@ -145,6 +145,102 @@ def test_tk_momentum_config_spec(client):
     assert "exit" in rules and rules["exit"]
 
 
+def test_adaptive_sar_config_spec(client):
+    # SS-M2 (CONFIGS_20) is sar_adaptive=True (part of the "_SS_EXTRAS" ->
+    # _ADAPTIVE mix): sar_fast=(0.3, 0.3), sar_slow=(0.005, 0.05),
+    # vol_regime_window=200. The SAR indicator params must reflect those
+    # adaptive kwargs, NOT the static sar_step/sar_max (0.3/0.3) also present
+    # in the config's kwargs dict (adaptive configs keep sar_step/sar_max as
+    # unused legacy skeleton fields).
+    specs = _get_specs(client)
+    spec = specs["SS-M2"]
+    src = next(c for c in CONFIGS_20 if c["id"] == "SS-M2")
+    assert src["kwargs"]["sar_adaptive"] is True
+
+    sar = next(ind for ind in spec["indicators"] if ind["type"] == "SAR")
+    assert sar["params"].get("adaptive") is True
+    # JSON round-trip turns the source tuples into lists -- compare as lists.
+    assert sar["params"]["sar_fast"] == list(src["kwargs"]["sar_fast"])
+    assert sar["params"]["sar_slow"] == list(src["kwargs"]["sar_slow"])
+    assert sar["params"]["vol_regime_window"] == src["kwargs"]["vol_regime_window"]
+    # must NOT surface the static (unused) step/max instead of the adaptive
+    # params.
+    assert "step" not in sar["params"]
+    assert "max" not in sar["params"]
+
+
+def test_adaptive_sar_config_spec_v15_variants(client):
+    # V15-M2 and V15-M15 are also sar_adaptive=True (CONFIGS_20); assert the
+    # same derivation holds across both timeframes of the V15 line.
+    specs = _get_specs(client)
+    for cid in ("V15-M2", "V15-M15"):
+        src = next(c for c in CONFIGS_20 if c["id"] == cid)
+        assert src["kwargs"]["sar_adaptive"] is True
+        sar = next(ind for ind in specs[cid]["indicators"] if ind["type"] == "SAR")
+        assert sar["params"].get("adaptive") is True
+        assert sar["params"]["sar_fast"] == list(src["kwargs"]["sar_fast"])
+        assert sar["params"]["sar_slow"] == list(src["kwargs"]["sar_slow"])
+        assert sar["params"]["vol_regime_window"] == src["kwargs"]["vol_regime_window"]
+
+
+def test_adaptive_sar_config_spec_golive_m15_sar_winners(client):
+    # The go-live M15 SAR winners (S6-K2P0, S7-TPNONE, CONFIGS_GOLIVE) build
+    # on _GOLIVE_BASE_M15, which also mixes in _ADAPTIVE -- confirm the
+    # chart-spec endpoint derives adaptive SAR params for these too (these
+    # ids are NOT in CONFIGS_20, only in CONFIGS_GOLIVE).
+    specs = _get_specs(client)
+    for cid in ("S6-K2P0", "S7-TPNONE"):
+        src = next(c for c in CONFIGS_GOLIVE if c["id"] == cid)
+        assert src["kwargs"]["sar_adaptive"] is True
+        sar = next(ind for ind in specs[cid]["indicators"] if ind["type"] == "SAR")
+        assert sar["params"].get("adaptive") is True
+        assert sar["params"]["sar_fast"] == list(src["kwargs"]["sar_fast"])
+        assert sar["params"]["sar_slow"] == list(src["kwargs"]["sar_slow"])
+        assert sar["params"]["vol_regime_window"] == src["kwargs"]["vol_regime_window"]
+
+
+def test_direction_filter_config_gets_supertrend_mask(client):
+    # V10-M5 / V10-M15 (CONFIGS_20) are direction_filter=True: on top of the
+    # usual EMA8/EMA20 + SAR trio, the chart spec must surface an ADDITIONAL
+    # SuperTrend(14, 3.0) M15 indicator representing the direction mask.
+    specs = _get_specs(client)
+    for cid in ("V10-M5", "V10-M15"):
+        src = next(c for c in CONFIGS_20 if c["id"] == cid)
+        assert src["direction_filter"] is True
+
+        spec = specs[cid]
+        types = [ind["type"] for ind in spec["indicators"]]
+        assert types.count("EMA") == 2
+        assert types.count("SAR") == 1
+        assert types.count("SUPERTREND") == 1
+
+        ema_periods = {ind["params"]["period"] for ind in spec["indicators"] if ind["type"] == "EMA"}
+        assert ema_periods == {8, 20}
+
+        st = next(ind for ind in spec["indicators"] if ind["type"] == "SUPERTREND")
+        assert st["params"]["atr_period"] == 14
+        assert st["params"]["mult"] == pytest.approx(3.0)
+        assert st["params"].get("tf") == "M15"
+
+        # direction_filter must also surface in the rules text (long/short
+        # gate note), not just the extra indicator.
+        rules = spec["rules"]
+        assert "direction_filter" in rules["long"]
+        assert "direction_filter" in rules["short"]
+
+
+def test_non_direction_filter_config_has_no_supertrend_mask(client):
+    # Sanity counterpart: a plain simular_variant config with
+    # direction_filter=False must NOT get the extra SuperTrend indicator
+    # (already partially covered by test_simular_variant_v11_m2_spec, but
+    # pin it explicitly against a non-adaptive, non-direction-filter id).
+    specs = _get_specs(client)
+    src = next(c for c in CONFIGS_20 if c["id"] == "V06D-M2")
+    assert src["direction_filter"] is False
+    types = [ind["type"] for ind in specs["V06D-M2"]["indicators"]]
+    assert "SUPERTREND" not in types
+
+
 def test_magic_echoed_matches_config(client):
     # For ids NOT present in a go-live roster, the CONFIGS_20 magic must be
     # echoed verbatim (V11-M2 is the one deliberate exception -- see
