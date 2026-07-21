@@ -158,6 +158,21 @@
     .estrategia-pos-sym { display: flex; flex-direction: column; line-height: 1.2; }
     .estrategia-pos-sym .sym { font-weight: 700; }
     .estrategia-pos-spread { font-size: 0.7rem; }
+
+    /* Task 1b: per-strategy chart toolbar (native TF switch + indicator
+       selector popover), mounted above the chart in the ESTRATEGIA/HUMANO
+       detail panel. Reuses the charts-tf-btn / charts-overlay-chip classes
+       (already styled in style.css) so the TF buttons match CHARTS/REVIEW. */
+    .estrategia-chart-toolbar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 4px 2px 8px; }
+    .estrategia-chart-toolbar-tf { display: flex; gap: 4px; }
+    .estrategia-chart-native-note { font-size: 0.68rem; color: var(--text-2, #5c6a7d); font-style: italic; }
+    .estrategia-ind-selector { position: relative; }
+    .estrategia-ind-selector-btn { cursor: pointer; font-size: 0.72rem; padding: 3px 10px; border-radius: 4px; border: 1px solid var(--border, #333); background: var(--bg-2, #131a24); color: var(--text-1, #8b98ab); }
+    .estrategia-ind-selector-btn:hover { color: var(--accent-celeste, #00bfff); border-color: var(--accent-celeste, #00bfff); }
+    .estrategia-ind-popover { position: absolute; z-index: 20; top: calc(100% + 4px); left: 0; min-width: 200px; display: flex; flex-direction: column; gap: 4px; padding: 8px; border: 1px solid var(--border, #333); border-radius: 6px; background: var(--bg-1, #0d1117); box-shadow: 0 6px 18px rgba(0,0,0,0.4); }
+    .estrategia-ind-popover.hidden { display: none; }
+    .estrategia-ind-popover label { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; cursor: pointer; }
+    .estrategia-ind-popover input[type="checkbox"] { margin: 0; }
   `;
 
   function injectEstrategiaLiveCss() {
@@ -678,6 +693,277 @@
   const DEFAULT_TF = "M5";
   const PANEL_TF_SEC = { M1: 60, M2: 120, M5: 300, M10: 600, M15: 900, H1: 3600, D: 86400 };
 
+  // ---- Task 1b: per-strategy chart (native TF + TF switch + exact
+  // indicators + selector). Data source: GET /api/strategies/chart-specs
+  // (Task 1a) -> {specs: {config_id: {id, tf, engine, magic, indicators,
+  // rules, notes}}}. MUST map by MAGIC (deals_raw.strategy_id is NOT a
+  // config id) -- build magic -> spec once, cached module-level (specs are
+  // static per deploy; a stale cache just means a new server-side roster
+  // needs a page reload, same staleness class as every other static asset
+  // here). ----
+  // Servable TF set: the bars/lake/chart pipeline only serves these (see
+  // sentinel_engine/service/routers/jobs.py::_VALID_TF_NAMES and chart.js's
+  // own internal TF_LIST which additionally lacks H1/D -- every strategy
+  // this task targets uses M2/M15, both already in chart.js's TF_LIST, so
+  // that narrower intersection is what actually matters for setTF()).
+  const SERVABLE_TF = new Set(["M1", "M2", "M5", "M15", "H1", "D"]);
+
+  let _chartSpecsPromise = null;
+  function fetchChartSpecs() {
+    if (!_chartSpecsPromise) {
+      _chartSpecsPromise = fetch("/api/strategies/chart-specs")
+        .then((resp) => {
+          if (!resp.ok) throw new Error(`GET /api/strategies/chart-specs failed: ${resp.status}`);
+          return resp.json();
+        })
+        .then((body) => body.specs || {})
+        .catch(() => ({})); // degrade clean -- no specs -> every position falls back to generic chart
+    }
+    return _chartSpecsPromise;
+  }
+
+  let _magicSpecIndexPromise = null;
+  function fetchMagicSpecIndex() {
+    if (!_magicSpecIndexPromise) {
+      _magicSpecIndexPromise = fetchChartSpecs().then((specs) => {
+        const byMagic = new Map();
+        Object.keys(specs).forEach((cid) => {
+          const spec = specs[cid];
+          if (spec && spec.magic != null) byMagic.set(spec.magic, spec);
+        });
+        return byMagic;
+      });
+    }
+    return _magicSpecIndexPromise;
+  }
+
+  // 🔴 SCOPE (2026-07-21): M6 (TK-Momentum's native tf) is NOT servable by
+  // /api/bars yet (backlogged) -- any spec whose tf isn't in SERVABLE_TF is
+  // treated as "no native TF available": never set it, never fetch /api/bars
+  // with it, no TF button for it. Falls back to the panel's generic behavior
+  // (current chart, no forced native TF, no indicators) -- never crash.
+  function specHasServableTf(spec) {
+    return !!(spec && spec.tf && SERVABLE_TF.has(spec.tf));
+  }
+
+  const IND_OVERLAY_ID = (ind, idx) => `strat-ind-${idx}-${ind.type}`;
+
+  // Computes a single indicator's chart points against already-fetched bars
+  // (bars: [[ts,o,h,l,c,v],...], see charts.js fetchLastBars/lib/chart.js
+  // ct2BarsToTuples). Returns null for an indicator type/pane this client
+  // can't render (caller skips it) rather than throwing.
+  function computeIndicatorPoints(ind, bars) {
+    const calc = window.SENTINEL.chartCalc;
+    if (!calc || !bars.length) return null;
+    const times = bars.map((b) => b[0]);
+    const highs = bars.map((b) => b[2]);
+    const lows = bars.map((b) => b[3]);
+    const closes = bars.map((b) => b[4]);
+    const params = ind.params || {};
+    if (ind.type === "EMA") {
+      const period = Number(params.period) || 20;
+      return times.map((t, i) => [t, calc.computeEMA(closes, period)[i]]);
+    }
+    if (ind.type === "SMA") {
+      const period = Number(params.period) || 20;
+      const vals = calc.computeSMA(closes, period);
+      return times.map((t, i) => [t, vals[i]]);
+    }
+    if (ind.type === "MOM") {
+      const period = Number(params.period) || 2;
+      const vals = calc.computeMomentum(closes, period);
+      return times.map((t, i) => [t, vals[i]]);
+    }
+    if (ind.type === "SAR") {
+      // Static SAR: params.step/params.max used verbatim (byte-for-byte port
+      // of emasar.py sar_series, see charts.js computeSAR).
+      // Adaptive SAR (params.adaptive=true, params.sar_fast/sar_slow tuples +
+      // params.vol_regime_window): the ENGINE picks per-bar between a FAST
+      // SAR series (sar_fast step/max) and a SLOW one (sar_slow step/max),
+      // switching on whether ATR14[i] exceeds the rolling median of the
+      // previous vol_regime_window bars' ATR14 (see emasar_variant.py
+      // sar_adaptive block) -- a genuine regime switch, not just a
+      // parameter choice. Exactly replicating that regime-detection
+      // client-side is out of scope for this task (documented approximation,
+      // per the task brief): we render the STANDARD parabolic SAR using
+      // sar_fast as (step, max) -- i.e. the "fast" leg of the adaptive pair,
+      // which in every current config is (0.3, 0.3), identical to the
+      // static default. This is an APPROXIMATION for adaptive configs (it
+      // never falls back to the "slow" leg) -- labeled "SAR (approx)" in the
+      // indicator label so the operator knows it's not exact.
+      let step;
+      let maxStep;
+      if (params.adaptive && Array.isArray(params.sar_fast)) {
+        step = Number(params.sar_fast[0]);
+        maxStep = Number(params.sar_fast[1]);
+      } else {
+        step = Number(params.step) || 0.02;
+        maxStep = Number(params.max) || 0.2;
+      }
+      const { sar } = calc.computeSAR(highs, lows, step, maxStep);
+      return times.map((t, i) => [t, sar[i]]);
+    }
+    if (ind.type === "SUPERTREND") {
+      const atrPeriod = Number(params.atr_period) || 14;
+      const mult = Number(params.mult) || 3.0;
+      const { line } = calc.computeSuperTrend(highs, lows, closes, atrPeriod, mult);
+      return times.map((t, i) => [t, line[i]]);
+    }
+    return null;
+  }
+
+  // Applies (or removes) one indicator's overlay on chartInst, using the
+  // SAME overlay kinds review.js's applyIndicator() uses (price-pane
+  // line/dots vs the "osc" sub-pane line for pane:"sub" indicators like
+  // MOM). chart.js already exposes addOscLine/addOscHistogram (a dedicated
+  // bottom price-scale, see lib/chart.js "oscillator SUBPANEL" block) --
+  // MOM maps directly onto addOscLine, no chart.js change needed.
+  function applyStratIndicator(chartInst, ind, id, points) {
+    if (!points) { chartInst.removeOverlay(id); return; }
+    if (ind.pane === "sub") {
+      chartInst.addOscLine(id, points, ind.color || "#ffffff");
+    } else if (ind.type === "SAR") {
+      chartInst.addSarDots(id, points, ind.color || "#ab47bc");
+    } else {
+      chartInst.addOverlay(id, points, ind.color || "#00bfff");
+    }
+  }
+
+  // Builds the toolbar (TF buttons + indicator selector popover) for a
+  // resolved spec, mounted above the chart. Returns {el, destroy}. `getBars`
+  // returns the chart's currently-loaded bars synchronously (chartInst has
+  // no public bars getter, so the caller passes a small wrapper that
+  // re-fetches /api/bars for the active tf -- see wireStrategyChart below).
+  function buildStratChartToolbar(host, spec, activeIndicatorIds, callbacks) {
+    const toolbar = el("div", { class: "estrategia-chart-toolbar" });
+
+    if (specHasServableTf(spec)) {
+      const tfWrap = el("div", { class: "estrategia-chart-toolbar-tf" });
+      // Only the TF the strategy is native on, plus the other servable TFs
+      // chart.js itself already supports (its internal TF_LIST) -- reusing
+      // charts.js's own list would require exporting it; simplest safe
+      // superset that never calls setTF with a value chart.js rejects.
+      const CHART_JS_TF_LIST = ["M1", "M2", "M5", "M15"];
+      CHART_JS_TF_LIST.forEach((tf) => {
+        const btn = el("button", { type: "button", class: "charts-tf-btn", text: tf });
+        if (tf === callbacks.getActiveTf()) btn.classList.add("active");
+        btn.addEventListener("click", () => {
+          tfWrap.querySelectorAll(".charts-tf-btn").forEach((b) => b.classList.remove("active"));
+          btn.classList.add("active");
+          callbacks.onTF(tf);
+        });
+        tfWrap.appendChild(btn);
+      });
+      toolbar.appendChild(tfWrap);
+    } else {
+      toolbar.appendChild(el("span", {
+        class: "estrategia-chart-native-note",
+        text: `TF nativo ${(spec && spec.tf) || "?"} — no disponible aún`,
+      }));
+    }
+
+    // Indicator selector pop-up: button -> popover listing every one of the
+    // strategy's spec indicators, pre-checked (the exact set the strategy
+    // trades on). Unchecking removes it, re-checking re-adds it -- reuses
+    // the overlay-chip TOGGLE semantics (charts.js onOverlayToggle), just
+    // rendered as checkboxes in a popover instead of chips (a strategy can
+    // have 3-4 indicators; chips would crowd the toolbar).
+    const indicators = (spec && spec.indicators) || [];
+    if (indicators.length) {
+      const selectorWrap = el("div", { class: "estrategia-ind-selector" });
+      const selBtn = el("button", { type: "button", class: "estrategia-ind-selector-btn", text: "Indicadores ▾" });
+      const popover = el("div", { class: "estrategia-ind-popover hidden" });
+      indicators.forEach((ind, idx) => {
+        const id = IND_OVERLAY_ID(ind, idx);
+        const label = el("label", {});
+        const cb = el("input", { type: "checkbox" });
+        cb.checked = activeIndicatorIds.has(id);
+        cb.addEventListener("change", () => callbacks.onIndicatorToggle(ind, id, cb.checked));
+        label.appendChild(cb);
+        label.appendChild(el("span", { text: ind.label || ind.type }));
+        popover.appendChild(label);
+      });
+      selBtn.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        popover.classList.toggle("hidden");
+      });
+      document.addEventListener("click", (ev) => {
+        if (!selectorWrap.contains(ev.target)) popover.classList.add("hidden");
+      });
+      selectorWrap.appendChild(selBtn);
+      selectorWrap.appendChild(popover);
+      toolbar.appendChild(selectorWrap);
+    }
+
+    host.appendChild(toolbar);
+    return toolbar;
+  }
+
+  // Wires the native-TF/indicators/selector behavior onto an already-created
+  // chartInst for the position's resolved `spec` (may be null/no-spec, or
+  // non-servable-tf -- both degrade to "no toolbar, chart unchanged", per
+  // the task's scope decision). Returns a teardown fn (no-op if no spec).
+  function wireStrategyChart(toolbarHost, chartInst, spec, symbol) {
+    if (!spec || !chartInst) return () => {};
+    const indicators = spec.indicators || [];
+    // Strategy's exact indicator set starts ACTIVE (pre-checked), per spec.
+    const activeIds = new Set(indicators.map((ind, idx) => IND_OVERLAY_ID(ind, idx)));
+    let activeTf = specHasServableTf(spec) ? spec.tf : chartInst.tf;
+    let destroyed = false;
+
+    async function applyAllActive() {
+      if (destroyed) return;
+      let bars;
+      try {
+        const usp = new URLSearchParams({ symbol, tf: activeTf, max_points: "3000" });
+        const resp = await fetch(`/api/bars?${usp.toString()}`);
+        if (!resp.ok) return;
+        const body = await resp.json();
+        bars = (body.bars || []).map((b) => (Array.isArray(b) ? b : [b.t, b.o, b.h, b.l, b.c, b.v]));
+      } catch (e) {
+        return;
+      }
+      if (destroyed || !bars.length) return;
+      indicators.forEach((ind, idx) => {
+        const id = IND_OVERLAY_ID(ind, idx);
+        if (!activeIds.has(id)) { chartInst.removeOverlay(id); return; }
+        const points = computeIndicatorPoints(ind, bars);
+        applyStratIndicator(chartInst, ind, id, points);
+      });
+    }
+
+    const toolbar = buildStratChartToolbar(toolbarHost, spec, activeIds, {
+      getActiveTf: () => activeTf,
+      onTF: (tf) => {
+        activeTf = tf;
+        Promise.resolve(chartInst.setTF(tf)).then(applyAllActive);
+      },
+      onIndicatorToggle: (ind, id, checked) => {
+        if (checked) activeIds.add(id); else activeIds.delete(id);
+        if (!checked) { chartInst.removeOverlay(id); return; }
+        applyAllActive();
+      },
+    });
+
+    // Native-TF default: if the strategy's tf is servable and differs from
+    // the chart's current tf, switch to it before the first indicator apply
+    // (requirement 1). If not servable (M6/TK) or no spec, chartInst keeps
+    // whatever tf buildHumanoDetailPanel already opened it at.
+    let initial;
+    if (specHasServableTf(spec) && chartInst.tf !== spec.tf) {
+      initial = Promise.resolve(chartInst.setTF(spec.tf)).then(applyAllActive);
+    } else {
+      initial = applyAllActive();
+    }
+    Promise.resolve(initial).catch(() => { /* noop -- best-effort */ });
+
+    return () => {
+      destroyed = true;
+      indicators.forEach((ind, idx) => { try { chartInst.removeOverlay(IND_OVERLAY_ID(ind, idx)); } catch (e) { /* noop */ } });
+      if (toolbar && toolbar.parentNode) toolbar.parentNode.removeChild(toolbar);
+    };
+  }
+
   function positionEntryExit(selection) {
     const group = selection.group || {};
     const child = selection.kind === "child" ? selection.child : (group.children || [])[0] || {};
@@ -714,6 +1000,14 @@
     closeBtn.textContent = "×";
     header.appendChild(closeBtn);
     panel.appendChild(header);
+
+    // Task 1b: per-strategy chart toolbar (native TF switch + indicator
+    // selector) mounts here, ABOVE the chart itself. Populated async once the
+    // position's magic resolves against /api/strategies/chart-specs (below);
+    // stays empty (no toolbar) for HUMANO/legacy positions whose magic has no
+    // spec, or while the specs fetch is in flight.
+    const chartToolbarHost = el("div", { class: "estrategia-chart-toolbar-host" });
+    panel.appendChild(chartToolbarHost);
 
     const chartHost = el("div", { class: "positions-humano-panel-chart" });
     panel.appendChild(chartHost);
@@ -810,6 +1104,27 @@
       chartHost.innerHTML = '<div class="positions-panel-chart-unavailable">Chart no disponible.</div>';
     }
 
+    // Task 1b: resolve the position's magic -> chart-spec (async; the panel
+    // above already opened at DEFAULT_TF/generic so there's no dead time).
+    // MUST map by MAGIC, never strategy_id (deals_raw.strategy_id isn't a
+    // config id) -- group.magic comes straight off /api/positions.
+    // wireStrategyChart's own setTF (when the spec's tf is servable and
+    // differs) reuses chart.js's setTF-then-reselect-trade path, so the
+    // selection/centering above still holds after the native-tf switch.
+    let stratChartTeardown = null;
+    let panelClosed = false;
+    if (chartInst) {
+      const magic = selection.group && selection.group.magic;
+      if (magic != null) {
+        fetchMagicSpecIndex().then((byMagic) => {
+          if (panelClosed) return;
+          const spec = byMagic.get(magic) || null;
+          if (!spec) return; // no spec for this magic (HUMANO/legacy) -> generic chart, unchanged
+          stratChartTeardown = wireStrategyChart(chartToolbarHost, chartInst, spec, symbol);
+        }).catch(() => { /* noop -- generic chart stays as-is */ });
+      }
+    }
+
     replayBtn.addEventListener("click", () => {
       if (!window.SENTINEL.adapters || !window.SENTINEL.adapters.ReplayAdapter || !chartInst || !panelBarSource) return;
       if (tIn == null || tOut == null) return;
@@ -828,8 +1143,10 @@
     document.addEventListener("keydown", escHandler);
 
     function closePanel() {
+      panelClosed = true;
       document.removeEventListener("keydown", escHandler);
       if (aiStream) { try { aiStream.abort(); } catch (e) { /* noop */ } aiStream = null; }
+      if (stratChartTeardown) { try { stratChartTeardown(); } catch (e) { /* noop */ } stratChartTeardown = null; }
       if (chartInst) { try { chartInst.destroy(); } catch (e) { /* noop */ } }
       container.innerHTML = "";
       if (onClose) onClose();

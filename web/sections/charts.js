@@ -119,6 +119,148 @@
     return out;
   }
 
+  // ---- Task 1b shared indicator calculators -------------------------------
+  // Client-side reproductions of the strategy-chart indicators
+  // (`/api/strategies/chart-specs`). Exported on window.SENTINEL.chartCalc so
+  // positions.js (ESTRATEGIA per-strategy chart) reuses the SAME functions
+  // instead of duplicating them; computeEMA/computeBBUpper above stay local
+  // (charts.js's own overlay set) but are also exposed for reuse.
+
+  function computeSMA(closes, period) {
+    const out = new Array(closes.length).fill(null);
+    if (period <= 0) return out;
+    let run = 0;
+    for (let i = 0; i < closes.length; i++) {
+      run += closes[i];
+      if (i >= period) run -= closes[i - period];
+      if (i >= period - 1) out[i] = run / period;
+    }
+    return out;
+  }
+
+  // MT5-style momentum oscillator: close[i] / close[i-period] * 100 (matches
+  // sentinel_engine/strategies/tk_momentum.py `momentum()`). Entries before
+  // `period` (or where the reference close is 0) are null.
+  function computeMomentum(closes, period) {
+    const out = new Array(closes.length).fill(null);
+    for (let i = period; i < closes.length; i++) {
+      const ref = closes[i - period];
+      out[i] = ref ? (closes[i] / ref) * 100 : null;
+    }
+    return out;
+  }
+
+  // Standard parabolic SAR (Wilder), a line-by-line port of
+  // sentinel_engine/strategies/emasar.py::sar_series (STATIC case, fixed
+  // step/max — read there for the exact reference). Returns {sar, trend}
+  // arrays (trend: +1 bullish / -1 bearish), same shape as the Python
+  // reference (sar[0] is never null: seeded from bar 0).
+  function computeSAR(highs, lows, step, maxStep) {
+    const n = highs.length;
+    const sar = new Array(n).fill(null);
+    const trend = new Array(n).fill(0);
+    if (n === 0) return { sar, trend };
+    let up = n < 2 ? true : highs[1] >= highs[0];
+    let ep = up ? highs[0] : lows[0];
+    let af = step;
+    sar[0] = up ? lows[0] : highs[0];
+    trend[0] = up ? 1 : -1;
+    for (let i = 1; i < n; i++) {
+      let cur = sar[i - 1] + af * (ep - sar[i - 1]);
+      if (up) {
+        const ceiling = i >= 2 ? Math.min(lows[i - 1], lows[i - 2]) : lows[i - 1];
+        cur = Math.min(cur, ceiling);
+        if (lows[i] < cur) {
+          up = false;
+          cur = ep;
+          ep = lows[i];
+          af = step;
+        } else if (highs[i] > ep) {
+          ep = highs[i];
+          af = Math.min(af + step, maxStep);
+        }
+      } else {
+        const floor = i >= 2 ? Math.max(highs[i - 1], highs[i - 2]) : highs[i - 1];
+        cur = Math.max(cur, floor);
+        if (highs[i] > cur) {
+          up = true;
+          cur = ep;
+          ep = highs[i];
+          af = step;
+        } else if (lows[i] < ep) {
+          ep = lows[i];
+          af = Math.min(af + step, maxStep);
+        }
+      }
+      sar[i] = cur;
+      trend[i] = up ? 1 : -1;
+    }
+    return { sar, trend };
+  }
+
+  // Wilder ATR(period) -- warmup (first `period` bars) is null, matching the
+  // engine's _atr_wilder semantics (first true value is the SMA of the first
+  // `period` true ranges, then Wilder-smoothed).
+  function computeAtrWilder(highs, lows, closes, period) {
+    const n = highs.length;
+    const out = new Array(n).fill(null);
+    if (n === 0 || period <= 0) return out;
+    const tr = new Array(n).fill(0);
+    for (let i = 0; i < n; i++) {
+      if (i === 0) { tr[i] = highs[i] - lows[i]; continue; }
+      tr[i] = Math.max(
+        highs[i] - lows[i],
+        Math.abs(highs[i] - closes[i - 1]),
+        Math.abs(lows[i] - closes[i - 1]),
+      );
+    }
+    if (n < period) return out;
+    let sum = 0;
+    for (let i = 0; i < period; i++) sum += tr[i];
+    let atr = sum / period;
+    out[period - 1] = atr;
+    for (let i = period; i < n; i++) {
+      atr = (atr * (period - 1) + tr[i]) / period;
+      out[i] = atr;
+    }
+    return out;
+  }
+
+  // SuperTrend(atr_period, mult): Wilder ATR + the standard recursion, a
+  // line-by-line port of sentinel_engine/strategies/_supertrend_ref.py::
+  // supertrend (read for the exact formula). Matches the engine's OWN call
+  // convention (`live_configs_20.py supertrend_always_in_target`): ATR's
+  // None warmup values are filled with 0.0 BEFORE running the recursion
+  // (not skipped) -- so `line`/`trend` are defined from bar 0, same as what
+  // the live engine actually computes/trades on. Returns {line, trend}.
+  function computeSuperTrend(highs, lows, closes, atrPeriod, mult) {
+    const n = closes.length;
+    const atrRaw = computeAtrWilder(highs, lows, closes, atrPeriod);
+    const atr = atrRaw.map((v) => (v === null ? 0.0 : v));
+    const finUp = new Array(n).fill(0);
+    const finLo = new Array(n).fill(0);
+    const trend = new Array(n).fill(0);
+    const line = new Array(n).fill(null);
+    for (let i = 0; i < n; i++) {
+      const hl2 = (highs[i] + lows[i]) / 2;
+      const bUp = hl2 + mult * atr[i];
+      const bLo = hl2 - mult * atr[i];
+      if (i === 0) {
+        finUp[i] = bUp;
+        finLo[i] = bLo;
+        trend[i] = closes[i] >= hl2 ? 1 : -1;
+      } else {
+        finUp[i] = (bUp < finUp[i - 1] || closes[i - 1] > finUp[i - 1]) ? bUp : finUp[i - 1];
+        finLo[i] = (bLo > finLo[i - 1] || closes[i - 1] < finLo[i - 1]) ? bLo : finLo[i - 1];
+        if (trend[i - 1] === 1 && closes[i] < finLo[i]) trend[i] = -1;
+        else if (trend[i - 1] === -1 && closes[i] > finUp[i]) trend[i] = 1;
+        else trend[i] = trend[i - 1];
+      }
+      line[i] = trend[i] === 1 ? finLo[i] : finUp[i];
+    }
+    return { line, trend };
+  }
+
   async function fetchLastBars(symbol, tf) {
     const usp = new URLSearchParams({ symbol, tf, max_points: "3000" });
     const resp = await fetch(`/api/bars?${usp.toString()}`);
@@ -353,4 +495,14 @@
   window.SENTINEL = window.SENTINEL || {};
   window.SENTINEL.sections = window.SENTINEL.sections || {};
   window.SENTINEL.sections.charts = { render, teardown };
+  // Task 1b: shared indicator calculators, reused by positions.js (ESTRATEGIA
+  // per-strategy chart) so charts.js/positions.js don't duplicate the math.
+  window.SENTINEL.chartCalc = {
+    computeEMA,
+    computeSMA,
+    computeMomentum,
+    computeSAR,
+    computeAtrWilder,
+    computeSuperTrend,
+  };
 })();
