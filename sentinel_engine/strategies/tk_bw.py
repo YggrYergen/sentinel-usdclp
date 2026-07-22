@@ -92,14 +92,17 @@ class _Regime:
     closed candle (index -2)."""
 
     __slots__ = (
-        "ema_fast_cur", "ema_fast_prev", "ema_slow_cur", "ema_slow_prev",
-        "sar_cur", "ao_cur", "ao_prev", "ac_cur", "ac_prev",
-        "mom_cur", "mom_prev", "st_trend_cur", "st_trend_prev",
+        "ema_fast_cur", "ema_fast_prev", "ema_fast_back",
+        "ema_slow_cur", "ema_slow_prev", "ema_slow_back",
+        "sar_cur", "ao_cur", "ao_prev", "ao_back",
+        "ac_cur", "ac_prev", "ac_back",
+        "mom_cur", "mom_prev", "mom_back",
+        "st_trend_cur", "st_trend_prev",
         "last_close", "last_open",
     )
 
     def __init__(self, closed, *, ema_fast, ema_slow, sar_step, sar_max,
-                 mom_period, st_period, st_mult):
+                 mom_period, st_period, st_mult, regime_lookback=1):
         highs, lows, closes = _closed_ohlc_lists(closed)
         n = len(closes)
         ema_f = ema_series(closes, ema_fast)
@@ -115,13 +118,21 @@ class _Regime:
         def _v(series, idx):
             return series[idx] if 0 <= idx < len(series) else None
 
-        i, ip = n - 1, n - 2
+        # "back" = the K-velas-atras value used for the regime slope STATE:
+        # "creciente" <=> cur > series[n-1-K], "decreciente" <=> cur < that.
+        # K=1 makes ib == ip, so *_back == *_prev and behavior is unchanged.
+        i, ip, ib = n - 1, n - 2, n - 1 - regime_lookback
         self.ema_fast_cur, self.ema_fast_prev = _v(ema_f, i), _v(ema_f, ip)
+        self.ema_fast_back = _v(ema_f, ib)
         self.ema_slow_cur, self.ema_slow_prev = _v(ema_s, i), _v(ema_s, ip)
+        self.ema_slow_back = _v(ema_s, ib)
         self.sar_cur = _v(sar_val, i)
         self.ao_cur, self.ao_prev = _v(ao, i), _v(ao, ip)
+        self.ao_back = _v(ao, ib)
         self.ac_cur, self.ac_prev = _v(ac, i), _v(ac, ip)
+        self.ac_back = _v(ac, ib)
         self.mom_cur, self.mom_prev = _v(mom, i), _v(mom, ip)
+        self.mom_back = _v(mom, ib)
         self.st_trend_cur, self.st_trend_prev = _v(st_trend, i), _v(st_trend, ip)
         self.last_close = closes[i] if n else None
         self.last_open = closed[i]["open"] if n else None
@@ -166,6 +177,7 @@ def tk_bw_run(
     mom_period=14,
     st_period=14,
     st_mult=3.0,
+    regime_lookback=1,
     be_trigger=0.60,
     trail_usd=5.0,
     init_sl_offset=0.60,
@@ -202,14 +214,19 @@ def tk_bw_run(
         regime = _Regime(closed, ema_fast=ema_fast, ema_slow=ema_slow,
                           sar_step=sar_step, sar_max=sar_max,
                           mom_period=mom_period, st_period=st_period,
-                          st_mult=st_mult)
+                          st_mult=st_mult, regime_lookback=regime_lookback)
 
         e_fast_cur, e_fast_prev = regime.ema_fast_cur, regime.ema_fast_prev
         e_slow_cur, e_slow_prev = regime.ema_slow_cur, regime.ema_slow_prev
+        # regime slope STATE compares "cur" against the K-velas-atras value;
+        # with regime_lookback=1 these *_back == *_prev (behavior unchanged).
+        e_fast_back = regime.ema_fast_back
+        e_slow_back = regime.ema_slow_back
         sar_cur = regime.sar_cur
         ao_cur, ao_prev = regime.ao_cur, regime.ao_prev
         ac_cur, ac_prev = regime.ac_cur, regime.ac_prev
         mom_cur, mom_prev = regime.mom_cur, regime.mom_prev
+        ao_back, ac_back, mom_back = regime.ao_back, regime.ac_back, regime.mom_back
         st_trend_cur, st_trend_prev = regime.st_trend_cur, regime.st_trend_prev
 
         have_core = None not in (e_fast_cur, e_slow_cur, sar_cur)
@@ -362,16 +379,20 @@ def tk_bw_run(
             if blocked_native_idx is not None and n_closed == blocked_native_idx:
                 continue  # no re-entry within the native candle the last ficha closed on
 
-            ema_fast_rising = e_fast_prev is not None and e_fast_cur > e_fast_prev
-            ema_fast_falling = e_fast_prev is not None and e_fast_cur < e_fast_prev
-            ema_slow_rising = e_slow_prev is not None and e_slow_cur > e_slow_prev
-            ema_slow_falling = e_slow_prev is not None and e_slow_cur < e_slow_prev
-            ao_rising = ao_prev is not None and ao_cur is not None and ao_cur > ao_prev
-            ao_falling = ao_prev is not None and ao_cur is not None and ao_cur < ao_prev
-            ac_rising = ac_prev is not None and ac_cur is not None and ac_cur > ac_prev
-            ac_falling = ac_prev is not None and ac_cur is not None and ac_cur < ac_prev
-            mom_rising = mom_prev is not None and mom_cur is not None and mom_cur > mom_prev
-            mom_falling = mom_prev is not None and mom_cur is not None and mom_cur < mom_prev
+            # c5-c9: regime slope read as a STATE over the last K closed
+            # candles: "creciente" <=> cur > value K-back, "decreciente" <=>
+            # cur < value K-back (K = regime_lookback). None-back (warmup /
+            # out of range) => flag False, same as the prev-based guards.
+            ema_fast_rising = e_fast_back is not None and e_fast_cur > e_fast_back
+            ema_fast_falling = e_fast_back is not None and e_fast_cur < e_fast_back
+            ema_slow_rising = e_slow_back is not None and e_slow_cur > e_slow_back
+            ema_slow_falling = e_slow_back is not None and e_slow_cur < e_slow_back
+            ao_rising = ao_back is not None and ao_cur is not None and ao_cur > ao_back
+            ao_falling = ao_back is not None and ao_cur is not None and ao_cur < ao_back
+            ac_rising = ac_back is not None and ac_cur is not None and ac_cur > ac_back
+            ac_falling = ac_back is not None and ac_cur is not None and ac_cur < ac_back
+            mom_rising = mom_back is not None and mom_cur is not None and mom_cur > mom_back
+            mom_falling = mom_back is not None and mom_cur is not None and mom_cur < mom_back
 
             long_ok = False
             short_ok = False
