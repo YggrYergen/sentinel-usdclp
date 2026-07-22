@@ -413,6 +413,49 @@ def test_ensure_bars_ingester_running_noop_when_argv_none(tmp_path):
     assert launches == []
 
 
+# --------------------------------------------------------------------------
+# build_executor_argv: optional static hard spread cap (SUPERVISOR_MAX_SPREAD_OPEN)
+# passed through to the executor's `--max-spread-open`. Machine-1 immutability:
+# unset/empty => argv identical to the pre-existing shape (no cap flag at all).
+# --------------------------------------------------------------------------
+def test_build_executor_argv_default_has_no_spread_cap():
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None)
+    assert "--configs" in argv
+    assert argv[argv.index("--configs") + 1] == "tomachine"
+    assert "--max-spread-open" not in argv
+
+
+def test_build_executor_argv_with_cap_appends_flag_and_keeps_existing_args():
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open="0.5")
+    assert argv[-2:] == ["--max-spread-open", "0.5"]
+    assert "--arm" in argv
+    assert "--confirm-account" in argv
+    login_idx = argv.index("--confirm-account") + 1
+    assert argv[login_idx] == str(sup.guard_cuenta.DEMO_LOGIN)
+    assert "--configs" in argv
+    assert argv[argv.index("--configs") + 1] == "tomachine"
+
+
+@pytest.mark.parametrize("value", ["", None])
+def test_build_executor_argv_empty_or_none_treated_as_unset(value):
+    argv = sup.build_executor_argv(max_spread_open=value)
+    assert "--max-spread-open" not in argv
+
+
+@pytest.mark.parametrize("value", ["abc", "-1", "0"])
+def test_build_executor_argv_invalid_cap_raises_system_exit(value):
+    with pytest.raises(SystemExit):
+        sup.build_executor_argv(max_spread_open=value)
+
+
+def test_default_executor_argv_has_no_spread_cap_when_env_unset(monkeypatch):
+    """Proves machine-1 (env var unset) is unchanged: the module-level
+    EXECUTOR_ARGV built at import time never contains --max-spread-open when
+    SUPERVISOR_MAX_SPREAD_OPEN is unset."""
+    assert sup.SUPERVISOR_MAX_SPREAD_OPEN in (None, "")
+    assert "--max-spread-open" not in sup.EXECUTOR_ARGV
+
+
 def test_run_supervised_never_touches_mt5_module():
     """Sanity guardrail: supervisor_live must not import MetaTrader5 order
     APIs. We simply assert the module has no `order_send`-shaped attribute

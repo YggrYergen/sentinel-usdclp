@@ -89,9 +89,61 @@ EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 # tk-momentum | tomachine (or any comma ids).
 SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 
-EXECUTOR_ARGV = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
-                 "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
-                 "--configs", SUPERVISOR_CONFIGS]
+# OPTIONAL static HARD spread cap (USD/oz) the supervisor passes through to
+# the executor's `--max-spread-open` (see run_live_20.py -- a STATIC HARD cap
+# that combines with the adaptive running-min gate by taking the TIGHTER of
+# the two; exits/MODIFY/CLOSE are never gated, so risk management (SL/TP/
+# trailing) always keeps running regardless of this setting). UNSET (default,
+# None) means no static cap is appended at all -- machine-1's argv, and thus
+# its behavior, stays byte-identical to before this option existed (adaptive
+# gate only). Machine-2 sets SUPERVISOR_MAX_SPREAD_OPEN=0.5 so strategies
+# OPEN only at XAUUSD's observed 0.5 minimum spread and simply pause (skip
+# the OPEN, retry next cycle) whenever the spread is wider than that.
+SUPERVISOR_MAX_SPREAD_OPEN = os.environ.get("SUPERVISOR_MAX_SPREAD_OPEN")
+
+
+def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
+                        max_spread_open: str | None = SUPERVISOR_MAX_SPREAD_OPEN
+                        ) -> list[str]:
+    """Builds the argv used to launch the armed executor. `configs` is passed
+    straight through to `--configs` (unchanged behavior). `max_spread_open`,
+    if set (non-empty string), must parse as a FINITE positive float; it is
+    then appended as `--max-spread-open <value>` -- a STATIC HARD cap on top
+    of run_live_20's own adaptive gate (see module docstring / run_live_20.py
+    for the combining rule and the exits-never-gated guarantee). Unset/empty
+    means no cap is appended at all, so the argv (and therefore machine-1's
+    behavior when the env var is unset) is byte-identical to before this
+    option existed.
+
+    A malformed cap (doesn't parse, non-positive, infinite/NaN) is FAILED
+    LOUD: this is a safety setting, and arming the executor without the
+    intended protection because of a typo would be worse than refusing to
+    start at all. The error is logged to watchdog.log and the process exits
+    via SystemExit(2) -- callers (e.g. `main()`) are expected to let this
+    propagate rather than swallow it."""
+    argv = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
+            "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
+            "--configs", configs]
+    if max_spread_open:
+        try:
+            value = float(max_spread_open)
+            if not (value > 0.0) or value == float("inf"):
+                raise ValueError(f"must be a finite positive float, got {value!r}")
+        except (TypeError, ValueError) as exc:
+            msg = (f"SUPERVISOR_MAX_SPREAD_OPEN={max_spread_open!r} is not a valid "
+                   f"positive finite float ({exc}) -- refusing to arm the executor "
+                   "without the intended spread-cap safety protection. Fix or unset "
+                   "SUPERVISOR_MAX_SPREAD_OPEN and restart.")
+            try:
+                _log_watchdog(f"FATAL: {msg}")
+            except NameError:
+                print(msg, file=sys.stderr)
+            raise SystemExit(2)
+        argv += ["--max-spread-open", str(value)]
+    return argv
+
+
+EXECUTOR_ARGV = build_executor_argv()
 DEALS_WATCHER_MARKER = "run_deals_watcher"
 # Argv the supervisor (re)launches the read-only deals watcher with. Poll 5s.
 WATCHER_ARGV = [sys.executable, "-m", "scripts.live.run_deals_watcher", "--poll", "5"]
