@@ -59,6 +59,7 @@ _DEAL_COLUMNS = (
     "price", "profit", "magic", "time", "entry_type",
     "origin", "strategy_id", "variant_id",
     "leverage", "contract_size",
+    "comment", "reason",
 )
 
 _LAST_SYNC_META_KEY = "deals_watcher.last_sync"

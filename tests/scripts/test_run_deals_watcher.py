@@ -87,6 +87,36 @@ class _FakeMt5Module:
         self.shutdown_calls += 1
 
 
+# ---------------------------------------------------------------------------
+# Task 2 (2026-07-22): `_deal_to_dict` must map the real MT5 `TradeDeal`'s
+# `comment` / `reason` fields into the dict DealsWatcher persists.
+# ---------------------------------------------------------------------------
+class _FakeDealWithCommentReason(_FakeDeal):
+    def __init__(self, *args, comment="", reason=0, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.comment = comment
+        self.reason = reason
+
+
+def test_deal_to_dict_maps_comment_and_reason():
+    mt5 = _FakeMt5Module()
+    d = _FakeDealWithCommentReason(
+        9001, 5001, "XAUUSD", "BUY", 0.1, 2400.5, 12.3, 0, 1750000000, 1,
+        comment="[sl 2400.00]", reason=4,
+    )
+    mapped = rdw._deal_to_dict(mt5, d)
+    assert mapped["comment"] == "[sl 2400.00]"
+    assert mapped["reason"] == 4
+
+
+def test_deal_to_dict_comment_reason_none_when_deal_lacks_them():
+    mt5 = _FakeMt5Module()
+    d = _FakeDeal(9002, 5001, "XAUUSD", "BUY", 0.1, 2400.5, 12.3, 0, 1750000000, 0)
+    mapped = rdw._deal_to_dict(mt5, d)
+    assert mapped["comment"] is None
+    assert mapped["reason"] is None
+
+
 def _always_attached() -> bool:
     return True
 

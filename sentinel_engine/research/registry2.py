@@ -112,6 +112,22 @@ CREATE TABLE IF NOT EXISTS news_items(
   symbols_json TEXT, kind TEXT, impact TEXT);
 """
 
+# Posiciones->ESTRATEGIA per-position comments (2026-07-21): free-text notes
+# the user attaches to any position of any strategy, persisted locally so
+# they can work on the strategy later. Unlike `position_spread` (one row per
+# position_id), a position can carry MANY comments, so this table has its
+# own surrogate key (`comment_id`) and `position_id` is a plain (non-unique)
+# column. Additive, own CREATE TABLE IF NOT EXISTS -- same pattern as
+# `_POSITION_SPREAD_DDL`.
+_POSITION_COMMENT_DDL = """
+CREATE TABLE IF NOT EXISTS position_comment(
+  comment_id INTEGER PRIMARY KEY AUTOINCREMENT,
+  position_id INTEGER NOT NULL,
+  magic INTEGER,
+  body TEXT NOT NULL,
+  created_at TEXT NOT NULL);
+"""
+
 _RUN_COLUMNS = (
     "run_id", "variant_id", "params_hash", "engine", "fidelity",
     "periodo_desde", "periodo_hasta", "modelo_sim", "status",
@@ -321,6 +337,26 @@ class ResearchRegistry:
         # Additive, own CREATE TABLE IF NOT EXISTS.
         conn.executescript(_POSITION_SPREAD_DDL)
         conn.commit()
+
+        # Posiciones->ESTRATEGIA per-position comments (2026-07-21):
+        # `position_comment` table. Additive, own CREATE TABLE IF NOT EXISTS.
+        conn.executescript(_POSITION_COMMENT_DDL)
+        conn.commit()
+
+        # `deals_raw.comment` / `deals_raw.reason` (Task 2, 2026-07-22):
+        # nullable columns persisting the MT5 deal's `comment` (e.g.
+        # '[sl 2400.00]' / '[tp 2410.00]' / '') and `reason`
+        # (DEAL_REASON_* int -- 3=EA/expert, 4=SL, 5=TP, ...) so a manual
+        # close can be told apart from an SL/TP-triggered one after the
+        # fact. Additive-only, same guarded ALTER pattern as every other
+        # migration above -- pre-existing rows stay NULL.
+        deals_cols = {row[1] for row in conn.execute("PRAGMA table_info(deals_raw)").fetchall()}
+        if "comment" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN comment TEXT")
+            conn.commit()
+        if "reason" not in deals_cols:
+            conn.execute("ALTER TABLE deals_raw ADD COLUMN reason INTEGER")
+            conn.commit()
 
         # B6: any job left `queued`/`running` from a prior process (crash or
         # restart) can never be resumed -- mark it `error:"interrupted"` on
@@ -903,6 +939,73 @@ class ResearchRegistry:
                 tuple(position_ids),
             ).fetchall()
             return {row["position_id"]: dict(row) for row in rows}
+        finally:
+            conn.close()
+
+    # ------------------------------------------------------------------
+    # position_comment — free-text notes attached to a position (Posiciones
+    # ->ESTRATEGIA); a position can carry MANY comments (unlike
+    # position_spread's single row per position_id).
+    # ------------------------------------------------------------------
+    def add_position_comment(
+        self,
+        position_id: int,
+        body: str,
+        *,
+        magic: int | None = None,
+        created_at: str | None = None,
+    ) -> int:
+        """Insert one comment for `position_id`; returns the new
+        `comment_id`. Rejects an empty/whitespace-only `body` with a
+        `ValueError` (the router maps it to a 400). Defaults `created_at`
+        to now (UTC, ISO-8601) when not provided."""
+        if not body or not body.strip():
+            raise ValueError("body must not be empty")
+        ts = created_at if created_at is not None else _utcnow_iso()
+        conn = self._connect()
+        try:
+            cur = conn.execute(
+                "INSERT INTO position_comment(position_id, magic, body, created_at) "
+                "VALUES (?, ?, ?, ?)",
+                (position_id, magic, body, ts),
+            )
+            conn.commit()
+            return cur.lastrowid
+        finally:
+            conn.close()
+
+    def get_position_comments(self, position_ids: list[int]) -> dict[int, list[dict[str, Any]]]:
+        """`position_comment` rows for the given ids, keyed by `position_id`,
+        each list ordered by `created_at` then `comment_id` ascending.
+        Returns `{}` for an empty id list (no query); a `position_id` with no
+        comments is simply absent from the result."""
+        if not position_ids:
+            return {}
+        conn = self._connect()
+        conn.row_factory = sqlite3.Row
+        try:
+            placeholders = ", ".join("?" for _ in position_ids)
+            rows = conn.execute(
+                f"SELECT * FROM position_comment WHERE position_id IN ({placeholders}) "
+                "ORDER BY created_at ASC, comment_id ASC",
+                tuple(position_ids),
+            ).fetchall()
+            out: dict[int, list[dict[str, Any]]] = {}
+            for row in rows:
+                out.setdefault(row["position_id"], []).append(dict(row))
+            return out
+        finally:
+            conn.close()
+
+    def delete_position_comment(self, comment_id: int) -> bool:
+        """Delete a comment by id; returns whether a row was removed."""
+        conn = self._connect()
+        try:
+            cur = conn.execute(
+                "DELETE FROM position_comment WHERE comment_id=?", (comment_id,)
+            )
+            conn.commit()
+            return cur.rowcount > 0
         finally:
             conn.close()
 

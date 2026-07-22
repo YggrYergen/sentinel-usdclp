@@ -585,3 +585,45 @@ def test_flag_audit_required_never_overwrites_foreign_validity(reg):
     assert reg.flag_audit_required_if_too_good(
         "R-foreign", sharpe=null_max * 3.0, n_trials=n_trials, trial_sharpe_std=tstd) is False
     assert reg.get_run("R-foreign")["validity"] == "LOOKAHEAD_CONFIRMED"
+
+
+# ---------------------------------------------------------------------
+# `deals_raw.comment` / `deals_raw.reason` (Task 2, 2026-07-22): additive
+# nullable columns persisting the MT5 deal's `comment` ('' / '[sl ...]' /
+# '[tp ...]') and `reason` (DEAL_REASON_* int, e.g. 3=EA, 4=SL) so a manual
+# close vs. an SL/TP-triggered close can be told apart after the fact.
+# ---------------------------------------------------------------------
+
+def test_deals_raw_has_nullable_comment_and_reason_columns(reg):
+    cols = {row[1] for row in reg._connect().execute("PRAGMA table_info(deals_raw)").fetchall()}
+    assert "comment" in cols
+    assert "reason" in cols
+
+
+def test_migration_adds_comment_reason_columns_only_once(tmp_path):
+    """Constructing the registry twice against the SAME db file must not
+    raise (ALTER TABLE ADD COLUMN on an already-migrated db is skipped)."""
+    db_path = tmp_path / "research.db"
+    ResearchRegistry(db_path)
+    ResearchRegistry(db_path)  # no raise
+    cols = [row[1] for row in sqlite3.connect(str(db_path)).execute(
+        "PRAGMA table_info(deals_raw)").fetchall()]
+    assert cols.count("comment") == 1
+    assert cols.count("reason") == 1
+
+
+def test_legacy_deals_raw_row_leaves_comment_reason_null(reg):
+    conn = reg._connect()
+    try:
+        conn.execute(
+            "INSERT INTO deals_raw(ticket, position_id, symbol, side, volume, "
+            "price, profit, magic, time, entry_type) VALUES "
+            "(1, 1, 'XAUUSD', 'BUY', 0.1, 2400.0, 0.0, 0, 1784660000, 'IN')"
+        )
+        conn.commit()
+        row = conn.execute(
+            "SELECT comment, reason FROM deals_raw WHERE ticket=1"
+        ).fetchone()
+    finally:
+        conn.close()
+    assert row == (None, None)

@@ -562,6 +562,83 @@ def test_reupsert_with_null_leverage_preserves_previous_values(reg):
         conn.close()
 
 
+# ---------------------------------------------------------------------------
+# Task 2 (2026-07-22): `comment` / `reason` persistence. MT5 deal objects
+# carry `comment` (e.g. '[sl 2400.00]', '[tp 2410.00]', '' for a manual
+# close) and `reason` (DEAL_REASON_* int -- 3=EA/expert, 4=SL) so a close's
+# TRIGGER can be told apart from a manual close after the fact.
+# ---------------------------------------------------------------------------
+
+def test_upsert_persists_comment_and_reason(reg):
+    deal = dict(_SAMPLE_DEALS[0])
+    deal["ticket"] = 4001
+    deal["comment"] = "[sl 2400.50]"
+    deal["reason"] = 4
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    watcher.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (4001,)).fetchone()
+        d = dict(row)
+        assert d["comment"] == "[sl 2400.50]"
+        assert d["reason"] == 4
+    finally:
+        conn.close()
+
+
+def test_upsert_comment_reason_null_when_deal_lacks_them(reg):
+    # A deal dict with no comment/reason keys (older stub shape) must not
+    # crash the upsert -- both columns simply stay NULL.
+    deal = dict(_SAMPLE_DEALS[1])
+    deal["ticket"] = 4002
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+
+    report = watcher.poll_once()
+    assert report.upserted == 1
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (4002,)).fetchone()
+        d = dict(row)
+        assert d["comment"] is None
+        assert d["reason"] is None
+    finally:
+        conn.close()
+
+
+def test_upsert_comment_reason_updates_on_reconflict(reg):
+    deal = dict(_SAMPLE_DEALS[0])
+    deal["ticket"] = 4003
+    deal["comment"] = ""
+    deal["reason"] = 0
+    client = _StubMt5Client([deal])
+    watcher = DealsWatcher(reg, client, poll_s=5, attach_checker=_always_attached)
+    watcher.poll_once()
+
+    updated = dict(deal)
+    updated["comment"] = "[tp 2410.00]"
+    updated["reason"] = 5
+    client2 = _StubMt5Client([updated])
+    watcher2 = DealsWatcher(reg, client2, poll_s=5, attach_checker=_always_attached)
+    watcher2.poll_once()
+
+    conn = sqlite3.connect(str(reg.db_path))
+    conn.row_factory = sqlite3.Row
+    try:
+        row = conn.execute("SELECT * FROM deals_raw WHERE ticket=?", (4003,)).fetchone()
+        d = dict(row)
+        assert d["comment"] == "[tp 2410.00]"
+        assert d["reason"] == 5
+    finally:
+        conn.close()
+
+
 def test_reupsert_updates_other_fields_with_new_values(reg):
     """Non-leverage/contract_size columns still take the NEW value on
     conflict (INSERT OR REPLACE semantics preserved for them)."""

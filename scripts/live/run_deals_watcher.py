@@ -133,6 +133,12 @@ def _deal_to_dict(mt5: Any, d: Any) -> dict[str, Any]:
         "magic": getattr(d, "magic", None),
         "time": getattr(d, "time", None),
         "entry_type": entry_type,
+        # Task 2 (2026-07-22): MT5's TradeDeal carries `comment` (e.g.
+        # '[sl 2400.00]' / '[tp 2410.00]' / '' for a manual close) and
+        # `reason` (DEAL_REASON_* int -- 3=EA/expert, 4=SL, 5=TP, ...),
+        # persisted so a close's trigger can be told apart after the fact.
+        "comment": getattr(d, "comment", None),
+        "reason": getattr(d, "reason", None),
     }
 
 
