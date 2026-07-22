@@ -265,10 +265,11 @@ def build_params_delta() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 class TfResult:
     __slots__ = ("tf", "trades", "metrics", "coverage_first", "coverage_last",
-                 "desde", "hasta", "run_id", "variant_id")
+                 "desde", "hasta", "run_id", "variant_id", "regime_lookback")
 
     def __init__(self, tf):
         self.tf = tf
+        self.regime_lookback = 1
 
 
 def run_one_tf(
@@ -276,6 +277,7 @@ def run_one_tf(
     lake_root: Path,
     desde: pd.Timestamp,
     hasta: pd.Timestamp | None,
+    regime_lookback: int = 1,
 ) -> TfResult:
     tf_minutes = NATIVE_TF_MINUTES[tf]
 
@@ -283,6 +285,7 @@ def run_one_tf(
     m1_df = load_tf_frame(lake_root, SYMBOL, "M1")
 
     result = TfResult(tf)
+    result.regime_lookback = regime_lookback
     result.desde = desde
     result.coverage_first = native_df.index.min() if not native_df.empty else None
     result.coverage_last = native_df.index.max() if not native_df.empty else None
@@ -322,6 +325,7 @@ def run_one_tf(
         init_sl_offset=INIT_SL_OFFSET,
         allow_long=True,
         allow_short=True,
+        regime_lookback=regime_lookback,
     )
     # Filter trades with ts_in in [desde, hasta] -- discards lookback/warmup
     # entries (the engine itself may have opened positions on warmup data
@@ -341,10 +345,17 @@ def _iso_utc(epoch_s: int) -> str:
     return pd.Timestamp(epoch_s, unit="s", tz="UTC").isoformat()
 
 
-def _run_id(tf: str, desde: pd.Timestamp, hasta: pd.Timestamp) -> str:
+def _k_suffix(regime_lookback: int) -> str:
+    """`-kN` suffix for K != 1 runs so they never collide with the K=1
+    baseline. For K=1 (default) this is empty -- the existing ids/modelo_sim
+    stay byte-for-byte unchanged."""
+    return f"-k{regime_lookback}" if regime_lookback != 1 else ""
+
+
+def _run_id(tf: str, desde: pd.Timestamp, hasta: pd.Timestamp, regime_lookback: int = 1) -> str:
     d = desde.strftime("%Y%m%d")
     h = hasta.strftime("%Y%m%d")
-    return f"sim-tk_bw-{tf.lower()}-{d}-{h}"
+    return f"sim-tk_bw-{tf.lower()}-{d}-{h}{_k_suffix(regime_lookback)}"
 
 
 def register_tf(
@@ -356,15 +367,18 @@ def register_tf(
     strategy_id = registry.upsert_strategy(
         name=STRATEGY_NAME, familia=STRATEGY_FAMILIA, platform=STRATEGY_PLATFORM,
     )
-    variant_id = f"TK_XAUUSD_BW_{result.tf}"
+    k = result.regime_lookback
+    k_suffix = _k_suffix(k)
+    variant_id = f"TK_XAUUSD_BW_{result.tf}{k_suffix}"
     registry.upsert_variant(
         strategy_id, variant_id, params_delta, result.tf, SYMBOL, "tk_bw",
     )
 
-    run_id = _run_id(result.tf, result.desde, result.hasta)
+    run_id = _run_id(result.tf, result.desde, result.hasta, k)
 
     metrics_json = json.dumps({
         "engine_tag": "tk_bw",
+        "regime_lookback": k,
         "spread": SPREAD,
         "commission": COMMISSION,
         "ema_fast": EMA_FAST,
@@ -400,7 +414,7 @@ def register_tf(
         "fidelity": "research",
         "periodo_desde": result.desde.isoformat(),
         "periodo_hasta": result.hasta.isoformat(),
-        "modelo_sim": "tk_bw-v1-intrabar-m1",
+        "modelo_sim": f"tk_bw-v1-intrabar-m1{k_suffix}",
         "status": "done",
         "trades": result.metrics["trades"],
         "net": result.metrics["net"],
@@ -467,6 +481,13 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
                      help="window end, ISO-8601 UTC (default: last available bar per TF)")
     ap.add_argument("--write", action="store_true",
                      help="persist to the registry (default: dry-run, computes + prints only)")
+    ap.add_argument("--regime-lookback", type=int, default=1,
+                     help="K closed candles of regime-slope state read by the engine "
+                          "(default: 1 = current behavior). K!=1 writes get a -kN id suffix.")
+    ap.add_argument("--sweep-regime", default=None,
+                     help="DRY measurement: comma list of K, e.g. '1,2,3,4,5'. For each "
+                          "TF x K prints trades/signals/net/pf/wr/maxdd. Never writes "
+                          "(overrides --write).")
     return ap.parse_args(argv)
 
 
@@ -482,9 +503,28 @@ def main(argv: list[str] | None = None) -> int:
         if hasta.tzinfo is None:
             hasta = hasta.tz_localize("UTC")
 
+    # --sweep-regime: DRY measurement mode. For each TF x K run in memory and
+    # print one row per (TF,K). Never persists (overrides --write).
+    if args.sweep_regime:
+        ks = [int(x) for x in args.sweep_regime.split(",") if x.strip()]
+        if args.write:
+            print("[note] --sweep-regime is a measurement and never writes; "
+                  "ignoring --write.")
+        for tf in TFS:
+            for k in ks:
+                result = run_one_tf(tf, lake_root, desde, hasta, regime_lookback=k)
+                m = result.metrics
+                signals = len({(t["ts_in"], t["side"]) for t in result.trades})
+                print(
+                    f"[{tf}] k={k} trades={m['trades']} signals={signals} "
+                    f"net={m['net']:.2f} pf={m['pf']} wr={m['wr']:.1f}% "
+                    f"maxdd={m['maxdd']:.2f}"
+                )
+        return 0
+
     results: list[TfResult] = []
     for tf in TFS:
-        result = run_one_tf(tf, lake_root, desde, hasta)
+        result = run_one_tf(tf, lake_root, desde, hasta, regime_lookback=args.regime_lookback)
         results.append(result)
 
         stale_warn = ""

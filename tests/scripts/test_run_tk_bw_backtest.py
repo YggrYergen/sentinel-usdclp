@@ -351,3 +351,168 @@ def test_module_invocable_as_dash_m(synthetic_lake, hasta_arg, tmp_path):
     )
     assert proc.returncode == 0, proc.stderr
     assert "[dry-run] nothing written" in proc.stdout
+
+
+# ---------------------------------------------------------------------------
+# Task 2: --regime-lookback threads through to tk_bw_run
+# ---------------------------------------------------------------------------
+def test_regime_lookback_reaches_tk_bw_run(synthetic_lake, hasta_arg, tmp_path, monkeypatch):
+    """`--regime-lookback K` must be threaded through `run_one_tf` into
+    `tk_bw_run(..., regime_lookback=K)`. Monkeypatch the engine to record the
+    kwarg it was called with (independent of whether the synthetic fixture
+    fires an entry at any given K)."""
+    seen: list[int] = []
+    real = runner.tk_bw_run
+
+    def _spy(steps, **kwargs):
+        seen.append(kwargs.get("regime_lookback"))
+        return real(steps, **kwargs)
+
+    monkeypatch.setattr(runner, "tk_bw_run", _spy)
+    db_path = tmp_path / "research.db"
+    rc = runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--regime-lookback", "4",
+    ])
+    assert rc == 0
+    assert seen == [4, 4, 4]  # one per TF (M15, M5, M2)
+
+
+def test_regime_lookback_default_is_one(synthetic_lake, hasta_arg, tmp_path, monkeypatch):
+    """Without --regime-lookback the engine is called with regime_lookback=1
+    (current behavior unchanged)."""
+    seen: list[int] = []
+    real = runner.tk_bw_run
+    monkeypatch.setattr(
+        runner, "tk_bw_run",
+        lambda steps, **kw: (seen.append(kw.get("regime_lookback")), real(steps, **kw))[1],
+    )
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(tmp_path / "r.db"),
+        "--hasta", hasta_arg,
+    ])
+    assert seen == [1, 1, 1]
+
+
+# ---------------------------------------------------------------------------
+# Task 2: --sweep-regime (dry measurement, never writes)
+# ---------------------------------------------------------------------------
+def test_sweep_regime_prints_row_per_tf_and_k(synthetic_lake, hasta_arg, tmp_path, capsys):
+    db_path = tmp_path / "research.db"
+    rc = runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--sweep-regime", "1,2,3",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    # one row per (TF, K): 3 TFs x 3 Ks = 9 rows.
+    for tf in runner.TFS:
+        for k in (1, 2, 3):
+            assert f"[{tf}] k={k}" in out, out
+    # sweep is a measurement: writes nothing, does not even create the db.
+    assert not db_path.exists()
+
+
+def test_sweep_regime_rows_carry_metric_fields(synthetic_lake, hasta_arg, tmp_path, capsys):
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(tmp_path / "r.db"),
+        "--hasta", hasta_arg, "--sweep-regime", "1,2",
+    ])
+    out = capsys.readouterr().out
+    for tf in runner.TFS:
+        for k in (1, 2):
+            line = next(l for l in out.splitlines() if f"[{tf}] k={k}" in l)
+            for field in ("trades=", "signals=", "net=", "pf=", "wr=", "maxdd="):
+                assert field in line, line
+
+
+def test_sweep_regime_overrides_write(synthetic_lake, hasta_arg, tmp_path, capsys):
+    """--sweep-regime is a measurement and NEVER persists, even if --write is
+    also passed: it prints a note and writes nothing."""
+    db_path = tmp_path / "research.db"
+    reg = ResearchRegistry(db_path)  # pre-create to prove row counts stay at 0
+    rc = runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--sweep-regime", "1,2", "--write",
+    ])
+    assert rc == 0
+    out = capsys.readouterr().out
+    assert "sweep" in out.lower() and "write" in out.lower()  # a note about the override
+    assert ResearchRegistry(db_path).query_runs()["total"] == 0
+
+
+# ---------------------------------------------------------------------------
+# Task 2: --write --regime-lookback K != 1 -> -kN suffix + regime_lookback in metrics
+# ---------------------------------------------------------------------------
+def test_write_regime_lookback_k3_ids_carry_suffix(synthetic_lake, hasta_arg, tmp_path):
+    db_path = tmp_path / "research.db"
+    rc = runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--write", "--regime-lookback", "3",
+    ])
+    assert rc == 0
+    reg = ResearchRegistry(db_path)
+    runs = reg.query_runs()
+    assert runs["total"] == 3
+    for row in runs["rows"]:
+        assert row["run_id"].endswith("-k3"), row["run_id"]
+        assert row["variant_id"].endswith("-k3"), row["variant_id"]
+        run = reg.get_run(row["run_id"])
+        assert run["modelo_sim"].endswith("-k3"), run["modelo_sim"]
+        assert run["engine"] == "sentinel-sim"
+        assert run["fidelity"] == "research"
+        parsed = json.loads(run["metrics_json"])
+        assert parsed["regime_lookback"] == 3
+
+
+def test_write_regime_lookback_k1_ids_unchanged(synthetic_lake, hasta_arg, tmp_path):
+    """K=1 (default) must keep the current ids/modelo_sim UNCHANGED -- no
+    suffix -- so nothing about the existing behavior shifts."""
+    db_path = tmp_path / "research.db"
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--write", "--regime-lookback", "1",
+    ])
+    reg = ResearchRegistry(db_path)
+    for row in reg.query_runs()["rows"]:
+        assert not row["run_id"].endswith("-k1")
+        assert not row["variant_id"].endswith("-k1")
+        run = reg.get_run(row["run_id"])
+        assert run["modelo_sim"] == "tk_bw-v1-intrabar-m1"
+
+
+def test_write_k3_and_k1_coexist_no_collision(synthetic_lake, hasta_arg, tmp_path):
+    """K=1 and K!=1 runs must not collide on run_id/variant_id."""
+    db_path = tmp_path / "research.db"
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--write",
+    ])
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--write", "--regime-lookback", "3",
+    ])
+    reg = ResearchRegistry(db_path)
+    assert reg.query_runs()["total"] == 6  # 3 (k1) + 3 (k3), no collision
+
+
+def test_write_regime_lookback_k3_params_delta_valid(synthetic_lake, hasta_arg, tmp_path):
+    """EmasarPolicy(params_delta) must still pass with K!=1 (regime_lookback
+    is a run-level knob, not an EmasarPolicy param)."""
+    db_path = tmp_path / "research.db"
+    runner.main([
+        "--lake-root", str(synthetic_lake), "--db", str(db_path),
+        "--hasta", hasta_arg, "--write", "--regime-lookback", "3",
+    ])
+    EmasarPolicy(runner.build_params_delta())  # must not raise
+
+
+def test_determinism_sweep_regime(synthetic_lake, hasta_arg, tmp_path, capsys):
+    """Sweep output is deterministic given the fixture."""
+    args = ["--lake-root", str(synthetic_lake), "--db", str(tmp_path / "r.db"),
+            "--hasta", hasta_arg, "--sweep-regime", "1,2,3"]
+    runner.main(args)
+    out1 = capsys.readouterr().out
+    runner.main(args)
+    out2 = capsys.readouterr().out
+    assert out1 == out2
