@@ -126,3 +126,47 @@ def test_multiple_configs_seed_independent_bands(db_path):
     assert len(rows) == 8
     magics = {r[0] for r in rows}
     assert magics == {724010, 724011, 724012, 724013, 725010, 725011, 725012, 725013}
+
+
+# --------------------------------------------------------------------------
+# P2 (2026-07-22): the seeder is generic (run_live_20 calls it with the
+# roster's RESOLVED configs, so `--configs local` already seeds CONFIGS_LOCAL's
+# magics -- including TK-Momentum's 999999998). These tests PIN that every
+# `local` and `tomachine` magic (base+0..+3) actually lands in the seed set,
+# and that CONFIGS_LOCAL carries the exact target volumes and excludes V11-M2.
+# --------------------------------------------------------------------------
+def test_all_local_magics_are_seeded(db_path):
+    from sentinel_engine.strategies.live_configs_20 import CONFIGS_LOCAL
+
+    inserted = ensure_magic_allocations(db_path, list(CONFIGS_LOCAL))
+    seeded_magics = {r[0] for r in _rows(db_path)}
+    # every config's full band base+0..+3 must be present
+    expected: set[int] = set()
+    for cfg in CONFIGS_LOCAL:
+        for off in range(4):
+            expected.add(cfg["magic"] + off)
+    assert expected.issubset(seeded_magics)
+    # TK-Momentum's all-nines band specifically (the one the brief flags)
+    assert {999999998, 999999999, 1000000000, 1000000001}.issubset(seeded_magics)
+    assert inserted == len(expected)
+
+
+def test_all_tomachine_magics_are_seeded(db_path):
+    from sentinel_engine.strategies.live_configs_20 import CONFIGS_TOMACHINE
+
+    ensure_magic_allocations(db_path, list(CONFIGS_TOMACHINE))
+    seeded_magics = {r[0] for r in _rows(db_path)}
+    for cfg in CONFIGS_TOMACHINE:
+        for off in range(4):
+            assert (cfg["magic"] + off) in seeded_magics
+
+
+def test_local_roster_volumes_and_excludes_v11m2():
+    from sentinel_engine.strategies.live_configs_20 import CONFIGS_LOCAL
+
+    by_id = {c["id"]: c for c in CONFIGS_LOCAL}
+    assert by_id["S6-K2P0"]["volume"] == 0.1
+    assert by_id["S7-TPNONE"]["volume"] == 0.1
+    assert by_id["SuperTrend-p14x3-M15"]["volume"] == 0.1
+    assert by_id["TK-Momentum-5-8-short"]["volume"] == 0.01
+    assert "V11-M2" not in by_id

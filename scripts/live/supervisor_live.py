@@ -36,7 +36,13 @@ WHAT THIS MODULE DOES
   4. Staleness alarm: while the executor runs, if
      `scripts/live/run_live_20.audit.log`'s mtime is older than
      `STALE_AFTER_S` (5 minutes), log ALARM lines (repeatable, not just once)
-     to both `watchdog.log` and stdout. Does NOT kill the process automatically.
+     to both `watchdog.log` and stdout. ALARM-ONLY BY DEFAULT: does NOT kill
+     the process automatically -- this is the original, byte-identical default.
+     P1 OPT-IN (2026-07-22): when `SUPERVISOR_STALE_AUTORESTART` is truthy, a
+     stale executor that STAYS stale for one confirmation recheck is terminated
+     (terminate -> wait -> kill) so the outer preflight-gated relaunch cycle
+     restarts it; preflight is NEVER bypassed on the relaunch. Machine-1 opts
+     in; machine-2 leaves it unset and behaves exactly as before.
   5. Deals-watcher survivability (2026-07-20): the supervisor now STARTS and
      KEEPS ALIVE the deals watcher (`scripts.live.run_deals_watcher`), not
      just warns. It (re)launches it at startup and re-checks every poll cycle
@@ -102,6 +108,25 @@ SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 # OPEN only at XAUUSD's observed 0.5 minimum spread and simply pause (skip
 # the OPEN, retry next cycle) whenever the spread is wider than that.
 SUPERVISOR_MAX_SPREAD_OPEN = os.environ.get("SUPERVISOR_MAX_SPREAD_OPEN")
+
+# OPTIONAL env-gated AUTO-RECYCLE of a stale executor (P1, 2026-07-22). UNSET /
+# empty / a falsey value (default) preserves the ORIGINAL alarm-only behavior
+# BYTE-IDENTICALLY: `watch_while_running` only logs the ALARM and keeps
+# watching, never killing (as it always has -- see module docstring point 4).
+# When set to a truthy value ("1"/"true"), an executor whose audit log has been
+# stale past `stale_after_s` AND stays stale for ONE additional recheck
+# confirmation (never on a single race) is terminated (proc.terminate(), wait,
+# then proc.kill() if still alive) so the EXISTING outer relaunch cycle
+# (preflight-gated backoff -- preflight is NEVER bypassed) restarts it. This is
+# an EXPLICIT OPT-IN for machine-1; machine-2 leaves it unset and is unaffected.
+SUPERVISOR_STALE_AUTORESTART = os.environ.get("SUPERVISOR_STALE_AUTORESTART")
+
+
+def _truthy(value: str | None) -> bool:
+    """Env-flag truthiness: unset/empty/`0`/`false`/`no`/`off` => False."""
+    if value is None:
+        return False
+    return value.strip().lower() in ("1", "true", "yes", "on")
 
 
 def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
@@ -198,6 +223,10 @@ class SupervisorConfig:
     preflight_retry_s: float = PREFLIGHT_RETRY_S
     stale_after_s: float = STALE_AFTER_S
     stale_recheck_s: float = STALE_RECHECK_S
+    # P1 (2026-07-22): auto-recycle a stale executor. Default False = original
+    # alarm-only behavior (machine-2 safety). Set from SUPERVISOR_STALE_AUTORESTART
+    # in main(); tests inject it directly.
+    stale_autorestart: bool = False
     max_iterations: int | None = None  # None = run forever (production)
 
 
@@ -280,6 +309,39 @@ def ensure_bars_ingester_running(cfg: SupervisorConfig, *,
 
 
 # --------------------------------------------------------------------------
+# P1: terminate a stale executor (terminate -> wait -> kill). NEVER sends an
+# order; this only stops the executor SUBPROCESS so the outer loop can relaunch
+# it (through preflight, as always). Best-effort and never raises.
+# --------------------------------------------------------------------------
+def _terminate_executor(proc: Any, *, cfg: SupervisorConfig,
+                        wait_timeout_s: float = 10.0) -> int | None:
+    """Ask the executor to exit (`proc.terminate()`), wait up to
+    `wait_timeout_s`, and `proc.kill()` if it's still alive. Returns the exit
+    code observed (may be None if the fake/real proc never surfaces one)."""
+    try:
+        proc.terminate()
+    except Exception:  # noqa: BLE001 -- must not crash the supervisor
+        logger.exception("proc.terminate() failed")
+    try:
+        rc = proc.wait(timeout=wait_timeout_s)
+        _log_watchdog(f"stale executor terminated (rc={rc}).",
+                     log_path=cfg.watchdog_log)
+        return rc
+    except Exception:  # noqa: BLE001 -- timeout or other: escalate to kill
+        _log_watchdog("stale executor did not exit on terminate() within "
+                      f"{wait_timeout_s:.0f}s -- escalating to kill().",
+                      log_path=cfg.watchdog_log)
+    try:
+        proc.kill()
+    except Exception:  # noqa: BLE001
+        logger.exception("proc.kill() failed")
+    try:
+        return proc.poll()
+    except Exception:  # noqa: BLE001
+        return None
+
+
+# --------------------------------------------------------------------------
 # Staleness watch: polls while the executor subprocess is alive.
 # --------------------------------------------------------------------------
 def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
@@ -292,8 +354,11 @@ def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
     more than `stale_after_s`. If `watcher_keepalive` is given, it is invoked
     on every poll cycle (so a dead deals watcher is revived within
     ~`stale_recheck_s`, not only between executor relaunches). Returns the
-    process's exit code once it exits. Never kills `proc` itself -- staleness
-    is alarm-only per spec."""
+    process's exit code once it exits. By default (cfg.stale_autorestart is
+    False) staleness is ALARM-ONLY and `proc` is never killed. When
+    cfg.stale_autorestart is True (P1 opt-in), a stale executor that STAYS
+    stale for one confirmation recheck is terminated (terminate -> wait ->
+    kill) and this returns so the outer preflight-gated loop relaunches it."""
     was_stale = False
     while True:
         rc = proc.poll()
@@ -314,10 +379,27 @@ def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
 
         if stale:
             age_str = "unknown (audit log missing)" if age is None else f"{age:.0f}s"
+            # P1: with auto-restart ON, kill only after a CONFIRMATION -- i.e.
+            # this is the SECOND consecutive stale observation (`was_stale`
+            # already True). A single stale reading is never enough (avoids
+            # killing on a one-cycle race). Preflight is NOT bypassed: we just
+            # terminate and return, letting `run_supervised`'s existing
+            # preflight-gated backoff relaunch the executor.
+            if cfg.stale_autorestart and was_stale:
+                _log_watchdog(
+                    f"ALARM: audit log STILL stale (age={age_str}, "
+                    f"limit={cfg.stale_after_s:.0f}s) after confirmation recheck. "
+                    "AUTORESTART: killing stale executor so preflight-gated "
+                    "relaunch can restart it.",
+                    log_path=cfg.watchdog_log)
+                rc = _terminate_executor(proc, cfg=cfg)
+                return rc
             _log_watchdog(
                 f"ALARM: audit log stale (age={age_str}, limit={cfg.stale_after_s:.0f}s) "
                 "-- executor process is alive but may not be completing cycles. "
-                "NOT killing it automatically; investigate manually.",
+                + ("AUTORESTART armed: will kill on next recheck if still stale."
+                   if cfg.stale_autorestart
+                   else "NOT killing it automatically; investigate manually."),
                 log_path=cfg.watchdog_log)
             was_stale = True
         elif was_stale:
@@ -454,7 +536,8 @@ def main(argv: list[str] | None = None) -> int:
     # config; nothing in this module calls `logger.info`/etc. for output that
     # matters, only `_log_watchdog`.
     cfg = SupervisorConfig(executor_argv=EXECUTOR_ARGV, watcher_argv=WATCHER_ARGV,
-                           bars_ingester_argv=BARS_INGESTER_ARGV)
+                           bars_ingester_argv=BARS_INGESTER_ARGV,
+                           stale_autorestart=_truthy(SUPERVISOR_STALE_AUTORESTART))
     _log_watchdog("=== supervisor_live starting ===", log_path=cfg.watchdog_log)
 
     def _watcher_keepalive() -> None:

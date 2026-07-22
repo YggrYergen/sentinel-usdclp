@@ -11,7 +11,46 @@ from datetime import datetime, timezone
 import time
 import logging
 
+from sentinel_engine.live.machine_profile import load_profile, MachineProfileError
+
 logger = logging.getLogger("sentinel.data")
+
+
+# --------------------------------------------------------------------------
+# ATTACH-ONLY guard (NEVER LAUNCH): confirm the profile's DEMO terminal is
+# ALREADY running before we ever call mt5.initialize(). Mirrors the executor's
+# `run_live_20._portable_running` semantics (WMIC command-line inspection, with
+# a PowerShell fallback) so the read-only web feed attaches to the SAME
+# terminal the executor/watcher use -- never to an arbitrary one, and never
+# launching a new one. This is the fix for the 2026-07-22 incident where a
+# bare `mt5.initialize()` in the web feed stalled the terminal's IPC and froze
+# the live executor. Read-only, no psutil, no killing.
+# --------------------------------------------------------------------------
+def _terminal_running(marker: str) -> bool:
+    """True iff a running `terminal64.exe` process' command line references the
+    profile's install path fragment `marker` (lower-cased). Uses WMIC first,
+    PowerShell as a fallback for hosts where wmic is absent."""
+    import subprocess
+    try:
+        out = subprocess.run(
+            ["wmic", "process", "where", "name='terminal64.exe'",
+             "get", "CommandLine,ExecutablePath", "/format:list"],
+            capture_output=True, text=True, timeout=20,
+        ).stdout
+    except Exception:  # noqa: BLE001 -- wmic missing/failed: fall back below
+        out = ""
+    if out:
+        return any(marker in line.lower() for line in out.splitlines())
+    try:
+        out = subprocess.run(
+            ["powershell", "-NoProfile", "-Command",
+             "Get-CimInstance Win32_Process -Filter \"name='terminal64.exe'\" "
+             "| Select-Object -ExpandProperty CommandLine"],
+            capture_output=True, text=True, timeout=25,
+        ).stdout
+    except Exception:  # noqa: BLE001
+        out = ""
+    return any(marker in line.lower() for line in out.splitlines())
 
 # Flag to log yfinance import error only once (prevents log flooding)
 _yfinance_warning_logged = False
@@ -70,35 +109,60 @@ class DataFeed:
             logger.info("📡 Modo Yahoo Finance — datos con delay ~15 min")
 
     def _try_connect_mt5(self):
-        """Intenta conectar a MT5. Solo lectura."""
+        """Intenta conectar a MT5. SOLO LECTURA y ATTACH-ONLY.
+
+        MULTI-MÁQUINA / ATTACH-ONLY (2026-07-22): la conexión ahora es
+        IDÉNTICA a la del ejecutor (`run_live_20._connect`) y el watcher:
+          1. Carga el perfil de máquina (`machine_profile.load_profile`) para
+             saber a QUÉ terminal atacar (path/portable/marker). Si el perfil
+             es inválido (`MachineProfileError`) NO conectamos -- se queda en
+             Yahoo Finance -- pero no reventamos.
+          2. Verifica que ese terminal YA ESTÉ CORRIENDO (escaneo de líneas de
+             comando por `profile.terminal_marker`). Si no corre, NO llamamos a
+             `initialize` en absoluto -- NUNCA lanzamos un terminal.
+          3. `initialize(path=..., portable=True)` cuando el perfil es
+             portable, si no `initialize(path=...)` -- exactamente como el
+             ejecutor. NO existe fallback a un initialize sin path (pelado) ni
+             un path hardcodeado: eso fue lo que en máquina-2 estancó el IPC
+             del terminal y congeló al ejecutor en vivo.
+        """
         try:
             import MetaTrader5 as mt5
             self._mt5 = mt5
 
-            # Fijar el terminal específico (Capitaria) si está configurado,
-            # para no conectar por error a otro broker instalado en la máquina.
+            # 1) Perfil de máquina -- decide el terminal a atacar.
             try:
-                from sentinel.config import MT5_TERMINAL_PATH
-            except Exception:
-                MT5_TERMINAL_PATH = None
+                profile = load_profile()
+            except MachineProfileError as exc:
+                logger.warning(
+                    "machine_local.json inválido (%s) -- NO conecto MT5, "
+                    "sigo en Yahoo Finance.", exc)
+                return
 
-            import os as _os
-            initialized = False
-            if MT5_TERMINAL_PATH and _os.path.isfile(MT5_TERMINAL_PATH):
-                initialized = mt5.initialize(path=MT5_TERMINAL_PATH)
-                if not initialized:
-                    logger.warning(
-                        f"MT5 initialize con path Capitaria falló: {mt5.last_error()} "
-                        f"— reintentando sin path"
-                    )
-            if not initialized:
-                initialized = mt5.initialize()
+            # 2) ATTACH-ONLY: exigir que el terminal del perfil ya corra.
+            #    Si no, NO se llama a initialize() (jamás lanzamos terminal).
+            if not _terminal_running(profile.terminal_marker):
+                logger.info(
+                    "Terminal MT5 del perfil (%s) NO está corriendo -- NO "
+                    "conecto (attach-only, no lanzamos terminal). Yahoo Finance.",
+                    profile.terminal_marker)
+                return
+
+            # 3) Adjuntar SOLO a ese terminal (idéntico a run_live_20._connect).
+            if profile.portable:
+                initialized = mt5.initialize(path=str(profile.terminal_path),
+                                             portable=True)
+            else:
+                initialized = mt5.initialize(path=str(profile.terminal_path))
 
             if not initialized:
                 err = mt5.last_error()
-                logger.warning(f"MT5 initialize falló: {err}")
+                logger.warning(
+                    "MT5 initialize(path=%s) falló: %s -- NO hay fallback a "
+                    "initialize() pelado (attach-only). Yahoo Finance.",
+                    profile.terminal_path, err)
                 return
-            
+
             acc = mt5.account_info()
             ti = mt5.terminal_info()
             

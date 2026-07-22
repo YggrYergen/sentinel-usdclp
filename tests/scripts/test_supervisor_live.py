@@ -456,6 +456,135 @@ def test_default_executor_argv_has_no_spread_cap_when_env_unset(monkeypatch):
     assert "--max-spread-open" not in sup.EXECUTOR_ARGV
 
 
+# --------------------------------------------------------------------------
+# P1 (2026-07-22): env-gated auto-recycle of a STALE executor. Default OFF =
+# today's alarm-only behavior, byte-identical. When SUPERVISOR_STALE_AUTORESTART
+# is truthy, `watch_while_running` terminates the executor after the audit log
+# has been stale past `stale_after_s` AND stays stale for one recheck
+# confirmation (avoids killing on a single race), then returns so the outer
+# preflight-gated relaunch cycle restarts it.
+# --------------------------------------------------------------------------
+class _FakeKillableProc:
+    """Fake Popen that stays alive until terminate()/kill() is called."""
+
+    def __init__(self):
+        self._rc = None
+        self.terminate_calls = 0
+        self.kill_calls = 0
+        self.wait_calls = 0
+        self._die_on_wait = True
+
+    def poll(self):
+        return self._rc
+
+    def terminate(self):
+        self.terminate_calls += 1
+        if self._die_on_wait:
+            self._rc = -15  # SIGTERM-ish
+
+    def wait(self, timeout=None):
+        self.wait_calls += 1
+        if self._rc is None:
+            raise _FakeTimeoutExpired()
+        return self._rc
+
+    def kill(self):
+        self.kill_calls += 1
+        self._rc = -9
+
+
+class _FakeTimeoutExpired(Exception):
+    pass
+
+
+def test_watch_stale_autorestart_off_does_not_kill(tmp_path):
+    """Flag OFF => stale executor is NOT killed (existing alarm-only behavior)."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=100.0, stale_autorestart=False)
+    clock = _FakeClock()
+    proc = _FakeProc(exit_code=0, exit_after_polls=6)
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=lambda p: 0.0,
+                                 now_fn=clock.now, sleep_fn=clock.sleep)
+    assert rc == 0
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "ALARM" in log_text
+    assert "AUTORESTART" not in log_text
+
+
+def test_watch_stale_autorestart_on_kills_after_confirmation(tmp_path):
+    """Flag ON => after stale + one recheck confirmation, terminate() is called
+    and the function returns (so the outer loop relaunches)."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=100.0, stale_autorestart=True)
+    clock = _FakeClock()
+    proc = _FakeKillableProc()
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=lambda p: 0.0,
+                                 now_fn=clock.now, sleep_fn=clock.sleep)
+    # terminate() was called; function returned an exit code.
+    assert proc.terminate_calls >= 1
+    assert rc is not None
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "AUTORESTART" in log_text
+    assert "killing stale executor" in log_text.lower()
+
+
+def test_watch_stale_autorestart_on_but_fresh_does_not_kill(tmp_path):
+    """Flag ON but audit log FRESH => nothing killed."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=10.0, stale_autorestart=True)
+    clock = _FakeClock()
+    proc = _FakeKillableProc()
+    # mtime always == now => never stale; proc must exit on its own. Use a
+    # proc that dies after a couple polls so the loop terminates.
+    normal = _FakeProc(exit_code=0, exit_after_polls=3)
+    rc = sup.watch_while_running(cfg, normal, mtime_fn=lambda p: clock.t,
+                                 now_fn=clock.now, sleep_fn=clock.sleep)
+    assert rc == 0
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8") if cfg.watchdog_log.exists() else ""
+    assert "AUTORESTART" not in log_text
+
+
+def test_watch_stale_autorestart_needs_confirmation_recheck(tmp_path):
+    """Flag ON: a SINGLE stale observation must NOT kill -- the executor is only
+    killed after it remains stale on the confirmation recheck."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=50.0, stale_recheck_s=40.0, stale_autorestart=True)
+    clock = _FakeClock()
+    proc = _FakeKillableProc()
+    # phase1: stale (mtime 0, clock passes 50). phase2 recheck: FRESH again ->
+    # alarm cleared, NOT killed. Then let it die on its own.
+    state = {"n": 0}
+
+    def mtime_fn(_p):
+        state["n"] += 1
+        # checks 1-2: mtime pinned at 0 (clock passes 50 by check 2 -> ALARM,
+        # was_stale=True). check 3+: fresh (mtime == now) -> alarm cleared, the
+        # confirmation recheck sees fresh, so NO kill happens.
+        if state["n"] <= 3:
+            return 0.0
+        return clock.t
+
+    normal = _FakeProc(exit_code=0, exit_after_polls=6)
+    rc = sup.watch_while_running(cfg, normal, mtime_fn=mtime_fn,
+                                 now_fn=clock.now, sleep_fn=clock.sleep)
+    assert rc == 0
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8") if cfg.watchdog_log.exists() else ""
+    # A single stale observation armed the alarm, but the confirmation recheck
+    # saw a FRESH log -> the executor was NOT killed.
+    assert "killing stale executor" not in log_text.lower()
+    assert "alarm cleared" in log_text
+
+
+def test_stale_autorestart_env_unset_is_off_and_immutable(monkeypatch):
+    """Immutability (machine-2 safety): with SUPERVISOR_STALE_AUTORESTART unset,
+    the SupervisorConfig default is OFF, matching pre-P1 behavior."""
+    # module-level flag read at import time must be falsey when env unset
+    assert sup.SUPERVISOR_STALE_AUTORESTART in (None, "", "0", "false", "False")
+    # A default SupervisorConfig must default stale_autorestart to False.
+    cfg = sup.SupervisorConfig(executor_argv=["python"])
+    assert cfg.stale_autorestart is False
+
+
 def test_run_supervised_never_touches_mt5_module():
     """Sanity guardrail: supervisor_live must not import MetaTrader5 order
     APIs. We simply assert the module has no `order_send`-shaped attribute
