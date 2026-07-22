@@ -435,3 +435,58 @@ def test_positions_js_analizar_button_disabled_while_stream_active():
     panel_src = text.split("function buildHumanoDetailPanel")[1]
     assert "analizarBtn.disabled = true" in panel_src
     assert "analizarBtn.disabled = false" in panel_src
+
+
+# ---- Task 2: contextual panel below the chart (strategy rules / position) -
+
+def test_positions_js_has_context_panel_host_in_right_column():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "estrategia-context-panel" in text
+    assert "contextPanelHost" in text
+
+
+def test_positions_js_strategy_view_renders_rules_grouped():
+    """STRATEGY view groups spec.rules into Entrada/Salida/Meta -- readable
+    labeled rows, not raw JSON."""
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "function renderStrategyRulesPanel" in text
+    fn_src = text.split("function renderStrategyRulesPanel")[1].split("\n  }", 1)[0]
+    assert "estrategia-rules-group" in fn_src
+    assert "Entrada" in fn_src
+    assert "Salida" in fn_src
+    assert "Meta" in fn_src
+    assert "JSON.stringify" not in fn_src
+
+
+def test_positions_js_strategy_view_handles_missing_spec():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "sin ficha de estrategia" in text
+
+
+def test_positions_js_position_view_renders_summary_card():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "function renderPositionSummaryPanel" in text
+    fn_src = text.split("function renderPositionSummaryPanel")[1].split("\n  }", 1)[0]
+    assert "estrategia-poscard" in fn_src
+    # reuses existing helpers rather than re-implementing formatting
+    assert "estadoBadgeHtml(" in fn_src
+    assert "spreadCellHtml(" in fn_src
+    assert "netValueClass(" in fn_src
+
+
+def test_positions_js_selecting_strategy_shows_rules_selecting_position_shows_summary():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    assert "function showStrategyContext" in text
+    assert "function showPositionContext" in text
+    # position row click switches to the POSITION view
+    on_row_click_src = text.split("onRowClick: (r) => {")[1].split("\n          },", 1)[0]
+    assert "showPositionContext(r)" in on_row_click_src
+    # closing the position panel (deselect) returns to the STRATEGY view
+    assert "showStrategyContext();" in text.split("showRightPlaceholder();\n              showStrategyContext();")[0] + "showStrategyContext();"
+
+
+def test_positions_js_context_panel_maps_by_magic_not_strategy_id():
+    text = (WEB_DIR / "sections" / "positions.js").read_text(encoding="utf-8")
+    show_ctx_src = text.split("function showStrategyContext")[1].split("\n      }", 1)[0]
+    assert "fetchMagicSpecIndex()" in show_ctx_src
+    assert "byMagic.get(magic)" in show_ctx_src

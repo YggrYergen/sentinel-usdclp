@@ -299,6 +299,33 @@ def test_positions_spread_null_when_not_recorded(client, registry):
     assert child["spread_close"] is None
 
 
+def test_positions_strategy_filter_includes_orphaned_sltp_out(client, registry):
+    # BUG (2026-07-21): an SL/TP close arrives from MT5 with magic=0 and, if
+    # persisted before the watcher's position_id inheritance (or with its IN
+    # not yet in the DB), lands in deals_raw with strategy_id=NULL. Filtering
+    # `deals_raw WHERE strategy_id=?` then drops that OUT, so the position is
+    # grouped with NO exit fill and shows as ABIERTA under the strategy even
+    # though it is CLOSED. The router must include ALL deals of any position
+    # that has >=1 deal matching the strategy_id, so the orphan OUT is present
+    # and the position is correctly closed.
+    _insert_deals(registry, [
+        _deal(1, 100, "XAUUSD", "buy", 0.1, 4000.0, 0.0, 800001, 1000, "IN", "strategy", "strat_a", "var_a"),
+        # SL/TP close: magic=0, origin/strategy_id NULL (pre-inheritance row).
+        _deal(2, 100, "XAUUSD", "buy", 0.1, 3995.0, -5.0, 0, 1100, "OUT", "human", None, None),
+    ])
+    resp = client.get("/api/positions", params={"origin": "strategy", "strategy_id": "strat_a"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert len(body["groups"]) == 1
+    group = body["groups"][0]
+    assert group["is_open"] is False, "closed position must NOT show as ABIERTA"
+    child = group["children"][0]
+    assert child["is_open"] is False
+    assert child["ts_out"] == 1100
+    assert child["px_out"] == 3995.0
+    assert group["net"] == -5.0
+
+
 def test_positions_pct_null_when_leverage_zero(client, registry):
     _insert_deals(registry, [
         _deal(1, 100, "EURUSD", "buy", 1.0, 1.1000, 0.0, 111, 1000, "IN", "human",

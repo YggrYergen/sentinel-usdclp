@@ -26,10 +26,16 @@ import sqlite3
 from typing import Any
 
 from fastapi import APIRouter
+from pydantic import BaseModel
 
 from ...live.grouping import group_positions
 
 router = APIRouter()
+
+
+class PositionCommentRequest(BaseModel):
+    body: str
+    magic: int | None = None
 
 
 def _compute_pct(pos: Any, margin_inputs: dict[Any, tuple[Any, Any]]) -> float | None:
@@ -116,6 +122,8 @@ def _group_to_dict(
 
 
 def build_router(registry) -> APIRouter:
+    from ..app import _api_error
+
     r = APIRouter()
 
     @r.get("/api/positions")
@@ -140,7 +148,33 @@ def build_router(registry) -> APIRouter:
                 clauses.append("strategy_id = ?")
                 params.append(strategy_id)
             where = f"WHERE {' AND '.join(clauses)}" if clauses else ""
-            rows = conn.execute(f"SELECT * FROM deals_raw {where}", params).fetchall()
+
+            if clauses:
+                # BUG fix (2026-07-21): an SL/TP close arrives from MT5 with
+                # magic=0; if it was persisted before position_id inheritance
+                # (or its IN wasn't in the DB yet), its row has origin='human'
+                # / strategy_id=NULL. Filtering deals_raw by origin/strategy_id
+                # would then DROP that OUT, so the position would group with no
+                # exit fill and falsely show as ABIERTA under the strategy. So
+                # the filter selects the matching position_ids, and we then
+                # fetch ALL deals for those positions -- the orphan OUT included
+                # -- so the close is honored. (symbol is a real per-deal
+                # attribute shared by every deal of a position, so widening on
+                # it is a no-op; origin/strategy_id are the ones that leak.)
+                id_rows = conn.execute(
+                    f"SELECT DISTINCT position_id FROM deals_raw {where}", params
+                ).fetchall()
+                position_ids = [r["position_id"] for r in id_rows if r["position_id"] is not None]
+                if position_ids:
+                    placeholders = ", ".join("?" for _ in position_ids)
+                    rows = conn.execute(
+                        f"SELECT * FROM deals_raw WHERE position_id IN ({placeholders})",
+                        position_ids,
+                    ).fetchall()
+                else:
+                    rows = []
+            else:
+                rows = conn.execute("SELECT * FROM deals_raw").fetchall()
         finally:
             conn.close()
 
@@ -181,5 +215,36 @@ def build_router(registry) -> APIRouter:
                 for g in groups
             ]
         }
+
+    @r.post("/api/positions/{position_id}/comments")
+    def post_position_comment(position_id: int, payload: PositionCommentRequest):
+        try:
+            comment_id = registry.add_position_comment(
+                position_id, payload.body, magic=payload.magic
+            )
+        except ValueError as exc:
+            return _api_error(400, "invalid_comment_body", str(exc))
+        comments = registry.get_position_comments([position_id])
+        added = next(
+            (c for c in comments.get(position_id, []) if c["comment_id"] == comment_id),
+            None,
+        )
+        return {
+            "comment_id": comment_id,
+            "position_id": position_id,
+            "body": payload.body,
+            "magic": added["magic"] if added else payload.magic,
+            "created_at": added["created_at"] if added else None,
+        }
+
+    @r.get("/api/positions/{position_id}/comments")
+    def get_position_comments_route(position_id: int) -> dict[str, Any]:
+        comments = registry.get_position_comments([position_id])
+        return {"comments": comments.get(position_id, [])}
+
+    @r.delete("/api/positions/{position_id}/comments/{comment_id}")
+    def delete_position_comment_route(position_id: int, comment_id: int) -> dict[str, Any]:
+        deleted = registry.delete_position_comment(comment_id)
+        return {"deleted": deleted}
 
     return r

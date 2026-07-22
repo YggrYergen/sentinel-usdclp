@@ -173,6 +173,60 @@
     .estrategia-ind-popover.hidden { display: none; }
     .estrategia-ind-popover label { display: flex; align-items: center; gap: 6px; font-size: 0.74rem; cursor: pointer; }
     .estrategia-ind-popover input[type="checkbox"] { margin: 0; }
+
+    /* Task 2: contextual panel BELOW the chart -- strategy rules (card
+       selected, no position) or position summary (row selected). Lives in
+       the ESTRATEGIA right column, under panelHost/the chart. */
+    .estrategia-context-panel { flex-shrink: 0; border-top: var(--border, 1px solid #333); padding: 10px 12px; max-height: 42vh; overflow-y: auto; }
+    .estrategia-context-empty { padding: 8px 2px; color: var(--text-2, #5c6a7d); font-size: 0.78rem; font-style: italic; }
+
+    /* STRATEGY view: rules grouped into Entrada / Salida / Meta. */
+    .estrategia-rules-title { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .estrategia-rules-title b { font-size: 0.86rem; }
+    .estrategia-rules-groups { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; }
+    .estrategia-rules-group { display: flex; flex-direction: column; gap: 4px; padding: 8px 10px; border: 1px solid var(--border, #333); border-radius: 6px; background: var(--bg-2, #131a24); }
+    .estrategia-rules-group-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--accent-celeste, #00bfff); font-weight: 700; margin-bottom: 2px; }
+    .estrategia-rules-row { display: flex; justify-content: space-between; gap: 10px; font-size: 0.74rem; line-height: 1.4; }
+    .estrategia-rules-row .k { color: var(--text-2, #5c6a7d); flex-shrink: 0; }
+    .estrategia-rules-row .v { color: var(--text-0, #c9d4e3); text-align: right; font-family: var(--mono, monospace); }
+    .estrategia-rules-note { font-size: 0.7rem; color: var(--text-2, #5c6a7d); font-style: italic; margin-top: 4px; }
+
+    /* POSITION view: attractive summary card. */
+    .estrategia-poscard { display: flex; flex-direction: column; gap: 10px; }
+    .estrategia-poscard-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .estrategia-poscard-net { font-family: var(--mono, monospace); font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
+    .estrategia-poscard-net.pos { color: var(--accent-green, #26a69a); }
+    .estrategia-poscard-net.neg { color: var(--accent-red, #ef5350); }
+    .estrategia-poscard-net.flat { color: var(--text-1, #8b98ab); }
+    .estrategia-poscard-pct { font-family: var(--mono, monospace); font-size: 0.9rem; opacity: 0.85; }
+    .estrategia-poscard-side { font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; padding: 2px 7px; border-radius: 3px; }
+    .estrategia-poscard-side.long { color: var(--accent-green, #26a69a); border: 1px solid rgba(38,166,154,0.5); background: rgba(38,166,154,0.1); }
+    .estrategia-poscard-side.short { color: var(--accent-red, #ef5350); border: 1px solid rgba(239,83,80,0.5); background: rgba(239,83,80,0.1); }
+    .estrategia-poscard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 8px 14px; }
+    .estrategia-poscard-stat { display: flex; flex-direction: column; gap: 2px; }
+    .estrategia-poscard-stat-label { font-size: 0.62rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2, #5c6a7d); }
+    .estrategia-poscard-stat-value { font-family: var(--mono, monospace); font-size: 0.82rem; color: var(--text-0, #c9d4e3); }
+
+    /* Task 3: per-position comment box, mounted below the POSITION card in
+       the ESTRATEGIA context panel. Free-text notes on a real position,
+       persisted via /api/positions/{id}/comments. */
+    .estrategia-comments { display: flex; flex-direction: column; gap: 8px; margin-top: 4px; padding-top: 10px; border-top: 1px dashed var(--border, #333); }
+    .estrategia-comments-title { font-size: 0.66rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-2, #5c6a7d); font-weight: 700; }
+    .estrategia-comments-list { display: flex; flex-direction: column; gap: 6px; max-height: 180px; overflow-y: auto; }
+    .estrategia-comment-row { display: flex; align-items: flex-start; gap: 8px; padding: 6px 8px; border: 1px solid var(--border, #333); border-radius: 5px; background: var(--bg-2, #131a24); }
+    .estrategia-comment-body { flex: 1; font-size: 0.78rem; line-height: 1.35; white-space: pre-wrap; word-break: break-word; color: var(--text-0, #c9d4e3); }
+    .estrategia-comment-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+    .estrategia-comment-time { font-size: 0.62rem; color: var(--text-2, #5c6a7d); font-family: var(--mono, monospace); white-space: nowrap; }
+    .estrategia-comment-del { cursor: pointer; background: none; border: none; color: var(--text-2, #5c6a7d); font-size: 0.9rem; line-height: 1; padding: 0; }
+    .estrategia-comment-del:hover { color: var(--accent-red, #ef5350); }
+    .estrategia-comment-del:disabled { opacity: 0.4; cursor: not-allowed; }
+    .estrategia-comments-empty { font-size: 0.74rem; color: var(--text-2, #5c6a7d); font-style: italic; padding: 2px 0; }
+    .estrategia-comments-error { font-size: 0.74rem; color: var(--accent-red, #ef5350); padding: 2px 0; }
+    .estrategia-comments-form { display: flex; gap: 6px; align-items: flex-start; }
+    .estrategia-comments-input { flex: 1; resize: vertical; min-height: 32px; max-height: 100px; font-size: 0.78rem; padding: 6px 8px; border-radius: 4px; border: 1px solid var(--border, #333); background: var(--bg-1, #0d1117); color: var(--text-0, #c9d4e3); font-family: inherit; }
+    .estrategia-comments-add-btn { flex-shrink: 0; cursor: pointer; font-size: 0.76rem; padding: 6px 12px; border-radius: 4px; border: 1px solid var(--border, #333); background: var(--bg-2, #131a24); color: var(--text-1, #8b98ab); }
+    .estrategia-comments-add-btn:hover:not(:disabled) { color: var(--accent-celeste, #00bfff); border-color: var(--accent-celeste, #00bfff); }
+    .estrategia-comments-add-btn:disabled { opacity: 0.5; cursor: not-allowed; }
   `;
 
   function injectEstrategiaLiveCss() {
@@ -675,6 +729,40 @@
     return fmt.num(value);
   }
 
+  // ---- Task 3: per-position comments (GET/POST/DELETE
+  // /api/positions/{position_id}/comments). ----
+  async function fetchPositionComments(positionId) {
+    const resp = await fetch(`/api/positions/${encodeURIComponent(positionId)}/comments`);
+    if (!resp.ok) throw new Error(`GET /api/positions/${positionId}/comments failed: ${resp.status}`);
+    const body = await resp.json();
+    return body.comments || [];
+  }
+
+  async function postPositionComment(positionId, bodyText, magic) {
+    const payload = { body: bodyText };
+    if (magic !== null && magic !== undefined) payload.magic = magic;
+    const resp = await fetch(`/api/positions/${encodeURIComponent(positionId)}/comments`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      const msg = (err && err.error && err.error.message) || `POST comment failed: ${resp.status}`;
+      throw new Error(msg);
+    }
+    return resp.json();
+  }
+
+  async function deletePositionComment(positionId, commentId) {
+    const resp = await fetch(
+      `/api/positions/${encodeURIComponent(positionId)}/comments/${encodeURIComponent(commentId)}`,
+      { method: "DELETE" },
+    );
+    if (!resp.ok) throw new Error(`DELETE comment failed: ${resp.status}`);
+    return resp.json();
+  }
+
   async function fetchPositions(origin, symbol, strategyId, limit) {
     const params = new URLSearchParams();
     if (origin) params.set("origin", origin);
@@ -729,7 +817,15 @@
         const byMagic = new Map();
         Object.keys(specs).forEach((cid) => {
           const spec = specs[cid];
-          if (spec && spec.magic != null) byMagic.set(spec.magic, spec);
+          if (!spec || spec.magic == null) return;
+          // chart-specs carry each config's BASE magic (e.g. 724020), but the
+          // live positions carry the per-FICHA magic (base+1..+3 for F1/F2/F3,
+          // e.g. 724021/22/23; TK base 999999998 -> position 999999999). The
+          // reconciler puts fichas at base+1..+3, so index the base AND its
+          // ficha band so a position/strategy magic resolves to its spec.
+          for (let off = 0; off <= 3; off++) {
+            if (!byMagic.has(spec.magic + off)) byMagic.set(spec.magic + off, spec);
+          }
         });
         return byMagic;
       });
@@ -964,6 +1060,262 @@
     };
   }
 
+  // ---- Task 2: contextual panel BELOW the chart, ESTRATEGIA right column.
+  // STRATEGY view (a card is selected, no position row yet) renders
+  // spec.rules as readable labeled groups (Entrada/Salida/Meta) -- NOT raw
+  // JSON. POSITION view (a row is clicked) renders an attractive summary
+  // card for that one position. Both reuse fetchMagicSpecIndex (magic ->
+  // spec, Task 1a/1b) and the fmt/signClass/estadoBadgeHtml/spreadCellHtml
+  // helpers already used elsewhere in this file -- no duplicated formatting.
+
+  function ruleRowHtml(label, value) {
+    if (value === null || value === undefined || value === "") return "";
+    return `<div class="estrategia-rules-row"><span class="k">${escapeHtml(label)}</span><span class="v">${escapeHtml(value)}</span></div>`;
+  }
+
+  // Renders a plain value (string/number/bool) or a small object of
+  // sub-fields (e.g. exit.trailing = {f1_trail_pips, f2_trail_pips, ...}) as
+  // one or more labeled rows -- never dumps raw JSON.
+  function ruleValueRowsHtml(label, value) {
+    if (value === null || value === undefined) return "";
+    if (Array.isArray(value)) {
+      if (!value.length) return "";
+      return ruleRowHtml(label, value.join(", "));
+    }
+    if (typeof value === "object") {
+      const rows = Object.keys(value)
+        .map((k) => ruleRowHtml(`${label} · ${k}`, formatRuleScalar(value[k])))
+        .join("");
+      return rows;
+    }
+    return ruleRowHtml(label, formatRuleScalar(value));
+  }
+
+  function formatRuleScalar(v) {
+    if (v === null || v === undefined) return "";
+    if (typeof v === "boolean") return v ? "sí" : "no";
+    return String(v);
+  }
+
+  // Builds the STRATEGY view: spec.rules (Task 1a shape -- entry/long/short/
+  // exit{sl,tp,trailing,reentry,stop_and_reverse,blocked_hours,...}/tf/
+  // engine/magic/notes) grouped into Entrada / Salida / Meta.
+  function renderStrategyRulesPanel(host, strategyName, spec) {
+    host.innerHTML = "";
+    if (!spec || !spec.rules) {
+      host.appendChild(el("div", {
+        class: "estrategia-context-empty",
+        text: `${strategyName || "Esta estrategia"}: sin ficha de estrategia.`,
+      }));
+      return;
+    }
+    const rules = spec.rules;
+    const exit_ = rules.exit || {};
+
+    const entradaRows = [
+      ruleRowHtml("Entrada", rules.entry),
+      ruleRowHtml("Largo", rules.long),
+      ruleRowHtml("Corto", rules.short),
+    ].join("");
+
+    const salidaRows = [
+      ruleRowHtml("Stop loss", exit_.sl),
+      ruleRowHtml("Take profit", exit_.tp),
+      ruleValueRowsHtml("Trailing", exit_.trailing),
+      ruleValueRowsHtml("Reentrada", exit_.reentry),
+      ruleRowHtml("Stop &amp; reverse", exit_.stop_and_reverse === true ? "sí" : (exit_.stop_and_reverse === false ? "no" : null)),
+      ruleRowHtml("Horas bloqueadas", Array.isArray(exit_.blocked_hours) && exit_.blocked_hours.length ? exit_.blocked_hours.join(", ") : null),
+      ruleRowHtml("Modulación AC", exit_.ac_modulate === true ? `sí (factor ${formatRuleScalar(exit_.ac_modulate_factor)})` : (exit_.ac_modulate === false ? "no" : null)),
+      ruleRowHtml("Fichas activas", exit_.active_fichas),
+    ].join("");
+
+    const metaRows = [
+      ruleRowHtml("Timeframe", spec.tf || rules.tf),
+      ruleRowHtml("Engine", spec.engine || rules.engine),
+      ruleRowHtml("Magic", spec.magic != null ? spec.magic : rules.magic),
+    ].join("");
+
+    const wrap = el("div", {});
+    wrap.innerHTML = `
+      <div class="estrategia-rules-title"><b>${escapeHtml(strategyName || spec.id || "Estrategia")}</b></div>
+      <div class="estrategia-rules-groups">
+        <div class="estrategia-rules-group"><div class="estrategia-rules-group-title">Entrada</div>${entradaRows || '<div class="estrategia-rules-note">Sin datos.</div>'}</div>
+        <div class="estrategia-rules-group"><div class="estrategia-rules-group-title">Salida</div>${salidaRows || '<div class="estrategia-rules-note">Sin datos.</div>'}</div>
+        <div class="estrategia-rules-group"><div class="estrategia-rules-group-title">Meta</div>${metaRows || '<div class="estrategia-rules-note">Sin datos.</div>'}</div>
+      </div>
+      ${rules.notes ? `<div class="estrategia-rules-note">${escapeHtml(rules.notes)}</div>` : ""}`;
+    host.appendChild(wrap);
+  }
+
+  // Builds the POSITION view: net (color-coded, prominent), %, side, estado
+  // badge, entrada/salida (px + hora), spread apertura/cierre, lotes,
+  // duración. `row` is one flattened position row (group child + __group),
+  // same shape livePositionColumns/ioCellHtml/spreadPairCellHtml consume.
+  function positionDurationText(row) {
+    const tIn = epochOf(row.ts_in);
+    const tOut = row.is_open ? (Date.now() / 1000) : epochOf(row.ts_out);
+    if (tIn == null || tOut == null || tOut < tIn) return "--";
+    const secs = Math.round(tOut - tIn);
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    if (h > 0) return `${h}h ${m}m`;
+    return `${m}m`;
+  }
+
+  function renderPositionSummaryPanel(host, row) {
+    const fmt = window.SENTINEL.fmt;
+    host.innerHTML = "";
+    if (!row) {
+      host.appendChild(el("div", { class: "estrategia-context-empty", text: "Sin posición seleccionada." }));
+      return;
+    }
+    const group = row.__group || {};
+    const netCls = netValueClass(row.pnl);
+    const side = String(sideOf(group)).toUpperCase();
+    const isLong = side.startsWith("B") || side === "LONG" || side === "L";
+    const sideLabel = isLong ? "LARGO" : (side.startsWith("S") || side === "SHORT" ? "CORTO" : side || "--");
+    const sideCls = isLong ? "long" : "short";
+    const tsIn = fmt.tsShort(epochOf(row.ts_in));
+    const tsOut = row.is_open ? "—" : fmt.tsShort(epochOf(row.ts_out));
+    const pxIn = fmtOrDash(fmt, row.px_in, "price");
+    const pxOut = row.is_open ? "—" : fmtOrDash(fmt, row.px_out, "price");
+
+    const wrap = el("div", { class: "estrategia-poscard" });
+    wrap.innerHTML = `
+      <div class="estrategia-poscard-head">
+        <span class="estrategia-poscard-net ${netCls} mono">${fmt.signed(row.pnl)}</span>
+        <span class="estrategia-poscard-pct mono">${fmtOrDash(fmt, row.pct, "pct")}</span>
+        <span class="estrategia-poscard-side ${sideCls}">${escapeHtml(sideLabel)}</span>
+        ${estadoBadgeHtml(row.is_open)}
+      </div>
+      <div class="estrategia-poscard-grid">
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Entrada</span><span class="estrategia-poscard-stat-value">${tsIn} @ ${pxIn}</span></div>
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Salida</span><span class="estrategia-poscard-stat-value">${tsOut} @ ${pxOut}</span></div>
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Spread apertura</span><span class="estrategia-poscard-stat-value">${spreadCellHtml(fmt, row.spread_open, row.spread_open_min)}</span></div>
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Spread cierre</span><span class="estrategia-poscard-stat-value">${fmtOrDash(fmt, row.spread_close)}</span></div>
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Lotes</span><span class="estrategia-poscard-stat-value">${fmtOrDash(fmt, row.volume != null ? row.volume : group.lots)}</span></div>
+        <div class="estrategia-poscard-stat"><span class="estrategia-poscard-stat-label">Duración</span><span class="estrategia-poscard-stat-value">${escapeHtml(positionDurationText(row))}</span></div>
+      </div>`;
+    host.appendChild(wrap);
+  }
+
+  // ---- Task 3: per-position comment box. Mounted below the POSITION
+  // summary card (renderPositionSummaryPanel) for the currently selected
+  // position_id. Self-contained: loads/lists/adds/deletes comments for
+  // exactly one position_id; callers rebuild it whenever the selected
+  // position changes (no external state kept beyond this DOM subtree). ----
+  function commentRowHtml(fmt, c) {
+    const when = fmt.ts(epochOf(c.created_at));
+    return `
+      <span class="estrategia-comment-body">${escapeHtml(c.body)}</span>
+      <span class="estrategia-comment-meta">
+        <span class="estrategia-comment-time">${escapeHtml(when)}</span>
+        <button type="button" class="estrategia-comment-del" data-comment-id="${escapeHtml(String(c.comment_id))}" title="Eliminar">×</button>
+      </span>`;
+  }
+
+  function renderPositionCommentsBox(host, positionId, magic) {
+    const fmt = window.SENTINEL.fmt;
+    host.innerHTML = "";
+    if (positionId === null || positionId === undefined) return;
+
+    const wrap = el("div", { class: "estrategia-comments" });
+    wrap.appendChild(el("div", { class: "estrategia-comments-title", text: "Comentarios" }));
+    const listHost = el("div", { class: "estrategia-comments-list" });
+    wrap.appendChild(listHost);
+
+    const form = el("div", { class: "estrategia-comments-form" });
+    const input = el("textarea", {
+      class: "estrategia-comments-input",
+      rows: "1",
+      placeholder: "Añadir un comentario…",
+    });
+    const addBtn = el("button", { type: "button", class: "estrategia-comments-add-btn" });
+    addBtn.textContent = "Añadir";
+    form.appendChild(input);
+    form.appendChild(addBtn);
+    wrap.appendChild(form);
+    host.appendChild(wrap);
+
+    function buildCommentRow(c) {
+      const row = el("div", { class: "estrategia-comment-row" });
+      row.innerHTML = commentRowHtml(fmt, c);
+      const delBtn = row.querySelector(".estrategia-comment-del");
+      if (delBtn) {
+        delBtn.addEventListener("click", async () => {
+          delBtn.disabled = true;
+          try {
+            await deletePositionComment(positionId, c.comment_id);
+            row.remove();
+            if (!listHost.querySelector(".estrategia-comment-row")) {
+              listHost.innerHTML = "";
+              listHost.appendChild(el("div", { class: "estrategia-comments-empty", text: "Sin comentarios todavía." }));
+            }
+          } catch (e) {
+            delBtn.disabled = false;
+            if (window.SENTINEL.toast) {
+              window.SENTINEL.toast.show("Error eliminando comentario", { type: "error" });
+            } else {
+              listHost.appendChild(el("div", { class: "estrategia-comments-error", text: "Error eliminando comentario." }));
+            }
+          }
+        });
+      }
+      return row;
+    }
+
+    function renderList(comments) {
+      listHost.innerHTML = "";
+      if (!comments.length) {
+        listHost.appendChild(el("div", { class: "estrategia-comments-empty", text: "Sin comentarios todavía." }));
+        return;
+      }
+      comments.forEach((c) => {
+        listHost.appendChild(buildCommentRow(c));
+      });
+    }
+
+    listHost.innerHTML = '<div class="estrategia-comments-empty">Cargando comentarios&hellip;</div>';
+    fetchPositionComments(positionId).then((comments) => {
+      renderList(comments);
+    }).catch(() => {
+      listHost.innerHTML = '';
+      listHost.appendChild(el("div", { class: "estrategia-comments-error", text: "Error cargando comentarios." }));
+    });
+
+    async function submitComment() {
+      const text = input.value.trim();
+      if (!text) return; // mirrors backend's 400 guard -- never POST empty/whitespace
+      addBtn.disabled = true;
+      input.disabled = true;
+      try {
+        const added = await postPositionComment(positionId, text, magic);
+        const emptyEl = listHost.querySelector(".estrategia-comments-empty");
+        if (emptyEl) emptyEl.remove();
+        listHost.appendChild(buildCommentRow(added));
+        input.value = "";
+      } catch (e) {
+        if (window.SENTINEL.toast) {
+          window.SENTINEL.toast.show(`Error añadiendo comentario: ${e.message}`, { type: "error" });
+        } else {
+          listHost.appendChild(el("div", { class: "estrategia-comments-error", text: "Error añadiendo comentario." }));
+        }
+      } finally {
+        addBtn.disabled = false;
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    addBtn.addEventListener("click", submitComment);
+    input.addEventListener("keydown", (ev) => {
+      if (ev.key === "Enter" && !ev.shiftKey) {
+        ev.preventDefault();
+        submitComment();
+      }
+    });
+  }
+
   function positionEntryExit(selection) {
     const group = selection.group || {};
     const child = selection.kind === "child" ? selection.child : (group.children || [])[0] || {};
@@ -991,7 +1343,8 @@
     host.innerHTML = `<table>${rows.map(([k, v]) => `<tr><td class="mono">${escapeHtml(k)}</td><td class="mono">${escapeHtml(v === null || v === undefined ? "--" : String(v))}</td></tr>`).join("")}</table>${fillsHtml}`;
   }
 
-  function buildHumanoDetailPanel(container, selection, onClose) {
+  function buildHumanoDetailPanel(container, selection, onClose, opts) {
+    opts = opts || {};
     injectHumanoCss();
     const panel = el("div", { class: "positions-humano-panel" });
     const header = el("div", { class: "positions-humano-panel-header" });
@@ -1014,7 +1367,16 @@
 
     const detailHost = el("div", { class: "positions-humano-panel-detail" });
     panel.appendChild(detailHost);
-    renderDetailTable(detailHost, selection);
+    // ESTRATEGIA (summaryCard): show the attractive position summary card
+    // directly under the chart instead of the raw key/value dump. HUMANO keeps
+    // the raw detail table (it has no separate context card).
+    if (opts.summaryCard) {
+      const g = selection.group || {};
+      const c = selection.kind === "child" ? selection.child : (g.children || [])[0] || {};
+      renderPositionSummaryPanel(detailHost, Object.assign({ __group: g }, c));
+    } else {
+      renderDetailTable(detailHost, selection);
+    }
 
     const actions = el("div", { class: "positions-humano-panel-actions" });
     const replayBtn = el("button", { type: "button", class: "positions-humano-replay-btn" });
@@ -1502,6 +1864,60 @@
       }
       showRightPlaceholder();
 
+      // Task 2: contextual panel BELOW the chart -- STRATEGY view (selected
+      // card, no position row yet) or POSITION view (row clicked). Mounted
+      // once, content swapped via showStrategyContext/showPositionContext.
+      const contextPanelHost = el("div", { class: "estrategia-context-panel" });
+      rightCol.appendChild(contextPanelHost);
+
+      // Task 3: comment box host, appended INSIDE the context panel so it
+      // scrolls together with the POSITION card. Only populated in POSITION
+      // view; showStrategyContext() clears it (no position selected).
+      const commentsHost = el("div", {});
+
+      function selectedStrategyMagic() {
+        const gs = strategyGroups[selectedStrategyId] || [];
+        return gs.length ? gs[0].magic : null;
+      }
+
+      function selectedStrategyName() {
+        const s = liveStrategies.find((x) => x.strategy_id === selectedStrategyId);
+        return s ? s.name : selectedStrategyId;
+      }
+
+      // Shows the STRATEGY view for whatever strategy is currently selected
+      // (spec resolved async by magic; renders a neutral note if unresolved
+      // or if the magic has no chart-spec).
+      function showStrategyContext() {
+        // STRATEGY view (no position selected): hide/clear the comment box.
+        commentsHost.innerHTML = "";
+        const name = selectedStrategyName();
+        const magic = selectedStrategyMagic();
+        if (magic == null) {
+          renderStrategyRulesPanel(contextPanelHost, name, null);
+          return;
+        }
+        contextPanelHost.innerHTML = '<div class="estrategia-context-empty">Cargando ficha de estrategia&hellip;</div>';
+        fetchMagicSpecIndex().then((byMagic) => {
+          renderStrategyRulesPanel(contextPanelHost, name, byMagic.get(magic) || null);
+        }).catch(() => {
+          renderStrategyRulesPanel(contextPanelHost, name, null);
+        });
+      }
+
+      function showPositionContext(row) {
+        // The attractive position card now renders directly under the chart
+        // (buildHumanoDetailPanel summaryCard); the context panel below shows
+        // this position's comments.
+        contextPanelHost.innerHTML = "";
+        const title = el("div", { class: "estrategia-rules-title" });
+        title.innerHTML = "<b>Comentarios de la posición</b>";
+        contextPanelHost.appendChild(title);
+        contextPanelHost.appendChild(commentsHost);
+        const magic = row && row.__group ? row.__group.magic : null;
+        renderPositionCommentsBox(commentsHost, row ? row.position_id : null, magic);
+      }
+
       // Flatten a strategy's groups into position rows (one row per group
       // child), each keeping a ref to its parent group for symbol/side + chart
       // context. Order: OPEN positions first, then most-recent entry first.
@@ -1523,6 +1939,7 @@
         if (vt) { try { vt.destroy(); } catch (e) { /* noop */ } vt = null; }
         if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } posPanelHandle = null; }
         showRightPlaceholder();
+        showStrategyContext();
         posHost.innerHTML = "";
         if (!selectedStrategyId) {
           posHost.innerHTML = '<div class="positions-live-empty">Elegí una estrategia arriba.</div>';
@@ -1549,11 +1966,14 @@
             window.SENTINEL.appState = window.SENTINEL.appState || {};
             window.SENTINEL.appState.selectedPosition = selection;
             if (posPanelHandle) { try { posPanelHandle.teardown(); } catch (e) { /* noop */ } posPanelHandle = null; }
-            // On close, restore the placeholder in the right column.
+            showPositionContext(r);
+            // On close, restore the placeholder in the right column and go
+            // back to the STRATEGY view (deselecting the position).
             posPanelHandle = buildHumanoDetailPanel(panelHost, selection, () => {
               posPanelHandle = null;
               showRightPlaceholder();
-            });
+              showStrategyContext();
+            }, { summaryCard: true });
           },
         });
       }
