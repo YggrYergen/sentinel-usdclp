@@ -402,3 +402,137 @@ assert [c["magic"] for c in CONFIGS_GOLIVE_DEDUP] == [724010, 724020, 724060, 72
 assert sum(1 for c in CONFIGS_GOLIVE_DEDUP
            if c.get("engine", "simular_variant") == "simular_variant") == 3, \
     "dedup roster has exactly three simular_variant configs (the 4th is SuperTrend)"
+
+# --- TK-Momentum-5-8-short (2026-07-21) ------------------------------------
+# A trader's live-forward test on XAUUSD, run as its OWN isolated roster
+# (`--configs tk-momentum`) ALONGSIDE the other strategies. NEW additive engine
+# `tk_momentum` (SMA5/SMA8 regime + MOM2 100-line cross, 0.5-USD trailing stop;
+# see sentinel_engine.strategies.tk_momentum and the design spec
+# docs/superpowers/specs/2026-07-21-tk-momentum-5-8-short-design.md). Single
+# position -> reconciled through the SAME ladder reconciler as SuperTrend.
+#
+# MAGIC: the trader asked for an all-nines magic. The reconciler puts ficha F1
+# at base_magic+1, so base 999999998 => the LIVE POSITION carries magic
+# 999999999 ("puros nueves", what shows on the trade). Band [999999999 ..
+# 1000000001] is CLEARLY disjoint from every block in use (720xxx classic,
+# 721xxx shadow, 724xxx go-live, legacy Sapitos 33xxxx, EMASAR EA 710000, IA
+# 900xxx).
+TK_MOMENTUM_MAGIC_BASE = 999999998
+CONFIG_TK_MOMENTUM: dict[str, Any] = {
+    "id": "TK-Momentum-5-8-short",
+    "tf": "M6",
+    "k": None,
+    "kwargs": {"symbol": "XAUUSD", "trail_usd": 3.0, "intrabar": True},
+    "engine": "tk_momentum",
+    "direction_filter": False,
+    "magic": TK_MOMENTUM_MAGIC_BASE,
+    "notes": ("SMA5/SMA8 regime + MOM2(2) 100-line cross entry, exit on "
+              "momentum reversion OR 3.0-USD trailing stop (trader's choice, "
+              "2026-07-21: XAUUSD trade_stops_level=50pts=0.5 USD so a 0.5 SL "
+              "is illegal; 3.0 is comfortably legal and gives room); "
+              "single position (never more than one open at a time -- trader "
+              "2026-07-21); M6 bars (trader 2026-07-21: switched from M10 to "
+              "M6 for a faster reaction; the 5/8/2 periods are kept so they now "
+              "span 30/48/12 min instead of 50/80/20); INTRABAR (evaluates the "
+              "still-forming M6 bar live, enters without waiting for bar close "
+              "-- trader request 2026-07-21; repaints + diverges from the "
+              "close-driven backtest); trader live-forward test (GL/TK-2026-07-21)"),
+}
+CONFIGS_TK: list[dict[str, Any]] = [CONFIG_TK_MOMENTUM]
+
+assert CONFIG_TK_MOMENTUM["magic"] + 1 == 999999999, \
+    "TK-Momentum ficha F1 magic must be the all-nines 999999999 the trader asked for"
+_tk_band = {CONFIG_TK_MOMENTUM["magic"] + o for o in range(4)}
+assert _tk_band.isdisjoint(_live_band) and _tk_band.isdisjoint(_shadow_band) \
+    and _tk_band.isdisjoint(_golive_band), \
+    "TK-Momentum magic band must be disjoint from live/shadow/go-live bands"
+assert 999999999 in _tk_band and min(_tk_band) >= TK_MOMENTUM_MAGIC_BASE, \
+    "TK-Momentum band must live in the all-nines high block (F1 == 999999999)"
+
+# --- TK-BW2-fix2atr (2026-07-22) -------------------------------------------
+# The TK-BW v2 "fixes matrix" fix2atr config -- forced (c1_tol) entries with
+# ATR-frozen stops (SL 1.5xATR14, BE at 1.0xATR14, trail 2.5xATR14), M5
+# CLOSED bars -- made live-runnable through the guarded executor (Task 1,
+# `sentinel_engine.strategies.tk_bw2_live.tk_bw2_fix2atr_target`). Reference
+# backtest: `sim-tk_bw2-m5-20260720-20260721-fix2atr` in data/research.db
+# (48 trades) over the real lake window 2026-07-20 -> 2026-07-21.
+#
+# ENGINE PARAMS -- SINGLE SOURCE OF TRUTH: imported verbatim from the
+# research runner (`scripts.research.run_tk_bw_v2_backtest`), not re-typed
+# here, so the live config can NEVER drift from the backtested fix2atr
+# config (pinned by `tests/strategies/test_live_configs_tomachine.py::
+# test_tk_bw2_fix2atr_kwargs_match_runner_single_source_of_truth`). Imported
+# lazily (module-level, but via a local function) to avoid dragging the
+# runner's registry/bars-loading imports into every `live_configs_20` import
+# (mirrors `tk_bw2_live._fix2atr_defaults`'s own lazy-import rationale).
+def _tk_bw2_fix2atr_engine_kwargs() -> dict[str, Any]:
+    from scripts.research.run_tk_bw_v2_backtest import _COMMON_PARAMS, CONFIGS
+    kwargs = dict(_COMMON_PARAMS)
+    kwargs.update(CONFIGS["fix2atr"])
+    kwargs["symbol"] = "XAUUSD"
+    return kwargs
+
+
+# MAGIC: fresh 7250xx block -- band [725010..725013], clear of every other
+# block in use (720xxx classic, 721xxx shadow, 724xxx go-live, 999999998+
+# TK-Momentum) and of the plan-reserved 722xxx/723xxx blocks.
+TK_BW2_FIX2ATR_MAGIC_BASE = 725010
+CONFIG_TK_BW2_FIX2ATR: dict[str, Any] = {
+    "id": "TK-BW2-fix2atr",
+    "tf": "M5",
+    "k": None,
+    "kwargs": _tk_bw2_fix2atr_engine_kwargs(),
+    "engine": "tk_bw2_fix2atr",
+    "direction_filter": False,
+    "magic": TK_BW2_FIX2ATR_MAGIC_BASE,
+    "notes": ("TK-BW v2 fixes-matrix fix2atr: forced c1_tol=3.0 entries + "
+              "ATR-frozen stops (SL 1.5xATR14, BE 1.0xATR14, trail "
+              "2.5xATR14), M5 CLOSED bars only (not intrabar); reference "
+              "backtest sim-tk_bw2-m5-20260720-20260721-fix2atr (48 trades); "
+              "machine-2 roster addition 2026-07-22."),
+}
+
+_tk_bw2_band = {CONFIG_TK_BW2_FIX2ATR["magic"] + o for o in range(4)}
+assert _tk_bw2_band.isdisjoint(_live_band) and _tk_bw2_band.isdisjoint(_shadow_band) \
+    and _tk_bw2_band.isdisjoint(_golive_band) and _tk_bw2_band.isdisjoint(_tk_band), \
+    "TK-BW2-fix2atr magic band must be disjoint from live/shadow/go-live/TK bands"
+assert all(not (722000 <= m <= 723999) for m in _tk_bw2_band), \
+    "TK-BW2-fix2atr magic band must stay clear of the reserved 722xxx/723xxx blocks"
+assert min(_tk_bw2_band) == 725010 and max(_tk_bw2_band) == 725013, \
+    "TK-BW2-fix2atr band must be the fresh 725010..725013 block"
+
+# --- MACHINE-2 ROSTER "tomachine" (trader selection 2026-07-22) -----------
+# The machine-2 executor's full roster: THREE named go-live configs kept
+# VERBATIM (id + magic UNCHANGED) from CONFIGS_GOLIVE -- S6-K2P0, S7-TPNONE,
+# SuperTrend-p14x3-M15 -- + the new CONFIG_TK_BW2_FIX2ATR. Deliberately
+# EXCLUDES the FIXED4 shadow configs (CONFIGS_SHADOW), V11-M2, and
+# TK-Momentum-5-8-short (trader's machine-2 selection 2026-07-22 -- the
+# shadow configs were dropped from this roster; none of these three run
+# here).
+_TOMACHINE_GOLIVE_IDS: tuple[str, ...] = ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15")
+_tomachine_golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE if c["id"] in _TOMACHINE_GOLIVE_IDS}
+assert set(_tomachine_golive_by_id) == set(_TOMACHINE_GOLIVE_IDS), \
+    "every _TOMACHINE_GOLIVE_IDS entry must exist in CONFIGS_GOLIVE"
+
+CONFIGS_TOMACHINE: list[dict[str, Any]] = [
+    *[_tomachine_golive_by_id[cid] for cid in _TOMACHINE_GOLIVE_IDS],
+    CONFIG_TK_BW2_FIX2ATR,
+]
+
+assert len(CONFIGS_TOMACHINE) == 4, "tomachine roster must be exactly 4 configs"
+assert len({c["id"] for c in CONFIGS_TOMACHINE}) == 4, "tomachine config ids must be unique"
+assert "V11-M2" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
+    "tomachine roster must NOT include V11-M2 (trader's machine-2 selection 2026-07-22)"
+assert "TK-Momentum-5-8-short" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
+    "tomachine roster must NOT include TK-Momentum (trader's machine-2 selection 2026-07-22)"
+assert {c["id"] for c in CONFIGS_SHADOW}.isdisjoint({c["id"] for c in CONFIGS_TOMACHINE}), \
+    "tomachine roster must NOT include any FIXED4 shadow config (trader's 2026-07-22 removal)"
+
+_tomachine_bands: list[set[int]] = []
+_seen_tomachine_magics: set[int] = set()
+for _c in CONFIGS_TOMACHINE:
+    _band = {_c["magic"] + _o for _o in range(4)}
+    assert _seen_tomachine_magics.isdisjoint(_band), \
+        f"tomachine magic band overlap at {_c['id']}"
+    _seen_tomachine_magics |= _band
+    _tomachine_bands.append(_band)

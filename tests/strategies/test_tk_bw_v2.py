@@ -377,3 +377,69 @@ def test_session_gate_still_manages_open_position_outside_window():
     )
     assert len(trades) == 3
     assert all(t["exit_reason"] == "SL_INIT" for t in trades)
+
+
+# ==========================================================================
+# 8) return_state (additive, default False): live-reconciler snapshot of the
+#    still-open position at the end of `steps`, WITHOUT changing the trades
+#    list. Byte-identical existing outputs are pinned by re-running the
+#    parity tests above with return_state omitted (default) elsewhere; here
+#    we pin (a) default-off returns a bare list, (b) return_state=True
+#    returns (trades, snapshot) with an OPEN position, (c) flat -> {}.
+# ==========================================================================
+def test_return_state_default_off_returns_plain_list():
+    steps = _parity_steps()
+    out = tk_bw_v2_run(steps, entry_mode="forced", regime_mode="full5",
+                       stop_mode="fixed", tp_mode="pattern",
+                       regime_lookback=3, c1_tol=3.0, allow_short=False)
+    assert isinstance(out, list)
+
+
+def test_return_state_true_reports_open_position_snapshot():
+    # A LONG that opens and is stopped INITIAL-SL immediately (still flat at
+    # the end) vs one that stays open (BE/trail ratchet, no stop-out) --
+    # use the ATR-stop peak fixture from test 5 but stop BEFORE the crash so
+    # the position is still open when steps end.
+    steps, closed, forming = _open_long_steps()
+    atr = _atr_of(closed, 14)
+    entry_bid = 98.50
+    px_in = entry_bid + 0.60
+    peak = px_in + 1.0 * atr + 30.0
+    f_peak = dict(forming, open=forming["close"], high=peak + 0.05,
+                  low=forming["close"] - 0.05, close=peak)
+    steps.append(_entry_step(closed, f_peak, peak, ts=T0 + 41 * 300 + 60))
+    trades, snap = tk_bw_v2_run(
+        steps, entry_mode="forced", regime_mode="full5", stop_mode="atr",
+        tp_mode="pattern", regime_lookback=3, c1_tol=3.0, allow_short=False,
+        atr_sl_mult=1.5, atr_be_mult=1.0, atr_trail_mult=2.5,
+        return_state=True,
+    )
+    assert trades == []  # nothing closed yet -- position still open
+    assert set(snap) >= {"open", "last_bar_exits", "last_idx"}
+    assert set(snap["open"]) == {"F1", "F2", "F3"}
+    for tag in ("F1", "F2", "F3"):
+        d = snap["open"][tag]
+        assert d["side"] == "LONG"
+        assert d["sl"] is not None
+    assert snap["last_idx"] == len(steps) - 1
+
+
+def test_return_state_true_flat_reports_empty_open():
+    trades, snap = tk_bw_v2_run(
+        [], entry_mode="forced", regime_mode="full5", stop_mode="fixed",
+        tp_mode="pattern", return_state=True,
+    )
+    assert trades == []
+    assert snap["open"] == {}
+
+
+def test_return_state_does_not_change_trades_vs_default():
+    # The trades component of the return_state=True tuple must be
+    # byte-identical to the plain-list output for the same params.
+    steps = _parity_steps()
+    common = dict(entry_mode="forced", regime_mode="full5", stop_mode="fixed",
+                 tp_mode="pattern", regime_lookback=3, c1_tol=3.0,
+                 allow_short=False)
+    plain = tk_bw_v2_run(steps, **common)
+    trades, _snap = tk_bw_v2_run(steps, return_state=True, **common)
+    assert trades == plain

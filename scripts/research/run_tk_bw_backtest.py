@@ -265,11 +265,13 @@ def build_params_delta() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 class TfResult:
     __slots__ = ("tf", "trades", "metrics", "coverage_first", "coverage_last",
-                 "desde", "hasta", "run_id", "variant_id", "regime_lookback")
+                 "desde", "hasta", "run_id", "variant_id", "regime_lookback",
+                 "c1_tol")
 
     def __init__(self, tf):
         self.tf = tf
         self.regime_lookback = 1
+        self.c1_tol = 0.0
 
 
 def run_one_tf(
@@ -278,6 +280,7 @@ def run_one_tf(
     desde: pd.Timestamp,
     hasta: pd.Timestamp | None,
     regime_lookback: int = 1,
+    c1_tol: float = 0.0,
 ) -> TfResult:
     tf_minutes = NATIVE_TF_MINUTES[tf]
 
@@ -286,6 +289,7 @@ def run_one_tf(
 
     result = TfResult(tf)
     result.regime_lookback = regime_lookback
+    result.c1_tol = c1_tol
     result.desde = desde
     result.coverage_first = native_df.index.min() if not native_df.empty else None
     result.coverage_last = native_df.index.max() if not native_df.empty else None
@@ -326,6 +330,7 @@ def run_one_tf(
         allow_long=True,
         allow_short=True,
         regime_lookback=regime_lookback,
+        c1_tol=c1_tol,
     )
     # Filter trades with ts_in in [desde, hasta] -- discards lookback/warmup
     # entries (the engine itself may have opened positions on warmup data
@@ -352,10 +357,19 @@ def _k_suffix(regime_lookback: int) -> str:
     return f"-k{regime_lookback}" if regime_lookback != 1 else ""
 
 
-def _run_id(tf: str, desde: pd.Timestamp, hasta: pd.Timestamp, regime_lookback: int = 1) -> str:
+def _tol_suffix(c1_tol: float) -> str:
+    """`-cX` suffix for c1_tol != 0 runs (the pullback-band relaxation) so they
+    never collide with the exact-c1 baseline. For c1_tol=0 (default) empty --
+    the baseline ids stay byte-for-byte unchanged. `:g` keeps 3.0 -> '3'."""
+    return f"-c{c1_tol:g}" if c1_tol else ""
+
+
+def _run_id(tf: str, desde: pd.Timestamp, hasta: pd.Timestamp,
+            regime_lookback: int = 1, c1_tol: float = 0.0) -> str:
     d = desde.strftime("%Y%m%d")
     h = hasta.strftime("%Y%m%d")
-    return f"sim-tk_bw-{tf.lower()}-{d}-{h}{_k_suffix(regime_lookback)}"
+    return (f"sim-tk_bw-{tf.lower()}-{d}-{h}"
+            f"{_k_suffix(regime_lookback)}{_tol_suffix(c1_tol)}")
 
 
 def register_tf(
@@ -368,17 +382,19 @@ def register_tf(
         name=STRATEGY_NAME, familia=STRATEGY_FAMILIA, platform=STRATEGY_PLATFORM,
     )
     k = result.regime_lookback
-    k_suffix = _k_suffix(k)
-    variant_id = f"TK_XAUUSD_BW_{result.tf}{k_suffix}"
+    c1_tol = result.c1_tol
+    suffix = _k_suffix(k) + _tol_suffix(c1_tol)
+    variant_id = f"TK_XAUUSD_BW_{result.tf}{suffix}"
     registry.upsert_variant(
         strategy_id, variant_id, params_delta, result.tf, SYMBOL, "tk_bw",
     )
 
-    run_id = _run_id(result.tf, result.desde, result.hasta, k)
+    run_id = _run_id(result.tf, result.desde, result.hasta, k, c1_tol)
 
     metrics_json = json.dumps({
         "engine_tag": "tk_bw",
         "regime_lookback": k,
+        "c1_tol": c1_tol,
         "spread": SPREAD,
         "commission": COMMISSION,
         "ema_fast": EMA_FAST,
@@ -414,7 +430,7 @@ def register_tf(
         "fidelity": "research",
         "periodo_desde": result.desde.isoformat(),
         "periodo_hasta": result.hasta.isoformat(),
-        "modelo_sim": f"tk_bw-v1-intrabar-m1{k_suffix}",
+        "modelo_sim": f"tk_bw-v1-intrabar-m1{suffix}",
         "status": "done",
         "trades": result.metrics["trades"],
         "net": result.metrics["net"],
@@ -484,6 +500,10 @@ def _parse_args(argv: list[str] | None) -> argparse.Namespace:
     ap.add_argument("--regime-lookback", type=int, default=1,
                      help="K closed candles of regime-slope state read by the engine "
                           "(default: 1 = current behavior). K!=1 writes get a -kN id suffix.")
+    ap.add_argument("--c1-tol", type=float, default=0.0,
+                     help="pullback-band tolerance (USD) for entry cond c1: LONG "
+                          "price<EMA8+tol / SHORT price>EMA8-tol (default 0 = exact "
+                          "'below/above EMA8'). c1_tol!=0 writes get a -cX id suffix.")
     ap.add_argument("--sweep-regime", default=None,
                      help="DRY measurement: comma list of K, e.g. '1,2,3,4,5'. For each "
                           "TF x K prints trades/signals/net/pf/wr/maxdd. Never writes "
@@ -524,7 +544,8 @@ def main(argv: list[str] | None = None) -> int:
 
     results: list[TfResult] = []
     for tf in TFS:
-        result = run_one_tf(tf, lake_root, desde, hasta, regime_lookback=args.regime_lookback)
+        result = run_one_tf(tf, lake_root, desde, hasta,
+                            regime_lookback=args.regime_lookback, c1_tol=args.c1_tol)
         results.append(result)
 
         stale_warn = ""

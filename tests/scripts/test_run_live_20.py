@@ -15,8 +15,12 @@ from datetime import datetime, timezone
 from scripts.live import run_live_20
 from sentinel_engine.live import guard_cuenta
 from sentinel_engine.strategies.live_configs_20 import (
+    CONFIGS_GOLIVE,
+    CONFIGS_GOLIVE_DEDUP,
     CONFIGS_LIVE,
     CONFIGS_SHADOW,
+    CONFIGS_TK,
+    CONFIGS_TOMACHINE,
     CONFIGS_20,
     LIVE_ROSTER,
 )
@@ -89,6 +93,71 @@ def test_configs_live_plus_shadow_magic_bands_disjoint():
         seen |= band
 
 
+# ------------------------- --configs live+tk -------------------------------
+def test_configs_live_plus_tk_selects_five(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "live+tk"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(CONFIGS_LIVE) + len(CONFIGS_TK)} configs" in caplog.text
+    for c in CONFIGS_LIVE + CONFIGS_TK:
+        assert f"[{c['id']}]" in caplog.text
+    # the trader's new strategy is part of the supervised roster.
+    assert "[TK-Momentum-5-8-short]" in caplog.text
+
+
+def test_configs_live_plus_tk_magic_bands_disjoint():
+    combined = CONFIGS_LIVE + CONFIGS_TK
+    seen: set[int] = set()
+    for c in combined:
+        band = {c["magic"] + off for off in (0, 1, 2, 3)}
+        assert seen.isdisjoint(band), f"magic band overlap at {c['id']}"
+        seen |= band
+
+
+# --------------------- --configs golive-dedup+tk ---------------------------
+def test_configs_golive_dedup_plus_tk_selects_five(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        # force adaptive OFF here so this selection test never touches the real
+        # spread store; the adaptive-default is covered separately below.
+        rc = run_live_20.main(["--once", "--configs", "golive-dedup+tk",
+                               "--no-adaptive-spread"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(CONFIGS_GOLIVE_DEDUP) + len(CONFIGS_TK)} configs" in caplog.text
+    for c in CONFIGS_GOLIVE_DEDUP + CONFIGS_TK:
+        assert f"[{c['id']}]" in caplog.text
+    assert "[TK-Momentum-5-8-short]" in caplog.text
+
+
+def test_configs_golive_dedup_plus_tk_magic_bands_disjoint():
+    combined = CONFIGS_GOLIVE_DEDUP + CONFIGS_TK
+    seen: set[int] = set()
+    for c in combined:
+        band = {c["magic"] + off for off in (0, 1, 2, 3)}
+        assert seen.isdisjoint(band), f"magic band overlap at {c['id']}"
+        seen |= band
+
+
+def test_configs_golive_dedup_plus_tk_adaptive_defaults_on(caplog, monkeypatch, tmp_path):
+    # golive-dedup runs the adaptive running-min spread-gate ON; the combined
+    # golive-dedup+tk roster must PRESERVE that (else the go-live behavior would
+    # silently change). Redirect the spread store to a tmp dir so the live
+    # data/ store is never touched by the test.
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "golive-dedup+tk"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert "adaptive_spread=ON" in caplog.text
+    assert mt5.sent == []
+
+
 # ----------------------- default `live` unchanged --------------------------
 def test_configs_live_still_selects_only_the_four(caplog):
     mt5 = MockMT5(_bars())
@@ -132,3 +201,192 @@ def test_supervisor_env_live_plus_shadow(monkeypatch):
     assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "live+shadow"]
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
     importlib.reload(sup)
+
+
+def test_supervisor_env_golive_dedup_plus_tk(monkeypatch):
+    # the auto-healing supervisor arms the golive-dedup roster + TK-Momentum in
+    # one supervised, self-restarting executor (2026-07-21 user decision).
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "golive-dedup+tk")
+    import scripts.live.supervisor_live as sup
+    sup = importlib.reload(sup)
+    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "golive-dedup+tk"]
+    assert "--arm" in sup.EXECUTOR_ARGV
+    assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
+    monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
+    importlib.reload(sup)
+
+
+def test_supervisor_env_live_plus_tk(monkeypatch):
+    # the auto-healing supervisor can arm the `live` roster + TK-Momentum in one
+    # supervised, self-restarting executor (2026-07-21).
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "live+tk")
+    import scripts.live.supervisor_live as sup
+    sup = importlib.reload(sup)
+    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "live+tk"]
+    assert "--arm" in sup.EXECUTOR_ARGV
+    assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
+    monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
+    importlib.reload(sup)
+
+
+# --------------------------- --configs tomachine ----------------------------
+def test_configs_tomachine_selects_four(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "tomachine"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(CONFIGS_TOMACHINE)} configs" in caplog.text
+    for c in CONFIGS_TOMACHINE:
+        assert f"[{c['id']}]" in caplog.text
+    # explicitly excluded from this roster (trader's machine-2 selection).
+    assert "[V11-M2]" not in caplog.text
+    assert "[TK-Momentum-5-8-short]" not in caplog.text
+    # FIXED4 shadow configs removed from this roster (2026-07-22 shrink).
+    for c in CONFIGS_SHADOW:
+        assert f"[{c['id']}]" not in caplog.text
+
+
+def test_configs_tomachine_case_insensitive(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "TOMACHINE"], mt5_module=mt5,
+                              attach_checker=lambda: True)
+    assert rc == 0
+    assert f"{len(CONFIGS_TOMACHINE)} configs" in caplog.text
+
+
+def test_configs_tomachine_magic_bands_disjoint():
+    seen: set[int] = set()
+    for c in CONFIGS_TOMACHINE:
+        band = {c["magic"] + off for off in (0, 1, 2, 3)}
+        assert seen.isdisjoint(band), f"magic band overlap at {c['id']}"
+        seen |= band
+
+
+def test_configs_tomachine_adaptive_spread_default_on(caplog, monkeypatch, tmp_path):
+    # tomachine carries golive configs (S6-K2P0/S7-TPNONE/SuperTrend) -> the
+    # adaptive running-min spread-gate must default ON here too.
+    monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "tomachine"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert "adaptive_spread=ON" in caplog.text
+    assert mt5.sent == []
+
+
+def test_configs_tomachine_evaluates_tk_bw2_fix2atr_without_error(caplog):
+    # M5 bars, enough warmup for TK-BW2's EMA/ATR/regime indicators.
+    mt5 = MockMT5(_bars(n=600, seed=11))
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "tomachine",
+                               "--no-adaptive-spread"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == []
+    assert "[TK-BW2-fix2atr]" in caplog.text
+
+
+# ----------------------- immutability: armed rosters unchanged -------------
+def _roster_fingerprint(configs):
+    return [
+        (c["id"], c["magic"], c.get("engine", "simular_variant"), tuple(sorted(c["kwargs"].items())))
+        for c in configs
+    ]
+
+
+# Fingerprints of the rosters ALREADY ARMED on machine 1, captured as literal
+# expected values (not re-derived from the live module) so a change to
+# live_configs_20 that accidentally mutates one of these shared config dicts
+# -- e.g. via the new tomachine/TK-BW2 construction -- is caught even though
+# both "before" and "after" would otherwise come from the same import.
+_EXPECTED_GOLIVE_DEDUP_TK_HEAD = [
+    ("S6-K2P0", 724010, "simular_variant"),
+    ("S7-TPNONE", 724020, "simular_variant"),
+    ("V11-M2", 724060, "simular_variant"),
+    ("SuperTrend-p14x3-M15", 724070, "supertrend_always_in"),
+    ("TK-Momentum-5-8-short", 999999998, "tk_momentum"),
+]
+
+
+def test_armed_rosters_unchanged_by_tomachine_addition():
+    # SNAPSHOT-ASSERT (mandatory, plan Task 2): the configs served by
+    # "golive-dedup+tk", "golive-dedup", "shadow", "live" (ids, magics,
+    # engine, kwargs) must be IDENTICAL to what they were before this
+    # change -- protects the armed rosters running on machine 1 right now
+    # from any accidental coupling introduced by the new tomachine roster /
+    # TK-BW2-fix2atr config / executor dispatch branch.
+    golive_dedup_tk = list(CONFIGS_GOLIVE_DEDUP) + list(CONFIGS_TK)
+    fp_golive_dedup_tk = _roster_fingerprint(golive_dedup_tk)
+    fp_golive_dedup = _roster_fingerprint(CONFIGS_GOLIVE_DEDUP)
+    fp_shadow = _roster_fingerprint(CONFIGS_SHADOW)
+    fp_live = _roster_fingerprint(CONFIGS_LIVE)
+
+    assert [(cid, magic, engine) for cid, magic, engine, _kw in fp_golive_dedup_tk] \
+        == _EXPECTED_GOLIVE_DEDUP_TK_HEAD
+    assert [(cid, magic, engine) for cid, magic, engine, _kw in fp_golive_dedup] \
+        == _EXPECTED_GOLIVE_DEDUP_TK_HEAD[:4]
+    assert [cid for cid, _magic, _engine, _kw in fp_shadow] == [c["id"] for c in CONFIGS_SHADOW]
+    assert {cid for cid, _magic, _engine, _kw in fp_live} == set(LIVE_ROSTER)
+
+    # touching/constructing CONFIGS_TOMACHINE (already imported above at
+    # module load, sharing the golive config dicts by reference per
+    # `test_golive_config_objects_shared_not_copied_for_tomachine`) must not
+    # have mutated any of the four armed rosters -- re-fingerprint and diff.
+    assert _roster_fingerprint(list(CONFIGS_GOLIVE_DEDUP) + list(CONFIGS_TK)) == fp_golive_dedup_tk
+    assert _roster_fingerprint(CONFIGS_GOLIVE_DEDUP) == fp_golive_dedup
+    assert _roster_fingerprint(CONFIGS_SHADOW) == fp_shadow
+    assert _roster_fingerprint(CONFIGS_LIVE) == fp_live
+
+
+def test_golive_config_objects_shared_not_copied_for_tomachine():
+    # tomachine's 3 named golive configs must be the SAME dicts (by id/magic)
+    # as CONFIGS_GOLIVE serves under `--configs golive` -- no parallel/forked
+    # definition that could drift.
+    golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
+    tomachine_by_id = {c["id"]: c for c in CONFIGS_TOMACHINE}
+    for cid in ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"):
+        assert tomachine_by_id[cid]["kwargs"] == golive_by_id[cid]["kwargs"]
+        assert tomachine_by_id[cid]["magic"] == golive_by_id[cid]["magic"]
+
+
+# ----------------- supervisor SUPERVISOR_CONFIGS plumbing (tomachine) ------
+def test_supervisor_env_tomachine(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "tomachine")
+    import scripts.live.supervisor_live as sup
+    sup = importlib.reload(sup)
+    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "tomachine"]
+    assert "--arm" in sup.EXECUTOR_ARGV
+    assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
+    monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
+    importlib.reload(sup)
+
+
+# ---------------- TK-BW2-fix2atr: bounded replay window (perf) -------------
+def test_tk_bw2_fix2atr_dispatch_caps_bars_fed_to_the_adapter(monkeypatch):
+    # The tk_bw_v2 engine recomputes ALL indicators over `closed` on EVERY
+    # step (O(n) per step) -- replaying the FULL --window (default 10000)
+    # bars through it is O(n^2) and far too slow for a live poll cycle
+    # (~15s). The dispatch must cap the bars it hands to
+    # `tk_bw2_fix2atr_target` to a small, warmup-sufficient tail window,
+    # independent of the (possibly much larger) `--window` used for MT5
+    # fetch / other configs.
+    from sentinel_engine.strategies.live_configs_20 import CONFIG_TK_BW2_FIX2ATR
+    seen_lengths = []
+    real_target = run_live_20.tk_bw2_fix2atr_target
+
+    def _spy(bars, **kwargs):
+        seen_lengths.append(len(bars))
+        return real_target(bars, **kwargs)
+
+    monkeypatch.setattr(run_live_20, "tk_bw2_fix2atr_target", _spy)
+    mt5 = MockMT5(_bars(n=5000, seed=3))
+    run_live_20.reconcile_config(
+        mt5, CONFIG_TK_BW2_FIX2ATR, window=5000, volume=0.01,
+        kill_switch=False, total_open_fichas=0)
+    assert seen_lengths, "the spy must have been called"
+    assert seen_lengths[0] <= run_live_20.TK_BW2_LIVE_BAR_CAP
+    assert seen_lengths[0] < 5000, "the full 5000-bar window must NOT be replayed"

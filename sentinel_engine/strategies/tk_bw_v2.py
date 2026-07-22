@@ -210,6 +210,7 @@ def tk_bw_v2_run(
     r1_mult=1.0, r2_mult=2.0,   # r: F1 a 1R, F2 a 2R, F3 solo trailing
     allow_long=True,
     allow_short=True,
+    return_state=False,
 ):
     """Run the TK-BW v2 engine over `steps`, return a flat list of trade
     dicts (one per ficha close), in chronological order of `ts_out`.
@@ -220,7 +221,18 @@ def tk_bw_v2_run(
     tp_mode="pattern"; in tp_mode="r" the TP reasons are "TP1R"/"TP2R"
     instead (F3 never take-profits in "r" mode -- TP3-SuperTrend does not
     exist there; F3 only exits via SL/BE/trail).
-    """
+
+    `return_state` (additive, default False, parity-by-construction for the
+    live reconciler): when True, returns `(trades, snapshot)` instead of a
+    bare `trades` list -- `trades` is BYTE-IDENTICAL to the default-off
+    output. `snapshot` is {"open": {tag: {"side","entry","sl","max_fav"}},
+    "last_bar_exits": {}, "last_idx": len(steps)-1}: the still-open fichas
+    (LONG/SHORT + current SL) AFTER processing the last step, in the SAME
+    shape `simular_variant(return_state=True)` emits, so the SAME ladder
+    reconciler applies with no change. `last_bar_exits` is always {} here
+    (TK-BW v2's SL-first same-step exit already lands in `trades`; there is
+    no separate same-bar-exit-fallback concept for this engine yet). Empty
+    `steps` or a flat end-state -> {"open": {}, ...}."""
     trades = []
     pos = None  # _Position | None
     # Index (in `closed`, i.e. count of finalized native candles) of the
@@ -511,7 +523,17 @@ def tk_bw_v2_run(
 
         prev_n_closed = n_closed
 
-    return trades
+    if not return_state:
+        return trades
+
+    last_idx = len(steps) - 1
+    open_state: dict[str, Any] = {}
+    if pos is not None:
+        for tag in _TAGS:
+            if pos.open_fichas[tag]:
+                open_state[tag] = {"side": pos.side, "entry": pos.px_in,
+                                    "sl": pos.sl, "max_fav": pos.mfe[tag]}
+    return trades, {"open": open_state, "last_bar_exits": {}, "last_idx": last_idx}
 
 
 def _try_forced_entry(price, closed, n_closed, ts, regime, *,

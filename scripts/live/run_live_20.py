@@ -54,12 +54,16 @@ sys.path.insert(0, str(REPO_ROOT))
 
 from sentinel_engine.live import guard_cuenta  # noqa: E402
 from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
+from sentinel_engine.live.magic_seed import ensure_magic_allocations  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
     CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE,
-    CONFIGS_SHADOW, CONFIGS_TK, LIVE_ROSTER, supertrend_always_in_target)
+    CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE, LIVE_ROSTER,
+    supertrend_always_in_target)
+from sentinel_engine.strategies.tk_bw2_live import (  # noqa: E402
+    tk_bw2_fix2atr_target)
 from sentinel_engine.strategies.tk_momentum import (  # noqa: E402
     tk_momentum_5_8_target)
 
@@ -68,9 +72,30 @@ TF_SECONDS = {"M1": 60, "M2": 120, "M5": 300, "M6": 360, "M10": 600, "M15": 900}
 
 STOP_FILE = REPO_ROOT / "scripts" / "live" / "STOP"
 AUDIT_LOG = REPO_ROOT / "scripts" / "live" / "run_live_20.audit.log"
+_MAGIC_ALLOCATION_DB_PATH = REPO_ROOT / "data" / "research.db"
 DEFAULT_WINDOW = 10_000
 MIN_WINDOW = 3_000
 DEFAULT_VOLUME = 0.01
+
+# TK-BW2-fix2atr LOCAL BAR CAP (2026-07-22) -----------------------------------
+# `tk_bw2_fix2atr_target` replays bars through the REAL `tk_bw_v2_run` engine,
+# whose `_Regime.__init__` recomputes every indicator series over the ENTIRE
+# `closed` bar list on EVERY step -- O(n) work per step, O(n^2) total in bar
+# count. Measured: 500 bars -> 1.6s, 2000 bars -> 17.7s replay time. Feeding
+# it the full `--window` (default 10_000) would take minutes and hang the
+# ~15s live poll cycle. We do NOT touch the shared engine (parity-gated,
+# also used by the O(n^2)-tolerant batch backtest runner) -- instead we cap
+# the bar TAIL fed to this one executor dispatch branch only.
+#
+# CORRECTNESS: capping to a tail window restarts the state machine from FLAT
+# at the window start, so it would miss a position opened BEFORE the window
+# that is still open. This is safe for TK-BW2-fix2atr specifically because
+# its positions exit via ATR-frozen stops/BE/trail within hours -- never
+# held for days. 750 M5 bars =~ 2.6 trading days of history: ample warmup
+# plus full coverage of any realistically-open TK-BW2 position. Expected
+# replay time at this size is ~3-4s, comfortably inside the 15s poll even on
+# the slower machine-2.
+TK_BW2_LIVE_BAR_CAP = 750
 
 # HARD SPREAD-GATE (GL-T1, OPEN-only) -----------------------------------------
 # An OPEN is SENT only when the current tick spread (ask-bid, PRICE units) is
@@ -269,6 +294,19 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
         assert len(desired.get("open", {})) <= 1, (
             "TK-Momentum must never desire more than one open position "
             f"(got {list(desired.get('open', {}))})")
+    elif cfg.get("engine") == "tk_bw2_fix2atr":
+        # TK-BW2-fix2atr (2026-07-22): CLOSED-bars-only replay of the real
+        # tk_bw_v2 engine (NOT intrabar -- `bars` above already excludes the
+        # still-forming bar, since `intrabar` is False for this engine and
+        # `include_forming` defaults False). Up to 3 fichas (F1/F2/F3), same
+        # return_state snapshot shape -> same ladder reconciler as
+        # simular_variant, no reconciler change.
+        # Cap the replay tail LOCALLY (see TK_BW2_LIVE_BAR_CAP above) -- do
+        # NOT change `window`/the MT5 fetch size, other tomachine configs
+        # may still want the full window.
+        engine_kwargs = {k: v for k, v in cfg["kwargs"].items() if k != "symbol"}
+        desired = tk_bw2_fix2atr_target(
+            bars[-TK_BW2_LIVE_BAR_CAP:], **engine_kwargs)
     else:
         kwargs = dict(cfg["kwargs"])
         if cfg.get("direction_filter"):
@@ -823,8 +861,11 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "removed), 'live+shadow' "
                           "(both, 8 configs), 'tk-momentum' (the trader's "
                           "isolated TK-Momentum-5-8-short live-forward test on "
-                          "XAUUSD, magic 999999999) or comma ids e.g. "
-                          "SS-M5,V10-M15")
+                          "XAUUSD, magic 999999999), 'tomachine' (machine-2 "
+                          "roster, trader selection 2026-07-22: FIXED4 shadow "
+                          "+ S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + "
+                          "TK-BW2-fix2atr, 8 configs, NO V11-M2/TK-Momentum) "
+                          "or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
     ap.add_argument("--window", type=int, default=DEFAULT_WINDOW, help="trailing bars for the sim")
@@ -910,6 +951,13 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # TK-Momentum-5-8-short (2026-07-21): the trader's isolated live-forward
         # roster, magic 999999999. Runs as its OWN process alongside the rest.
         configs = list(CONFIGS_TK)
+    elif roster == "tomachine":
+        # MACHINE-2 roster (trader selection 2026-07-22): the FIXED4 shadow
+        # configs + the three named go-live configs (S6-K2P0, S7-TPNONE,
+        # SuperTrend-p14x3-M15, magics unchanged from CONFIGS_GOLIVE) + the
+        # new TK-BW2-fix2atr (magic 725010). Deliberately NO V11-M2 and NO
+        # TK-Momentum here.
+        configs = list(CONFIGS_TOMACHINE)
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]
@@ -926,7 +974,8 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     # ADAPTIVE running-min gate: default ON for the go-live roster, OFF else;
     # --adaptive-spread / --no-adaptive-spread override explicitly.
     if args.adaptive_spread is None:
-        adaptive_spread = roster in ("golive", "golive-dedup", "golive-dedup+tk")
+        adaptive_spread = roster in ("golive", "golive-dedup", "golive-dedup+tk",
+                                     "tomachine")
     else:
         adaptive_spread = args.adaptive_spread
 
@@ -954,6 +1003,17 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         import MetaTrader5 as mt5  # noqa: N813 -- only imported once attach-confirmed
     _connect(mt5)
     login = guard_cuenta.assert_demo(mt5)  # hard-exits on any mismatch
+
+    # MAGIC ALLOCATION SELF-HEAL (Task 3, 2026-07-22): idempotent, INSERT-OR-
+    # IGNORE only -- never touches MT5, runs in dry-run too (it only writes
+    # to data/research.db's magic_allocation table, not the broker), so a
+    # config's magics are always attributable in the UI even if this is the
+    # first cycle that ever evaluated it.
+    try:
+        seeded = ensure_magic_allocations(_MAGIC_ALLOCATION_DB_PATH, configs)
+        logger.info("magic_allocation self-heal: %d row(s) inserted (idempotent).", seeded)
+    except Exception:  # noqa: BLE001 -- seeding must never abort the executor
+        logger.exception("magic_allocation self-heal failed (non-fatal, continuing).")
 
     stop = {"flag": False}
 

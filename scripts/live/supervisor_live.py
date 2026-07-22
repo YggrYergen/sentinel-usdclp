@@ -81,8 +81,12 @@ EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 # running machine-1 stack behaves EXACTLY as before. Machine-1 can set
 # SUPERVISOR_CONFIGS=live+shadow for in-process verification; the machine-2
 # pack sets SUPERVISOR_CONFIGS=shadow (D114: machine-2 arms the FIXED4
-# corrected roster ONLY, never the uncorrected live-4). Accepted values mirror
-# run_live_20's `--configs`: live | shadow | live+shadow (or any comma ids).
+# corrected roster ONLY, never the uncorrected live-4) or, per the trader's
+# 2026-07-22 machine-2 selection, SUPERVISOR_CONFIGS=tomachine (FIXED4 +
+# S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + TK-BW2-fix2atr, NO V11-M2/
+# TK-Momentum). Accepted values mirror run_live_20's `--configs`: live |
+# shadow | live+shadow | live+tk | golive | golive-dedup | golive-dedup+tk |
+# tk-momentum | tomachine (or any comma ids).
 SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 
 EXECUTOR_ARGV = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",

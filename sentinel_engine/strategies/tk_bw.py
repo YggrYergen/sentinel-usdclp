@@ -178,6 +178,7 @@ def tk_bw_run(
     st_period=14,
     st_mult=3.0,
     regime_lookback=1,
+    c1_tol=0.0,
     be_trigger=0.60,
     trail_usd=5.0,
     init_sl_offset=0.60,
@@ -400,7 +401,7 @@ def tk_bw_run(
             if allow_long:
                 prev_bear = _last_native_extreme(closed, bearish=True)
                 long_ok = (
-                    price < e_slow_cur and forming_bullish
+                    price < e_slow_cur + c1_tol and forming_bullish
                     and sar_cur < e_slow_cur
                     and prev_bear is not None and price > prev_bear[0]
                     and ema_slow_rising and ema_fast_rising
@@ -410,7 +411,7 @@ def tk_bw_run(
             if not long_ok and allow_short:
                 prev_bull = _last_native_extreme(closed, bearish=False)
                 short_ok = (
-                    price > e_slow_cur and forming_bearish
+                    price > e_slow_cur - c1_tol and forming_bearish
                     and sar_cur > e_slow_cur
                     and prev_bull is not None and price < prev_bull[1]
                     and ema_slow_falling and ema_fast_falling
