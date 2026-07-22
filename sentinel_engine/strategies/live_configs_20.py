@@ -36,6 +36,7 @@ subset of CONFIGS_20 currently authorized to trade live.
 """
 from __future__ import annotations
 
+import copy
 from typing import Any
 
 # Common skeleton for ALL configs except the two V09 controls.
@@ -536,3 +537,70 @@ for _c in CONFIGS_TOMACHINE:
         f"tomachine magic band overlap at {_c['id']}"
     _seen_tomachine_magics |= _band
     _tomachine_bands.append(_band)
+
+# --- MACHINE-1 LOCAL ROSTER "local" (trader selection 2026-07-22) ----------
+# The machine-1 LOCAL executor's roster: THREE named go-live configs
+# (S6-K2P0, S7-TPNONE, SuperTrend-p14x3-M15, magics 724010/724020/724070
+# UNCHANGED) each sized at 0.1 lot per ficha, PLUS TK-Momentum-5-8-short
+# (magic 999999998 unchanged) at 0.01 lot. Deliberately EXCLUDES V11-M2 and
+# the FIXED4 shadow configs.
+#
+# HARD IMMUTABILITY (the whole point): the S6-K2P0 / S7-TPNONE /
+# SuperTrend-p14x3-M15 dicts are SHARED BY REFERENCE across CONFIGS_GOLIVE,
+# CONFIGS_GOLIVE_DEDUP and CONFIGS_TOMACHINE. Adding a per-config `volume`
+# here uses INDEPENDENT deep COPIES so machine-2's `tomachine` lot (and every
+# other roster) is never touched -- their configs stay volume-free (=> global
+# --volume). If a `volume` key ever appeared on a shared object, tomachine's
+# lot would silently become 0.1; the copies below prevent that (proven by
+# tests/scripts/test_run_live_20.py's tomachine-volume-None snapshot).
+#
+# PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
+# --volume>)`, so a config WITHOUT the key behaves exactly as today. Here the
+# 3 SAR/ST copies carry 0.1 and the TK copy carries 0.01.
+_LOCAL_GOLIVE_IDS: tuple[str, ...] = ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15")
+_golive_by_id_for_local = {c["id"]: c for c in CONFIGS_GOLIVE}
+
+
+def _local_copy(cid: str, volume: float) -> dict[str, Any]:
+    """Independent deep COPY of a shared config carrying a per-config volume.
+    NEVER mutates the source dict (the immutability invariant)."""
+    c = copy.deepcopy(_golive_by_id_for_local[cid])
+    c["volume"] = volume
+    return c
+
+
+CONFIGS_LOCAL: list[dict[str, Any]] = [
+    *[_local_copy(cid, 0.1) for cid in _LOCAL_GOLIVE_IDS],
+    {**copy.deepcopy(CONFIG_TK_MOMENTUM), "volume": 0.01},
+]
+
+assert len(CONFIGS_LOCAL) == 4, "local roster must be exactly 4 configs"
+assert [c["id"] for c in CONFIGS_LOCAL] == [
+    "S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15", "TK-Momentum-5-8-short"], \
+    "local roster ids must be the 3 SAR/ST configs + TK-Momentum, in order"
+assert len({c["id"] for c in CONFIGS_LOCAL}) == 4, "local config ids must be unique"
+assert "V11-M2" not in {c["id"] for c in CONFIGS_LOCAL}, \
+    "local roster must NOT include V11-M2 (trader's machine-1 selection 2026-07-22)"
+assert {c["id"] for c in CONFIGS_SHADOW}.isdisjoint({c["id"] for c in CONFIGS_LOCAL}), \
+    "local roster must NOT include any FIXED4 shadow config"
+assert [c["magic"] for c in CONFIGS_LOCAL] == [724010, 724020, 724070, 999999998], \
+    "local roster magics must be inherited UNCHANGED (724010/724020/724070/999999998)"
+# the 3 SAR/ST copies carry 0.1, TK carries 0.01.
+for _c in CONFIGS_LOCAL:
+    if _c["id"] == "TK-Momentum-5-8-short":
+        assert _c["volume"] == 0.01, "TK-Momentum local volume must be 0.01"
+    else:
+        assert _c["volume"] == 0.1, f"{_c['id']} local volume must be 0.1"
+# IMMUTABILITY: the SHARED source objects must NOT have gained a volume key.
+for _cid in _LOCAL_GOLIVE_IDS:
+    assert "volume" not in _golive_by_id_for_local[_cid], \
+        f"local's 0.1 leaked into the shared {_cid} dict (immutability violated)"
+assert "volume" not in CONFIG_TK_MOMENTUM, \
+    "local's 0.01 leaked into the shared CONFIG_TK_MOMENTUM dict"
+# pairwise magic-band disjointness.
+_seen_local_magics: set[int] = set()
+for _c in CONFIGS_LOCAL:
+    _band = {_c["magic"] + _o for _o in range(4)}
+    assert _seen_local_magics.isdisjoint(_band), \
+        f"local magic band overlap at {_c['id']}"
+    _seen_local_magics |= _band

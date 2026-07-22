@@ -18,6 +18,7 @@ from sentinel_engine.strategies.live_configs_20 import (
     CONFIGS_GOLIVE,
     CONFIGS_GOLIVE_DEDUP,
     CONFIGS_LIVE,
+    CONFIGS_LOCAL,
     CONFIGS_SHADOW,
     CONFIGS_TK,
     CONFIGS_TOMACHINE,
@@ -290,6 +291,74 @@ def test_configs_tomachine_evaluates_tk_bw2_fix2atr_without_error(caplog):
     assert "[TK-BW2-fix2atr]" in caplog.text
 
 
+# --------------------------- --configs local -------------------------------
+def test_configs_local_selects_four(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "local",
+                               "--no-adaptive-spread"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert f"{len(CONFIGS_LOCAL)} configs" in caplog.text
+    for c in CONFIGS_LOCAL:
+        assert f"[{c['id']}]" in caplog.text
+    # excluded from the machine-1 local roster.
+    assert "[V11-M2]" not in caplog.text
+    for c in CONFIGS_SHADOW:
+        assert f"[{c['id']}]" not in caplog.text
+
+
+def test_configs_local_case_insensitive(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "LOCAL",
+                               "--no-adaptive-spread"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert f"{len(CONFIGS_LOCAL)} configs" in caplog.text
+
+
+def test_configs_local_magic_bands_disjoint():
+    seen: set[int] = set()
+    for c in CONFIGS_LOCAL:
+        band = {c["magic"] + off for off in (0, 1, 2, 3)}
+        assert seen.isdisjoint(band), f"magic band overlap at {c['id']}"
+        seen |= band
+
+
+# --------------- per-config volume reaches the order path ------------------
+def test_per_config_volume_reaches_open_action():
+    # A config WITH `volume=0.1` must produce OPEN actions carrying vol 0.1;
+    # a config WITHOUT the key must fall back to the global `--volume`. We
+    # drive reconcile_config directly (from an empty live book -> the sim's
+    # desired fichas become OPENs) and read the OPEN action volumes.
+    st_cfg = next(c for c in CONFIGS_LOCAL if c["id"] == "SuperTrend-p14x3-M15")
+    assert st_cfg.get("volume") == 0.1
+
+    mt5 = MockMT5(_bars(n=600, seed=5))
+    # per-config override: cfg carries volume 0.1, global volume is 0.01.
+    res, _bar_t = run_live_20.reconcile_config(
+        mt5, st_cfg, window=600, volume=0.01, kill_switch=False,
+        total_open_fichas=0)
+    assert res is not None
+    opens = [a for a in res.actions if a.kind == "OPEN"]
+    assert opens, "SuperTrend always-in must desire an open position"
+    for a in opens:
+        assert a.volume == 0.1, "per-config volume 0.1 must reach the OPEN action"
+
+    # a config WITHOUT a volume key falls back to the global --volume.
+    bare = {k: v for k, v in st_cfg.items() if k != "volume"}
+    assert "volume" not in bare
+    res2, _ = run_live_20.reconcile_config(
+        mt5, bare, window=600, volume=0.01, kill_switch=False,
+        total_open_fichas=0)
+    opens2 = [a for a in res2.actions if a.kind == "OPEN"]
+    assert opens2
+    for a in opens2:
+        assert a.volume == 0.01, "no volume key -> global --volume (0.01) is used"
+
+
 # ----------------------- immutability: armed rosters unchanged -------------
 def _roster_fingerprint(configs):
     return [
@@ -342,6 +411,22 @@ def test_armed_rosters_unchanged_by_tomachine_addition():
     assert _roster_fingerprint(CONFIGS_LIVE) == fp_live
 
 
+def test_local_roster_volume_did_not_leak_into_tomachine():
+    # THE LEAK PROOF (plan hard invariant): the machine-1 `local` roster adds
+    # 0.1/0.01 per-config volumes on independent COPIES. tomachine shares the
+    # SAME S6/S7/SuperTrend dicts by reference -- their `volume` must stay
+    # None (absent), so machine-2's lot remains the global --volume (0.01).
+    for c in CONFIGS_TOMACHINE:
+        assert c.get("volume") is None, \
+            f"tomachine config {c['id']} volume leaked to {c.get('volume')}"
+    # and the local roster DOES carry the intended per-config volumes.
+    local_by_id = {c["id"]: c for c in CONFIGS_LOCAL}
+    assert local_by_id["S6-K2P0"]["volume"] == 0.1
+    assert local_by_id["S7-TPNONE"]["volume"] == 0.1
+    assert local_by_id["SuperTrend-p14x3-M15"]["volume"] == 0.1
+    assert local_by_id["TK-Momentum-5-8-short"]["volume"] == 0.01
+
+
 def test_golive_config_objects_shared_not_copied_for_tomachine():
     # tomachine's 3 named golive configs must be the SAME dicts (by id/magic)
     # as CONFIGS_GOLIVE serves under `--configs golive` -- no parallel/forked
@@ -359,6 +444,17 @@ def test_supervisor_env_tomachine(monkeypatch):
     import scripts.live.supervisor_live as sup
     sup = importlib.reload(sup)
     assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "tomachine"]
+    assert "--arm" in sup.EXECUTOR_ARGV
+    assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
+    monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
+    importlib.reload(sup)
+
+
+def test_supervisor_env_local(monkeypatch):
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "local")
+    import scripts.live.supervisor_live as sup
+    sup = importlib.reload(sup)
+    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "local"]
     assert "--arm" in sup.EXECUTOR_ARGV
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)

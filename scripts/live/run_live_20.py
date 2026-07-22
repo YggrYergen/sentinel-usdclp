@@ -60,7 +60,7 @@ from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
     CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE,
-    CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE, LIVE_ROSTER,
+    CONFIGS_LOCAL, CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE, LIVE_ROSTER,
     supertrend_always_in_target)
 from sentinel_engine.strategies.tk_bw2_live import (  # noqa: E402
     tk_bw2_fix2atr_target)
@@ -314,8 +314,14 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
         _events, desired = simular_variant(bars, return_state=True, **kwargs)
 
     live = fetch_live_positions(mt5, cfg["magic"])
+    # PER-CONFIG VOLUME (2026-07-22): an OPTIONAL `cfg["volume"]` overrides the
+    # global `--volume` for THIS config's OPENs only (the reconciler stamps it
+    # onto each OPEN action -> execute_action sends it). A config WITHOUT the
+    # key falls back to the global `volume`, behaving EXACTLY as before. Used by
+    # the machine-1 `local` roster (S6/S7/SuperTrend @0.1, TK-Momentum @0.01).
+    cfg_volume = cfg.get("volume", volume)
     res = reconcile(cfg["id"], cfg["magic"], desired, live,
-                    volume=volume, bar_t=bars[-1]["t"], kill_switch=kill_switch,
+                    volume=cfg_volume, bar_t=bars[-1]["t"], kill_switch=kill_switch,
                     total_open_fichas=total_open_fichas)
     # SINGLE-POSITION EXECUTION GUARD (tk_momentum, trader 2026-07-21 "solo una
     # posicion"): NEVER send an OPEN while any live position already exists on
@@ -864,7 +870,12 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "XAUUSD, magic 999999999), 'tomachine' (machine-2 "
                           "roster, trader selection 2026-07-22: FIXED4 shadow "
                           "+ S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + "
-                          "TK-BW2-fix2atr, 8 configs, NO V11-M2/TK-Momentum) "
+                          "TK-BW2-fix2atr, 8 configs, NO V11-M2/TK-Momentum), "
+                          "'local' (machine-1 LOCAL roster, trader selection "
+                          "2026-07-22: S6-K2P0 + S7-TPNONE + "
+                          "SuperTrend-p14x3-M15 @0.1 lot/ficha + "
+                          "TK-Momentum-5-8-short @0.01 lot, 4 configs, NO "
+                          "V11-M2/shadow; per-config volume) "
                           "or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
@@ -958,6 +969,14 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # new TK-BW2-fix2atr (magic 725010). Deliberately NO V11-M2 and NO
         # TK-Momentum here.
         configs = list(CONFIGS_TOMACHINE)
+    elif roster == "local":
+        # MACHINE-1 LOCAL roster (trader selection 2026-07-22): S6-K2P0,
+        # S7-TPNONE, SuperTrend-p14x3-M15 (magics 724010/724020/724070
+        # unchanged) each at 0.1 lot/ficha via per-config `volume`, PLUS
+        # TK-Momentum-5-8-short (magic 999999998) at 0.01 lot. Deliberately NO
+        # V11-M2 and NO FIXED4 shadow. Independent deep COPIES so machine-2's
+        # tomachine lot is never touched.
+        configs = list(CONFIGS_LOCAL)
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]

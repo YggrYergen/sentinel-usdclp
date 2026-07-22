@@ -86,7 +86,9 @@ EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 # S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + TK-BW2-fix2atr, NO V11-M2/
 # TK-Momentum). Accepted values mirror run_live_20's `--configs`: live |
 # shadow | live+shadow | live+tk | golive | golive-dedup | golive-dedup+tk |
-# tk-momentum | tomachine (or any comma ids).
+# tk-momentum | tomachine | local (machine-1 LOCAL roster: S6-K2P0 +
+# S7-TPNONE + SuperTrend-p14x3-M15 @0.1 + TK-Momentum @0.01, NO V11-M2/shadow)
+# (or any comma ids).
 SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 
 # OPTIONAL static HARD spread cap (USD/oz) the supervisor passes through to
