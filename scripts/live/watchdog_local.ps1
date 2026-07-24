@@ -156,8 +156,19 @@ function Test-Terminal-Running {
 
 function Start-Terminal-IfNeeded {
     if (Test-Terminal-Running) { return }
-    Write-Log "terminal64 not running -- starting it: $Terminal"
-    Start-Process -FilePath $Terminal | Out-Null
+    # Launch in the SAME data mode the python attach calls use
+    # (mt5.initialize(path=..., portable=$Portable)). If we launch WITHOUT
+    # /portable on a portable machine, initialize(portable=True) cannot attach
+    # to this standard-mode instance and spawns its OWN /portable terminal ->
+    # TWO terminal64.exe on every boot (diagnosed 2026-07-24). Machine-2 is a
+    # standard (non-portable) install: $Portable=$false -> NO flag, byte-identical.
+    if ($Portable) {
+        Write-Log "terminal64 not running -- starting it (portable): $Terminal /portable"
+        Start-Process -FilePath $Terminal -ArgumentList "/portable" | Out-Null
+    } else {
+        Write-Log "terminal64 not running -- starting it: $Terminal"
+        Start-Process -FilePath $Terminal | Out-Null
+    }
 }
 
 function Test-DemoAccount {
