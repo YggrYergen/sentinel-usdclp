@@ -604,3 +604,95 @@ for _c in CONFIGS_LOCAL:
     assert _seen_local_magics.isdisjoint(_band), \
         f"local magic band overlap at {_c['id']}"
     _seen_local_magics |= _band
+
+# --- MACHINE-1 CHALLENGER SLEEVE (2026-07-25 Monday delivery) -------------
+# The CHALLENGER half of the champion/retador experiment. THE SAME THREE
+# SIGNALS as the `local` champion roster, byte for byte (kwargs/engine copied,
+# never re-tuned -- spec R1/R3), differing ONLY in:
+#   * a fresh magic band 726010/726020/726070 (see the disjointness asserts),
+#   * a pilot lot of 0.02 (the champion stays at 0.1 -- comparison is per-trade
+#     and size-normalised, so lot parity is not required),
+#   * an OPTIONAL `risk_gates` dict read exclusively by run_live_20's OPEN path.
+#
+# TK-Momentum is deliberately NOT mirrored: it is still in development at 0.01
+# and is not part of the track being compared. THREE configs, not four.
+#
+# WHY THIS CANNOT BREAK THE CHAMPION: `risk_gates` is an OPTIONAL key on
+# INDEPENDENT DEEP COPIES, exactly like `volume` above. A config without the key
+# takes the identical code path it took before this sleeve existed. If the copy
+# discipline were ever broken, the immutability asserts below fail at import
+# time and the executor refuses to start -- see the 0.1-leak warning at the top
+# of the CONFIGS_LOCAL block.
+CHALLENGER_MAGIC_BASE = 726000
+CHALLENGER_VOLUME = 0.02
+# B1 50 min  -> from the earlier xauusd-market-open-gap-wait diagnosis, NOT a
+#               sweep run this weekend.
+# B2 30 min  -> BY CONVENTION (spec section 4.3). Choosing it from a backtest
+#               would be re-tuning.
+# B3 7       -> the observed PEAK of simultaneous fichas across the 7-month
+#               real-tick reconstruction (data/analysis/monday_audit/
+#               a2_overlap.json). A cap that would never have bitten.
+# B4 0.50    -> the broker's minimum stop distance. A breach is a BUG.
+CHALLENGER_RISK_GATES: dict[str, Any] = {
+    "gap_wait_minutes": 50,
+    "news_blackout_minutes": 30,
+    "max_open_fichas": 7,
+    "min_sl_distance": 0.50,
+}
+
+
+def _challenger_copy(cid: str) -> dict[str, Any]:
+    """Independent deep COPY of a shared go-live config, re-badged into the
+    challenger band. NEVER mutates the source dict (the immutability invariant
+    that keeps machine-2's tomachine lot and the champion's roster intact)."""
+    c = copy.deepcopy(_golive_by_id_for_local[cid])
+    c["id"] = f"{cid}-R"
+    c["magic"] = CHALLENGER_MAGIC_BASE + (c["magic"] - 724000)
+    c["volume"] = CHALLENGER_VOLUME
+    c["risk_gates"] = dict(CHALLENGER_RISK_GATES)  # own dict per config
+    return c
+
+
+CONFIGS_CHALLENGER: list[dict[str, Any]] = [
+    _challenger_copy(cid) for cid in _LOCAL_GOLIVE_IDS
+]
+
+assert len(CONFIGS_CHALLENGER) == 3, \
+    "challenger roster must be exactly 3 configs (TK-Momentum is NOT mirrored)"
+assert [c["id"] for c in CONFIGS_CHALLENGER] == [
+    "S6-K2P0-R", "S7-TPNONE-R", "SuperTrend-p14x3-M15-R"], \
+    "challenger ids must be the 3 champion ids suffixed -R, in order"
+assert [c["magic"] for c in CONFIGS_CHALLENGER] == [726010, 726020, 726070], \
+    "challenger magics must be 724xxx remapped into the fresh 726xxx band"
+assert all(c["volume"] == CHALLENGER_VOLUME for c in CONFIGS_CHALLENGER), \
+    "challenger pilot lot must be 0.02"
+# SAME SIGNAL: the kwargs must be identical to the champion's, or the A/B
+# comparison stops being controlled.
+for _c in CONFIGS_CHALLENGER:
+    _src = _golive_by_id_for_local[_c["id"][:-2]]
+    assert _c["kwargs"] == _src["kwargs"], \
+        f"challenger {_c['id']} must mirror the champion signal EXACTLY"
+# IMMUTABILITY: the SHARED source objects must NOT have gained either key.
+for _cid in _LOCAL_GOLIVE_IDS:
+    assert "risk_gates" not in _golive_by_id_for_local[_cid], \
+        f"challenger risk_gates leaked into the shared {_cid} dict"
+    assert "volume" not in _golive_by_id_for_local[_cid], \
+        f"challenger volume leaked into the shared {_cid} dict"
+# BAND DISJOINTNESS: 726xxx vs every other band, and clear of the reserved
+# 722xxx/723xxx blocks.
+_challenger_band: set[int] = set()
+for _c in CONFIGS_CHALLENGER:
+    _band = {_c["magic"] + _o for _o in range(4)}
+    assert _challenger_band.isdisjoint(_band), \
+        f"challenger magic band overlap at {_c['id']}"
+    _challenger_band |= _band
+assert _challenger_band.isdisjoint(_live_band) \
+    and _challenger_band.isdisjoint(_shadow_band) \
+    and _challenger_band.isdisjoint(_golive_band) \
+    and _challenger_band.isdisjoint(_tk_band) \
+    and _challenger_band.isdisjoint(_tk_bw2_band), \
+    "challenger magic band must be disjoint from live/shadow/go-live/TK/TK-BW2"
+assert all(not (722000 <= m <= 723999) for m in _challenger_band), \
+    "challenger band must stay clear of the reserved 722xxx/723xxx blocks"
+assert min(_challenger_band) == 726010 and max(_challenger_band) == 726073, \
+    "challenger band must be the fresh 726010..726073 block"

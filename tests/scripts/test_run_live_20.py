@@ -15,6 +15,7 @@ from datetime import datetime, timezone
 from scripts.live import run_live_20
 from sentinel_engine.live import guard_cuenta
 from sentinel_engine.strategies.live_configs_20 import (
+    CONFIGS_CHALLENGER,
     CONFIGS_GOLIVE,
     CONFIGS_GOLIVE_DEDUP,
     CONFIGS_LIVE,
@@ -486,3 +487,75 @@ def test_tk_bw2_fix2atr_dispatch_caps_bars_fed_to_the_adapter(monkeypatch):
     assert seen_lengths, "the spy must have been called"
     assert seen_lengths[0] <= run_live_20.TK_BW2_LIVE_BAR_CAP
     assert seen_lengths[0] < 5000, "the full 5000-bar window must NOT be replayed"
+
+
+# ------------------------- challenger sleeve (2026-07-25) ------------------
+def test_challenger_roster_is_exactly_three_mirrored_configs():
+    assert len(CONFIGS_CHALLENGER) == 3, "the challenger mirrors 3 configs, NOT 4 (no TK-Momentum)"
+    assert [c["id"] for c in CONFIGS_CHALLENGER] == [
+        "S6-K2P0-R", "S7-TPNONE-R", "SuperTrend-p14x3-M15-R"]
+    assert [c["magic"] for c in CONFIGS_CHALLENGER] == [726010, 726020, 726070]
+    assert all(c["volume"] == 0.02 for c in CONFIGS_CHALLENGER)
+    assert "TK-Momentum-5-8-short-R" not in {c["id"] for c in CONFIGS_CHALLENGER}
+
+
+def test_challenger_signals_are_byte_identical_to_the_champion():
+    # THE WHOLE POINT: same signal, different risk wrapper. If kwargs ever
+    # diverge, the A/B comparison stops being a controlled experiment.
+    golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
+    for c in CONFIGS_CHALLENGER:
+        src = golive_by_id[c["id"][:-2]]
+        assert c["kwargs"] == src["kwargs"]
+        assert c.get("engine") == src.get("engine")
+        assert c.get("direction_filter") == src.get("direction_filter")
+
+
+def test_challenger_carries_all_four_gates():
+    for c in CONFIGS_CHALLENGER:
+        g = c["risk_gates"]
+        assert g["gap_wait_minutes"] == 50
+        assert g["news_blackout_minutes"] == 30
+        assert g["min_sl_distance"] == 0.5
+        assert isinstance(g["max_open_fichas"], int) and g["max_open_fichas"] >= 1
+
+
+def test_challenger_gate_dicts_are_not_shared_between_configs():
+    ids = {id(c["risk_gates"]) for c in CONFIGS_CHALLENGER}
+    assert len(ids) == 3, "each config owns its own gate dict"
+
+
+def test_challenger_did_not_leak_into_any_shared_config():
+    # THE LEAK PROOF. The shared go-live dicts must have gained NEITHER key.
+    golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
+    for cid in ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"):
+        assert "risk_gates" not in golive_by_id[cid]
+        assert "volume" not in golive_by_id[cid]
+    for c in CONFIGS_TOMACHINE:
+        assert c.get("risk_gates") is None
+        assert c.get("volume") is None
+
+
+def test_champion_roster_is_untouched_by_the_challenger():
+    # R1 IN TEST FORM: CONFIGS_LOCAL must be exactly what shipped on 2026-07-22.
+    assert [(c["id"], c["magic"], c["volume"]) for c in CONFIGS_LOCAL] == [
+        ("S6-K2P0", 724010, 0.1),
+        ("S7-TPNONE", 724020, 0.1),
+        ("SuperTrend-p14x3-M15", 724070, 0.1),
+        ("TK-Momentum-5-8-short", 999999998, 0.01)]
+    for c in CONFIGS_LOCAL:
+        assert "risk_gates" not in c, "the CHAMPION must carry no gates"
+
+
+def test_challenger_magic_band_is_disjoint_from_everything():
+    challenger_band = set()
+    for c in CONFIGS_CHALLENGER:
+        challenger_band |= {c["magic"] + off for off in range(4)}
+    assert min(challenger_band) == 726010 and max(challenger_band) == 726073
+    assert all(not (722000 <= m <= 723999) for m in challenger_band), \
+        "722xxx/723xxx are reserved"
+    for other in (CONFIGS_LIVE, CONFIGS_SHADOW, CONFIGS_GOLIVE, CONFIGS_TK,
+                  CONFIGS_LOCAL, CONFIGS_TOMACHINE):
+        other_band = set()
+        for c in other:
+            other_band |= {c["magic"] + off for off in range(4)}
+        assert challenger_band.isdisjoint(other_band)
