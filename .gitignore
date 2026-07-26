@@ -26,9 +26,19 @@ Thumbs.db
 MT5_Portable/
 
 # Data files (generated — real market data lake + research.db, regenerable via scripts/mt5_dump_history.py)
-# Whole dir ignored: lake/ (150M), raw/ (378M), research.db (5.8M) are all regenerable.
-data/
+# lake/ (150M), raw/ (378M), research.db (5.8M) etc. are all regenerable.
+# NOTE: "data/*" (not "data/") so git still recurses into data/ -- a trailing-slash
+# "data/" pattern excludes the directory itself and git never looks inside it, which
+# would make the data/live/ negation below silently no-op (a well-known gitignore trap).
+data/*
 sentinel_log.txt
+
+# Exception: the B2 news-blackout calendar is COMMITTED DATA, not a regenerable
+# market-data artifact (sentinel_engine/live/news_calendar.py reads it at runtime).
+!data/live/
+data/live/*
+!data/live/news_calendar.csv
+!data/live/news_calendar.README.md
 
 # MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
 MT5_Tester/
