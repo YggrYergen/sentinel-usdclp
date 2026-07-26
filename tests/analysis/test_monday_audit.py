@@ -85,3 +85,24 @@ def test_pearson_matches_known_values():
     assert abs(pearson([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]) - 1.0) < 1e-9
     assert abs(pearson([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]) + 1.0) < 1e-9
     assert pearson([1.0, 1.0, 1.0], [1.0, 2.0, 3.0]) == 0.0  # zero variance
+
+
+from scripts.analysis.monday_audit.a1_maxdd import max_drawdown
+
+
+def test_max_drawdown_finds_the_deepest_peak_to_trough():
+    # equity: 0 -> 100 -> 60 -> 160 -> 10   (deepest drop is 160 -> 10 = 150)
+    deltas = [100.0, -40.0, 100.0, -150.0]
+    dd = max_drawdown(deltas)
+    assert dd.max_dd == 150.0
+    assert dd.peak_equity == 160.0
+    assert dd.trough_equity == 10.0
+    assert dd.peak_index == 2 and dd.trough_index == 3
+
+
+def test_max_drawdown_of_a_monotonic_curve_is_zero():
+    assert max_drawdown([10.0, 20.0, 5.0]).max_dd == 0.0
+
+
+def test_max_drawdown_of_an_empty_series_is_zero():
+    assert max_drawdown([]).max_dd == 0.0
