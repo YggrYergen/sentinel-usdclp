@@ -40,6 +40,15 @@ data/live/*
 !data/live/news_calendar.csv
 !data/live/news_calendar.README.md
 
+# Exception: Monday champion/challenger Track-A audit artifacts are COMMITTED
+# DATA (spec R5 -- every JSON figure must be traceable to a file on disk, not
+# regenerable market data). Task 8 / A2 overlap-and-correlation output.
+!data/analysis/
+data/analysis/*
+!data/analysis/monday_audit/
+data/analysis/monday_audit/*
+!data/analysis/monday_audit/a2_overlap.json
+
 # MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
 MT5_Tester/
 MT5_Tester_2/

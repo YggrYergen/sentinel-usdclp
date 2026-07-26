@@ -49,3 +49,39 @@ def test_loader_scales_net_to_an_arbitrary_lot(tmp_path):
     r = load_positions(_fixture(tmp_path))[0]
     assert abs(r.net_at_lot(0.1) - 499454.18 * (0.1 / 0.67)) < 1e-6
     assert abs(r.net_at_lot(0.67) - r.net_067lot_clp) < 1e-9
+
+
+from datetime import datetime
+
+from scripts.analysis.monday_audit.a2_overlap import max_concurrency, pearson
+
+
+def _iv(a, b):
+    return (datetime.fromisoformat(a), datetime.fromisoformat(b))
+
+
+def test_max_concurrency_counts_overlapping_intervals():
+    ivs = [_iv("2026-01-01T00:00", "2026-01-01T03:00"),
+           _iv("2026-01-01T01:00", "2026-01-01T02:00"),
+           _iv("2026-01-01T01:30", "2026-01-01T04:00")]
+    peak, hist = max_concurrency(ivs)
+    assert peak == 3
+    assert hist[3] >= 1
+
+
+def test_concurrency_treats_a_touching_pair_as_sequential():
+    # exits are processed BEFORE entries at the same timestamp
+    ivs = [_iv("2026-01-01T00:00", "2026-01-01T01:00"),
+           _iv("2026-01-01T01:00", "2026-01-01T02:00")]
+    peak, _hist = max_concurrency(ivs)
+    assert peak == 1
+
+
+def test_max_concurrency_of_nothing_is_zero():
+    assert max_concurrency([])[0] == 0
+
+
+def test_pearson_matches_known_values():
+    assert abs(pearson([1.0, 2.0, 3.0], [2.0, 4.0, 6.0]) - 1.0) < 1e-9
+    assert abs(pearson([1.0, 2.0, 3.0], [3.0, 2.0, 1.0]) + 1.0) < 1e-9
+    assert pearson([1.0, 1.0, 1.0], [1.0, 2.0, 3.0]) == 0.0  # zero variance
