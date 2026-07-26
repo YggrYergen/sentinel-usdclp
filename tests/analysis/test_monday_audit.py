@@ -106,3 +106,32 @@ def test_max_drawdown_of_a_monotonic_curve_is_zero():
 
 def test_max_drawdown_of_an_empty_series_is_zero():
     assert max_drawdown([]).max_dd == 0.0
+
+
+from scripts.analysis.monday_audit.a3_a4_a5_stats import (
+    autocorrelation, longest_streak, profit_factor, win_rate)
+
+
+def test_win_rate_counts_strictly_positive_results():
+    assert win_rate([1.0, -1.0, 0.0, 2.0]) == 50.0
+    assert win_rate([]) == 0.0
+
+
+def test_profit_factor_is_gross_win_over_gross_loss():
+    assert profit_factor([3.0, -1.0, -0.5]) == 2.0
+    assert profit_factor([1.0, 2.0]) == float("inf")   # no losses
+    assert profit_factor([]) == 0.0
+
+
+def test_autocorrelation_of_an_alternating_series_is_negative():
+    assert autocorrelation([1.0, -1.0, 1.0, -1.0, 1.0], lag=1) < -0.9
+
+
+def test_autocorrelation_with_too_few_points_is_zero():
+    assert autocorrelation([1.0], lag=1) == 0.0
+
+
+def test_longest_streak_finds_both_directions():
+    assert longest_streak([1.0, 1.0, 1.0, -1.0]) == (3, 1)
+    assert longest_streak([-1.0, -1.0, 2.0]) == (1, 2)
+    assert longest_streak([]) == (0, 0)

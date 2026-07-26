@@ -49,6 +49,9 @@ data/analysis/*
 data/analysis/monday_audit/*
 !data/analysis/monday_audit/a2_overlap.json
 !data/analysis/monday_audit/a1_maxdd.json
+!data/analysis/monday_audit/a3_exit_reason.json
+!data/analysis/monday_audit/a4_serial.json
+!data/analysis/monday_audit/a5_spread_gate.json
 
 # MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
 MT5_Tester/
