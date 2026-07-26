@@ -15,7 +15,7 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 
 ## Rollback point
 
-- **Tag:** `pre-challenger-2026-07-25` → SHA: _(Task 0 lo escribe aquí)_
+- **Tag:** `pre-challenger-2026-07-25` → SHA: `dfdc4d7cd34d473484ce20ca4d00f9e2ed52ba37`
 - **Procedimiento de rollback:** _(Task 11 lo escribe aquí, 3 niveles)_
 
 ## Números que otras tareas necesitan
@@ -33,7 +33,7 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 
 | # | Tarea | Lane | Modelo | Estado | Evidencia / notas |
 |---|---|---|---|---|---|
-| 0 | Tag de seguridad + punto de revert | — | Sonnet 5 high | `[ ]` | |
+| 0 | Tag de seguridad + punto de revert | — | Sonnet 5 high | `[x]` | tag `pre-challenger-2026-07-25` → `dfdc4d7cd34d473484ce20ca4d00f9e2ed52ba37` |
 | 1 | `risk_gates.py` — B1–B4 como lógica pura | B | Sonnet 5 high | `[ ]` | |
 | 2 | `news_calendar.py` + calendario commiteado | B | Sonnet 5 high | `[ ]` | |
 | 3 | `gap_wait.py` — máquina de estado de B1 | B | Sonnet 5 high | `[ ]` | |
@@ -93,3 +93,5 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 ## Bitácora
 
 _(cada subagente añade una línea al terminar: fecha ISO · tarea · qué quedó · commit)_
+
+- 2026-07-25 · Task 0 · Tag anotado `pre-challenger-2026-07-25` creado sobre HEAD (`dfdc4d7`, resuelto por `git rev-parse` sin editar a mano); working tree confirmado limpio (`git status --porcelain -uno` vacío) y `git diff 496fecf..HEAD --stat` verificado solo-docs antes de taguear. Punto de revert registrado arriba. · commit `chore(tracker): rollback tag pre-challenger-2026-07-25 recorded`
