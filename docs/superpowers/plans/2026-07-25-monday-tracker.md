@@ -34,12 +34,12 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 | # | Tarea | Lane | Modelo | Estado | Evidencia / notas |
 |---|---|---|---|---|---|
 | 0 | Tag de seguridad + punto de revert | — | Sonnet 5 high | `[x]` | tag `pre-challenger-2026-07-25` → `dfdc4d7cd34d473484ce20ca4d00f9e2ed52ba37` |
-| 1 | `risk_gates.py` — B1–B4 como lógica pura | B | Sonnet 5 high | `[ ]` | |
+| 1 | `risk_gates.py` — B1–B4 como lógica pura | B | Sonnet 5 high | `[x]` | 12/12 tests verdes en `tests/live/test_risk_gates.py`; suite completa de `tests/live` (189/189) también verde. Commit `e065fca`. Gate completa (full-suite) del repo eximida por el controller esta vez por un test lento patológico bajo investigación aparte; ver bitácora. |
 | 2 | `news_calendar.py` + calendario commiteado | B | Sonnet 5 high | `[ ]` | |
 | 3 | `gap_wait.py` — máquina de estado de B1 | B | Sonnet 5 high | `[ ]` | |
 | 4 | `CONFIGS_CHALLENGER` — roster espejo 726xxx | B | Sonnet 5 high | `[ ]` | **bloqueada por Task 8** |
 | 5 | Plumbing del executor (gates en el OPEN) | B | **Opus 5 medium** | `[ ]` | la más compleja |
-| 6 | Loader de auditoría (2.347 posiciones) | A | Sonnet 5 high | `[ ]` | |
+| 6 | Loader de auditoría (2.347 posiciones) | A | Sonnet 5 high | `[x]` | 4/4 tests verdes en `tests/analysis/test_monday_audit.py`. Smoke check contra datos reales: `2347 Counter({'S7-TPNONE': 1167, 'S6-K2P0': 912, 'SuperTrend-p14x3-M15': 268})` — coincide exacto con lo esperado en el brief. Commit `54355b9`. Gate completa (full-suite) del repo eximida por el controller por el mismo test lento patológico bajo investigación aparte (ver Task 1 y bitácora); se sustituyó por `python -m pytest tests/analysis -q` → `4 passed in 0.07s`. |
 | 7 | A1 — verificar el maxDD | A | Sonnet 5 high | `[ ]` | |
 | 8 | A2 — solape, correlación y cap B3 | A | Sonnet 5 high | `[ ]` | **desbloquea Task 4** |
 | 9 | A3+A4+A5 — atribución, serial, gate 0.5 | A | Sonnet 5 high | `[ ]` | |
@@ -95,3 +95,4 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 _(cada subagente añade una línea al terminar: fecha ISO · tarea · qué quedó · commit)_
 
 - 2026-07-25 · Task 0 · Tag anotado `pre-challenger-2026-07-25` creado sobre HEAD (`dfdc4d7`, resuelto por `git rev-parse` sin editar a mano); working tree confirmado limpio (`git status --porcelain -uno` vacío) y `git diff 496fecf..HEAD --stat` verificado solo-docs antes de taguear. Punto de revert registrado arriba. · commit `chore(tracker): rollback tag pre-challenger-2026-07-25 recorded`
+- 2026-07-26 · Task 1 · `sentinel_engine/live/risk_gates.py` creado: `GateInput`/`GateDecision` (dataclasses frozen) + `evaluate_open_gates()` puro (sin MT5, sin reloj, sin filesystem) implementando B1 `gap_wait_minutes`, B2 `news_blackout_minutes` (fail-closed sin calendario), B3 `max_open_fichas`, B4 `min_sl_distance` (fail-closed, hit = BUG), en ese orden fijo. TDD seguido: rojo confirmado (`ModuleNotFoundError`) antes de implementar. 12/12 tests verdes en `tests/live/test_risk_gates.py`; suite `tests/live` completa 189/189 verde (5.75 s). La suite COMPLETA del repo fue eximida para esta tarea por el controller (waiver explícito): hay un test lento patológico en investigación aparte que hace que una corrida completa tome ~1 hora; se sustituyó por la corrida dirigida de `tests/live`. `CONFIGS_LOCAL` no tocado (R1); módulo nuevo, aditivo, sin mutar objetos compartidos (R4). · commit `e065fca` (feat), commit de este tracker a continuación.
