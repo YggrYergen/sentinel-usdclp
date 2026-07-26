@@ -29,6 +29,14 @@ Every task's requirements implicitly include this section. Values are copied ver
 
 - **R1 — the S6/S7/ST signals are UNTOUCHABLE.** `CONFIGS_LOCAL` must be byte-identical after all
   work. No task may edit the shared go-live config dicts.
+- **R1-bis — PRESERVATION IS ABSOLUTE (user ruling, 2026-07-25).** The S6, S7 and SuperTrend
+  strategies that are running LIVE right now — their engines, their kwargs, their config dicts, and
+  the code paths they execute — are preserved **byte-identical, as-is**. If any work in this or any
+  later plan appears to require modifying them, the modification is made on an **independent copy**
+  (deep-copied config, new module, new magic band) and **never** on the original. There is no
+  exception, no "small edit", no "temporary" change. An implementer who believes the original must
+  change is wrong about the task: STOP and escalate to the controller. This constraint binds every
+  subagent dispatched under this plan and is repeated in every brief.
 - **R2 — champion lot stays 0.1** (TK-Momentum 0.01). Challenger lot is **0.02**.
 - **R3 — re-tuning ANY parameter is forbidden this weekend.** No grid, no sweep, no "best of".
 - **R4 — the challenger is additive or it is nothing.** It may not mutate any shared object.
