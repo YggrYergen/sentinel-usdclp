@@ -94,6 +94,10 @@ EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 # shadow | live+shadow | live+tk | golive | golive-dedup | golive-dedup+tk |
 # tk-momentum | tomachine | local (machine-1 LOCAL roster: S6-K2P0 +
 # S7-TPNONE + SuperTrend-p14x3-M15 @0.1 + TK-Momentum @0.01, NO V11-M2/shadow)
+# | local+challenger (2026-07-25 Monday delivery: the SAME untouched `local`
+# champion PLUS the three 726xxx challenger mirrors of S6/S7/SuperTrend
+# carrying the opt-in risk gates B1-B4 -- one process, one account, two
+# sleeves; the challenger cannot alter a single champion decision)
 # (or any comma ids).
 SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 

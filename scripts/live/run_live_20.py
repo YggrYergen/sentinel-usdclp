@@ -45,6 +45,7 @@ import logging
 import signal
 import sys
 import time
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Callable
@@ -52,16 +53,17 @@ from typing import Any, Callable
 REPO_ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(REPO_ROOT))
 
-from sentinel_engine.live import guard_cuenta  # noqa: E402
+from sentinel_engine.live import gap_wait, guard_cuenta, news_calendar  # noqa: E402
 from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.live.magic_seed import ensure_magic_allocations  # noqa: E402
 from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
+from sentinel_engine.live.risk_gates import GateInput, evaluate_open_gates  # noqa: E402
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
-    CONFIGS_20, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE,
-    CONFIGS_LOCAL, CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE, LIVE_ROSTER,
-    supertrend_always_in_target)
+    CONFIGS_20, CONFIGS_CHALLENGER, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP,
+    CONFIGS_LIVE, CONFIGS_LOCAL, CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE,
+    LIVE_ROSTER, supertrend_always_in_target)
 from sentinel_engine.strategies.tk_bw2_live import (  # noqa: E402
     tk_bw2_fix2atr_target)
 from sentinel_engine.strategies.tk_momentum import (  # noqa: E402
@@ -406,6 +408,23 @@ def _clamp_sl(mt5: Any, symbol: str, side: str, desired_sl: float) -> tuple[str,
         return "legal", desired_sl
 
 
+@dataclass
+class GateCycleContext:
+    """Per-cycle inputs for the challenger's risk gates. Built ONCE per cycle by
+    `_build_gate_ctx`, and ONLY when some config in the roster carries
+    `risk_gates` -- a champion-only roster never constructs one.
+
+    `open_fichas` is MUTABLE on purpose: every OPEN admitted during this cycle
+    consumes a slot, so B3 also caps *within* a cycle and not just across
+    cycles. It is incremented at admission (not at fill): a send that later
+    fails has still consumed the slot until the next cycle re-reads the book.
+    That is the conservative direction."""
+    now: datetime
+    spread_ok_since: datetime | None
+    news_windows: tuple[tuple[datetime, datetime], ...] | None
+    open_fichas: int
+
+
 def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    deviation: int = 20, contract_size: float = 100.0,
                    same_bar_cost: dict[str, float] | None = None,
@@ -414,6 +433,8 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    close_retries: int = 2,
                    max_spread_open: float | None = None,
                    spread_threshold: float | None = None,
+                   risk_gates: dict[str, Any] | None = None,
+                   gate_ctx: "GateCycleContext | None" = None,
                    on_fill: Callable[[str, Any, float | None], None] | None = None) -> None:
     """Send ONE sendable action, or (dry-run) just log the intent. Guard is
     re-asserted by the caller each cycle BEFORE this is reached.
@@ -441,6 +462,12 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         exceeds `max_spread_open`; the OPEN is SKIPPED entirely (nothing sent)
         and the reconciler re-evaluates it next cycle. Exits / MODIFY / CLOSE
         are never gated. A None `max_spread_open` disables the gate.
+      * RISK_GATE_SKIP / RISK_GATE_ERROR -> (OPEN only, and ONLY for a config
+        that carries `risk_gates`) the challenger's opt-in gates B1-B4 denied
+        the entry, or the gate evaluation itself raised (missing `gate_ctx` =
+        a wiring bug). Both SKIP the OPEN -- fail-closed. A config without
+        `risk_gates` never reaches this block at all, so the champion's path
+        is unchanged.
       * OPEN_SKIPPED_SL_CROSSED -> the sim's desired SL for a new position is
         already at/through the current market ref (bid for LONG / ask for
         SHORT): opening now would be an instant stop-out, so the OPEN is
@@ -500,6 +527,41 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                                a.config_id, a.ficha, spread, eff_cap, which,
                                spread_threshold, max_spread_open)
                 return
+
+    # CHALLENGER RISK GATES (2026-07-25, OPEN only, OPT-IN -- spec section 4.3).
+    # A config WITHOUT `risk_gates` skips this entirely, so the champion's
+    # decisions are byte-identical to before this sleeve existed. Sibling of
+    # SPREAD_GATE_SKIP above: same place, same shape, same logging. Exits,
+    # MODIFY and CLOSE are NEVER gated -- risk management must always run.
+    #
+    # FAIL-CLOSED BY CONSTRUCTION: any exception (including a missing gate_ctx,
+    # i.e. a wiring bug) skips the OPEN and logs loudly. A bug in the
+    # challenger's risk layer must never abort the cycle that also runs the
+    # champion, and must never silently DISABLE the gates.
+    if a.kind == "OPEN" and risk_gates:
+        try:
+            tick = mt5.symbol_info_tick(symbol)
+            market_ref = None
+            if tick is not None:
+                market_ref = float(tick.bid) if a.side == "L" else float(tick.ask)
+            decision = evaluate_open_gates(risk_gates, GateInput(
+                now=gate_ctx.now,
+                spread_ok_since=gate_ctx.spread_ok_since,
+                open_fichas=gate_ctx.open_fichas,
+                desired_sl=float(a.sl) if a.sl is not None else None,
+                market_ref=market_ref,
+                news_windows=gate_ctx.news_windows,
+            ))
+        except Exception as exc:  # noqa: BLE001 - fail closed, never abort
+            logger.error("  [RISK_GATE_ERROR] config=%s ficha=%s -> %s "
+                         "(fail-closed: open skipped)", a.config_id, a.ficha, exc)
+            return
+        if not decision.allow:
+            logger.warning("  [RISK_GATE_SKIP] gate=%s config=%s ficha=%s -- %s",
+                           decision.gate, a.config_id, a.ficha, decision.reason)
+            return
+        gate_ctx.open_fichas += 1
+
     if dry_run:
         extra = ""
         if a.kind == "SAME_BAR_EXIT_FALLBACK":
@@ -698,6 +760,39 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
 # --------------------------------------------------------------------------
 # Cycle orchestration.
 # --------------------------------------------------------------------------
+def _build_gate_ctx(mt5: Any, challenger_cfgs: list[dict[str, Any]]) -> GateCycleContext:
+    """Gather this cycle's gate inputs ONCE: the gap-wait clock (persisted
+    across restarts), the news blackout windows, and how many fichas the
+    challenger sleeve already has on the book. Read-only w.r.t. trading."""
+    now = datetime.now(timezone.utc)
+    sym = challenger_cfgs[0]["kwargs"]["symbol"]
+    spread = _current_spread(mt5, sym)
+    state = gap_wait.advance(gap_wait.load(), now=now, spread=spread)
+    gap_wait.save(state)
+
+    blackout = None
+    for c in challenger_cfgs:
+        val = (c.get("risk_gates") or {}).get("news_blackout_minutes")
+        if val is not None:
+            blackout = val
+            break
+    windows = (news_calendar.load_windows(minutes_before=blackout,
+                                          minutes_after=blackout)
+               if blackout is not None else None)
+
+    open_fichas = sum(len(fetch_live_positions(mt5, c["magic"]))
+                      for c in challenger_cfgs)
+    logger.info("[risk-gates] now=%s spread=%s spread_ok_since=%s open_fichas=%d "
+                "news_windows=%s",
+                now.isoformat(),
+                f"{spread:.5f}" if spread is not None else "None",
+                state.spread_ok_since.isoformat() if state.spread_ok_since else "None",
+                open_fichas,
+                "NONE(FAIL-CLOSED)" if windows is None else len(windows))
+    return GateCycleContext(now=now, spread_ok_since=state.spread_ok_since,
+                            news_windows=windows, open_fichas=open_fichas)
+
+
 def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
               volume: float, dry_run: bool, deviation: int,
               same_bar_cost: dict[str, float] | None = None,
@@ -740,6 +835,14 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
                         if spread_store.running_min is not None else "None",
                         spread_eps, f"{thr:.5f}" if thr is not None else "None")
 
+    # CHALLENGER GATE CONTEXT: built ONLY when some config in this roster
+    # carries `risk_gates`. With a champion-only roster this stays None and
+    # nothing below this line behaves differently than before.
+    gate_ctx: GateCycleContext | None = None
+    challenger_cfgs = [c for c in configs if c.get("risk_gates")]
+    if challenger_cfgs:
+        gate_ctx = _build_gate_ctx(mt5, challenger_cfgs)
+
     total_open = 0
     for cfg in configs:
         res, bar_t = reconcile_config(
@@ -757,6 +860,8 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
                            sl_clamp_cost=sl_clamp_cost,
                            max_spread_open=max_spread_open,
                            spread_threshold=spread_threshold_by_symbol.get(sym),
+                           risk_gates=cfg.get("risk_gates"),
+                           gate_ctx=gate_ctx,
                            on_fill=on_fill)
         # count fichas the sim wants open (desired) toward the global cap.
         # OPEN + NOOP = one per still-desired ficha (MODIFY is paired with a
@@ -977,6 +1082,13 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # V11-M2 and NO FIXED4 shadow. Independent deep COPIES so machine-2's
         # tomachine lot is never touched.
         configs = list(CONFIGS_LOCAL)
+    elif roster == "local+challenger":
+        # MACHINE-1 CHAMPION + CHALLENGER (2026-07-25 Monday delivery): the
+        # untouched `local` champion (S6/S7/ST @0.1 + TK-Momentum @0.01) PLUS
+        # the three 726xxx challenger mirrors @0.1 carrying risk_gates B1-B4.
+        # ONE process, ONE account, two sleeves; the challenger is purely
+        # additive and cannot alter a single champion decision.
+        configs = list(CONFIGS_LOCAL) + list(CONFIGS_CHALLENGER)
     else:
         want = {s.strip() for s in args.configs.split(",")}
         configs = [c for c in CONFIGS_20 if c["id"] in want]

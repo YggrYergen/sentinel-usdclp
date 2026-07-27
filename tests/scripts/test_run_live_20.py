@@ -47,6 +47,19 @@ def _bars(n=400, seed=7):
     return out
 
 
+def _open_action(*, config_id, magic, side, sl):
+    """Minimal sendable OPEN action for gate tests, built through the real
+    reconciler types so the shape can never drift from production.
+
+    `sl` MUST be on the legal side of `MockMT5`'s fixed tick (bid 2000.0 /
+    ask 2000.2) -- i.e. BELOW bid for a LONG. An SL at/through market trips
+    the pre-existing OPEN_SKIPPED_SL_CROSSED branch, which returns before the
+    ordinary dry-run line and would mask what these tests are pinning."""
+    from sentinel_engine.live.reconciler import Action
+    return Action(kind="OPEN", config_id=config_id, magic=magic, ficha="F1",
+                  side=side, volume=0.1, sl=sl, reason="test")
+
+
 # --------------------------- --configs shadow ------------------------------
 def test_configs_shadow_selects_only_fixed4(caplog):
     mt5 = MockMT5(_bars())
@@ -561,3 +574,88 @@ def test_challenger_magic_band_is_disjoint_from_everything():
         for c in other:
             other_band |= {c["magic"] + off for off in range(4)}
         assert challenger_band.isdisjoint(other_band)
+
+
+# ------------------- --configs local+challenger / risk gates ----------------
+def test_local_plus_challenger_roster_selects_seven(caplog):
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        rc = run_live_20.main(["--once", "--configs", "local+challenger",
+                               "--no-adaptive-spread"],
+                              mt5_module=mt5, attach_checker=lambda: True)
+    assert rc == 0
+    assert mt5.sent == [], "dry-run must send ZERO orders"
+    assert "7 configs" in caplog.text
+    for c in CONFIGS_LOCAL:
+        assert f"[{c['id']}]" in caplog.text
+    for c in CONFIGS_CHALLENGER:
+        assert f"[{c['id']}]" in caplog.text
+
+
+def test_local_plus_challenger_keeps_adaptive_spread_off_like_local(caplog, monkeypatch, tmp_path):
+    # `local` never enabled the adaptive gate; adding the challenger must not
+    # silently switch it on for the champion.
+    monkeypatch.setattr(run_live_20, "SPREAD_STORE_PATH", tmp_path / "s.json", raising=False)
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        run_live_20.main(["--once", "--configs", "local+challenger"],
+                         mt5_module=mt5, attach_checker=lambda: True)
+    assert "adaptive_spread=OFF" in caplog.text or "[spread]" not in caplog.text
+
+
+def test_champion_only_roster_never_builds_a_gate_context(caplog):
+    # THE BYTE-IDENTICAL GUARANTEE: no config carries risk_gates -> the gate
+    # machinery is never touched and nothing new appears in the audit log.
+    mt5 = MockMT5(_bars())
+    with caplog.at_level("INFO"):
+        run_live_20.main(["--once", "--configs", "local", "--no-adaptive-spread"],
+                         mt5_module=mt5, attach_checker=lambda: True)
+    assert "[risk-gates]" not in caplog.text
+    assert "[RISK_GATE_SKIP]" not in caplog.text
+
+
+def test_execute_action_without_risk_gates_is_unchanged(caplog):
+    # An OPEN with risk_gates=None must reach the ordinary dry-run log line.
+    mt5 = MockMT5(_bars())
+    action = _open_action(config_id="S6-K2P0", magic=724010, side="L", sl=1990.0)
+    with caplog.at_level("INFO"):
+        run_live_20.execute_action(mt5, action, symbol="XAUUSD", dry_run=True)
+    assert "[DRY-RUN would OPEN]" in caplog.text
+    assert "[RISK_GATE_SKIP]" not in caplog.text
+
+
+def test_execute_action_denies_when_a_gate_denies(caplog):
+    mt5 = MockMT5(_bars())
+    action = _open_action(config_id="S6-K2P0-R", magic=726010, side="L", sl=1990.0)
+    ctx = run_live_20.GateCycleContext(
+        now=datetime(2026, 7, 27, 12, 0, tzinfo=timezone.utc),
+        spread_ok_since=None, news_windows=(), open_fichas=0)
+    with caplog.at_level("INFO"):
+        run_live_20.execute_action(mt5, action, symbol="XAUUSD", dry_run=True,
+                                   risk_gates={"gap_wait_minutes": 50}, gate_ctx=ctx)
+    assert "[RISK_GATE_SKIP] gate=B1" in caplog.text
+    assert "[DRY-RUN would OPEN]" not in caplog.text
+
+
+def test_missing_gate_ctx_fails_closed(caplog):
+    # A wiring bug must DENY, never silently disable the gates.
+    mt5 = MockMT5(_bars())
+    action = _open_action(config_id="S6-K2P0-R", magic=726010, side="L", sl=1990.0)
+    with caplog.at_level("INFO"):
+        run_live_20.execute_action(mt5, action, symbol="XAUUSD", dry_run=True,
+                                   risk_gates={"gap_wait_minutes": 50}, gate_ctx=None)
+    assert "[RISK_GATE_ERROR]" in caplog.text
+    assert "[DRY-RUN would OPEN]" not in caplog.text
+
+
+def test_admitted_opens_increment_the_sleeve_ficha_count():
+    mt5 = MockMT5(_bars())
+    ctx = run_live_20.GateCycleContext(
+        now=datetime(2026, 7, 27, 12, 0, tzinfo=timezone.utc),
+        spread_ok_since=datetime(2026, 7, 27, 10, 0, tzinfo=timezone.utc),
+        news_windows=(), open_fichas=0)
+    action = _open_action(config_id="S6-K2P0-R", magic=726010, side="L", sl=1990.0)
+    run_live_20.execute_action(mt5, action, symbol="XAUUSD", dry_run=True,
+                               risk_gates={"gap_wait_minutes": 50, "max_open_fichas": 2},
+                               gate_ctx=ctx)
+    assert ctx.open_fichas == 1, "an admitted OPEN consumes a slot in this cycle"
