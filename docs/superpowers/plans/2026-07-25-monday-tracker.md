@@ -454,3 +454,34 @@ BASELINE (kwargs exactos de las 3 vivas + cifras vigentes) y clasifica ~50 candi
 **Lectura honesta del inventario:** el catalogo v3 se lee como una lista de mejoras, pero 37 de
 ~50 entradas jamas han tocado un dato. Solo 9 candidatos tienen evidencia sobre el substrato
 vigente, y todos ellos son in-sample sobre 7 meses.
+
+## 🟢 VIABILIDAD DEL BACKTEST LARGO (2026-07-27) — el dato existe, y va mas atras de lo pedido
+
+`docs/superpowers/research/2026-07-27-long-backtest-data-feasibility.md`
+
+**1. Barras M15 = 4,32 ANOS, ya en disco.** `data/lake/XAUUSD/15.parquet`:
+**2022-03-31 05:15 -> 2026-07-27 03:15**, 101.233 barras, continuo y verificado. El user pedia
+2 anos: tenemos mas del doble, HOY, sin depender de ninguna fuente externa. El piso de 2022-03-31
+no es un corte del script (`START_BOUND` pedia 2022-01-01): parece ser el fin real del historico
+M15 que sirve Capitaria.
+
+**2. Ticks reales (bid+ask) = solo 7 meses y 3 semanas.**
+2026-01-01 20:00:00.699 -> 2026-07-24 16:54:59.898 (hora servidor), 52.599.197 ticks.
+=> El backtest largo **no puede ser real-tick en toda su ventana**. La forma viable es:
+barras M15 para los 4,3 anos + confirmacion real-tick en el solape de 7 meses.
+
+**3. Spread <=0,55 = 37,76 % del tiempo** (time-weighted, duracion inter-tick capada a 60 s;
+33,42 % si se cuentan ticks en vez de tiempo).
+
+**4. 🔴 HALLAZGO QUE ROMPE LA EXTRAPOLACION HORARIA INGENUA.** La "hora muerta" diaria del
+servidor **se desplaza dos veces dentro de los 7 meses medidos** (hora 19 -> 18 -> 17, ~4 semanas
+entre transiciones). Es decir, la ventana de spread estrecho **NO es una hora fija del reloj de
+servidor**. Cualquier plan que extrapole "las horas de 0,5" como una mascara horaria fija a un
+periodo de 4 anos esta apoyado en un supuesto que el propio dato de 7 meses ya refuta. Hay que
+modelar el desplazamiento, no ignorarlo.
+
+**5. Historico anterior a 2022: NO EVALUABLE.** Solo hay caches binarios `.hcc` sin decodificar
+bajo `MT5_Tester/**` (2014-2021). Su contenido real no se puede afirmar sin abrir un terminal
+(prohibido en esa tarea). Precedente medido: el unico backfill ya intentado desde ese cache tuvo
+exito en M2/M5/M15/H1 pero **fallo en M1** — el tamano del fichero no prueba que el contenido sea
+extraible.
