@@ -5,11 +5,18 @@ import pytest
 
 from sentinel_engine.live import guard_cuenta
 from sentinel_engine.live.guard_cuenta import (
-    DEMO_LOGIN, REAL_LOGIN, SANCTIONED_DEMO_LOGINS, TRADE_MODE_DEMO,
-    TRADE_MODE_REAL, GuardError, assert_demo,
+    DEMO_LOGIN, REAL_LOGIN, SANCTIONED_DEMO_LOGINS, TRADE_MODE_CONTEST,
+    TRADE_MODE_DEMO, TRADE_MODE_REAL, GuardError, assert_demo,
 )
 
 OTHER_SANCTIONED_LOGIN = next(iter(SANCTIONED_DEMO_LOGINS - {DEMO_LOGIN}))
+
+# Machine 1's login and TOMACHINE's login (rotated 2026-07-27), plus the login
+# RETIRED from the sanctioned set that same day. Spelled out literally on
+# purpose: these are the account numbers the guard is supposed to bake in.
+MACHINE_1_LOGIN = 2883015767
+TOMACHINE_LOGIN = 2883016902
+RETIRED_TOMACHINE_LOGIN = 2883016567
 
 
 class _Info:
@@ -77,7 +84,49 @@ def test_account_info_raising_is_refused():
 # (via expected_login), never extend it.
 # --------------------------------------------------------------------------
 def test_sanctioned_set_has_both_machines():
-    assert SANCTIONED_DEMO_LOGINS == frozenset({2883015767, 2883016567})
+    # Machine 1 + TOMACHINE's CURRENT demo (2026-07-27 rotation). Exact
+    # equality, so an accidental extra login fails the suite.
+    assert SANCTIONED_DEMO_LOGINS == frozenset({MACHINE_1_LOGIN, TOMACHINE_LOGIN})
+
+
+def test_retired_tomachine_login_is_no_longer_sanctioned():
+    # 2883016567 was RETIRED 2026-07-27: the owner switched TOMACHINE to
+    # 2883016902 "from now on". A retired login must fail CLOSED, never be
+    # accepted silently, and must not linger in the frozenset.
+    assert RETIRED_TOMACHINE_LOGIN not in SANCTIONED_DEMO_LOGINS
+
+
+def test_retired_tomachine_login_is_refused_by_the_guard():
+    mt5 = _MT5(_Info(RETIRED_TOMACHINE_LOGIN, TRADE_MODE_DEMO))
+    with pytest.raises(GuardError):
+        assert_demo(mt5, hard_exit=False)
+    # ... and cannot be re-authorized by passing it as this machine's
+    # expected login either (config SELECTS, never EXTENDS).
+    with pytest.raises(GuardError):
+        assert_demo(mt5, hard_exit=False,
+                    expected_login=RETIRED_TOMACHINE_LOGIN)
+
+
+def test_machine_1_login_still_sanctioned():
+    assert MACHINE_1_LOGIN in SANCTIONED_DEMO_LOGINS
+
+
+def test_current_tomachine_login_passes_when_expected():
+    # 2883016902: verified DEMO (watchdog probe LOGIN=2883016902
+    # TRADE_MODE=0) and sanctioned since 2026-07-27.
+    assert TOMACHINE_LOGIN in SANCTIONED_DEMO_LOGINS
+    mt5 = _MT5(_Info(TOMACHINE_LOGIN, TRADE_MODE_DEMO))
+    assert assert_demo(mt5, hard_exit=False,
+                       expected_login=TOMACHINE_LOGIN) == TOMACHINE_LOGIN
+
+
+def test_current_tomachine_login_refused_when_trade_mode_not_demo():
+    # Being in the sanctioned set is NOT enough: the broker must also report
+    # trade_mode DEMO (0). CONTEST and REAL are both refused.
+    for mode in (TRADE_MODE_CONTEST, TRADE_MODE_REAL):
+        mt5 = _MT5(_Info(TOMACHINE_LOGIN, mode))
+        with pytest.raises(GuardError):
+            assert_demo(mt5, hard_exit=False, expected_login=TOMACHINE_LOGIN)
 
 
 def test_other_sanctioned_login_rejected_when_not_expected_by_this_machine():

@@ -12,7 +12,10 @@ own MT5 install layout and demo login:
     login 2883015767.
   - Machine "TOMACHINE": standard (non-portable) install
     `C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe`,
-    `portable=False`, login 2883016567.
+    `portable=False`, login 2883016902 (since 2026-07-27; the previous
+    2883016567 was RETIRED from `guard_cuenta.SANCTIONED_DEMO_LOGINS` that
+    day, so a stale `machine_local.json` naming it now fails CLOSED with
+    `MachineProfileError`).
 Both machines run the SAME tracked source files. Instead of each machine
 hardcoding its own values into shared files (which silently breaks the other
 machine on merge -- see the 2026-07-15 incident this module fixes), every

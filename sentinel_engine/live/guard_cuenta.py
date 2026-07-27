@@ -1,13 +1,22 @@
 """sentinel_engine.live.guard_cuenta -- HARD account guard for the live
 executor (SENTINEL, 2026-07-13). ORDER-CAPABLE SAFETY MODULE.
 
-SINGLE SOURCE OF TRUTH: `D:/FOREX/CUENTAS.md`.
+SINGLE SOURCE OF TRUTH: `D:/FOREX/CUENTAS.md` (that file lives on Machine 1
+only; it does NOT exist on TOMACHINE -- do not create or invent it).
   Two machines share this branch, each with its OWN sanctioned DEMO login:
     - 2883015767 (Machine 1, portable install
       `D:\\FOREX\\MT5_Portable\\terminal64.exe`)
-    - 2883016567 (Machine "TOMACHINE", 30M CLP demo, server Capitaria-All,
-      standard install `C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe`)
-  Both are permitted logins; which ONE is expected on a given machine is
+    - 2883016902 (Machine "TOMACHINE", server Capitaria-All, standard install
+      `C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe`). Current
+      TOMACHINE DEMO account since 2026-07-27: verified DEMO by the watchdog's
+      own account probe reporting `LOGIN=2883016902 TRADE_MODE=0`, and
+      TRADE_MODE 0 == ACCOUNT_TRADE_MODE_DEMO (see the enum below).
+  RETIRED 2026-07-27: 2883016567 (the previous TOMACHINE demo, 30M CLP) was
+  REMOVED from the sanctioned set. The owner switched the terminal to
+  2883016902 "from now on", so any straggling reference to 2883016567 must
+  fail CLOSED (`GuardError` / `MachineProfileError`) rather than trade an
+  account that is no longer current.
+  Both listed logins are permitted; which ONE is expected on a given machine is
   selected by `sentinel_engine.live.machine_profile` (see that module) --
   but the profile can only SELECT within this hard-coded set, never EXTEND
   it. A malicious or corrupted `machine_local.json` cannot make an
@@ -37,11 +46,17 @@ import sys
 from typing import Any
 
 # CUENTAS.md single source of truth (2026-07-13, extended 2026-07-15 for the
-# second machine). Hard-coded on purpose: the guard must not depend on any
-# mutable config to know which logins are tradable -- see module docstring.
+# second machine, TOMACHINE's login rotated 2026-07-27). Hard-coded on purpose:
+# the guard must not depend on any mutable config to know which logins are
+# tradable -- see module docstring. Mutable config may SELECT a member of this
+# set; it can never ADD one. Editing this set is a reviewed code change.
 SANCTIONED_DEMO_LOGINS = frozenset({
     2883015767,  # Machine 1 -- portable install D:\FOREX\MT5_Portable
-    2883016567,  # Machine "TOMACHINE" -- standard Capitaria install, 30M CLP demo
+    # Machine "TOMACHINE" -- standard Capitaria install, server Capitaria-All.
+    # DEMO account in use since 2026-07-27; confirmed DEMO by the watchdog
+    # account probe (LOGIN=2883016902 TRADE_MODE=0 == ACCOUNT_TRADE_MODE_DEMO).
+    # Replaced 2883016567, which was RETIRED from this set on 2026-07-27.
+    2883016902,
 })
 REAL_LOGIN = 2883011573
 

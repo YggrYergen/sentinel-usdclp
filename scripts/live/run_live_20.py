@@ -5,7 +5,7 @@ full before running.
 SAFETY MODEL (every rule -> where enforced)
 -------------------------------------------
 * SINGLE SOURCE OF TRUTH `D:/FOREX/CUENTAS.md`: one sanctioned DEMO login per
-  machine (2883015767 portable on Machine 1, 2883016567 standard install on
+  machine (2883015767 portable on Machine 1, 2883016902 standard install on
   Machine "TOMACHINE" -- both in `guard_cuenta.SANCTIONED_DEMO_LOGINS`,
   selected per-machine by `sentinel_engine.live.machine_profile`) is the ONLY
   tradable account; REAL 2883011573 is read-only on every machine. Enforced

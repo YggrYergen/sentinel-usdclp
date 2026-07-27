@@ -31,13 +31,13 @@ def test_json_override_machine2(tmp_path):
     p.write_text(json.dumps({
         "terminal_path": r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe",
         "portable": False,
-        "demo_login": 2883016567,
+        "demo_login": 2883016902,
         "terminal_marker": "capitaria mt5 terminal",
     }), encoding="utf-8")
     profile = mp.load_profile(path=p)
     assert str(profile.terminal_path) == r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe"
     assert profile.portable is False
-    assert profile.demo_login == 2883016567
+    assert profile.demo_login == 2883016902
     assert profile.terminal_marker == "capitaria mt5 terminal"
 
 
@@ -46,7 +46,7 @@ def test_json_override_derives_marker_when_absent(tmp_path):
     p.write_text(json.dumps({
         "terminal_path": r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe",
         "portable": False,
-        "demo_login": 2883016567,
+        "demo_login": 2883016902,
     }), encoding="utf-8")
     profile = mp.load_profile(path=p)
     assert profile.terminal_marker == "capitaria mt5 terminal"
@@ -61,6 +61,21 @@ def test_unsanctioned_login_rejected(tmp_path):
         "terminal_path": r"C:\evil\terminal64.exe",
         "portable": False,
         "demo_login": 9999999,
+    }), encoding="utf-8")
+    with pytest.raises(mp.MachineProfileError):
+        mp.load_profile(path=p)
+
+
+def test_retired_login_rejected(tmp_path):
+    # A REAL retired login (2883016567, TOMACHINE's demo until 2026-07-27) is
+    # just as unsanctioned as a made-up number: a stale machine_local.json must
+    # fail CLOSED with MachineProfileError, not select an account that is no
+    # longer current.
+    p = tmp_path / "machine_local.json"
+    p.write_text(json.dumps({
+        "terminal_path": r"C:\Program Files\Capitaria MT5 Terminal\terminal64.exe",
+        "portable": False,
+        "demo_login": 2883016567,
     }), encoding="utf-8")
     with pytest.raises(mp.MachineProfileError):
         mp.load_profile(path=p)

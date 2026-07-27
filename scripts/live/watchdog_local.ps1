@@ -6,15 +6,17 @@
   `sentinel_engine.live.machine_profile.load_profile()` -- the SAME source
   run_live_20.py / run_deals_watcher.py use -- so this one script serves both
   Machine 1 (portable D:\FOREX\MT5_Portable, login 2883015767) and Machine
-  "TOMACHINE" (standard Capitaria install, login 2883016567) without either
-  machine's hardcode breaking the other. (Previously hardcoded to 2883016567 +
-  the Capitaria path, which silently disabled auto-heal on Machine 1.)
+  "TOMACHINE" (standard Capitaria install, login 2883016902 since 2026-07-27;
+  the previous 2883016567 was retired from the sanctioned set that day) without
+  either machine's hardcode breaking the other. (Previously hardcoded to the
+  Capitaria path + TOMACHINE's login, which silently disabled auto-heal on
+  Machine 1.)
   Adapted from the teammate's INICIAR_TRADING_LIVE.bat:
     - detects components by full command-line match (Win32_Process),
       not just PID files -- PID files are refreshed on relaunch for
       operator convenience/inspection, never trusted alone;
     - pre-checks the standard (non-portable) Capitaria MT5 terminal is
-      running AND that mt5.account_info() confirms login 2883016567 +
+      running AND that mt5.account_info() confirms login 2883016902 +
       trade_mode DEMO (0) before relaunching anything;
     - may itself START terminal64.exe if not running (this is the user's
       own watchdog, not an unrelated tool -- attach-only rule is preserved
