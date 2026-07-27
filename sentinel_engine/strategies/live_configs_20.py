@@ -610,8 +610,10 @@ for _c in CONFIGS_LOCAL:
 # SIGNALS as the `local` champion roster, byte for byte (kwargs/engine copied,
 # never re-tuned -- spec R1/R3), differing ONLY in:
 #   * a fresh magic band 726010/726020/726070 (see the disjointness asserts),
-#   * a pilot lot of 0.02 (the champion stays at 0.1 -- comparison is per-trade
-#     and size-normalised, so lot parity is not required),
+#   * NOTHING in size: the lot is 0.1, the SAME as the champion (user decision
+#     2026-07-26). Size parity makes the A/B directly comparable instead of
+#     normalised per trade. It DOUBLES the account's exposure -- accepted
+#     explicitly by the user for this DEMO (2883015767, 59.6 MM CLP),
 #   * an OPTIONAL `risk_gates` dict read exclusively by run_live_20's OPEN path.
 #
 # TK-Momentum is deliberately NOT mirrored: it is still in development at 0.01
@@ -624,7 +626,7 @@ for _c in CONFIGS_LOCAL:
 # time and the executor refuses to start -- see the 0.1-leak warning at the top
 # of the CONFIGS_LOCAL block.
 CHALLENGER_MAGIC_BASE = 726000
-CHALLENGER_VOLUME = 0.02
+CHALLENGER_VOLUME = 0.1  # size PARITY with the champion (user decision 2026-07-26)
 # B1 50 min  -> from the earlier xauusd-market-open-gap-wait diagnosis, NOT a
 #               sweep run this weekend.
 # B2 30 min  -> BY CONVENTION (spec section 4.3). Choosing it from a backtest
@@ -665,7 +667,7 @@ assert [c["id"] for c in CONFIGS_CHALLENGER] == [
 assert [c["magic"] for c in CONFIGS_CHALLENGER] == [726010, 726020, 726070], \
     "challenger magics must be 724xxx remapped into the fresh 726xxx band"
 assert all(c["volume"] == CHALLENGER_VOLUME for c in CONFIGS_CHALLENGER), \
-    "challenger pilot lot must be 0.02"
+    "challenger lot must be 0.1 -- size parity with the champion"
 # SAME SIGNAL: the kwargs must be identical to the champion's, or the A/B
 # comparison stops being controlled.
 for _c in CONFIGS_CHALLENGER:

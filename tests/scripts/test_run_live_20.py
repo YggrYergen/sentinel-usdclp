@@ -495,7 +495,9 @@ def test_challenger_roster_is_exactly_three_mirrored_configs():
     assert [c["id"] for c in CONFIGS_CHALLENGER] == [
         "S6-K2P0-R", "S7-TPNONE-R", "SuperTrend-p14x3-M15-R"]
     assert [c["magic"] for c in CONFIGS_CHALLENGER] == [726010, 726020, 726070]
-    assert all(c["volume"] == 0.02 for c in CONFIGS_CHALLENGER)
+    # Size PARITY with the champion (user decision 2026-07-26): the A/B is
+    # directly comparable instead of normalised per trade.
+    assert all(c["volume"] == 0.1 for c in CONFIGS_CHALLENGER)
     assert "TK-Momentum-5-8-short-R" not in {c["id"] for c in CONFIGS_CHALLENGER}
 
 
