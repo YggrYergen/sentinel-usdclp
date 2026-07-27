@@ -27,6 +27,7 @@ from __future__ import annotations
 
 from scripts.analysis.realtick_bt import backtest
 from scripts.analysis.realtick_bt.backtest import run_ladder
+from sentinel_engine.strategies.emasar_ref import _atr_wilder
 
 BAR_SEC = 900
 
@@ -120,6 +121,84 @@ def test_d_k_comes_from_kwargs_not_hardcoded(monkeypatch):
     positions_k10, _ = _run(monkeypatch, events, {"init_sl_range_k": 1.0})
     assert positions_k25[0]["reason"] == "EXIT_SL_RAISED"
     assert positions_k10[0]["reason"] == "EXIT_INITSL"
+
+
+def test_wait_mae_atr_k_widens_genuine_stop_like_engine_bounded_helper(monkeypatch):
+    """I-2 regression: the engine's REAL entry-site helper is
+    `_sl_inicial_bounded` (emasar_variant.py:626-643), not the plain
+    `_sl_inicial` this module's docstring cites -- callers are
+    `emasar_variant.py:1199,1412,1428`. When `wait_mae_atr_k > 0` (PX-T2, a
+    lever the post-Monday experiment matrix sweeps explicitly), the genuine
+    initial stop is the WIDER of {range-SL, entry -/+ wait_mae_atr_k*ATR14[
+    entry_idx]}, not the range-SL alone. A `_sl_inicial_genuine` that only
+    replicates the range-SL formula will treat the engine's correctly-widened,
+    UNTOUCHED level as a mismatch and mislabel it EXIT_SL_RAISED, even though
+    the stop was never raised -- silent corruption of exit-reason attribution,
+    invisible to net (both labels share LEVEL_EXITS)."""
+    bars = _bars(20)   # uniform high=110/low=100 -- fine here, only ATR14 matters
+    highs = [b["high"] for b in bars]
+    lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr14 = _atr_wilder(highs, lows, closes, 14)
+    entry_idx = 15
+    assert atr14[entry_idx] is not None, "fixture must be past the 14-bar ATR warmup"
+
+    k = 1.0
+    wait_mae_atr_k = 1.0
+    entry_px = 85.0
+    range_sl = bars[entry_idx]["low"] - k * (bars[entry_idx]["high"] - bars[entry_idx]["low"])  # 90.0
+    mae_sl = entry_px - wait_mae_atr_k * atr14[entry_idx]
+    assert mae_sl < range_sl, "fixture must actually exercise the ATR branch (wider stop), not a no-op"
+    genuine_bounded = min(range_sl, mae_sl)   # engine's WIDER-of-two, long side (:641)
+
+    events = [
+        {"idx": entry_idx, "lado": "L", "precio": entry_px, "motivo": "ENTRY_L"},
+        {"idx": entry_idx + 1, "lado": "L", "precio": genuine_bounded,
+         "motivo": "EXIT_INITSL", "ficha": "F1"},
+    ]
+    positions, _bars_out = _run(
+        monkeypatch, events,
+        {"init_sl_range_k": k, "wait_mae_atr_k": wait_mae_atr_k}, bars=bars,
+    )
+    assert len(positions) == 1
+    assert positions[0]["reason"] == "EXIT_INITSL", (
+        f"engine emitted the genuine ATR-widened stop ({genuine_bounded}) but "
+        f"run_ladder compared it against the plain range-SL ({range_sl}) and "
+        "mislabeled it EXIT_SL_RAISED -- _sl_inicial_genuine must use the "
+        "same bounded (wider-of-two) formula as _sl_inicial_bounded"
+    )
+
+
+def test_genuine_sl_uses_entry_bar_not_event_bar(monkeypatch):
+    """I-3 regression: `_sl_inicial_genuine` must be recomputed from the
+    signal's OWN ENTRY bar (`pos["idx"]`), not from the event/exit bar
+    (`ev["idx"]`) -- recomputing from the entry bar is the entire point of
+    task-R2bis (hallazgo H3). `_bars()`'s uniform high=110/low=100 on every
+    index can't catch a `pos["idx"]` -> `ev["idx"]` swap in run_ladder
+    (:225), because the range is identical either way and the test would
+    stay green regardless. This fixture uses bars with a DIFFERENT range at
+    the entry bar vs. the exit bar so the two code paths disagree."""
+    bars = [
+        {"t": 1000, "open": 105.0, "high": 110.0, "low": 100.0,
+         "close": 105.0, "volume": 1},   # entry bar (idx 0): rango=10
+        {"t": 1900, "open": 105.0, "high": 130.0, "low": 100.0,
+         "close": 105.0, "volume": 1},   # exit bar (idx 1): rango=30
+    ]
+    k = 2.5
+    # genuine stop from the ENTRY bar (idx=0, rango=10): 100 - 2.5*10 = 75.0
+    # genuine stop from the EXIT bar  (idx=1, rango=30) would be: 100 - 2.5*30 = 25.0
+    events = [
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 1, "lado": "L", "precio": 75.0, "motivo": "EXIT_INITSL", "ficha": "F1"},
+    ]
+    positions, _bars = _run(monkeypatch, events, {"init_sl_range_k": k}, bars=bars)
+    assert len(positions) == 1
+    assert positions[0]["reason"] == "EXIT_INITSL", (
+        "expected the ENTRY bar's genuine stop (75.0) to match the event "
+        "level 75.0 (pos['idx']=0); if run_ladder recomputed from the EXIT "
+        "bar instead (ev['idx']=1, rango=30 -> genuine 25.0), 75.0 != 25.0 "
+        "and this would wrongly reclassify to EXIT_SL_RAISED"
+    )
 
 
 def test_default_k_matches_simular_variant_default_when_key_absent(monkeypatch):

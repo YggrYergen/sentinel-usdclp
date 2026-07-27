@@ -15,8 +15,10 @@ machinery already in run_ladder -- not a new code path.
 """
 from __future__ import annotations
 
+import numpy as np
+
 from scripts.analysis.realtick_bt import backtest
-from scripts.analysis.realtick_bt.backtest import LEVEL_EXITS, run_ladder
+from scripts.analysis.realtick_bt.backtest import LEVEL_EXITS, resolve, run_ladder
 
 BAR_SEC = 900
 
@@ -38,6 +40,73 @@ def test_reverse_not_in_level_exits():
     bar-close fill path (backtest.py:280-285) -- the correct semantics for a
     market close at bar close, not a server-side level touch."""
     assert "reverse" not in LEVEL_EXITS
+
+
+def test_exit_sl_raised_in_level_exits():
+    """I-1 (positive membership): EXIT_SL_RAISED is the SAME underlying
+    server-side-level event as EXIT_INITSL (task-R2bis only relabels it),
+    so it must stay IN LEVEL_EXITS -- unlike "reverse" above, which is a
+    genuinely different (bar-close, market) exit. A future LEVEL_EXITS
+    cleanup that drops labels the engine itself doesn't emit (EXIT_SL_RAISED
+    is report-only, invented in run_ladder) would silently fall this label
+    back to a bar-close fill for ~87% of S6/S7's resolved ladder rows -- see
+    the companion consequence test below, which pins the actual fill/price
+    that membership controls (a set-membership assert alone can't catch a
+    regression in resolve()'s branch, only that the label is present)."""
+    assert "EXIT_SL_RAISED" in LEVEL_EXITS
+
+
+class _FakeTicks:
+    """Minimal stand-in for backtest.Ticks exposing only what resolve() calls:
+    .first_at(t) -> (t, bid, ask) | None, and .range(t0, t1) -> (tt, bb, aa)
+    parallel arrays -- both on the same epoch-seconds axis as real bars/ticks,
+    just backed by a literal list instead of the parquet lake."""
+
+    def __init__(self, ticks: list[tuple[float, float, float]]) -> None:
+        self._t = np.array([t for t, _, _ in ticks], dtype="float64")
+        self._bid = np.array([b for _, b, _ in ticks], dtype="float64")
+        self._ask = np.array([a for _, _, a in ticks], dtype="float64")
+
+    def first_at(self, t_sec: float):
+        i = int(np.searchsorted(self._t, t_sec, "left"))
+        if i < len(self._t):
+            return float(self._t[i]), float(self._bid[i]), float(self._ask[i])
+        return None
+
+    def range(self, t0: float, t1: float):
+        lo = int(np.searchsorted(self._t, t0, "left"))
+        hi = int(np.searchsorted(self._t, t1, "left"))
+        return self._t[lo:hi], self._bid[lo:hi], self._ask[lo:hi]
+
+
+def test_exit_sl_raised_resolves_via_intrabar_tick_not_bar_close():
+    """I-1 (consequence): an EXIT_SL_RAISED row must fill on the FIRST tick
+    that crosses the server-side level intra-bar (the LEVEL_EXITS branch of
+    resolve(), backtest.py:321-333), NOT on the bar-close tick. This pins the
+    actual exit_fill/t_exit resolve() returns, so it fails for the right
+    reason if EXIT_SL_RAISED is ever dropped from LEVEL_EXITS -- unlike a
+    bare set-membership assert, which can't detect a change in behavior."""
+    t_out = 1900.0
+    t_out_close = t_out + BAR_SEC   # 2800.0
+    ticks = _FakeTicks([
+        (1900.0, 99.9, 100.4),   # entry retry tick, bar close of the entry bar (spread 0.5)
+        (2000.0, 94.5, 94.8),    # intra-bar SL touch: bid crosses the 95.0 level here
+        (2800.0, 97.0, 97.3),    # bar-close tick -- deliberately a DIFFERENT price
+    ])
+    pos = {
+        "side_l": "L", "side": "LONG", "ficha": "F1",
+        "t_in": 1000.0, "t_out": t_out,
+        "entry_bid": 100.0, "exit_bid": 95.0,     # 95.0 is the server-side level
+        "reason": "EXIT_SL_RAISED", "same_bar": False,
+    }
+    bar_times = np.array([1000.0, 1900.0], dtype="float64")
+
+    r = resolve(pos, ticks, bar_times)
+
+    assert r is not None
+    assert r["exit_fill"] == 94.5, "expected the intra-bar crossing tick, not the bar-close price"
+    assert r["t_exit"] == 2000.0, "expected the crossing tick's own time, not the bar-close instant"
+    assert r["level_slip"] is True
 
 
 def test_reverse_emits_one_row_per_open_ficha(monkeypatch):

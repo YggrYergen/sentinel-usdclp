@@ -159,26 +159,63 @@ class Ticks:
 
 
 # --------------------------------------------------------------------------- signals
-def _sl_inicial_genuine(side_l: str, idx: int, bars: list[dict[str, Any]], k: float) -> float:
+def _sl_inicial_genuine(side_l: str, idx: int, bars: list[dict[str, Any]], k: float,
+                         entry_px: float, wait_mae_atr_k: float,
+                         atr14: list[float | None] | None) -> float:
     """Genuine (untouched, entry-bar) initial SL, reimplemented from the
-    engine's OWN formula -- NOT importable: `_sl_inicial` is nested inside
-    `simular_variant` (sentinel_engine/strategies/emasar_variant.py:621-624),
-    closing over that call's local `bars`/`init_sl_range_k`, so it has no
-    module-level name to import (confirmed: `from ...emasar_variant import
-    _sl_inicial` raises ImportError). Per task-R2bis-brief.md ("diseno
-    CERRADO", point 1), the fallback is to reimplement here citing the exact
-    source so drift is detectable. Cited verbatim (as of the read on
-    2026-07-27):
+    engine's OWN entry-site helper -- NOT importable: `_sl_inicial_bounded` is
+    nested inside `simular_variant`
+    (sentinel_engine/strategies/emasar_variant.py:626-643), closing over that
+    call's local `bars`/`init_sl_range_k`/`wait_mae_atr_k`/`atr14_floor`, so it
+    has no module-level name to import (confirmed: `from ...emasar_variant
+    import _sl_inicial_bounded` raises ImportError). Per task-R2bis-brief.md
+    ("diseno CERRADO", point 1), the fallback is to reimplement here citing the
+    exact source so drift is detectable.
+
+    task-R5fix (I-2): the three engine entry sites (`emasar_variant.py:1199`,
+    `:1412`, `:1428`) all call `_sl_inicial_bounded(lado, idx, entry_px)`, NOT
+    the plain `_sl_inicial` this docstring used to cite -- `_sl_inicial` has no
+    call site at all. The two are byte-identical only while
+    `wait_mae_atr_k <= 0.0` (the live S6-K2P0/S7-TPNONE kwargs; verified byte-
+    for-byte no-op below). With `wait_mae_atr_k > 0` (PX-T2, a lever the
+    experiment-matrix program sweeps explicitly), the genuine stop is the
+    WIDER of {range-SL, `entry_px -/+ wait_mae_atr_k*ATR14[idx]`}. Cited
+    verbatim (as of the read on 2026-07-27):
 
         def _sl_inicial(lado: int, idx: int) -> float:
             rango = bars[idx]["high"] - bars[idx]["low"]
             return (bars[idx]["low"] - init_sl_range_k * rango) if lado == +1 \\
                 else (bars[idx]["high"] + init_sl_range_k * rango)
 
-    `side_l` here is run_ladder's own "L"/"S" convention (== lado +1/-1)."""
+        def _sl_inicial_bounded(lado: int, idx: int, entry_px: float) -> float:
+            base = _sl_inicial(lado, idx)
+            if wait_mae_atr_k <= 0.0 or atr14_floor is None or atr14_floor[idx] is None:
+                return base
+            atr_dist = wait_mae_atr_k * atr14_floor[idx]
+            if lado == +1:
+                mae_sl = entry_px - atr_dist
+                return min(base, mae_sl)   # wider (lower) of the two levels
+            mae_sl = entry_px + atr_dist
+            return max(base, mae_sl)       # wider (higher) of the two levels
+
+    `side_l` here is run_ladder's own "L"/"S" convention (== lado +1/-1).
+    `atr14` is the module-level Wilder ATR14 (period 14) over the FULL `bars`
+    axis -- same call shape as the engine's `atr14_floor`
+    (`_atr_wilder(highs, lows, closes, 14)`, emasar_variant.py:554-556,601) --
+    or None when `wait_mae_atr_k <= 0.0` (byte-identical no-op path, mirroring
+    the engine's own "only compute when a consumer is active" guard,
+    emasar_variant.py:601-603)."""
     bar = bars[idx]
     rango = bar["high"] - bar["low"]
-    return (bar["low"] - k * rango) if side_l == "L" else (bar["high"] + k * rango)
+    base = (bar["low"] - k * rango) if side_l == "L" else (bar["high"] + k * rango)
+    if wait_mae_atr_k <= 0.0 or atr14 is None or atr14[idx] is None:
+        return base
+    atr_dist = wait_mae_atr_k * atr14[idx]
+    if side_l == "L":
+        mae_sl = entry_px - atr_dist
+        return min(base, mae_sl)   # wider (lower) of the two levels
+    mae_sl = entry_px + atr_dist
+    return max(base, mae_sl)       # wider (higher) of the two levels
 
 
 def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
@@ -198,6 +235,16 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
     # an empty/partial kwargs dict classifies identically to calling the
     # engine with its own default.
     k_init = kwargs.get("init_sl_range_k", 1.0)
+    # task-R5fix (I-2): same default (0.0) as simular_variant's own
+    # `wait_mae_atr_k` kwarg (emasar_variant.py:139) -- absent from the live
+    # S6-K2P0/S7-TPNONE kwargs today, so this is a byte-identical no-op for
+    # the current go-live roster. ATR14 is only computed when the lever is
+    # actually active (mirrors the engine's own guard, emasar_variant.py:
+    # 601-603), so the all-defaults path does no extra work.
+    wait_mae_atr_k = kwargs.get("wait_mae_atr_k", 0.0)
+    atr14 = (_atr_wilder([b["high"] for b in bars], [b["low"] for b in bars],
+                         [b["close"] for b in bars], 14)
+             if wait_mae_atr_k > 0.0 else None)
     positions: list[dict[str, Any]] = []
     open_pos: dict[str, dict[str, Any]] = {}
     seq = 0
@@ -222,7 +269,8 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
                     continue
             reason = motivo
             if motivo == "EXIT_INITSL":
-                genuine = _sl_inicial_genuine(pos["side_l"], pos["idx"], bars, k_init)
+                genuine = _sl_inicial_genuine(pos["side_l"], pos["idx"], bars, k_init,
+                                               pos["entry_bid"], wait_mae_atr_k, atr14)
                 if abs(ev["precio"] - genuine) > TOL:
                     reason = "EXIT_SL_RAISED"
             positions.append({
