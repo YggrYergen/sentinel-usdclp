@@ -103,6 +103,49 @@ con exit_fill en dirección de ganancia. Todo Track A queda sujeto a re-run; el 
 | R3 | Regenerar + re-correr Track A + diff | Sonnet 5 high | `[ ]` | Step 1 (snapshot) YA HECHO por R3a. 🔴 **Corrección del controlador a la expectativa del plan:** el plan decía "las 2.347 filas viejas deben seguir existiendo con su mismo net, si una cambió → PARAR". Eso es previsiblemente FALSO: el test de R1 demostró que antes del fix las fichas huérfanas de una señal revertida eran emparejadas por eventos de salida POSTERIORES (una fila salía con el `entry_bid` de la señal revertida). Es decir R1 no solo AÑADE filas: **re-atribuye** algunas existentes. La verificación correcta es CUANTIFICAR (cuántas idénticas / cuántas re-atribuidas / por qué), no un gate pass-fail que daría falsa alarma |
 | R4 | Veredictos sobre el diff | **Opus 5 high** | `[ ]` | análisis de resultados = Opus SIEMPRE; puede mover cap B3 del retador |
 
+### 🔴🔴 H3 — El "bug 2" NO EXISTE, y lo que hay en su lugar es una ETIQUETA ENGAÑOSA (R2, 2026-07-27)
+
+R2 se detuvo en su Step 1 y escaló (BLOCKED), tal como el brief le ordenaba ante un tercer bug.
+No tocó ningún fichero: `backtest.py` intacto, `tests/analysis -q` sigue en 61 passed.
+
+**Lo que se creía (plan) y queda REFUTADO:** «`resolve()` inventa fills cuando ningún tick cruza
+el nivel del stop». **Falso en este dataset.** Sobre el conjunto resuelto:
+`EXIT_INITSL` de S6-K2P0 **891/891 cruzan (100 %)**; de S7-TPNONE **1104/1104 cruzan (100 %)**.
+El fallback de barra-siguiente **no se dispara nunca**. En la población CRUDA (pre-gate) hay solo
+**3** filas no-cruzadas en total (S7), con gap de 0,0155 USD, y las 3 cruzan en la ventana
+siguiente. La población `level_uncrossed` que R2 iba a instrumentar es, medida, de **0 filas**.
+
+**Lo que SÍ explica el 36 %:** el motor etiqueta `EXIT_INITSL` a cierres cuyo nivel **ya había
+sido levantado** por trailing o por breakeven-at-R en una barra ANTERIOR. El bloque de
+`EXIT_INITSL` (`emasar_variant.py:784-793`) se ejecuta antes del trailing de SU barra, pero
+compara contra `sl_check`, que viene de `server_sl_by_tag[tag] = f.sl` (línea 1093) — es decir,
+`f.sl` **tal como quedó tras los ajustes de barras previas**. No distingue "stop intacto" de
+"stop ya subido".
+
+Recalculando el stop inicial genuino con la fórmula real de `_sl_inicial` (líneas 621-624,
+`k=init_sl_range_k=2.5`) desde la barra de entrada y comparándolo con el nivel emitido:
+
+| | filas `EXIT_INITSL` | stop GENUINO | stop YA LEVANTADO | rentables |
+|---|---:|---:|---:|---|
+| S6-K2P0 | 891 | **12** | **879 (98,7 %)** | 321, **100 % del grupo levantado** |
+| S7-TPNONE | 1104 | **3** | **1101 (99,7 %)** | 384, **100 % del grupo levantado** |
+
+**0 de las 12 y 0 de las 3 filas genuinas son rentables** — coherente: un stop inicial intacto
+siempre debe ser pérdida. Dos casos extremos verificados contra barras crudas: el precio se movió
+241 USD (S6) y 144 USD (S7) A FAVOR y luego revirtió hasta tocar exactamente el nivel reportado —
+patrón inequívoco de stop trailing ya desplazado, no de stop inicial.
+
+🟢 **NO es un bug de código vivo.** El motor sale al nivel correcto y los fills son reales: neto,
+PF, WR global, maxDD **no cambian por esto**. Lo que está mal es la ETIQUETA `motivo`, que es
+demasiado gruesa.
+
+🔴 **Consecuencia para la entrega del lunes — A3 está mal narrado.** El tracker (Task 9) dice
+«S6-K2P0 EXIT_INITSL n=891 net=89,68MM (WR 36,0 %) + EXIT_TRAIL n=21 (WR 57,1 %)», leído como
+"el grueso son stop-outs iniciales". Realmente **879 de esos 891 son salidas por stop levantado**
+(trailing/BE), y `EXIT_TRAIL` sale con solo 21 filas porque el motor solo usa ese motivo cuando
+la subida y el toque ocurren en la MISMA barra (21/21 y 63/63 son `same_bar`). La atribución por
+motivo de salida del documento del lunes, tal como está, **induce a error**.
+
 ### 🔴 Hallazgos del pre-flight scan 2026-07-27 (medidos por el controlador, modifican la spec)
 
 **H1 — NO existen huecos de cobertura de ticks.** Sobre las 13.236 barras M15 del dataset
