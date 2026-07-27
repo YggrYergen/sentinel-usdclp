@@ -2,7 +2,7 @@
 
 > Each mask VETOES a wrapper if it would have been catastrophic.
 > **It never selects between variants** -- that would be re-tuning (spec R3).
-> Substrate: 2347 positions, net 147,780,084 CLP @0.67 lot.
+> Substrate: 2542 positions, net 39,513,979 CLP @0.67 lot.
 
 ## B1
 - **evaluable:** True
@@ -11,21 +11,21 @@
 - **wait_minutes:** 50
 - **verdict:** NO VETO -- the gap-wait gate was not catastrophic over the 7-month substrate
 - **caveat:** sign is NOT stable across the wait parameter: a prototype sweep gave +13.3% at 30 min, +20.0% at 50 and 60 min, and -15.2% at 90 min. 50 min was fixed in advance from a live diagnosis, not chosen from this sweep -- this mask evaluates that fixed choice, it does not search for a better one.
-- **kept_n:** 2138
-- **dropped_n:** 209
-- **kept_net_clp:** 177357685.36999962
-- **total_net_clp:** 147780084.05000013
-- **net_delta_clp:** 29577601.319999486
-- **net_delta_pct:** 20.014605831454364
+- **kept_n:** 2315
+- **dropped_n:** 227
+- **kept_net_clp:** 80302945.78999996
+- **total_net_clp:** 39513978.55999998
+- **net_delta_clp:** 40788967.22999998
+- **net_delta_pct:** 103.22667753656847
 
 ## B2
 - **evaluable:** True
 - **calendar_range:** ['2026-01-02T12:00:00', '2028-12-01T13:00:00']
 - **method:** positions entered inside +/-30 min of a calendar event, over the covered range only
-- **kept_n:** 2345
+- **kept_n:** 2540
 - **dropped_n:** 0
-- **kept_net_clp:** 146170661.9800002
-- **total_net_clp:** 146170661.9800002
+- **kept_net_clp:** 37904556.49000005
+- **total_net_clp:** 37904556.49000005
 - **net_delta_clp:** 0.0
 - **net_delta_pct:** 0.0
 
