@@ -10,11 +10,11 @@ Covers:
     2026-07-27, so this coverage stays valid as-is.
   * `CONFIGS_TOMACHINE`: exactly 2 configs -- S6-K2P0 (724010) and
     SuperTrend-p14x3-M15 (724070), magics UNCHANGED from CONFIGS_GOLIVE, each
-    at 0.3 lot, S6 single-ficha (`active_fichas == 1`) and SuperTrend without
+    at 0.67 lot, S6 single-ficha (`active_fichas == 1`) and SuperTrend without
     the kwarg (its always-in engine takes none). Unique ids, pairwise-disjoint
     magic bands, and explicitly WITHOUT S7-TPNONE, TK-BW2-fix2atr, V11-M2,
     TK-Momentum or the FIXED4 shadow configs.
-  * IMMUTABILITY: the 0.3 / active_fichas=1 overrides live on independent deep
+  * IMMUTABILITY: the 0.67 / active_fichas=1 overrides live on independent deep
     COPIES -- the SHARED go-live dicts keep no `volume` and no `active_fichas`.
 """
 from __future__ import annotations
@@ -144,9 +144,10 @@ def test_tomachine_magic_bands_pairwise_disjoint():
 # --------------------------------------------------------------------------
 # owner's 2026-07-27 sizing + single-ficha decision
 # --------------------------------------------------------------------------
-def test_tomachine_volume_is_zero_point_three_on_both_configs():
+def test_tomachine_volume_is_zero_point_six_seven_on_both_configs():
+    # Owner raised the per-ficha lot 0.3 -> 0.67 on 2026-07-27 (afternoon).
     for c in CONFIGS_TOMACHINE:
-        assert c["volume"] == 0.3, f"{c['id']} tomachine volume must be 0.3"
+        assert c["volume"] == 0.67, f"{c['id']} tomachine volume must be 0.67"
 
 
 def test_tomachine_s6_runs_a_single_ficha():
@@ -178,7 +179,7 @@ def test_tomachine_uses_independent_copies_not_shared_golive_objects():
 
 
 def test_shared_golive_dicts_have_no_volume_and_no_active_fichas():
-    # tomachine's 0.3 / active_fichas=1 must NOT have leaked into the SHARED
+    # tomachine's 0.67 / active_fichas=1 must NOT have leaked into the SHARED
     # S6/S7/SuperTrend dicts served by CONFIGS_GOLIVE + CONFIGS_GOLIVE_DEDUP
     # (they must keep the global --volume and the engine default 3 fichas).
     golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}

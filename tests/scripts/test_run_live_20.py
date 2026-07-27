@@ -439,13 +439,13 @@ def test_armed_rosters_unchanged_by_tomachine_addition():
 def test_local_roster_volume_did_not_leak_into_tomachine():
     # THE LEAK PROOF (plan hard invariant), restated 2026-07-27: BOTH rosters
     # now add per-config volumes on independent deep COPIES -- `local` 0.1/0.01
-    # and `tomachine` 0.3. The property protected here is that neither leaks
+    # and `tomachine` 0.67. The property protected here is that neither leaks
     # into the other, nor into the SHARED S6/S7/SuperTrend dicts (which must
     # keep NO `volume` key at all, so `golive`/`golive-dedup` still use the
     # global --volume).
     for c in CONFIGS_TOMACHINE:
-        assert c.get("volume") == 0.3, \
-            f"tomachine config {c['id']} volume is {c.get('volume')}, expected 0.3"
+        assert c.get("volume") == 0.67, \
+            f"tomachine config {c['id']} volume is {c.get('volume')}, expected 0.67"
     golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
     for cid in ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"):
         assert "volume" not in golive_by_id[cid], \
@@ -460,7 +460,7 @@ def test_local_roster_volume_did_not_leak_into_tomachine():
 
 def test_tomachine_configs_are_copies_matching_golive_except_active_fichas():
     # INTENTION UPDATE (2026-07-27): tomachine no longer SHARES the go-live
-    # dicts -- it deep-copies them so its 0.3 volume / single-ficha lever
+    # dicts -- it deep-copies them so its 0.67 volume / single-ficha lever
     # cannot touch the armed rosters. What must still hold is NO DRIFT: the
     # copies' kwargs equal the go-live kwargs except for `active_fichas`, the
     # magics are identical, and the objects are distinct (`is not`).

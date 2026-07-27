@@ -11,7 +11,7 @@ Covers:
     the SHARED S6-K2P0/S7-TPNONE/SuperTrend dicts (served by CONFIGS_GOLIVE /
     CONFIGS_GOLIVE_DEDUP) and CONFIG_TK_MOMENTUM must NOT have gained a
     `volume` key, and local's 0.1 must not have reached machine-2's
-    `tomachine` roster (which deep-copies too, and carries its own 0.3).
+    `tomachine` roster (which deep-copies too, and carries its own 0.67).
 """
 from __future__ import annotations
 
@@ -94,13 +94,14 @@ def test_shared_golive_objects_have_no_volume_key():
 
 def test_local_volume_did_not_leak_into_tomachine_or_shared_dicts():
     # INTENTION UPDATE (2026-07-27): tomachine now carries its OWN per-config
-    # volume (0.3), so "tomachine has no volume key" is no longer the property
-    # to protect. The real property -- unchanged -- is that local's 0.1 never
-    # crosses over: tomachine's configs are 0.3 (not 0.1), and the SHARED
-    # go-live dicts both rosters deep-copy from still carry no `volume` at all.
+    # volume (0.67 since the 2026-07-27 afternoon resize), so "tomachine has no
+    # volume key" is no longer the property to protect. The real property --
+    # unchanged -- is that local's 0.1 never crosses over: tomachine's configs
+    # are 0.67 (not 0.1), and the SHARED go-live dicts both rosters deep-copy
+    # from still carry no `volume` at all.
     for c in CONFIGS_TOMACHINE:
-        assert c["volume"] == 0.3, \
-            f"tomachine config {c['id']} must be 0.3, got {c['volume']!r}"
+        assert c["volume"] == 0.67, \
+            f"tomachine config {c['id']} must be 0.67, got {c['volume']!r}"
     golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
     for cid in _SHARED_GOLIVE_IDS:
         assert "volume" not in golive_by_id[cid], \

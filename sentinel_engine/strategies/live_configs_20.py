@@ -505,28 +505,29 @@ assert min(_tk_bw2_band) == 725010 and max(_tk_bw2_band) == 725013, \
 # --- MACHINE-2 ROSTER "tomachine" (trader selection 2026-07-27) -----------
 # The machine-2 executor's full roster: exactly TWO named go-live configs kept
 # VERBATIM in id + magic (UNCHANGED from CONFIGS_GOLIVE) -- S6-K2P0 (724010)
-# and SuperTrend-p14x3-M15 (724070) -- each SINGLE-FICHA and sized 0.3 lot.
+# and SuperTrend-p14x3-M15 (724070) -- each SINGLE-FICHA and sized 0.67 lot.
 #
 # SELECTION 2026-07-27: the performance report
 # `docs/REPORTE_DESEMPENO_S6_S7_ST_2026-07-27.md` led the owner to keep only
-# S6-K2P0 + SuperTrend-p14x3-M15, at ONE ficha per strategy, at 0.3 lot per
-# ficha (explicitly accepting the 10x exposure step up from the old global
-# 0.01). S7-TPNONE and TK-BW2-fix2atr LEAVE this roster (they leave the
-# roster, not the module: both configs stay defined here and keep their own
-# tests). Still deliberately EXCLUDES the FIXED4 shadow configs
+# S6-K2P0 + SuperTrend-p14x3-M15, at ONE ficha per strategy. SIZING RAISED
+# 2026-07-27 (afternoon): 0.3 -> 0.67 lot per ficha, the owner's explicit
+# figure, accepting the risk without a prior balance check (and the 67x step up
+# from the old global 0.01). S7-TPNONE and TK-BW2-fix2atr LEAVE this roster
+# (they leave the roster, not the module: both configs stay defined here and
+# keep their own tests). Still deliberately EXCLUDES the FIXED4 shadow configs
 # (CONFIGS_SHADOW), V11-M2 and TK-Momentum-5-8-short -- none of them run here.
 #
 # WHY COPIES, NOT SHARED REFERENCES (hard immutability -- same rationale as
 # `_local_copy` below, read that block too): the S6-K2P0 / S7-TPNONE /
 # SuperTrend-p14x3-M15 dicts are SHARED BY REFERENCE across CONFIGS_GOLIVE and
-# CONFIGS_GOLIVE_DEDUP. This roster's per-config `volume` (0.3) and
+# CONFIGS_GOLIVE_DEDUP. This roster's per-config `volume` (0.67) and
 # `kwargs["active_fichas"]` (1) go on INDEPENDENT deep COPIES, so the armed
 # machine-1 rosters (`golive`, `golive-dedup`) and the shared dicts they serve
 # are never touched: they must stay volume-free (=> global --volume) and
 # active_fichas-free (=> the engine default 3).
 #
 # PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
-# --volume>)`, so 0.3 here overrides the daemon's --volume for these two only.
+# --volume>)`, so 0.67 here overrides the daemon's --volume for these two only.
 #
 # SINGLE FICHA: S6-K2P0 runs `simular_variant`, whose `active_fichas` lever
 # (1/2/3, default 3) collapses the ladder to F1 only. SuperTrend gets NO
@@ -551,8 +552,8 @@ def _tomachine_copy(cid: str, volume: float, *,
 
 
 CONFIGS_TOMACHINE: list[dict[str, Any]] = [
-    _tomachine_copy("S6-K2P0", 0.3, active_fichas=1),
-    _tomachine_copy("SuperTrend-p14x3-M15", 0.3),
+    _tomachine_copy("S6-K2P0", 0.67, active_fichas=1),
+    _tomachine_copy("SuperTrend-p14x3-M15", 0.67),
 ]
 
 assert len(CONFIGS_TOMACHINE) == 2, "tomachine roster must be exactly 2 configs"
@@ -574,7 +575,7 @@ assert {c["id"] for c in CONFIGS_SHADOW}.isdisjoint({c["id"] for c in CONFIGS_TO
 
 # OWNER'S 2026-07-27 SIZING/FICHA DECISION, pinned at import time.
 for _c in CONFIGS_TOMACHINE:
-    assert _c["volume"] == 0.3, f"tomachine {_c['id']} volume must be 0.3"
+    assert _c["volume"] == 0.67, f"tomachine {_c['id']} volume must be 0.67"
 assert {c["id"]: c for c in CONFIGS_TOMACHINE}["S6-K2P0"]["kwargs"]["active_fichas"] == 1, \
     "tomachine S6-K2P0 must run a SINGLE ficha (active_fichas == 1)"
 assert "active_fichas" not in \
@@ -585,7 +586,7 @@ assert "active_fichas" not in \
 # per-config volume nor the active_fichas lever.
 for _cid in _TOMACHINE_GOLIVE_IDS:
     assert "volume" not in _tomachine_golive_by_id[_cid], \
-        f"tomachine's 0.3 leaked into the shared {_cid} dict (immutability violated)"
+        f"tomachine's 0.67 leaked into the shared {_cid} dict (immutability violated)"
     assert "active_fichas" not in _tomachine_golive_by_id[_cid]["kwargs"], \
         f"tomachine's active_fichas=1 leaked into the shared {_cid} kwargs"
 
@@ -612,7 +613,7 @@ for _c in CONFIGS_TOMACHINE:
 # volume-free (=> global --volume) and active_fichas-free (=> engine default 3).
 # If a `volume` key ever appeared on a shared object, every roster reading those
 # dicts would silently inherit 0.1; the copies below prevent that. `tomachine`
-# (above) copies for the same reason with its own 0.3 / active_fichas=1
+# (above) copies for the same reason with its own 0.67 / active_fichas=1
 # (proven by tests/scripts/test_run_live_20.py's no-leak snapshot).
 #
 # PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
