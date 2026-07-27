@@ -37,7 +37,11 @@ Every task's requirements implicitly include this section. Values are copied ver
   exception, no "small edit", no "temporary" change. An implementer who believes the original must
   change is wrong about the task: STOP and escalate to the controller. This constraint binds every
   subagent dispatched under this plan and is repeated in every brief.
-- **R2 — champion lot stays 0.1** (TK-Momentum 0.01). Challenger lot is **0.02**.
+- **R2 — champion lot stays 0.1** (TK-Momentum 0.01). Challenger lot is **0.1**.
+  *(USER CORRECTION 2026-07-26, supersedes the original 0.02: the challenger runs at the SAME size
+  as the champion. Size parity makes the A/B directly comparable instead of size-normalised, at the
+  cost of roughly doubling account exposure — accepted explicitly by the user on a DEMO account of
+  59.6 MM CLP. Task 4 shipped at 0.02 in commit `36979a3` and MUST BE CORRECTED to 0.1.)*
 - **R3 — re-tuning ANY parameter is forbidden this weekend.** No grid, no sweep, no "best of".
 - **R4 — the challenger is additive or it is nothing.** It may not mutate any shared object.
 - **R5 — every number is computed by CODE, never by the LLM.** No hand-written metric anywhere.
@@ -2763,3 +2767,48 @@ between Task 1's definition and Task 5's construction. `GateCycleContext` fields
 `execute_action`, and the tests. `load_windows(path, *, minutes_before, minutes_after)` is called
 with the same signature in Tasks 5 and 10. `Position.net_at_lot` is defined in Task 6 and used in
 Task 7.
+
+---
+
+## Task 15: SL-distance ladder — BACKTEST ONLY (added 2026-07-26 by user decision)
+
+**Status: NOT part of Monday's live deployment.** Backtest first, contrast against the original
+strategies, then decide with results in hand. Nothing from this task goes live without a further
+explicit decision.
+
+### Why this exists
+
+Task 9's exit attribution (A3) found that **891 of 1104 S6/S7 positions die at the initial stop
+(`EXIT_INITSL`)**, and that the survivors reaching the trailing stop have far better outcomes
+(S6 win rate 57.1% via `EXIT_TRAIL` vs 36.0% via `EXIT_INITSL`; S7 47.6% vs 34.8%). That is direct
+evidence that the initial stop is too tight and is being whipsawed out of trades that would have
+worked. The user identified this independently and asked for it to be tested.
+
+### What this is NOT
+
+- **It is not a variant of gate B4.** B4 is a legality floor: it can only *reject* an open whose
+  computed SL distance is below the broker minimum of 0.50. A wrapper gate cannot widen a stop.
+- **Widening the initial stop is a MUTATION, not a WRAPPER.** It changes the strategy's behaviour,
+  so any arm built from it is no longer the "same signal byte-for-byte" that makes the champion/
+  challenger comparison controlled. If arms are ever deployed, they must be declared as mutation
+  arms in the document, never folded in with the B1–B4 wrapper results.
+- **SuperTrend is excluded.** Its stop *is* the SuperTrend line; imposing a fixed distance destroys
+  the strategy. This ladder applies to **S6 and S7 only**.
+
+### Scope
+
+- Substrate: the 7-month real-tick reconstruction (`scripts/analysis/realtick_bt/`,
+  `data/lake_ticks/`), scored with real per-tick spread and intra-bar stop resolution.
+- **Spread stays 0.5 and only 0.5.** The strategies are designed to trade only at 0.5; 0.6 is
+  technically tradable but we will not trade it (user, 2026-07-26). Do not sweep spread.
+- Ladder: the broker minimum first, then pseudo-exponential rungs up to a **maximum of 10.00 USD**
+  distance to price — roughly 5–7 rungs, e.g. {0.50, 1.20, 2.50, 5.00, 10.00}. The exact rung set
+  is a design choice for the implementer; state it and justify the spacing.
+- **Deliverable is a comparison, not a champion.** For every rung and each of S6/S7, report against
+  the unmodified baseline: net, win rate, profit factor, expectancy, max drawdown, trade count,
+  exit-reason mix (does `EXIT_INITSL` volume actually fall?), average hold time, and the change in
+  risk per position. **Do NOT pick a winner** — the user will decide with the numbers in hand.
+- R5 applies: every number computed by code. Register negative results as plainly as positive ones.
+
+- [ ] 1) failing tests on synthetic fixtures 2) FAIL 3) implement 4) PASS 5) run the ladder on the
+  real substrate 6) write the comparison document + commit.

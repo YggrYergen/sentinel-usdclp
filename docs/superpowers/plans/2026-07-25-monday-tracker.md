@@ -48,6 +48,23 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 | 12 | Despliegue máq1 | B | Sonnet 5 high | `[ ]` | 🙋 **pasos 5-6 = manos del user** |
 | 13 | Documento del lunes | — | Opus 5 medium | `[ ]` | |
 | 14 | Track C — entrada aleatoria | A | Sonnet 5 high | `[ ]` | **NO bloquea el lunes** |
+| 15 | Escalera de distancia de SL — **solo backtest** | A | Sonnet 5 high | `[ ]` | **NO bloquea el lunes.** Añadida 2026-07-26 por decisión del user |
+
+## 🔴 Correcciones del user 2026-07-26 (pendientes de aplicar)
+
+1. **Lote del retador: 0.02 → 0.1.** Task 4 ya está commiteada a 0.02 (`36979a3`) y **debe
+   corregirse**: `CONFIGS_CHALLENGER` va a **0.1**, igual que el campeón. Motivo: paridad de tamaño
+   hace el A/B directamente comparable. El user acepta explícitamente que duplica la exposición.
+   Hay que tocar el roster, sus tests y R2 del plan (R2 ya actualizado).
+2. **B4 se queda como está** (piso de legalidad a 0.50). La escalera de distancias de SL que el user
+   quiere probar **no es B4**: es una mutación de la estrategia y vive en la nueva **Task 15**,
+   backtest primero, sin desplegar nada hasta discutir resultados.
+3. **Spread 0,5 y solo 0,5.** Las estrategias por diseño solo operan a 0,5; 0,6 es técnicamente
+   operable pero **no lo haremos**. Esto confirma que A5 quedara declarada «no evaluable» era
+   correcto, no un fallo.
+4. **Task 12: el terminal MT5 correcto YA ESTÁ ABIERTO** (el que usan las estrategias vivas).
+5. **Task 5 se puede validar en caliente**: las estrategias están tomando posiciones ahora mismo,
+   así que se verá si algo se rompe.
 
 ---
 
