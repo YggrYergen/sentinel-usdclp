@@ -1,13 +1,13 @@
 {
   "max_simultaneous_fichas": 7,
   "n_positions": 2347,
-  "n_trading_days": 161,
+  "n_trading_days": 163,
   "p95_simultaneous": 7,
   "p99_simultaneous": 7,
   "pairwise_daily_net_correlation": {
-    "S6-K2P0|S7-TPNONE": 0.7301365955824441,
-    "S6-K2P0|SuperTrend-p14x3-M15": 0.2949627798126086,
-    "S7-TPNONE|SuperTrend-p14x3-M15": 0.04680454379410901
+    "S6-K2P0|S7-TPNONE": 0.7596348811562712,
+    "S6-K2P0|SuperTrend-p14x3-M15": 0.3519621016914237,
+    "S7-TPNONE|SuperTrend-p14x3-M15": 0.14090690766147587
   },
   "pct_time_with_any_position": 92.7993182786536,
   "simultaneous_histogram": {

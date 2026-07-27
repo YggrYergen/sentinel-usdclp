@@ -52,6 +52,14 @@ data/analysis/monday_audit/*
 !data/analysis/monday_audit/a3_exit_reason.json
 !data/analysis/monday_audit/a4_serial.json
 !data/analysis/monday_audit/a5_spread_gate.json
+!data/analysis/monday_audit/b6_mask_verdicts.json
+!data/analysis/monday_audit/b1_wait_window.json
+# El substrato real-tick (2347 posiciones, ~250 KB) es la base de TODO numero de
+# Track A. Versionarlo es requisito de R5 (cifra trazable a un archivo en disco).
+# Los ticks/barras de origen siguen fuera (cientos de MB, regenerables desde MT5).
+!data/analysis/realtick_bt/
+data/analysis/realtick_bt/*
+!data/analysis/realtick_bt/positions_*.csv
 
 # MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
 MT5_Tester/

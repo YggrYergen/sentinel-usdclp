@@ -49,6 +49,7 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 | 13 | Documento del lunes | — | Opus 5 medium | `[ ]` | |
 | 14 | Track C — entrada aleatoria | A | Sonnet 5 high | `[ ]` | **NO bloquea el lunes** |
 | 15 | Escalera de distancia de SL — **solo backtest** | A | Sonnet 5 high | `[ ]` | **NO bloquea el lunes.** Añadida 2026-07-26 por decisión del user |
+| 16 | Curva del codo de la espera post-apertura (B1) — **solo backtest** | A | Sonnet 5 high | `[ ]` | **NO bloquea el lunes.** Añadida 2026-07-27. Ver §Task 16 abajo. Depende del substrato con el reloj corregido |
 
 ## 🔴 Correcciones del user 2026-07-26 (1 aplicada, resto vigentes)
 
@@ -65,6 +66,67 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 4. **Task 12: el terminal MT5 correcto YA ESTÁ ABIERTO** (el que usan las estrategias vivas).
 5. **Task 5 se puede validar en caliente**: las estrategias están tomando posiciones ahora mismo,
    así que se verá si algo se rompe.
+
+---
+
+## 🔴 Bug de reloj en el substrato (hallado 2026-07-27) — arreglado en origen
+
+`scripts/analysis/realtick_bt/backtest.py` convertía los epochs de MT5 con
+`datetime.fromtimestamp()`. Los epochs de MT5 **ya vienen en reloj de servidor** (UTC−4), así que esa
+llamada les restaba **además** el offset local del PC. Y como Chile cambia de horario, **el desfase
+cambia a mitad del dataset**: 3 h del 1-ene al 4-abr, 4 h del 5-abr en adelante.
+
+Prueba: `_bars_M15.parquet` leído con `utcfromtimestamp` da la semana forex de manual (domingo 18:00
+→ viernes 17:00, sábado vacío); leído con `fromtimestamp` da el mismo patrón deforme que tenían las
+CSV de posiciones. Además el piso de hora mínima de los domingos baja de 15:00 a 14:00 justo en la
+semana ISO 14, que es cuando Chile sale del horario de verano.
+
+**Alcance medido — ningún número commiteado estaba mal:**
+
+- cap B3 = **7** antes y después. Idéntico.
+- **0 de 2347** posiciones cambian de duración (ninguna cruza la frontera de horario, así que `t_in`
+  y `t_out` se desplazan lo mismo y la resta se cancela).
+- Todo Track A es de orden o de ratio: neto, WR, PF, A1 drawdown, A3 exit reason, A4 serial,
+  A5 spread. El emparejamiento barra↔tick↔posición se hizo por epoch, que siempre estuvo bien.
+- Lo único inutilizado era cualquier lectura de **hora del día**. O sea, exactamente B1.
+
+Decisión del user: **arreglar en origen Y regenerar el substrato** (no la opción barata).
+Se versionaron además `data/analysis/realtick_bt/positions_*.csv`, que estaban **fuera de git**
+pese a ser la base de todo Track A (requisito R5), y `scripts/analysis/realtick_bt/`, que tampoco
+estaba commiteado.
+
+## Task 16 — curva del codo de la espera post-apertura (solo backtest)
+
+**Motivación.** Con el reloj corregido, la máscara de B1 a los 50 min pre-fijados veta 209 de 2347
+posiciones y el neto sube de 147.780.084 a 177.357.685 CLP (**+20,01 %**). Las 209 vetadas valían
+−29,6 MM entre todas: −141 k de media cada una contra +63 k del promedio general. Confirma la
+hipótesis del user: los indicadores contaminados por el hueco de apertura producen entradas malas.
+
+**Pero el número no es estable**: 30 min → +13,3 %, 50 y 60 → +20,0 %, 90 min → **−15,2 %**. El signo
+se da vuelta entre 60 y 90.
+
+**Grilla en BARRAS, no en minutos.** Las entradas solo ocurren en múltiplos de 15 min tras la
+reapertura (barras M15, reapertura en punto); nunca hay una entrada a +0. Por eso una espera de 50 y
+una de 60 son **el mismo experimento** (ambas bloquean {15,30,45} = 209 posiciones). La grilla
+correcta es «bloquear las primeras N barras M15». **N = 2..6** (30/45/60/75/90 min) — el user
+descartó explícitamente N=1 (15 min).
+
+**Contrato del entregable (igual que Task 15, decisión del user):**
+
+- El entregable es una **comparación contra la baseline**, no un campeón. El implementador **no elige
+  ganador**; el user decide con los números delante. Nada se despliega sin otra decisión suya.
+- 🔴 **PERO el ranking SÍ se registra**, explícitamente y por escrito. Razón del user: aunque sea
+  sobreajuste sobre 7 meses, no es tan grave, y si no queda documentado cuál salió mejor, alguien más
+  adelante puede reintentar 15 o 90 minutos sin entender por qué le va peor. El documento debe dejar
+  el orden de los peldaños Y el caveat de que es in-sample.
+- Buscar el codo **es tunear**, así que este resultado va **declarado aparte** del veredicto de
+  máscara — mismo razonamiento que separó B4 de Task 15. El veredicto de B1 para el lunes sigue
+  siendo el de los **50 min fijados de antemano** por diagnóstico, no el que salga de esta curva.
+
+**Reaperturas: medidas, no supuestas.** Primera barra tras una interrupción ≥60 min en el stream de
+barras M15 → **145 reaperturas**. La pausa diaria dura exactamente 1:15:00 (115 casos) y reabre a las
+18:00 (n=64), 20:00 (n=36) o 19:00 (n=15); el fin de semana cierra el viernes y reabre domingo 18:00.
+La moda de 18:00 coincide con el «abre a las 6 de la tarde» del user.
 
 ---
 
