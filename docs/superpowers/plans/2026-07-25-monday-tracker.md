@@ -420,3 +420,37 @@ delante, se decide si existe siquiera un retador relevante que merezca desplegar
 - El campeon sigue corriendo exactamente como hoy. R1-bis intacto.
 - Reactivar Task 12 requiere una decision NUEVA y EXPLICITA del user. El hecho de que el backtest
   largo arroje un ganador NO es autorizacion para desplegarlo.
+
+## ⚠️ DOCUMENTOS CON CIFRAS OBSOLETAS (hallado 2026-07-27 al inventariar candidatos)
+
+Tres documentos siguen imprimiendo cifras del substrato **ANTIGUO** en su prosa, aunque los
+artefactos JSON de los que salieron YA fueron regenerados sobre el substrato REPARADO por R3:
+
+- `docs/superpowers/research/2026-07-2x-b1-wait-curve.md`
+- `docs/superpowers/research/2026-07-2x-b1-robustness.md`
+- `docs/superpowers/specs/2026-07-27-long-backtest-queue.md`
+
+🔴 **No es un hueco de medicion, es un hueco de documentacion:** el dato bueno esta en disco
+(`data/analysis/monday_audit/*.json`), lo que esta viejo es el texto. Cualquier sesion que lea
+esos tres ficheros y cite sus numeros estara citando el substrato roto. **Antes de usarlos hay
+que releer el JSON correspondiente, o regenerar la prosa.** Fuente de verdad vigente:
+`docs/superpowers/research/2026-07-27-substrate-repair-diff.md` y su §Veredictos.
+
+## 📋 INVENTARIO DE CANDIDATOS PARA EL BACKTEST LARGO (2026-07-27)
+
+`docs/superpowers/research/2026-07-27-candidate-roster-for-long-backtest.md` — define el arm de
+BASELINE (kwargs exactos de las 3 vivas + cifras vigentes) y clasifica ~50 candidatos:
+
+- **(a) medidos sobre substrato REPARADO: 9** — Gate-B1/B2/B3, los 5 peldanos de la curva de
+  espera B1 (N2..N6), y A3 economia-de-la-reversa.
+- **(b) medidos SOLO sobre substrato ANTIGUO: 0** — R3 regenero todo Track A, asi que no queda
+  ningun candidato que viva unicamente en el snapshot congelado.
+- **(c) hipotesis NUNCA medidas: 37** — las 6 entradas de la cola de backtest largo (por diseno
+  propio: requieren periodo largo) y casi todas las familias A-E del catalogo v3.
+- **(OTRO) medidos sobre un substrato DISTINTO y mas antiguo: 3** — simulador de fills honestos de
+  `sentinel_engine`, ventanas IW/W1/W2/W3. Ni REPARADO ni ANTIGUO: categoria aparte para que no se
+  confundan.
+
+**Lectura honesta del inventario:** el catalogo v3 se lee como una lista de mejoras, pero 37 de
+~50 entradas jamas han tocado un dato. Solo 9 candidatos tienen evidencia sobre el substrato
+vigente, y todos ellos son in-sample sobre 7 meses.
