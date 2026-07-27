@@ -161,7 +161,7 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
             open_pos[sid] = {"sid": sid, "t": bar["t"], "side_l": side_l,
                              "entry_bid": ev["precio"], "fichas": {"F1", "F2", "F3"}}
             last = sid
-        elif motivo.startswith("EXIT") or motivo == "time_stop":
+        elif motivo.startswith("EXIT") or motivo == "time_stop" or motivo == "reverse":
             ficha = ev.get("ficha") or "F1"
             pos = open_pos.get(last)
             if pos is None or ficha not in pos["fichas"]:
