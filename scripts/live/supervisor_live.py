@@ -82,9 +82,12 @@ EXECUTOR_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "executor_console.log"
 # SUPERVISOR_CONFIGS=live+shadow for in-process verification; the machine-2
 # pack sets SUPERVISOR_CONFIGS=shadow (D114: machine-2 arms the FIXED4
 # corrected roster ONLY, never the uncorrected live-4) or, per the trader's
-# 2026-07-22 machine-2 selection, SUPERVISOR_CONFIGS=tomachine (FIXED4 +
-# S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + TK-BW2-fix2atr, NO V11-M2/
-# TK-Momentum). Accepted values mirror run_live_20's `--configs`: live |
+# 2026-07-27 machine-2 selection, SUPERVISOR_CONFIGS=tomachine -- which is now
+# EXACTLY TWO configs: S6-K2P0 (magic 724010) + SuperTrend-p14x3-M15 (magic
+# 724070), both single-ficha and 0.3 lots via the per-config `volume` in
+# live_configs_20. (It no longer includes FIXED4/S7-TPNONE/TK-BW2-fix2atr, and
+# never included V11-M2/TK-Momentum.) Accepted values mirror run_live_20's
+# `--configs`: live |
 # shadow | live+shadow | live+tk | golive | golive-dedup | golive-dedup+tk |
 # tk-momentum | tomachine | local (machine-1 LOCAL roster: S6-K2P0 +
 # S7-TPNONE + SuperTrend-p14x3-M15 @0.1 + TK-Momentum @0.01, NO V11-M2/shadow)
@@ -103,9 +106,24 @@ SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 # the OPEN, retry next cycle) whenever the spread is wider than that.
 SUPERVISOR_MAX_SPREAD_OPEN = os.environ.get("SUPERVISOR_MAX_SPREAD_OPEN")
 
+# OPTIONAL blocked-open time window ('HH:MM-HH:MM', 24h) the supervisor passes
+# through to the executor's `--blocked-open-window` (see run_live_20.py). Inside
+# the window the executor SUPPRESSES NEW POSITION OPENINGS only; MODIFY, CLOSE,
+# exits and every other risk-management action are NEVER gated, at any hour.
+# The window is compared against LOCAL time, which on these machines IS the
+# broker/server time, so 18:00-18:45 means the 18:00-18:45 the trader sees.
+# UNSET (default, None) appends NOTHING to the argv -- machine-1's argv, and
+# therefore its behavior, stays byte-identical to before this option existed.
+# Machine-2 (TOMACHINE) sets SUPERVISOR_BLOCKED_OPEN_WINDOW=18:00-18:45 (via
+# `setx`, inherited: user env -> scheduled task SENTINEL_LIVE_TOMACHINE -> the
+# watchdog -> this supervisor -> the executor argv), so both the auto-launch at
+# logon and every self-heal relaunch preserve the protection.
+SUPERVISOR_BLOCKED_OPEN_WINDOW = os.environ.get("SUPERVISOR_BLOCKED_OPEN_WINDOW")
+
 
 def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
-                        max_spread_open: str | None = SUPERVISOR_MAX_SPREAD_OPEN
+                        max_spread_open: str | None = SUPERVISOR_MAX_SPREAD_OPEN,
+                        blocked_open_window: str | None = SUPERVISOR_BLOCKED_OPEN_WINDOW,
                         ) -> list[str]:
     """Builds the argv used to launch the armed executor. `configs` is passed
     straight through to `--configs` (unchanged behavior). `max_spread_open`,
@@ -117,12 +135,21 @@ def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
     behavior when the env var is unset) is byte-identical to before this
     option existed.
 
-    A malformed cap (doesn't parse, non-positive, infinite/NaN) is FAILED
-    LOUD: this is a safety setting, and arming the executor without the
-    intended protection because of a typo would be worse than refusing to
-    start at all. The error is logged to watchdog.log and the process exits
-    via SystemExit(2) -- callers (e.g. `main()`) are expected to let this
-    propagate rather than swallow it."""
+    `blocked_open_window`, if set (non-empty string), must be an exact
+    'HH:MM-HH:MM' 24h local-time window; it is then appended as
+    `--blocked-open-window <value>`, which makes the executor suppress NEW
+    POSITION OPENINGS inside it (exits/MODIFY/CLOSE are never gated -- risk
+    management always runs). Validation reuses
+    `run_live_20.parse_blocked_open_window`, the SAME function the executor
+    itself uses, so there is exactly one source of truth about the format.
+    Unset/empty means the flag is not appended at all (byte-identical argv).
+
+    A malformed cap (doesn't parse, non-positive, infinite/NaN) or a malformed
+    window is FAILED LOUD: these are safety settings, and arming the executor
+    without the intended protection because of a typo would be worse than
+    refusing to start at all. The error is logged to watchdog.log and the
+    process exits via SystemExit(2) -- callers (e.g. `main()`) are expected to
+    let this propagate rather than swallow it."""
     argv = [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
             "--confirm-account", str(guard_cuenta.DEMO_LOGIN),
             "--configs", configs]
@@ -142,6 +169,24 @@ def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
                 print(msg, file=sys.stderr)
             raise SystemExit(2)
         argv += ["--max-spread-open", str(value)]
+    if blocked_open_window:
+        # Local import ON PURPOSE: run_live_20 pulls in the whole strategy
+        # stack, and a machine with SUPERVISOR_BLOCKED_OPEN_WINDOW unset must
+        # not pay (nor risk) that import just to build the argv.
+        from scripts.live.run_live_20 import parse_blocked_open_window
+        try:
+            parse_blocked_open_window(blocked_open_window)
+        except ValueError as exc:
+            msg = (f"SUPERVISOR_BLOCKED_OPEN_WINDOW={blocked_open_window!r} is not a "
+                   f"valid 'HH:MM-HH:MM' 24h local-time window ({exc}) -- refusing "
+                   "to arm the executor WITHOUT the requested open-time protection. "
+                   "Fix or unset SUPERVISOR_BLOCKED_OPEN_WINDOW and restart.")
+            try:
+                _log_watchdog(f"FATAL: {msg}")
+            except NameError:
+                print(msg, file=sys.stderr)
+            raise SystemExit(2)
+        argv += ["--blocked-open-window", blocked_open_window]
     return argv
 
 

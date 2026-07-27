@@ -6,12 +6,19 @@ sleeping.
 """
 from __future__ import annotations
 
+import importlib
 import sys
 
 import pytest
 
 from scripts.live import supervisor_live as sup
 from scripts.live import preflight_live as pf
+
+# Env vars that change the module-level EXECUTOR_ARGV. Tests that assert on the
+# DEFAULT argv shape must clear these themselves (this machine's user
+# environment exports all three), never assume a clean invoking shell.
+_SUPERVISOR_ENV_VARS = ("SUPERVISOR_CONFIGS", "SUPERVISOR_MAX_SPREAD_OPEN",
+                        "SUPERVISOR_BLOCKED_OPEN_WINDOW")
 
 
 # --------------------------------------------------------------------------
@@ -518,15 +525,20 @@ def test_ensure_bars_ingester_running_noop_when_argv_none(tmp_path):
 # unset/empty => argv identical to the pre-existing shape (no cap flag at all).
 # --------------------------------------------------------------------------
 def test_build_executor_argv_default_has_no_spread_cap():
-    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None)
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None,
+                                   blocked_open_window=None)
     assert "--configs" in argv
     assert argv[argv.index("--configs") + 1] == "tomachine"
     assert "--max-spread-open" not in argv
 
 
 def test_build_executor_argv_with_cap_appends_flag_and_keeps_existing_args():
-    argv = sup.build_executor_argv(configs="tomachine", max_spread_open="0.5")
-    assert argv[-2:] == ["--max-spread-open", "0.5"]
+    # blocked_open_window is pinned to None so this test asserts ONLY the cap,
+    # regardless of what SUPERVISOR_BLOCKED_OPEN_WINDOW is set to in the
+    # invoking environment (positional assertion, not a trailing slice).
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open="0.5",
+                                   blocked_open_window=None)
+    assert argv[argv.index("--max-spread-open") + 1] == "0.5"
     assert "--arm" in argv
     assert "--confirm-account" in argv
     login_idx = argv.index("--confirm-account") + 1
@@ -550,9 +562,94 @@ def test_build_executor_argv_invalid_cap_raises_system_exit(value):
 def test_default_executor_argv_has_no_spread_cap_when_env_unset(monkeypatch):
     """Proves machine-1 (env var unset) is unchanged: the module-level
     EXECUTOR_ARGV built at import time never contains --max-spread-open when
-    SUPERVISOR_MAX_SPREAD_OPEN is unset."""
-    assert sup.SUPERVISOR_MAX_SPREAD_OPEN in (None, "")
-    assert "--max-spread-open" not in sup.EXECUTOR_ARGV
+    SUPERVISOR_MAX_SPREAD_OPEN is unset.
+
+    ROBUSTNESS (2026-07-27): this machine's USER environment exports
+    SUPERVISOR_CONFIGS / SUPERVISOR_MAX_SPREAD_OPEN /
+    SUPERVISOR_BLOCKED_OPEN_WINDOW, so the test clears them itself and reloads
+    instead of assuming the caller's shell is clean."""
+    for var in _SUPERVISOR_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    reloaded = importlib.reload(sup)
+    try:
+        assert reloaded.SUPERVISOR_MAX_SPREAD_OPEN in (None, "")
+        assert "--max-spread-open" not in reloaded.EXECUTOR_ARGV
+        # and the pre-existing (pre-time-gate) argv shape is preserved exactly.
+        assert reloaded.EXECUTOR_ARGV == [
+            sys.executable, "-m", "scripts.live.run_live_20", "--arm",
+            "--confirm-account", str(reloaded.guard_cuenta.DEMO_LOGIN),
+            "--configs", "live"]
+    finally:
+        monkeypatch.undo()
+        importlib.reload(sup)
+
+
+# --------------------------------------------------------------------------
+# build_executor_argv: optional blocked-open time window
+# (SUPERVISOR_BLOCKED_OPEN_WINDOW -> executor's `--blocked-open-window`).
+# OPEN-only suppression; exits/MODIFY/CLOSE are never gated. Unset => argv
+# byte-identical to before this option existed (machine-1 untouched).
+# --------------------------------------------------------------------------
+@pytest.mark.parametrize("value", [None, ""])
+def test_build_executor_argv_no_blocked_window_when_unset(value):
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None,
+                                   blocked_open_window=value)
+    assert "--blocked-open-window" not in argv
+    # byte-identical to the pre-time-gate argv shape.
+    assert argv == [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
+                    "--confirm-account", str(sup.guard_cuenta.DEMO_LOGIN),
+                    "--configs", "tomachine"]
+
+
+def test_build_executor_argv_appends_blocked_window_with_cap_and_roster():
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open="0.5",
+                                   blocked_open_window="18:00-18:45")
+    assert argv[argv.index("--configs") + 1] == "tomachine"
+    assert argv[argv.index("--max-spread-open") + 1] == "0.5"
+    assert argv[argv.index("--blocked-open-window") + 1] == "18:00-18:45"
+    assert "--arm" in argv
+    assert argv[argv.index("--confirm-account") + 1] == str(sup.guard_cuenta.DEMO_LOGIN)
+
+
+@pytest.mark.parametrize("value", ["garbage", "18:00", "18:45-18:00",
+                                  "18:00-18:00", "18:00-25:00",
+                                  "18:00-18:45\n"])
+def test_build_executor_argv_invalid_blocked_window_raises_system_exit(value):
+    """FAIL-LOUD: a typo must NOT boot the stack with the protection silently
+    off. Same tone/structure as the SUPERVISOR_MAX_SPREAD_OPEN failure."""
+    with pytest.raises(SystemExit) as exc:
+        sup.build_executor_argv(blocked_open_window=value)
+    assert exc.value.code == 2
+
+
+def test_supervisor_env_blocked_open_window_reaches_executor_argv(monkeypatch):
+    """The whole point of task 3: with the env var set (user env -> scheduled
+    task -> watchdog -> supervisor), the module-level EXECUTOR_ARGV used by BOTH
+    the auto-launch and every self-heal relaunch carries the flag."""
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "tomachine")
+    monkeypatch.setenv("SUPERVISOR_BLOCKED_OPEN_WINDOW", "18:00-18:45")
+    monkeypatch.delenv("SUPERVISOR_MAX_SPREAD_OPEN", raising=False)
+    reloaded = importlib.reload(sup)
+    try:
+        argv = reloaded.EXECUTOR_ARGV
+        assert reloaded.SUPERVISOR_BLOCKED_OPEN_WINDOW == "18:00-18:45"
+        assert argv[argv.index("--blocked-open-window") + 1] == "18:00-18:45"
+        assert argv[argv.index("--configs") + 1] == "tomachine"
+        assert "--arm" in argv
+        assert argv[argv.index("--confirm-account") + 1] == \
+            str(reloaded.guard_cuenta.DEMO_LOGIN)
+    finally:
+        monkeypatch.undo()
+        importlib.reload(sup)
+
+
+def test_supervisor_blocked_window_uses_executor_parser_single_source():
+    """No second parser: the supervisor validates with the very function the
+    executor uses, so the format can never drift between the two."""
+    from scripts.live import run_live_20
+    src = open(sup.__file__, encoding="utf-8").read()
+    assert "parse_blocked_open_window" in src
+    assert hasattr(run_live_20, "parse_blocked_open_window")
 
 
 def test_bars_ingester_argv_scoped_to_target_symbols():

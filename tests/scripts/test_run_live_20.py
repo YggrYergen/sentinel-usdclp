@@ -176,22 +176,46 @@ def test_configs_live_still_selects_only_the_four(caplog):
 
 
 # ----------------- supervisor SUPERVISOR_CONFIGS plumbing ------------------
-def test_supervisor_default_argv_stays_live(monkeypatch):
-    monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
+# ROBUSTNESS (2026-07-27): these tests assert WHICH roster reaches the executor
+# argv. They used to do it with `EXECUTOR_ARGV[-2:]`, which silently depended on
+# `--configs` being the LAST flag -- false as soon as the machine also exports
+# SUPERVISOR_MAX_SPREAD_OPEN / SUPERVISOR_BLOCKED_OPEN_WINDOW (this machine
+# does). They now clear every SUPERVISOR_* argv var and assert positionally on
+# the value that follows `--configs`, which is what they always meant.
+_SUPERVISOR_ARGV_ENV_VARS = ("SUPERVISOR_CONFIGS", "SUPERVISOR_MAX_SPREAD_OPEN",
+                             "SUPERVISOR_BLOCKED_OPEN_WINDOW")
+
+
+def _reload_supervisor_with_clean_env(monkeypatch, configs=None):
+    """Reload supervisor_live with a KNOWN-clean SUPERVISOR_* environment
+    (optionally with SUPERVISOR_CONFIGS set to `configs`) and return it."""
+    for var in _SUPERVISOR_ARGV_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    if configs is not None:
+        monkeypatch.setenv("SUPERVISOR_CONFIGS", configs)
     import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
+    return importlib.reload(sup)
+
+
+def _assert_configs_is(sup, expected):
+    argv = sup.EXECUTOR_ARGV
+    assert argv[argv.index("--configs") + 1] == expected
+
+
+def test_supervisor_default_argv_stays_live(monkeypatch):
+    sup = _reload_supervisor_with_clean_env(monkeypatch)
     assert sup.SUPERVISOR_CONFIGS == "live"
     # default EXECUTOR_ARGV must still target the `live` roster (unchanged
     # behavior for the running machine-1 stack).
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "live"]
+    _assert_configs_is(sup, "live")
+    monkeypatch.undo()
+    importlib.reload(sup)
 
 
 def test_supervisor_env_overrides_configs(monkeypatch):
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "shadow")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "shadow")
     assert sup.SUPERVISOR_CONFIGS == "shadow"
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "shadow"]
+    _assert_configs_is(sup, "shadow")
     # still armed to the sanctioned DEMO account, still attach-only child.
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     assert "--arm" in sup.EXECUTOR_ARGV
@@ -200,10 +224,8 @@ def test_supervisor_env_overrides_configs(monkeypatch):
 
 
 def test_supervisor_env_live_plus_shadow(monkeypatch):
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "live+shadow")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "live+shadow"]
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "live+shadow")
+    _assert_configs_is(sup, "live+shadow")
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
     importlib.reload(sup)
 
@@ -211,10 +233,8 @@ def test_supervisor_env_live_plus_shadow(monkeypatch):
 def test_supervisor_env_golive_dedup_plus_tk(monkeypatch):
     # the auto-healing supervisor arms the golive-dedup roster + TK-Momentum in
     # one supervised, self-restarting executor (2026-07-21 user decision).
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "golive-dedup+tk")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "golive-dedup+tk"]
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "golive-dedup+tk")
+    _assert_configs_is(sup, "golive-dedup+tk")
     assert "--arm" in sup.EXECUTOR_ARGV
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
@@ -224,10 +244,8 @@ def test_supervisor_env_golive_dedup_plus_tk(monkeypatch):
 def test_supervisor_env_live_plus_tk(monkeypatch):
     # the auto-healing supervisor can arm the `live` roster + TK-Momentum in one
     # supervised, self-restarting executor (2026-07-21).
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "live+tk")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "live+tk"]
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "live+tk")
+    _assert_configs_is(sup, "live+tk")
     assert "--arm" in sup.EXECUTOR_ARGV
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
@@ -460,10 +478,8 @@ def test_tomachine_configs_are_copies_matching_golive_except_active_fichas():
 
 # ----------------- supervisor SUPERVISOR_CONFIGS plumbing (tomachine) ------
 def test_supervisor_env_tomachine(monkeypatch):
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "tomachine")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "tomachine"]
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "tomachine")
+    _assert_configs_is(sup, "tomachine")
     assert "--arm" in sup.EXECUTOR_ARGV
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
@@ -471,10 +487,8 @@ def test_supervisor_env_tomachine(monkeypatch):
 
 
 def test_supervisor_env_local(monkeypatch):
-    monkeypatch.setenv("SUPERVISOR_CONFIGS", "local")
-    import scripts.live.supervisor_live as sup
-    sup = importlib.reload(sup)
-    assert sup.EXECUTOR_ARGV[-2:] == ["--configs", "local"]
+    sup = _reload_supervisor_with_clean_env(monkeypatch, "local")
+    _assert_configs_is(sup, "local")
     assert "--arm" in sup.EXECUTOR_ARGV
     assert str(guard_cuenta.DEMO_LOGIN) in sup.EXECUTOR_ARGV
     monkeypatch.delenv("SUPERVISOR_CONFIGS", raising=False)
