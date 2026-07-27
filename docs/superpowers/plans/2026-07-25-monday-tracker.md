@@ -22,7 +22,8 @@ Vocabulario: `[ ]` pendiente · `[~]` en curso · `[x]` hecho · `[!]` bloqueado
 
 | Dato | Valor | Origen | Tarea que lo produce |
 |---|---|---|---|
-| `max_open_fichas` (cap B3) | **7** (pico observado de fichas simultáneas, 2347 posiciones / 7 meses; alcanzado en 104 de 161 días de trading — no es un episodio único) | `data/analysis/monday_audit/a2_overlap.json` | Task 8 |
+| `max_open_fichas` (cap B3) | **7** (pico observado de fichas simultáneas, 2347 posiciones / 7 meses). Sigue siendo 7 tras regenerar con el reloj corregido | `data/analysis/monday_audit/a2_overlap.json` | Task 8 |
+| Correlación diaria de neto por par | **S6\|S7 +0,760 · S6\|ST +0,352 · S7\|ST +0,141** sobre **163** días de trading. 🔴 **Estos valores SUSTITUYEN a los de Task 8** (+0,730 / +0,295 / +0,047 sobre 161 días), medidos con el reloj roto | `data/analysis/monday_audit/a2_overlap.json` | Task 8, regenerado 2026-07-27 |
 | maxDD @0.1 lot | **−28,57 %** del balance inicial (59,6 MM CLP) = −17 028 660 CLP; pico 2026-03-23 → valle 2026-04-28. **CONFIRMA** la estimación previa de −28,6 % (diferencia = redondeo; el CLP del pico-valle calculado, 17 028 660, coincide casi exacto con la regla de tres original, 114 092 025 × 0,1/0,67 = 17 028 660,45) | `data/analysis/monday_audit/a1_maxdd.json` | Task 7 |
 | Cobertura del calendario B2 | 36 eventos, `2026-01-02T12:30:00Z`..`2028-12-01T12:30:00Z` (regla NFP: primer viernes del mes, 12:30 UTC; sin CPI/FOMC/PPI — ver limitación abajo) | `data/live/news_calendar.csv` | Task 2 |
 | Veredictos de máscara B1–B4 | _pendiente_ | `b6_mask_verdicts.json` | Task 10 |
@@ -89,6 +90,31 @@ semana ISO 14, que es cuando Chile sale del horario de verano.
 - Todo Track A es de orden o de ratio: neto, WR, PF, A1 drawdown, A3 exit reason, A4 serial,
   A5 spread. El emparejamiento barra↔tick↔posición se hizo por epoch, que siempre estuvo bien.
 - Lo único inutilizado era cualquier lectura de **hora del día**. O sea, exactamente B1.
+
+### 🔴 Lo que SÍ cambió al regenerar (corrige la expectativa «no cambia nada»)
+
+La regeneración confirmó las cinco pruebas duras —2347 posiciones, neto exacto 147.780.084,05
+comparado con `Decimal` sobre el texto crudo, multiset de duraciones idéntico (939 valores
+distintos), desplazamiento exacto +3 h ×1716 / +4 h ×2978 sin una sola violación, y cap B3 = 7—.
+`a3_exit_reason`, `a4_serial` y `a5_spread_gate` salieron **byte-idénticos**. `a1_maxdd` cambió solo
+las etiquetas `t_peak`/`t_trough` (mismos números).
+
+**Pero `a2_overlap` movió dos cosas reales, porque agrupa por `p.t_out.date()` y el corte de día
+pasa a ser medianoche de SERVIDOR en vez de medianoche de Chile:**
+
+- `n_trading_days` **161 → 163**
+- correlación diaria de neto: S6\|S7 **0,7301 → 0,7596**, S6\|ST **0,2950 → 0,3520**,
+  S7\|ST **0,0468 → 0,1409**
+
+Los nuevos son los correctos. 🔴 **Consecuencia narrativa para el documento del lunes:** la frase de
+Task 8 «SuperTrend es casi independiente de ambas» ya **no se sostiene igual** — S6\|ST sube a 0,35 y
+S7\|ST triplica. Sigue siendo baja, pero hay que suavizar la afirmación, no repetirla.
+
+También se re-agrupó la columna `month` (Mar 298→297, Abr 440→435, Jun 419→425), lo que cambia la
+**grilla mensual** del reporte. Los totales no se mueven.
+
+⚠️ `docs/REPORTE_BACKTEST_REALTICK_MENSUAL_2026-07-25.md` fue reescrito como efecto colateral de
+regenerar, **sin snapshot previo**, así que no hay diff viejo-contra-nuevo. Es regenerable.
 
 Decisión del user: **arreglar en origen Y regenerar el substrato** (no la opción barata).
 Se versionaron además `data/analysis/realtick_bt/positions_*.csv`, que estaban **fuera de git**
