@@ -51,7 +51,20 @@ CONTRACT = 100.0       # oz per 1.0 lot
 SYMBOL = "XAUUSD"
 TICKDIR = ROOT / "data" / "lake_ticks" / "XAUUSD"
 BARS_PATH = TICKDIR / "_bars_M15.parquet"
-LEVEL_EXITS = {"EXIT_INITSL", "EXIT_TRAIL", "EXIT_TP", "EXIT_STLINE"}
+LEVEL_EXITS = {"EXIT_INITSL", "EXIT_SL_RAISED", "EXIT_TRAIL", "EXIT_TP", "EXIT_STLINE"}
+# EXIT_SL_RAISED is included here (not just EXIT_INITSL): it is the SAME
+# underlying event/level as an EXIT_INITSL stop-out, only relabeled in
+# run_ladder() below when the level turns out to be an already-raised stop
+# rather than the genuine entry-bar one (task-R2bis). resolve() must still
+# treat it as a level-crossing SL exit (intra-bar tick sweep, non-TP
+# direction), exactly like EXIT_INITSL always has -- omitting it here would
+# silently fall back to a bar-close fill for ~99% of these rows (see
+# task-R2-report.md H3), corrupting the exit price, not just the label.
+
+# Tolerance (price units) for "event level == genuine entry-bar initial SL"
+# when splitting EXIT_INITSL from EXIT_SL_RAISED in run_ladder(). See
+# task-R2bis-brief.md ("diseno CERRADO", point 2).
+TOL = 1e-6
 
 # S6/S7 kwargs come byte-identical from the graduated go-live roster.
 _GL = {c["id"]: c["kwargs"] for c in _GOLIVE_M15}
@@ -146,9 +159,45 @@ class Ticks:
 
 
 # --------------------------------------------------------------------------- signals
+def _sl_inicial_genuine(side_l: str, idx: int, bars: list[dict[str, Any]], k: float) -> float:
+    """Genuine (untouched, entry-bar) initial SL, reimplemented from the
+    engine's OWN formula -- NOT importable: `_sl_inicial` is nested inside
+    `simular_variant` (sentinel_engine/strategies/emasar_variant.py:621-624),
+    closing over that call's local `bars`/`init_sl_range_k`, so it has no
+    module-level name to import (confirmed: `from ...emasar_variant import
+    _sl_inicial` raises ImportError). Per task-R2bis-brief.md ("diseno
+    CERRADO", point 1), the fallback is to reimplement here citing the exact
+    source so drift is detectable. Cited verbatim (as of the read on
+    2026-07-27):
+
+        def _sl_inicial(lado: int, idx: int) -> float:
+            rango = bars[idx]["high"] - bars[idx]["low"]
+            return (bars[idx]["low"] - init_sl_range_k * rango) if lado == +1 \\
+                else (bars[idx]["high"] + init_sl_range_k * rango)
+
+    `side_l` here is run_ladder's own "L"/"S" convention (== lado +1/-1)."""
+    bar = bars[idx]
+    rango = bar["high"] - bar["low"]
+    return (bar["low"] - k * rango) if side_l == "L" else (bar["high"] + k * rango)
+
+
 def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    """simular_variant events -> positions (batch1 pairing; captures level + fallback)."""
+    """simular_variant events -> positions (batch1 pairing; captures level + fallback).
+
+    EXIT_INITSL split (task-R2bis, hallazgo H3): the engine tags EXIT_INITSL
+    by WHICH CHECK fired this bar, not by whether the stop is still the
+    untouched entry-bar level -- a stop already raised by trailing/BE in an
+    earlier bar that triggers later is still tagged EXIT_INITSL. Here we
+    recompute the genuine entry-bar stop for each EXIT_INITSL event and split:
+    reason stays "EXIT_INITSL" only if the emitted level matches the genuine
+    formula within TOL; otherwise reason becomes "EXIT_SL_RAISED". All other
+    motivos pass through with `reason` unchanged, exactly as before this task.
+    """
     eventos = simular_variant(bars, **{**{"symbol": SYMBOL}, **kwargs})
+    # Same default (1.0) as simular_variant's own `init_sl_range_k` kwarg, so
+    # an empty/partial kwargs dict classifies identically to calling the
+    # engine with its own default.
+    k_init = kwargs.get("init_sl_range_k", 1.0)
     positions: list[dict[str, Any]] = []
     open_pos: dict[str, dict[str, Any]] = {}
     seq = 0
@@ -158,7 +207,7 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
         if motivo in ("ENTRY_L", "ENTRY_S"):
             seq += 1
             sid = f"sig-{bar['t']}-{seq}"
-            open_pos[sid] = {"sid": sid, "t": bar["t"], "side_l": side_l,
+            open_pos[sid] = {"sid": sid, "t": bar["t"], "idx": ev["idx"], "side_l": side_l,
                              "entry_bid": ev["precio"], "fichas": {"F1", "F2", "F3"}}
             last = sid
         elif motivo.startswith("EXIT") or motivo == "time_stop" or motivo == "reverse":
@@ -171,11 +220,16 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
                         pos = p; last = sid; break
                 if pos is None:
                     continue
+            reason = motivo
+            if motivo == "EXIT_INITSL":
+                genuine = _sl_inicial_genuine(pos["side_l"], pos["idx"], bars, k_init)
+                if abs(ev["precio"] - genuine) > TOL:
+                    reason = "EXIT_SL_RAISED"
             positions.append({
                 "side_l": pos["side_l"], "side": "LONG" if pos["side_l"] == "L" else "SHORT",
                 "ficha": ficha, "t_in": pos["t"], "t_out": bar["t"],
                 "entry_bid": pos["entry_bid"], "exit_bid": ev["precio"],
-                "reason": motivo, "same_bar": bool(ev.get("same_bar_fallback")),
+                "reason": reason, "same_bar": bool(ev.get("same_bar_fallback")),
             })
             pos["fichas"].discard(ficha)
             if not pos["fichas"]:
