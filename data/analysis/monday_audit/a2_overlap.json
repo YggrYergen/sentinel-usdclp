@@ -1,23 +1,23 @@
 {
   "max_simultaneous_fichas": 7,
-  "n_positions": 2347,
+  "n_positions": 2542,
   "n_trading_days": 163,
   "p95_simultaneous": 7,
   "p99_simultaneous": 7,
   "pairwise_daily_net_correlation": {
-    "S6-K2P0|S7-TPNONE": 0.7596348811562712,
-    "S6-K2P0|SuperTrend-p14x3-M15": 0.3519621016914237,
-    "S7-TPNONE|SuperTrend-p14x3-M15": 0.14090690766147587
+    "S6-K2P0|S7-TPNONE": 0.766939289193862,
+    "S6-K2P0|SuperTrend-p14x3-M15": 0.3556340205290167,
+    "S7-TPNONE|SuperTrend-p14x3-M15": 0.15349823894193204
   },
-  "pct_time_with_any_position": 92.7993182786536,
+  "pct_time_with_any_position": 93.29268292682927,
   "simultaneous_histogram": {
-    "0": 338,
-    "1": 683,
-    "2": 690,
-    "3": 701,
-    "4": 704,
-    "5": 696,
-    "6": 615,
-    "7": 267
+    "0": 341,
+    "1": 703,
+    "2": 724,
+    "3": 743,
+    "4": 777,
+    "5": 792,
+    "6": 700,
+    "7": 304
   }
 }

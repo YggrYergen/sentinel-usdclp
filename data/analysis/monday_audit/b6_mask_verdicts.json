@@ -1,15 +1,15 @@
 {
   "B1": {
     "caveat": "sign is NOT stable across the wait parameter: a prototype sweep gave +13.3% at 30 min, +20.0% at 50 and 60 min, and -15.2% at 90 min. 50 min was fixed in advance from a live diagnosis, not chosen from this sweep -- this mask evaluates that fixed choice, it does not search for a better one.",
-    "dropped_n": 209,
+    "dropped_n": 227,
     "evaluable": true,
-    "kept_n": 2138,
-    "kept_net_clp": 177357685.36999962,
+    "kept_n": 2315,
+    "kept_net_clp": 80302945.78999996,
     "method": "real market reopens measured off the M15 bar stream (session_clock.market_reopens, gap >= 60 min with no bar); blocks positions opened < 50 min after a reopen",
     "n_reopens": 145,
-    "net_delta_clp": 29577601.319999486,
-    "net_delta_pct": 20.014605831454364,
-    "total_net_clp": 147780084.05000013,
+    "net_delta_clp": 40788967.22999998,
+    "net_delta_pct": 103.22667753656847,
+    "total_net_clp": 39513978.55999998,
     "verdict": "NO VETO -- the gap-wait gate was not catastrophic over the 7-month substrate",
     "wait_minutes": 50
   },
@@ -20,12 +20,12 @@
     ],
     "dropped_n": 0,
     "evaluable": true,
-    "kept_n": 2345,
-    "kept_net_clp": 146170661.9800002,
+    "kept_n": 2540,
+    "kept_net_clp": 37904556.49000005,
     "method": "positions entered inside +/-30 min of a calendar event, over the covered range only",
     "net_delta_clp": 0.0,
     "net_delta_pct": 0.0,
-    "total_net_clp": 146170661.9800002
+    "total_net_clp": 37904556.49000005
   },
   "B3": {
     "cap": 7,

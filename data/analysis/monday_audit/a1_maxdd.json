@@ -1,13 +1,13 @@
 {
   "account_balance_clp": 59600000.0,
-  "final_net_clp": 22056728.962686684,
+  "final_net_clp": 5897608.740298494,
   "lot": 0.1,
-  "max_dd_clp": 17028660.47014925,
-  "max_dd_pct_of_initial": 28.571577970049077,
-  "max_dd_pct_of_peak_equity": 20.381434165018078,
-  "n_positions": 2347,
-  "peak_equity_clp": 23949863.725373156,
+  "max_dd_clp": 19276260.47014925,
+  "max_dd_pct_of_initial": 32.34271890964639,
+  "max_dd_pct_of_peak_equity": 25.072685357159106,
+  "n_positions": 2542,
+  "peak_equity_clp": 17281515.464179117,
   "t_peak": "2026-03-23 05:32:53.365000",
   "t_trough": "2026-04-29 01:57:51.943000",
-  "trough_equity_clp": 6921203.255223909
+  "trough_equity_clp": -1994745.0059701323
 }

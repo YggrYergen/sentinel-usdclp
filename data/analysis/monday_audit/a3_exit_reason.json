@@ -1,10 +1,17 @@
 {
   "S6-K2P0|EXIT_INITSL": {
-    "mean_clp": 100650.54242424239,
-    "n": 891,
-    "net_clp": 89679633.29999997,
-    "profit_factor": 1.2043931527770588,
-    "win_rate": 36.02693602693603
+    "mean_clp": -946045.2749999999,
+    "n": 12,
+    "net_clp": -11352543.299999999,
+    "profit_factor": 0.0,
+    "win_rate": 0.0
+  },
+  "S6-K2P0|EXIT_SL_RAISED": {
+    "mean_clp": 114939.90511945394,
+    "n": 879,
+    "net_clp": 101032176.60000001,
+    "profit_factor": 1.236383494908559,
+    "win_rate": 36.51877133105802
   },
   "S6-K2P0|EXIT_TRAIL": {
     "mean_clp": 188146.86285714275,
@@ -13,12 +20,26 @@
     "profit_factor": 1.2805774615419676,
     "win_rate": 57.142857142857146
   },
+  "S6-K2P0|reverse": {
+    "mean_clp": -537381.8327659573,
+    "n": 141,
+    "net_clp": -75770838.41999999,
+    "profit_factor": 0.08253179568816778,
+    "win_rate": 6.382978723404255
+  },
   "S7-TPNONE|EXIT_INITSL": {
-    "mean_clp": 22242.25679347827,
-    "n": 1104,
-    "net_clp": 24555451.50000001,
-    "profit_factor": 1.0562415391506785,
-    "win_rate": 34.78260869565217
+    "mean_clp": -1171458.49,
+    "n": 3,
+    "net_clp": -3514375.4699999997,
+    "profit_factor": 0.0,
+    "win_rate": 0.0
+  },
+  "S7-TPNONE|EXIT_SL_RAISED": {
+    "mean_clp": 25494.847384196193,
+    "n": 1101,
+    "net_clp": 28069826.97000001,
+    "profit_factor": 1.0648125211267803,
+    "win_rate": 34.87738419618529
   },
   "S7-TPNONE|EXIT_TRAIL": {
     "mean_clp": 136665.67619047602,
@@ -26,6 +47,13 @@
     "net_clp": 8609937.599999988,
     "profit_factor": 1.2605525519731389,
     "win_rate": 47.61904761904762
+  },
+  "S7-TPNONE|reverse": {
+    "mean_clp": -601764.2050000002,
+    "n": 54,
+    "net_clp": -32495267.070000008,
+    "profit_factor": 0.008671184538538565,
+    "win_rate": 5.555555555555555
   },
   "SuperTrend-p14x3-M15|EXIT_STLINE": {
     "mean_clp": 78298.42361940292,
