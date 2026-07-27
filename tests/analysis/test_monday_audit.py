@@ -135,3 +135,57 @@ def test_longest_streak_finds_both_directions():
     assert longest_streak([1.0, 1.0, 1.0, -1.0]) == (3, 1)
     assert longest_streak([-1.0, -1.0, 2.0]) == (1, 2)
     assert longest_streak([]) == (0, 0)
+
+
+from datetime import datetime, timedelta
+
+from scripts.analysis.monday_audit.b6_masks import b1_blocked, cap_replay_drops
+
+
+def test_b1_blocked_within_the_wait_window_after_a_reopen():
+    reopens = [datetime(2026, 1, 5, 18, 0)]
+    t_in = datetime(2026, 1, 5, 18, 30)   # 30 min after reopen
+    assert b1_blocked(t_in, reopens, wait_minutes=50) is True
+
+
+def test_b1_not_blocked_once_the_wait_window_has_elapsed():
+    reopens = [datetime(2026, 1, 5, 18, 0)]
+    t_in = datetime(2026, 1, 5, 18, 55)   # 55 min after reopen
+    assert b1_blocked(t_in, reopens, wait_minutes=50) is False
+
+
+def test_b1_boundary_at_exactly_the_wait_window_is_not_blocked():
+    # "fewer than wait_minutes" -- exactly at the threshold is allowed.
+    reopens = [datetime(2026, 1, 5, 18, 0)]
+    t_in = datetime(2026, 1, 5, 18, 50)
+    assert b1_blocked(t_in, reopens, wait_minutes=50) is False
+
+
+def test_b1_not_blocked_when_measured_against_the_most_recent_reopen():
+    # Even though the first reopen was long ago, the SECOND one is the one
+    # that matters -- t_in is only 10 min after it.
+    reopens = [datetime(2026, 1, 5, 18, 0), datetime(2026, 1, 6, 20, 0)]
+    t_in = datetime(2026, 1, 6, 20, 10)
+    assert b1_blocked(t_in, reopens, wait_minutes=50) is True
+
+
+def test_b1_not_blocked_before_any_known_reopen():
+    # minutes_since_reopen returns None outside the substrate -- must not
+    # crash, and must not block (there is nothing to measure against).
+    reopens = [datetime(2026, 1, 5, 18, 0)]
+    t_in = datetime(2026, 1, 5, 12, 0)
+    assert b1_blocked(t_in, reopens, wait_minutes=50) is False
+
+
+def test_cap_replay_drops_nothing_when_the_cap_is_the_observed_peak():
+    base = datetime(2026, 1, 1, 0, 0)
+    ivs = [(base, base + timedelta(hours=3)),
+           (base + timedelta(hours=1), base + timedelta(hours=2))]
+    assert cap_replay_drops(ivs, cap=2) == []
+
+
+def test_cap_replay_drops_the_later_entry_when_the_cap_binds():
+    base = datetime(2026, 1, 1, 0, 0)
+    ivs = [(base, base + timedelta(hours=3)),
+           (base + timedelta(hours=1), base + timedelta(hours=2))]
+    assert cap_replay_drops(ivs, cap=1) == [1]
