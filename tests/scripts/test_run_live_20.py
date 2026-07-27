@@ -231,7 +231,7 @@ def test_supervisor_env_live_plus_tk(monkeypatch):
 
 
 # --------------------------- --configs tomachine ----------------------------
-def test_configs_tomachine_selects_four(caplog):
+def test_configs_tomachine_selects_two(caplog):
     mt5 = MockMT5(_bars())
     with caplog.at_level("INFO"):
         rc = run_live_20.main(["--once", "--configs", "tomachine"],
@@ -241,9 +241,12 @@ def test_configs_tomachine_selects_four(caplog):
     assert f"{len(CONFIGS_TOMACHINE)} configs" in caplog.text
     for c in CONFIGS_TOMACHINE:
         assert f"[{c['id']}]" in caplog.text
-    # explicitly excluded from this roster (trader's machine-2 selection).
+    # explicitly excluded from this roster (owner's machine-2 selection).
     assert "[V11-M2]" not in caplog.text
     assert "[TK-Momentum-5-8-short]" not in caplog.text
+    # dropped by the owner's 2026-07-27 selection (S6 + SuperTrend only).
+    assert "[S7-TPNONE]" not in caplog.text
+    assert "[TK-BW2-fix2atr]" not in caplog.text
     # FIXED4 shadow configs removed from this roster (2026-07-22 shrink).
     for c in CONFIGS_SHADOW:
         assert f"[{c['id']}]" not in caplog.text
@@ -267,8 +270,8 @@ def test_configs_tomachine_magic_bands_disjoint():
 
 
 def test_configs_tomachine_adaptive_spread_default_on(caplog, monkeypatch, tmp_path):
-    # tomachine carries golive configs (S6-K2P0/S7-TPNONE/SuperTrend) -> the
-    # adaptive running-min spread-gate must default ON here too.
+    # tomachine carries golive configs (S6-K2P0/SuperTrend) -> the adaptive
+    # running-min spread-gate must default ON here too.
     monkeypatch.setenv("SPREAD_STORE_DIR", str(tmp_path))
     mt5 = MockMT5(_bars())
     with caplog.at_level("INFO"):
@@ -279,16 +282,15 @@ def test_configs_tomachine_adaptive_spread_default_on(caplog, monkeypatch, tmp_p
     assert mt5.sent == []
 
 
-def test_configs_tomachine_evaluates_tk_bw2_fix2atr_without_error(caplog):
-    # M5 bars, enough warmup for TK-BW2's EMA/ATR/regime indicators.
-    mt5 = MockMT5(_bars(n=600, seed=11))
-    with caplog.at_level("INFO"):
-        rc = run_live_20.main(["--once", "--configs", "tomachine",
-                               "--no-adaptive-spread"],
-                              mt5_module=mt5, attach_checker=lambda: True)
-    assert rc == 0
-    assert mt5.sent == []
-    assert "[TK-BW2-fix2atr]" in caplog.text
+# REMOVED 2026-07-27: `test_configs_tomachine_evaluates_tk_bw2_fix2atr_
+# without_error` asserted that a `--configs tomachine` sweep evaluated
+# TK-BW2-fix2atr. TK-BW2-fix2atr LEFT the tomachine roster on 2026-07-27
+# (owner's selection: S6-K2P0 + SuperTrend only), so no armed roster carries
+# it and the assertion no longer describes any real behaviour. The config
+# itself is still defined in live_configs_20 and keeps its own coverage in
+# tests/strategies/test_live_configs_tomachine.py, plus the executor's
+# TK-BW2 dispatch path is still tested directly by
+# `test_tk_bw2_fix2atr_dispatch_caps_bars_fed_to_the_adapter` below.
 
 
 # --------------------------- --configs local -------------------------------
@@ -402,9 +404,10 @@ def test_armed_rosters_unchanged_by_tomachine_addition():
     assert {cid for cid, _magic, _engine, _kw in fp_live} == set(LIVE_ROSTER)
 
     # touching/constructing CONFIGS_TOMACHINE (already imported above at
-    # module load, sharing the golive config dicts by reference per
-    # `test_golive_config_objects_shared_not_copied_for_tomachine`) must not
-    # have mutated any of the four armed rosters -- re-fingerprint and diff.
+    # module load; it deep-COPIES the golive config dicts per
+    # `test_tomachine_configs_are_copies_matching_golive_except_active_fichas`)
+    # must not have mutated any of the four armed rosters -- re-fingerprint
+    # and diff.
     assert _roster_fingerprint(list(CONFIGS_GOLIVE_DEDUP) + list(CONFIGS_TK)) == fp_golive_dedup_tk
     assert _roster_fingerprint(CONFIGS_GOLIVE_DEDUP) == fp_golive_dedup
     assert _roster_fingerprint(CONFIGS_SHADOW) == fp_shadow
@@ -412,13 +415,19 @@ def test_armed_rosters_unchanged_by_tomachine_addition():
 
 
 def test_local_roster_volume_did_not_leak_into_tomachine():
-    # THE LEAK PROOF (plan hard invariant): the machine-1 `local` roster adds
-    # 0.1/0.01 per-config volumes on independent COPIES. tomachine shares the
-    # SAME S6/S7/SuperTrend dicts by reference -- their `volume` must stay
-    # None (absent), so machine-2's lot remains the global --volume (0.01).
+    # THE LEAK PROOF (plan hard invariant), restated 2026-07-27: BOTH rosters
+    # now add per-config volumes on independent deep COPIES -- `local` 0.1/0.01
+    # and `tomachine` 0.3. The property protected here is that neither leaks
+    # into the other, nor into the SHARED S6/S7/SuperTrend dicts (which must
+    # keep NO `volume` key at all, so `golive`/`golive-dedup` still use the
+    # global --volume).
     for c in CONFIGS_TOMACHINE:
-        assert c.get("volume") is None, \
-            f"tomachine config {c['id']} volume leaked to {c.get('volume')}"
+        assert c.get("volume") == 0.3, \
+            f"tomachine config {c['id']} volume is {c.get('volume')}, expected 0.3"
+    golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
+    for cid in ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"):
+        assert "volume" not in golive_by_id[cid], \
+            f"a per-config volume leaked into the shared {cid} dict"
     # and the local roster DOES carry the intended per-config volumes.
     local_by_id = {c["id"]: c for c in CONFIGS_LOCAL}
     assert local_by_id["S6-K2P0"]["volume"] == 0.1
@@ -427,15 +436,22 @@ def test_local_roster_volume_did_not_leak_into_tomachine():
     assert local_by_id["TK-Momentum-5-8-short"]["volume"] == 0.01
 
 
-def test_golive_config_objects_shared_not_copied_for_tomachine():
-    # tomachine's 3 named golive configs must be the SAME dicts (by id/magic)
-    # as CONFIGS_GOLIVE serves under `--configs golive` -- no parallel/forked
-    # definition that could drift.
+def test_tomachine_configs_are_copies_matching_golive_except_active_fichas():
+    # INTENTION UPDATE (2026-07-27): tomachine no longer SHARES the go-live
+    # dicts -- it deep-copies them so its 0.3 volume / single-ficha lever
+    # cannot touch the armed rosters. What must still hold is NO DRIFT: the
+    # copies' kwargs equal the go-live kwargs except for `active_fichas`, the
+    # magics are identical, and the objects are distinct (`is not`).
     golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE}
     tomachine_by_id = {c["id"]: c for c in CONFIGS_TOMACHINE}
-    for cid in ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"):
-        assert tomachine_by_id[cid]["kwargs"] == golive_by_id[cid]["kwargs"]
-        assert tomachine_by_id[cid]["magic"] == golive_by_id[cid]["magic"]
+    for cid in ("S6-K2P0", "SuperTrend-p14x3-M15"):
+        tm, gl = tomachine_by_id[cid], golive_by_id[cid]
+        assert tm is not gl, f"{cid} must be an independent COPY"
+        assert tm["kwargs"] is not gl["kwargs"], f"{cid} kwargs must be deep-copied"
+        assert tm["magic"] == gl["magic"], f"{cid} magic must be UNCHANGED"
+        strip = {k: v for k, v in tm["kwargs"].items() if k != "active_fichas"}
+        assert strip == gl["kwargs"], \
+            f"{cid} tomachine kwargs drifted from go-live beyond active_fichas"
 
 
 # ----------------- supervisor SUPERVISOR_CONFIGS plumbing (tomachine) ------

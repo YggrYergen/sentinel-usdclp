@@ -502,32 +502,92 @@ assert all(not (722000 <= m <= 723999) for m in _tk_bw2_band), \
 assert min(_tk_bw2_band) == 725010 and max(_tk_bw2_band) == 725013, \
     "TK-BW2-fix2atr band must be the fresh 725010..725013 block"
 
-# --- MACHINE-2 ROSTER "tomachine" (trader selection 2026-07-22) -----------
-# The machine-2 executor's full roster: THREE named go-live configs kept
-# VERBATIM (id + magic UNCHANGED) from CONFIGS_GOLIVE -- S6-K2P0, S7-TPNONE,
-# SuperTrend-p14x3-M15 -- + the new CONFIG_TK_BW2_FIX2ATR. Deliberately
-# EXCLUDES the FIXED4 shadow configs (CONFIGS_SHADOW), V11-M2, and
-# TK-Momentum-5-8-short (trader's machine-2 selection 2026-07-22 -- the
-# shadow configs were dropped from this roster; none of these three run
-# here).
-_TOMACHINE_GOLIVE_IDS: tuple[str, ...] = ("S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15")
+# --- MACHINE-2 ROSTER "tomachine" (trader selection 2026-07-27) -----------
+# The machine-2 executor's full roster: exactly TWO named go-live configs kept
+# VERBATIM in id + magic (UNCHANGED from CONFIGS_GOLIVE) -- S6-K2P0 (724010)
+# and SuperTrend-p14x3-M15 (724070) -- each SINGLE-FICHA and sized 0.3 lot.
+#
+# SELECTION 2026-07-27: the performance report
+# `docs/REPORTE_DESEMPENO_S6_S7_ST_2026-07-27.md` led the owner to keep only
+# S6-K2P0 + SuperTrend-p14x3-M15, at ONE ficha per strategy, at 0.3 lot per
+# ficha (explicitly accepting the 10x exposure step up from the old global
+# 0.01). S7-TPNONE and TK-BW2-fix2atr LEAVE this roster (they leave the
+# roster, not the module: both configs stay defined here and keep their own
+# tests). Still deliberately EXCLUDES the FIXED4 shadow configs
+# (CONFIGS_SHADOW), V11-M2 and TK-Momentum-5-8-short -- none of them run here.
+#
+# WHY COPIES, NOT SHARED REFERENCES (hard immutability -- same rationale as
+# `_local_copy` below, read that block too): the S6-K2P0 / S7-TPNONE /
+# SuperTrend-p14x3-M15 dicts are SHARED BY REFERENCE across CONFIGS_GOLIVE and
+# CONFIGS_GOLIVE_DEDUP. This roster's per-config `volume` (0.3) and
+# `kwargs["active_fichas"]` (1) go on INDEPENDENT deep COPIES, so the armed
+# machine-1 rosters (`golive`, `golive-dedup`) and the shared dicts they serve
+# are never touched: they must stay volume-free (=> global --volume) and
+# active_fichas-free (=> the engine default 3).
+#
+# PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
+# --volume>)`, so 0.3 here overrides the daemon's --volume for these two only.
+#
+# SINGLE FICHA: S6-K2P0 runs `simular_variant`, whose `active_fichas` lever
+# (1/2/3, default 3) collapses the ladder to F1 only. SuperTrend gets NO
+# `active_fichas`: its engine is `supertrend_always_in`, whose target builder
+# takes only `bars` and already emits a single ficha F1 -- adding the kwarg
+# would be both inert and wrong (its kwargs is exactly {"symbol": "XAUUSD"}).
+_TOMACHINE_GOLIVE_IDS: tuple[str, ...] = ("S6-K2P0", "SuperTrend-p14x3-M15")
 _tomachine_golive_by_id = {c["id"]: c for c in CONFIGS_GOLIVE if c["id"] in _TOMACHINE_GOLIVE_IDS}
 assert set(_tomachine_golive_by_id) == set(_TOMACHINE_GOLIVE_IDS), \
     "every _TOMACHINE_GOLIVE_IDS entry must exist in CONFIGS_GOLIVE"
 
+def _tomachine_copy(cid: str, volume: float, *,
+                    active_fichas: int | None = None) -> dict[str, Any]:
+    """Independent deep COPY of a shared go-live config carrying the machine-2
+    per-config volume and, when the engine supports it, the single-ficha lever.
+    NEVER mutates the source dict (the immutability invariant)."""
+    c = copy.deepcopy(_tomachine_golive_by_id[cid])
+    c["volume"] = volume
+    if active_fichas is not None:
+        c["kwargs"]["active_fichas"] = active_fichas
+    return c
+
+
 CONFIGS_TOMACHINE: list[dict[str, Any]] = [
-    *[_tomachine_golive_by_id[cid] for cid in _TOMACHINE_GOLIVE_IDS],
-    CONFIG_TK_BW2_FIX2ATR,
+    _tomachine_copy("S6-K2P0", 0.3, active_fichas=1),
+    _tomachine_copy("SuperTrend-p14x3-M15", 0.3),
 ]
 
-assert len(CONFIGS_TOMACHINE) == 4, "tomachine roster must be exactly 4 configs"
-assert len({c["id"] for c in CONFIGS_TOMACHINE}) == 4, "tomachine config ids must be unique"
+assert len(CONFIGS_TOMACHINE) == 2, "tomachine roster must be exactly 2 configs"
+assert len({c["id"] for c in CONFIGS_TOMACHINE}) == 2, "tomachine config ids must be unique"
+assert [c["id"] for c in CONFIGS_TOMACHINE] == ["S6-K2P0", "SuperTrend-p14x3-M15"], \
+    "tomachine roster ids must be S6-K2P0 + SuperTrend-p14x3-M15 (owner 2026-07-27)"
+assert [c["magic"] for c in CONFIGS_TOMACHINE] == [724010, 724070], \
+    "tomachine roster magics must be inherited UNCHANGED (724010/724070)"
 assert "V11-M2" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
-    "tomachine roster must NOT include V11-M2 (trader's machine-2 selection 2026-07-22)"
+    "tomachine roster must NOT include V11-M2 (trader's machine-2 selection)"
 assert "TK-Momentum-5-8-short" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
-    "tomachine roster must NOT include TK-Momentum (trader's machine-2 selection 2026-07-22)"
+    "tomachine roster must NOT include TK-Momentum (trader's machine-2 selection)"
+assert "S7-TPNONE" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
+    "tomachine roster must NOT include S7-TPNONE (owner's 2026-07-27 selection)"
+assert "TK-BW2-fix2atr" not in {c["id"] for c in CONFIGS_TOMACHINE}, \
+    "tomachine roster must NOT include TK-BW2-fix2atr (owner's 2026-07-27 selection)"
 assert {c["id"] for c in CONFIGS_SHADOW}.isdisjoint({c["id"] for c in CONFIGS_TOMACHINE}), \
     "tomachine roster must NOT include any FIXED4 shadow config (trader's 2026-07-22 removal)"
+
+# OWNER'S 2026-07-27 SIZING/FICHA DECISION, pinned at import time.
+for _c in CONFIGS_TOMACHINE:
+    assert _c["volume"] == 0.3, f"tomachine {_c['id']} volume must be 0.3"
+assert {c["id"]: c for c in CONFIGS_TOMACHINE}["S6-K2P0"]["kwargs"]["active_fichas"] == 1, \
+    "tomachine S6-K2P0 must run a SINGLE ficha (active_fichas == 1)"
+assert "active_fichas" not in \
+    {c["id"]: c for c in CONFIGS_TOMACHINE}["SuperTrend-p14x3-M15"]["kwargs"], \
+    "SuperTrend's always-in engine takes no active_fichas kwarg (already single-ficha)"
+
+# IMMUTABILITY: the SHARED go-live source objects must NOT have gained the
+# per-config volume nor the active_fichas lever.
+for _cid in _TOMACHINE_GOLIVE_IDS:
+    assert "volume" not in _tomachine_golive_by_id[_cid], \
+        f"tomachine's 0.3 leaked into the shared {_cid} dict (immutability violated)"
+    assert "active_fichas" not in _tomachine_golive_by_id[_cid]["kwargs"], \
+        f"tomachine's active_fichas=1 leaked into the shared {_cid} kwargs"
 
 _tomachine_bands: list[set[int]] = []
 _seen_tomachine_magics: set[int] = set()
@@ -546,13 +606,14 @@ for _c in CONFIGS_TOMACHINE:
 # the FIXED4 shadow configs.
 #
 # HARD IMMUTABILITY (the whole point): the S6-K2P0 / S7-TPNONE /
-# SuperTrend-p14x3-M15 dicts are SHARED BY REFERENCE across CONFIGS_GOLIVE,
-# CONFIGS_GOLIVE_DEDUP and CONFIGS_TOMACHINE. Adding a per-config `volume`
-# here uses INDEPENDENT deep COPIES so machine-2's `tomachine` lot (and every
-# other roster) is never touched -- their configs stay volume-free (=> global
-# --volume). If a `volume` key ever appeared on a shared object, tomachine's
-# lot would silently become 0.1; the copies below prevent that (proven by
-# tests/scripts/test_run_live_20.py's tomachine-volume-None snapshot).
+# SuperTrend-p14x3-M15 dicts are SHARED BY REFERENCE across CONFIGS_GOLIVE and
+# CONFIGS_GOLIVE_DEDUP. Adding a per-config `volume` here uses INDEPENDENT deep
+# COPIES so no other roster is ever touched -- the shared dicts stay
+# volume-free (=> global --volume) and active_fichas-free (=> engine default 3).
+# If a `volume` key ever appeared on a shared object, every roster reading those
+# dicts would silently inherit 0.1; the copies below prevent that. `tomachine`
+# (above) copies for the same reason with its own 0.3 / active_fichas=1
+# (proven by tests/scripts/test_run_live_20.py's no-leak snapshot).
 #
 # PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
 # --volume>)`, so a config WITHOUT the key behaves exactly as today. Here the
