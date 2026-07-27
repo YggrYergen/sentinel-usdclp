@@ -42,10 +42,11 @@ from __future__ import annotations
 
 import argparse
 import logging
+import re
 import signal
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, time as dt_time, timezone
 from pathlib import Path
 from typing import Any, Callable
 
@@ -169,6 +170,77 @@ PORTABLE_MARKER = _PROFILE.terminal_marker  # lower-cased path fragment we look 
 PORTABLE_FLAG = _PROFILE.portable
 
 logger = logging.getLogger("run_live_20")
+
+
+# --------------------------------------------------------------------------
+# BLOCKED-OPEN TIME WINDOW (owner request 2026-07-27)
+# The market-open gap contaminates the indicators on the first M15 bars of the
+# session, so the owner wants NO NEW POSITION opened inside a wall-clock window
+# (18:00-18:45 on this machine). This is an OPEN-only gate: exits, MODIFY and
+# CLOSE are NEVER gated -- risk management must always be free to run, exactly
+# like the spread-gate below. An OPEN inside the window is SKIPPED (nothing
+# sent) and the reconciler re-evaluates it next cycle.
+#
+# CLOCK: this machine's local clock EQUALS the Capitaria server clock (both
+# UTC-4), so the window is expressed in the trader's own hours and read from the
+# LOCAL NAIVE clock -- NOT UTC. Indirected through `_local_now` so tests can
+# monkeypatch it.
+# --------------------------------------------------------------------------
+_BLOCKED_OPEN_WINDOW_RE = re.compile(r"\A(\d{2}):(\d{2})-(\d{2}):(\d{2})\Z")
+
+
+def _local_now() -> datetime:
+    """Wall-clock LOCAL time (naive). The Capitaria server clock EQUALS this
+    machine's local clock (both UTC-4), so the blocked-open window is expressed
+    in the trader's own hours. Indirected through this function so tests can
+    monkeypatch the clock."""
+    return datetime.now()
+
+
+def parse_blocked_open_window(spec: str) -> tuple[dt_time, dt_time]:
+    """Parse an EXACT 'HH:MM-HH:MM' 24h local-time window -> (start, end).
+
+    FAIL-LOUD (Global Constraint 7): any malformed spec raises ValueError so
+    the caller can refuse to start rather than run with the protection silently
+    off. Rejected: wrong shape, out-of-range hour/minute, and start >= end.
+    A window that CROSSES MIDNIGHT is deliberately NOT supported -- the
+    requested window is 18:00-18:45 and silently wrapping around midnight
+    would be worse than rejecting it."""
+    m = _BLOCKED_OPEN_WINDOW_RE.match(spec or "")
+    if m is None:
+        raise ValueError(
+            f"blocked-open window {spec!r} is malformed: expected exactly "
+            "'HH:MM-HH:MM' (two digits per field, 24h local time), e.g. "
+            "'18:00-18:45'")
+    sh, sm, eh, em = (int(g) for g in m.groups())
+    for label, hh, mm in (("start", sh, sm), ("end", eh, em)):
+        if not (0 <= hh <= 23):
+            raise ValueError(
+                f"blocked-open window {spec!r}: {label} hour {hh:02d} is out of "
+                "range (0-23)")
+        if not (0 <= mm <= 59):
+            raise ValueError(
+                f"blocked-open window {spec!r}: {label} minute {mm:02d} is out "
+                "of range (0-59)")
+    start, end = dt_time(sh, sm), dt_time(eh, em)
+    if start >= end:
+        raise ValueError(
+            f"blocked-open window {spec!r}: start {start} must be STRICTLY "
+            "before end (an empty or midnight-crossing window is not "
+            "supported)")
+    return start, end
+
+
+def in_blocked_open_window(now: dt_time,
+                           window: tuple[dt_time, dt_time] | None) -> bool:
+    """True iff `now` falls inside the blocked-open window. SEMI-OPEN
+    `start <= now < end`: with 18:00-18:45, 17:59:59 does NOT block, 18:00:00
+    blocks, 18:44:59 blocks, 18:45:00 does NOT block. A None window (the
+    default) NEVER blocks -- byte-identical behaviour to before this gate."""
+    if window is None:
+        return False
+    start, end = window
+    return start <= now < end
 
 
 # --------------------------------------------------------------------------
@@ -414,6 +486,7 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    close_retries: int = 2,
                    max_spread_open: float | None = None,
                    spread_threshold: float | None = None,
+                   blocked_open_window: tuple[dt_time, dt_time] | None = None,
                    on_fill: Callable[[str, Any, float | None], None] | None = None) -> None:
     """Send ONE sendable action, or (dry-run) just log the intent. Guard is
     re-asserted by the caller each cycle BEFORE this is reached.
@@ -437,6 +510,13 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
         trade_freeze_level allow; the MODIFY/OPEN is sent with the closest
         legal SL. The $-gap between desired and clamped is accounted into
         `sl_clamp_cost`.
+      * TIME_GATE_SKIP -> (OPEN only) the LOCAL wall clock (== Capitaria
+        server time, UTC-4) falls inside `blocked_open_window`
+        (`start <= now < end`, end EXCLUSIVE): the OPEN is SKIPPED entirely
+        (nothing sent, no tick read) and the reconciler re-evaluates it next
+        cycle. Checked BEFORE the spread-gate. Exits / MODIFY / CLOSE are
+        NEVER gated -- risk management always runs, at any hour. A None
+        `blocked_open_window` disables the gate.
       * SPREAD_GATE_SKIP -> (OPEN only) the current tick spread (ask-bid)
         exceeds `max_spread_open`; the OPEN is SKIPPED entirely (nothing sent)
         and the reconciler re-evaluates it next cycle. Exits / MODIFY / CLOSE
@@ -469,6 +549,10 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
             logger.error("  [SPREAD_RECORD_FAILED] kind=%s position_id=%s -> %s",
                          kind, position_id, exc)
 
+    # OPEN-ONLY GATES. Two independent reasons to SKIP a NEW entry, evaluated in
+    # this order inside the branch below: (1) the TIME-GATE (blocked_open_window,
+    # no broker read needed -- so it goes first) and (2) the SPREAD-GATE.
+    #
     # SPREAD-GATE (OPEN only): skip a NEW entry when the current tick spread
     # exceeds the effective cap; the reconciler re-evaluates next cycle. Two
     # independent limits combine (the TIGHTER binds):
@@ -481,6 +565,21 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
     # paths. A missing/None tick spread does NOT gate (fail-open: we only ever
     # SKIP on an affirmatively-too-wide read).
     if a.kind == "OPEN":
+        # TIME-GATE (OPEN only), FIRST: it needs no MT5 tick, so gating here
+        # avoids an unnecessary broker read. Local naive clock == Capitaria
+        # server time (both UTC-4). Runs in BOTH dry-run and armed paths (the
+        # `return` precedes `if dry_run:`), exactly like the spread-gate.
+        # Exits / MODIFY / CLOSE never reach this branch: they are NEVER gated.
+        now_local = _local_now().time()
+        if in_blocked_open_window(now_local, blocked_open_window):
+            logger.warning("  [TIME_GATE_SKIP] config=%s ficha=%s now=%s within "
+                           "blocked open window %s-%s (local == Capitaria server "
+                           "time; open deferred, reconciler re-evaluates next "
+                           "cycle)", a.config_id, a.ficha,
+                           now_local.isoformat(),
+                           blocked_open_window[0].isoformat(),
+                           blocked_open_window[1].isoformat())
+            return
         caps = [c for c in (max_spread_open, spread_threshold) if c is not None]
         eff_cap = min(caps) if caps else None
         if eff_cap is not None:
@@ -705,9 +804,14 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
               max_spread_open: float | None = None,
               spread_store: SpreadStore | None = None,
               spread_eps: float = DEFAULT_SPREAD_EPS,
+              blocked_open_window: tuple[dt_time, dt_time] | None = None,
               on_fill: Callable[[str, Any, float | None], None] | None = None) -> None:
     """One full reconcile pass over all configs. Re-asserts the guard FIRST,
     re-reads the STOP kill-switch, tracks the 60-total ficha cap.
+
+    `blocked_open_window` (optional) is forwarded verbatim to every
+    `execute_action`: inside it NO new position is opened (TIME_GATE_SKIP);
+    exits / MODIFY / CLOSE are never gated.
 
     If a `spread_store` is given, BEFORE the OPEN decisions we record the
     current spread (per distinct symbol) so the all-time running-min ratchets,
@@ -757,6 +861,7 @@ def run_cycle(mt5: Any, configs: list[dict[str, Any]], *, window: int,
                            sl_clamp_cost=sl_clamp_cost,
                            max_spread_open=max_spread_open,
                            spread_threshold=spread_threshold_by_symbol.get(sym),
+                           blocked_open_window=blocked_open_window,
                            on_fill=on_fill)
         # count fichas the sim wants open (desired) toward the global cap.
         # OPEN + NOOP = one per still-desired ficha (MODIFY is paired with a
@@ -868,9 +973,11 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "(both, 8 configs), 'tk-momentum' (the trader's "
                           "isolated TK-Momentum-5-8-short live-forward test on "
                           "XAUUSD, magic 999999999), 'tomachine' (machine-2 "
-                          "roster, trader selection 2026-07-22: FIXED4 shadow "
-                          "+ S6-K2P0 + S7-TPNONE + SuperTrend-p14x3-M15 + "
-                          "TK-BW2-fix2atr, 8 configs, NO V11-M2/TK-Momentum), "
+                          "roster, owner selection 2026-07-27: S6-K2P0 (magic "
+                          "724010, SINGLE ficha) + SuperTrend-p14x3-M15 (magic "
+                          "724070), 2 configs, both at 0.3 lot/ficha via "
+                          "per-config volume; NO FIXED4 shadow, NO S7-TPNONE, "
+                          "NO TK-BW2-fix2atr, NO V11-M2, NO TK-Momentum), "
                           "'local' (machine-1 LOCAL roster, trader selection "
                           "2026-07-22: S6-K2P0 + S7-TPNONE + "
                           "SuperTrend-p14x3-M15 @0.1 lot/ficha + "
@@ -914,6 +1021,12 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "executor is not armed. Ctrl-C to stop.")
     ap.add_argument("--capture-symbol", default="XAUUSD",
                      help="symbol for --capture-spread (default XAUUSD).")
+    ap.add_argument("--blocked-open-window", type=str, default=None,
+                     help="OPTIONAL 'HH:MM-HH:MM' local-time window (server time == "
+                          "local time, UTC-4) during which NO new position is opened: "
+                          "OPENs inside it are SKIPPED (logged TIME_GATE_SKIP) and the "
+                          "reconciler retries next cycle. Exits/MODIFY/CLOSE are NEVER "
+                          "gated. End is EXCLUSIVE. Default OFF.")
     ap.add_argument("--confirm-account", type=int, default=None,
                      help="non-interactive arm confirmation: must equal the "
                           "sanctioned DEMO login; only effective with --arm")
@@ -923,6 +1036,21 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s",
         handlers=[logging.StreamHandler(sys.stdout),
                   logging.FileHandler(AUDIT_LOG, encoding="utf-8")])
+
+    # BLOCKED-OPEN WINDOW, parsed FIRST (fail-loud, Global Constraint 7):
+    # before the attach check and before any guard/account confirmation, so a
+    # typo costs nothing and touches NO external state (no MT5 connection, no
+    # cycle). Starting with the requested protection silently OFF would be
+    # worse than not starting at all -> rc 2.
+    blocked_open_window: tuple[dt_time, dt_time] | None = None
+    if args.blocked_open_window is not None:
+        try:
+            blocked_open_window = parse_blocked_open_window(args.blocked_open_window)
+        except ValueError as exc:
+            logger.error("[FATAL] --blocked-open-window rejected: %s -- refusing to "
+                         "start WITHOUT the requested open-time protection (no cycle "
+                         "run, no MT5 connection opened).", exc)
+            return 2
 
     window = max(args.window, MIN_WINDOW)
     roster = args.configs.lower()
@@ -963,11 +1091,14 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # roster, magic 999999999. Runs as its OWN process alongside the rest.
         configs = list(CONFIGS_TK)
     elif roster == "tomachine":
-        # MACHINE-2 roster (trader selection 2026-07-22): the FIXED4 shadow
-        # configs + the three named go-live configs (S6-K2P0, S7-TPNONE,
-        # SuperTrend-p14x3-M15, magics unchanged from CONFIGS_GOLIVE) + the
-        # new TK-BW2-fix2atr (magic 725010). Deliberately NO V11-M2 and NO
-        # TK-Momentum here.
+        # MACHINE-2 roster (owner selection 2026-07-27): EXACTLY two configs --
+        # S6-K2P0 (magic 724010, collapsed to a SINGLE ficha via
+        # kwargs["active_fichas"]=1) + SuperTrend-p14x3-M15 (magic 724070,
+        # always-in engine, already single-ficha), both on INDEPENDENT deep
+        # COPIES of the shared go-live dicts carrying per-config volume 0.3.
+        # Deliberately NO FIXED4 shadow, NO S7-TPNONE, NO TK-BW2-fix2atr, NO
+        # V11-M2 and NO TK-Momentum. See CONFIGS_TOMACHINE in
+        # sentinel_engine/strategies/live_configs_20.py (asserted at import).
         configs = list(CONFIGS_TOMACHINE)
     elif roster == "local":
         # MACHINE-1 LOCAL roster (trader selection 2026-07-22): S6-K2P0,
@@ -1059,11 +1190,15 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
 
     spread_store = SpreadStore() if adaptive_spread else None
     logger.info("connected + guard OK: DEMO login %s (dry_run=%s, %d configs, "
-                "window=%d, max_spread_open=%s, adaptive_spread=%s eps=%s)",
+                "window=%d, max_spread_open=%s, adaptive_spread=%s eps=%s, "
+                "blocked_open_window=%s)",
                 login, dry_run, len(configs), window,
                 max_spread_open if max_spread_open is not None else "OFF",
                 "ON" if adaptive_spread else "OFF",
-                args.spread_eps if adaptive_spread else "n/a")
+                args.spread_eps if adaptive_spread else "n/a",
+                (f"{blocked_open_window[0].isoformat(timespec='minutes')}-"
+                 f"{blocked_open_window[1].isoformat(timespec='minutes')}"
+                 if blocked_open_window is not None else "OFF"))
 
     if args.arm and args.confirm_account is None:
         _arm_confirm()
@@ -1100,6 +1235,7 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                       same_bar_cost=same_bar_cost, sl_clamp_cost=sl_clamp_cost,
                       max_spread_open=max_spread_open,
                       spread_store=spread_store, spread_eps=args.spread_eps,
+                      blocked_open_window=blocked_open_window,
                       on_fill=recorder)
             if args.once or stop["flag"]:
                 break
