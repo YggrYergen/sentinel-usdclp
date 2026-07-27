@@ -1,0 +1,270 @@
+{
+  "bar_minutes": 15,
+  "caveat": "In-sample over the same 7 months used to build it. This is documentation of what would have happened, not a deployment recommendation, and is a separate experiment from the B1 mask verdict (pre-committed at 50 minutes).",
+  "curve": {
+    "N2": {
+      "COMBINED": {
+        "delta_clp": 19612988.49999997,
+        "delta_pct": 13.271739981798957,
+        "n_blocked": 92,
+        "n_kept": 2255,
+        "net_clp": 167393072.5500001,
+        "profit_factor": 1.1695341674406179,
+        "win_rate": 34.41241685144124
+      },
+      "S6-K2P0": {
+        "delta_clp": 8335112.250000164,
+        "delta_pct": 8.902112981374794,
+        "n_blocked": 36,
+        "n_kept": 876,
+        "net_clp": 101965829.67000009,
+        "profit_factor": 1.2460046776091638,
+        "win_rate": 36.3013698630137
+      },
+      "S7-TPNONE": {
+        "delta_clp": -6027332.639999945,
+        "delta_pct": -18.173562269468253,
+        "n_blocked": 39,
+        "n_kept": 1128,
+        "net_clp": 27138056.4600001,
+        "profit_factor": 1.061248072905182,
+        "win_rate": 35.37234042553192
+      },
+      "SuperTrend-p14x3-M15": {
+        "delta_clp": 17305208.890000004,
+        "delta_pct": 82.4686781391155,
+        "n_blocked": 17,
+        "n_kept": 251,
+        "net_clp": 38289186.41999999,
+        "profit_factor": 1.2949880594204646,
+        "win_rate": 23.50597609561753
+      }
+    },
+    "N3": {
+      "COMBINED": {
+        "delta_clp": 48272623.089999795,
+        "delta_pct": 32.6651750134796,
+        "n_blocked": 159,
+        "n_kept": 2188,
+        "net_clp": 196052707.13999993,
+        "profit_factor": 1.207975926256012,
+        "win_rate": 34.78062157221206
+      },
+      "S6-K2P0": {
+        "delta_clp": 31821380.370000243,
+        "delta_pct": 33.98604779162256,
+        "n_blocked": 60,
+        "n_kept": 852,
+        "net_clp": 125452097.79000017,
+        "profit_factor": 1.3208839885039525,
+        "win_rate": 36.971830985915496
+      },
+      "S7-TPNONE": {
+        "delta_clp": 5236739.519999966,
+        "delta_pct": 15.789772597602235,
+        "n_blocked": 72,
+        "n_kept": 1095,
+        "net_clp": 38402128.62000001,
+        "profit_factor": 1.0901594069994878,
+        "win_rate": 35.61643835616438
+      },
+      "SuperTrend-p14x3-M15": {
+        "delta_clp": 11214503.200000003,
+        "delta_pct": 53.443171981894565,
+        "n_blocked": 27,
+        "n_kept": 241,
+        "net_clp": 32198480.729999986,
+        "profit_factor": 1.25599760491778,
+        "win_rate": 23.236514522821576
+      }
+    },
+    "N4": {
+      "COMBINED": {
+        "delta_clp": 29577601.319999486,
+        "delta_pct": 20.014605831454364,
+        "n_blocked": 209,
+        "n_kept": 2138,
+        "net_clp": 177357685.36999962,
+        "profit_factor": 1.1921318011229698,
+        "win_rate": 34.892422825070156
+      },
+      "S6-K2P0": {
+        "delta_clp": 20992134.480000228,
+        "delta_pct": 22.420136316841056,
+        "n_blocked": 81,
+        "n_kept": 831,
+        "net_clp": 114622851.90000015,
+        "profit_factor": 1.2997396049487362,
+        "win_rate": 36.82310469314079
+      },
+      "S7-TPNONE": {
+        "delta_clp": -3105902.159999918,
+        "delta_pct": -9.36488985742041,
+        "n_blocked": 99,
+        "n_kept": 1068,
+        "net_clp": 30059486.940000128,
+        "profit_factor": 1.0723633535639003,
+        "win_rate": 35.95505617977528
+      },
+      "SuperTrend-p14x3-M15": {
+        "delta_clp": 11691369.000000004,
+        "delta_pct": 55.71569538370552,
+        "n_blocked": 29,
+        "n_kept": 239,
+        "net_clp": 32675346.529999986,
+        "profit_factor": 1.2607776854367831,
+        "win_rate": 23.430962343096233
+      }
+    },
+    "N5": {
+      "COMBINED": {
+        "delta_clp": 14371229.349999636,
+        "delta_pct": 9.724740273619856,
+        "n_blocked": 293,
+        "n_kept": 2054,
+        "net_clp": 162151313.39999977,
+        "profit_factor": 1.184840909758296,
+        "win_rate": 35.34566699123661
+      },
+      "S6-K2P0": {
+        "delta_clp": 15401510.400000215,
+        "delta_pct": 16.449206867564154,
+        "n_blocked": 114,
+        "n_kept": 798,
+        "net_clp": 109032227.82000014,
+        "profit_factor": 1.301429530150978,
+        "win_rate": 37.59398496240601
+      },
+      "S7-TPNONE": {
+        "delta_clp": -2447074.4399999343,
+        "delta_pct": -7.3783981023757415,
+        "n_blocked": 141,
+        "n_kept": 1026,
+        "net_clp": 30718314.660000112,
+        "profit_factor": 1.0778095652483208,
+        "win_rate": 36.25730994152047
+      },
+      "SuperTrend-p14x3-M15": {
+        "delta_clp": 1416793.390000008,
+        "delta_pct": 6.75178663327519,
+        "n_blocked": 38,
+        "n_kept": 230,
+        "net_clp": 22400770.91999999,
+        "profit_factor": 1.1855252760945956,
+        "win_rate": 23.47826086956522
+      }
+    },
+    "N6": {
+      "COMBINED": {
+        "delta_clp": -22519359.970000014,
+        "delta_pct": -15.238426825079339,
+        "n_blocked": 362,
+        "n_kept": 1985,
+        "net_clp": 125260724.08000012,
+        "profit_factor": 1.1468497621063687,
+        "win_rate": 34.559193954659946
+      },
+      "S6-K2P0": {
+        "delta_clp": 2955312.9900002033,
+        "delta_pct": 3.1563498298785175,
+        "n_blocked": 144,
+        "n_kept": 768,
+        "net_clp": 96586030.41000013,
+        "profit_factor": 1.276497372622329,
+        "win_rate": 36.71875
+      },
+      "S7-TPNONE": {
+        "delta_clp": -30936668.73000006,
+        "delta_pct": -93.27998123803113,
+        "n_blocked": 174,
+        "n_kept": 993,
+        "net_clp": 2228720.3699999847,
+        "profit_factor": 1.0057570473323771,
+        "win_rate": 35.34743202416919
+      },
+      "SuperTrend-p14x3-M15": {
+        "delta_clp": 5461995.770000011,
+        "delta_pct": 26.029363414020082,
+        "n_blocked": 44,
+        "n_kept": 224,
+        "net_clp": 26445973.299999993,
+        "profit_factor": 1.2269327887209782,
+        "win_rate": 23.660714285714285
+      }
+    },
+    "baseline": {
+      "COMBINED": {
+        "n_blocked": 0,
+        "n_kept": 2347,
+        "net_clp": 147780084.05000013,
+        "profit_factor": 1.1381425715686073,
+        "win_rate": 34.42692799318279
+      },
+      "S6-K2P0": {
+        "n_blocked": 0,
+        "n_kept": 912,
+        "net_clp": 93630717.41999993,
+        "profit_factor": 1.2067622447059316,
+        "win_rate": 36.51315789473684
+      },
+      "S7-TPNONE": {
+        "n_blocked": 0,
+        "n_kept": 1167,
+        "net_clp": 33165389.100000046,
+        "profit_factor": 1.0706169517886435,
+        "win_rate": 35.47557840616967
+      },
+      "SuperTrend-p14x3-M15": {
+        "n_blocked": 0,
+        "n_kept": 268,
+        "net_clp": 20983977.529999983,
+        "profit_factor": 1.142485865305544,
+        "win_rate": 22.761194029850746
+      }
+    }
+  },
+  "n_positions": 2347,
+  "n_reopens": 145,
+  "ranking_best_to_worst": [
+    {
+      "delta_pct": 32.6651750134796,
+      "net_clp": 196052707.13999993,
+      "rung": "N3",
+      "wait_minutes": 45
+    },
+    {
+      "delta_pct": 20.014605831454364,
+      "net_clp": 177357685.36999962,
+      "rung": "N4",
+      "wait_minutes": 60
+    },
+    {
+      "delta_pct": 13.271739981798957,
+      "net_clp": 167393072.5500001,
+      "rung": "N2",
+      "wait_minutes": 30
+    },
+    {
+      "delta_pct": 9.724740273619856,
+      "net_clp": 162151313.39999977,
+      "rung": "N5",
+      "wait_minutes": 75
+    },
+    {
+      "delta_pct": -15.238426825079339,
+      "net_clp": 125260724.08000012,
+      "rung": "N6",
+      "wait_minutes": 90
+    }
+  ],
+  "rungs_bars": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "rungs_excluded": [
+    1
+  ]
+}
