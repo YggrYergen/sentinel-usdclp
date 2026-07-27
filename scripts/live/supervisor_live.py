@@ -152,7 +152,22 @@ WATCHER_ARGV = [sys.executable, "-m", "scripts.live.run_deals_watcher", "--poll"
 WATCHER_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "watcher_console.log"
 BARS_INGESTER_MARKER = "run_bars_ingester"
 # Argv the supervisor (re)launches the read-only incremental bars ingester with.
+# SYMBOL SCOPE (2026-07-22, machine "TOMACHINE"): the trader only needs the
+# three TARGET symbols (XAUUSD, NQ100, USDCLP) -- the macro/context symbols
+# (XAGUSD, EURUSD, SP, ...) are neither wanted nor traded. Restricting the
+# ingester to just these three (via its existing --symbols filter) both honors
+# that and shrinks the ingester's MT5 footprint from 16 symbols x 6 timeframes
+# to 3 x 6, cutting the read-only IPC load on the shared terminal (defense in
+# depth against the multi-client IPC contention that caused the freeze
+# incidents). The executor itself does NOT depend on this lake -- it fetches
+# its own bars straight from MT5 (run_live_20.fetch_bars) -- so this only
+# scopes what the UI/lake keeps current. Override with SUPERVISOR_INGEST_SYMBOLS
+# (comma-separated) if a machine needs a different set.
+_INGEST_SYMBOLS = [s.strip() for s in os.environ.get(
+    "SUPERVISOR_INGEST_SYMBOLS", "XAUUSD,NQ100,USDCLP").split(",") if s.strip()]
 BARS_INGESTER_ARGV = [sys.executable, "-m", "scripts.live.run_bars_ingester"]
+for _sym in _INGEST_SYMBOLS:
+    BARS_INGESTER_ARGV += ["--symbols", _sym]
 BARS_INGESTER_CONSOLE_LOG = REPO_ROOT / "scripts" / "live" / "bars_ingester_console.log"
 
 BACKOFF_INITIAL_S = 30.0
@@ -161,6 +176,14 @@ BACKOFF_RESET_AFTER_S = 600.0  # a run that survives this long resets backoff
 PREFLIGHT_RETRY_S = 60.0  # wait between preflight re-checks while it's failing
 STALE_AFTER_S = 5 * 60.0
 STALE_RECHECK_S = 30.0  # how often the running-executor loop polls
+# SELF-HEAL (2026-07-22, machine "TOMACHINE"): after the audit log has been
+# stale (age > STALE_AFTER_S) for this many CONSECUTIVE rechecks, kill the
+# frozen executor so its existing relaunch path produces a clean one. With the
+# defaults (alarm at 300s, recheck every 30s, kill after 3 consecutive stale
+# rechecks) the executor is killed once it has been frozen for ~390s, i.e. we
+# alarm first and only escalate to a kill if it stays frozen. Set to <= 0 to
+# disable (pure alarm-only). Overridable via SUPERVISOR_STALE_KILL_AFTER (env).
+STALE_KILL_AFTER_CONSECUTIVE = int(os.environ.get("SUPERVISOR_STALE_KILL_AFTER", "3"))
 
 logger = logging.getLogger("supervisor_live")
 
@@ -198,6 +221,13 @@ class SupervisorConfig:
     preflight_retry_s: float = PREFLIGHT_RETRY_S
     stale_after_s: float = STALE_AFTER_S
     stale_recheck_s: float = STALE_RECHECK_S
+    # SELF-HEAL (2026-07-22): number of CONSECUTIVE stale rechecks after which
+    # the supervisor kills the frozen executor to force a clean relaunch. The
+    # audit log first has to cross `stale_after_s` (alarm), then stay stale for
+    # this many polls before the kill fires -- so a healthy executor (which
+    # rewrites the audit log every ~15-20s) never trips it. <= 0 disables the
+    # kill entirely (pure alarm-only, machine-1's original behavior).
+    stale_kill_after_consecutive: int = STALE_KILL_AFTER_CONSECUTIVE
     max_iterations: int | None = None  # None = run forever (production)
 
 
@@ -286,15 +316,25 @@ def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
                         mtime_fn: Callable[[Path], float | None],
                         now_fn: Callable[[], float] = time.time,
                         sleep_fn: Callable[[float], None] = time.sleep,
-                        watcher_keepalive: Callable[[], None] | None = None) -> int:
+                        watcher_keepalive: Callable[[], None] | None = None,
+                        kill_fn: Callable[[Any], None] | None = None) -> int:
     """Polls `proc.poll()` every `stale_recheck_s` while the executor runs.
     Logs (repeatable) ALARM lines if the audit log hasn't been touched for
     more than `stale_after_s`. If `watcher_keepalive` is given, it is invoked
     on every poll cycle (so a dead deals watcher is revived within
-    ~`stale_recheck_s`, not only between executor relaunches). Returns the
-    process's exit code once it exits. Never kills `proc` itself -- staleness
-    is alarm-only per spec."""
+    ~`stale_recheck_s`, not only between executor relaunches).
+
+    SELF-HEAL (2026-07-22): if `kill_fn` is provided and staleness persists for
+    `cfg.stale_kill_after_consecutive` CONSECUTIVE rechecks (> 0), the executor
+    is killed via `kill_fn(proc)` so the caller's relaunch path produces a
+    clean one -- this turns the old alarm-only watch into real self-healing.
+    With `kill_fn=None` or `stale_kill_after_consecutive <= 0` the behavior is
+    byte-identical to the previous alarm-only version (machine-1 immutability).
+
+    Returns the process's exit code once it exits."""
     was_stale = False
+    consecutive_stale = 0
+    kill_enabled = kill_fn is not None and cfg.stale_kill_after_consecutive > 0
     while True:
         rc = proc.poll()
         if rc is not None:
@@ -314,16 +354,36 @@ def watch_while_running(cfg: SupervisorConfig, proc: Any, *,
 
         if stale:
             age_str = "unknown (audit log missing)" if age is None else f"{age:.0f}s"
+            consecutive_stale += 1
             _log_watchdog(
-                f"ALARM: audit log stale (age={age_str}, limit={cfg.stale_after_s:.0f}s) "
-                "-- executor process is alive but may not be completing cycles. "
-                "NOT killing it automatically; investigate manually.",
+                f"ALARM: audit log stale (age={age_str}, limit={cfg.stale_after_s:.0f}s, "
+                f"consecutive={consecutive_stale}) -- executor process is alive but may "
+                "not be completing cycles.",
                 log_path=cfg.watchdog_log)
             was_stale = True
-        elif was_stale:
-            _log_watchdog(f"audit log fresh again (age={age:.0f}s) -- alarm cleared.",
-                         log_path=cfg.watchdog_log)
-            was_stale = False
+
+            if kill_enabled and consecutive_stale >= cfg.stale_kill_after_consecutive:
+                _log_watchdog(
+                    f"SELF-HEAL: audit log stale for {consecutive_stale} consecutive "
+                    f"rechecks (age={age_str}) -- KILLING the frozen executor to force a "
+                    "clean relaunch (preflight + backoff + launch will follow).",
+                    log_path=cfg.watchdog_log)
+                try:
+                    kill_fn(proc)
+                except Exception as exc:  # noqa: BLE001 -- a kill failure must not crash the supervisor
+                    _log_watchdog(f"SELF-HEAL: kill_fn raised {exc!r} -- will retry next "
+                                  "threshold.", log_path=cfg.watchdog_log)
+                # Reset so we don't immediately re-kill on the next iteration;
+                # the kill should make the very next poll() return an exit code.
+                consecutive_stale = 0
+                sleep_fn(cfg.stale_recheck_s)
+                continue
+        else:
+            consecutive_stale = 0
+            if was_stale:
+                _log_watchdog(f"audit log fresh again (age={age:.0f}s) -- alarm cleared.",
+                             log_path=cfg.watchdog_log)
+                was_stale = False
 
         sleep_fn(cfg.stale_recheck_s)
 
@@ -346,11 +406,13 @@ def run_supervised(
     sleep_fn: Callable[[float], None] = time.sleep,
     now_fn: Callable[[], float] = time.time,
     watcher_keepalive: Callable[[], None] | None = None,
+    kill_fn: Callable[[Any], None] | None = None,
 ) -> None:
     """The main supervisor loop. Runs until `cfg.max_iterations` relaunches
     have happened (production: None = forever / Ctrl-C). If `watcher_keepalive`
     is given, it is invoked at startup and on every executor poll cycle to
-    keep the deals watcher alive."""
+    keep the deals watcher alive. If `kill_fn` is given, the staleness watch
+    self-heals by killing a frozen executor (see `watch_while_running`)."""
     if watcher_keepalive is not None:
         watcher_keepalive()  # start the watcher immediately (survivability)
 
@@ -374,7 +436,8 @@ def run_supervised(
         proc = launcher(cfg.executor_argv)
 
         rc = watch_while_running(cfg, proc, mtime_fn=mtime_fn, now_fn=now_fn,
-                                 sleep_fn=sleep_fn, watcher_keepalive=watcher_keepalive)
+                                 sleep_fn=sleep_fn, watcher_keepalive=watcher_keepalive,
+                                 kill_fn=kill_fn)
         uptime = now_fn() - start_ts
         _log_watchdog(f"executor EXITED with code {rc} after {uptime:.0f}s uptime.",
                      log_path=cfg.watchdog_log)
@@ -436,6 +499,15 @@ def _default_mtime(path: Path) -> float | None:
         return None
 
 
+def _default_kill(proc: subprocess.Popen) -> None:
+    """SELF-HEAL kill for a frozen executor. On Windows `terminate()` maps to
+    TerminateProcess, which forcibly kills even a process blocked inside a
+    native MT5 IPC call (the freeze signature) -- a graceful signal would not
+    reach it. Best-effort: any failure is swallowed by the caller so the
+    supervisor never crashes on a kill attempt."""
+    proc.kill()
+
+
 def _default_deals_watcher_check() -> bool:
     return preflight_live.process_running(DEALS_WATCHER_MARKER)
 
@@ -476,6 +548,7 @@ def main(argv: list[str] | None = None) -> int:
             launcher=_default_launcher,
             mtime_fn=_default_mtime,
             watcher_keepalive=_watcher_keepalive,
+            kill_fn=_default_kill,
         )
     except KeyboardInterrupt:
         _log_watchdog("Ctrl-C received -- supervisor stopping (executor subprocess, "

@@ -183,6 +183,105 @@ def test_watch_while_running_missing_audit_log_is_stale(tmp_path):
 
 
 # --------------------------------------------------------------------------
+# SELF-HEAL (2026-07-22, machine "TOMACHINE"): after the audit log has been
+# stale for a SUSTAINED window (confirmed across >= stale_kill_after_consecutive
+# rechecks), the supervisor KILLS the frozen executor so its existing relaunch
+# path (preflight + backoff + launch) produces a clean one. This upgrades the
+# old alarm-only staleness watch to real self-healing. Opt-out preserved:
+# stale_kill_after_consecutive <= 0 (or kill_fn=None) keeps the pure alarm-only
+# behavior byte-for-byte.
+# --------------------------------------------------------------------------
+class _KillableProc:
+    """Fake Popen that stays alive (poll()->None) until kill() is called,
+    after which poll() returns `exit_code`."""
+
+    def __init__(self, exit_code=-9):
+        self.exit_code = exit_code
+        self._killed = False
+        self.kill_calls = 0
+
+    def poll(self):
+        return self.exit_code if self._killed else None
+
+    def kill(self):
+        self.kill_calls += 1
+        self._killed = True
+
+
+def test_watch_while_running_kills_executor_after_sustained_staleness(tmp_path):
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=30.0, stale_kill_after_consecutive=3)
+    clock = _FakeClock()
+    proc = _KillableProc(exit_code=-9)
+    kill_calls = {"n": 0}
+
+    def kill_fn(p):
+        kill_calls["n"] += 1
+        p.kill()
+
+    # audit mtime pinned at 0 -> stale forever once the clock passes 300s.
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=lambda p: 0.0, now_fn=clock.now,
+                                 sleep_fn=clock.sleep, kill_fn=kill_fn)
+    assert kill_calls["n"] == 1          # killed exactly once
+    assert proc.kill_calls == 1
+    assert rc == -9                       # returns the killed proc's exit code -> relaunch
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "ALARM" in log_text
+    assert "SELF-HEAL" in log_text
+
+
+def test_watch_while_running_does_not_kill_before_threshold(tmp_path):
+    """Fresh executor that writes a cycle before the sustained-stale threshold
+    is reached must never be killed (no false-positive recycle)."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=50.0, stale_recheck_s=40.0, stale_kill_after_consecutive=3)
+    clock = _FakeClock()
+    # Goes stale for exactly ONE recheck, then fresh again -> below threshold.
+    state = {"phase": 0}
+
+    def mtime_fn(_path):
+        state["phase"] += 1
+        return 0.0 if state["phase"] <= 2 else clock.t  # stale early, then fresh
+
+    proc = _FakeProc(exit_code=0, exit_after_polls=6)
+    kill_calls = {"n": 0}
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=mtime_fn, now_fn=clock.now,
+                                 sleep_fn=clock.sleep,
+                                 kill_fn=lambda p: kill_calls.__setitem__("n", kill_calls["n"] + 1))
+    assert rc == 0
+    assert kill_calls["n"] == 0
+
+
+def test_watch_while_running_no_kill_when_kill_fn_none_preserves_alarm_only(tmp_path):
+    """kill_fn=None (default) => old alarm-only behavior: never kills even under
+    permanent staleness. Guards machine-1 immutability."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=100.0, stale_kill_after_consecutive=1)
+    clock = _FakeClock()
+    proc = _FakeProc(exit_code=0, exit_after_polls=8)
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=lambda p: 0.0, now_fn=clock.now,
+                                 sleep_fn=clock.sleep)  # kill_fn omitted -> None
+    assert rc == 0
+    log_text = cfg.watchdog_log.read_text(encoding="utf-8")
+    assert "ALARM" in log_text
+    assert "SELF-HEAL" not in log_text
+
+
+def test_watch_while_running_disabled_when_threshold_zero(tmp_path):
+    """stale_kill_after_consecutive <= 0 disables self-heal even if kill_fn set."""
+    cfg = _cfg(watchdog_log=tmp_path / "watchdog.log", audit_log=tmp_path / "audit.log",
+              stale_after_s=300.0, stale_recheck_s=100.0, stale_kill_after_consecutive=0)
+    clock = _FakeClock()
+    proc = _FakeProc(exit_code=0, exit_after_polls=8)
+    kill_calls = {"n": 0}
+    rc = sup.watch_while_running(cfg, proc, mtime_fn=lambda p: 0.0, now_fn=clock.now,
+                                 sleep_fn=clock.sleep,
+                                 kill_fn=lambda p: kill_calls.__setitem__("n", kill_calls["n"] + 1))
+    assert rc == 0
+    assert kill_calls["n"] == 0
+
+
+# --------------------------------------------------------------------------
 # next_backoff
 # --------------------------------------------------------------------------
 def test_next_backoff_doubles_up_to_max(tmp_path):
@@ -454,6 +553,18 @@ def test_default_executor_argv_has_no_spread_cap_when_env_unset(monkeypatch):
     SUPERVISOR_MAX_SPREAD_OPEN is unset."""
     assert sup.SUPERVISOR_MAX_SPREAD_OPEN in (None, "")
     assert "--max-spread-open" not in sup.EXECUTOR_ARGV
+
+
+def test_bars_ingester_argv_scoped_to_target_symbols():
+    """SYMBOL SCOPE (2026-07-22): the ingester argv carries a --symbols filter
+    for each configured target symbol (default XAUUSD,NQ100,USDCLP via
+    SUPERVISOR_INGEST_SYMBOLS) so the lake ingester never burns MT5 IPC on
+    unwanted macro symbols (XAGUSD etc.)."""
+    argv = sup.BARS_INGESTER_ARGV
+    assert argv.count("--symbols") == len(sup._INGEST_SYMBOLS)
+    for symbol in sup._INGEST_SYMBOLS:
+        idx = argv.index(symbol)
+        assert argv[idx - 1] == "--symbols"
 
 
 def test_run_supervised_never_touches_mt5_module():

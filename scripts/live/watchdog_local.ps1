@@ -291,7 +291,13 @@ function Ensure-Dashboard {
     if ($listening) { return }
     Write-Log "Dashboard DOWN (nothing on 8501) -- relaunching."
     $env:PYTHONPATH = $RepoRoot
-    $cmdLine = "python scripts\run_service.py --host 127.0.0.1 --port 8501 >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
+    # --force-historical (2026-07-22, machine "TOMACHINE"): the dashboard feed
+    # must NEVER open its own MT5 client. A live-feed UI adds a 4th independent
+    # mt5.initialize() to the same terminal IPC, which contends with the
+    # executor/watcher/ingester and was implicated in the IPC-freeze incidents.
+    # Forcing the historical (lake-backed) feed keeps the UI zero-MT5, so an
+    # automatic relaunch can never reintroduce the toxic 4th client.
+    $cmdLine = "python scripts\run_service.py --host 127.0.0.1 --port 8501 --force-historical >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
     Start-Process -FilePath "cmd.exe" -ArgumentList "/c",$cmdLine -WorkingDirectory $RepoRoot -WindowStyle Hidden | Out-Null
     Start-Sleep -Seconds 3
     $newProc = Find-ProcByCmdline 'run_service\.py'
