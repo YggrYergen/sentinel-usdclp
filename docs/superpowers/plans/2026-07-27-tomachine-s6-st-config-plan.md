@@ -315,3 +315,156 @@ en verde **sin** limpiar variables de entorno a mano.
 4. Verificar: argv del ejecutor con `--configs tomachine --max-spread-open 0.5
    --blocked-open-window 18:00-18:45`; guard OK login 2883016567; el log de arranque
    listando 2 configs; ciclos cada ~18s sin gaps > 60s durante ≥10 min.
+
+---
+
+## Task 4 — Cuenta DEMO 2883016902 + lote 0.67 (owner 2026-07-27, tarde)
+
+**Archivos:** `sentinel_engine/live/guard_cuenta.py`,
+`sentinel_engine/live/machine_profile.py`,
+`scripts/live/machine_local.example.json`, `scripts/live/run_live_20.py`,
+`scripts/live/watchdog_local.ps1`,
+`sentinel_engine/strategies/live_configs_20.py`,
+`tests/live/test_guard_cuenta.py`, `tests/live/test_machine_profile.py`,
+`tests/strategies/test_live_configs_tomachine.py`,
+`tests/strategies/test_live_configs_local.py`, `tests/scripts/test_run_live_20.py`
+
+### Contexto y hecho verificado
+
+El owner cambió el login del terminal Capitaria de esta máquina a **2883016902** y
+declaró que es la cuenta a usar de ahora en adelante. **Verificado independientemente**:
+el chequeo de cuenta del propio watchdog reporta `LOGIN=2883016902 TRADE_MODE=0`, y
+`TRADE_MODE=0` es `ACCOUNT_TRADE_MODE_DEMO` según la tabla del guard
+(`guard_cuenta.py:66-70`). Es una cuenta DEMO en el servidor Capitaria-All.
+
+Consecuencia actual: `assert_demo` rechazó el login y **mató al ejecutor** (última línea
+de audit 17:33:17); el watchdog quedó en bucle `Waiting for DEMO account confirmation...`.
+El stack está detenido de forma segura, sin posiciones abiertas. Esto es el guard
+funcionando como se diseñó, no una falla.
+
+El owner también fijó el lote por ficha en **exactamente 0.67** (antes 0.3 en este plan),
+confirmando el riesgo sin verificación previa de saldo.
+
+### Cambio de producción — cuenta
+
+`SANCTIONED_DEMO_LOGINS` (`guard_cuenta.py:42-45`) es un `frozenset` hard-coded a propósito:
+config mutable puede SELECCIONAR un login del conjunto, nunca AGREGARLO. Ese principio se
+respeta — el cambio se hace en el conjunto mismo, en código revisado, no vía JSON/env.
+
+- **Agregar** `2883016902` al conjunto, comentado como la cuenta DEMO de TOMACHINE
+  a partir de 2026-07-27, con el `TRADE_MODE=0` verificado como justificación.
+- **Retirar** `2883016567` del conjunto. El owner dijo "exactamente la 2883016902 de
+  ahora en adelante": retirarla hace que cualquier referencia rezagada falle CERRADO
+  (`MachineProfileError` / `GuardError`) en vez de operar una cuenta no vigente.
+  `2883015767` (máquina 1) **no se toca**.
+- `REAL_LOGIN = 2883011573` **no se toca**. La lógica de `assert_demo` (sus 5 chequeos,
+  el orden, el `hard_exit`, el `sys.exit(2)`) **no se toca**: no se debilita, no se
+  agrega bypass, no se agrega parámetro de escape. Este cambio es exclusivamente
+  del conjunto de logins sancionados y de la documentación.
+- Actualizar el docstring del módulo (`:1-33`) para que describa la realidad: TOMACHINE
+  usa 2883016902; mencionar que 2883016567 fue retirada el 2026-07-27. Nota: el
+  docstring cita `D:/FOREX/CUENTAS.md` como fuente única — **esa ruta no existe en esta
+  máquina** (es de la máquina 1); no inventar contenido para ese archivo ni crearlo.
+- `machine_profile.py`: actualizar la referencia a 2883016567 en su docstring.
+  `DEFAULT_DEMO_LOGIN` (máquina 1, 2883015767) **no cambia**.
+- `scripts/live/machine_local.example.json`: el bloque `_machine_2_example__TOMACHINE`
+  pasa a `demo_login: 2883016902`.
+- Comentarios/docstrings con el login viejo: `run_live_20.py:8`,
+  `watchdog_local.ps1:8-10,17`. Sólo texto. `watchdog_local.ps1:106`
+  (`$script:DemoLogin = [int64]2883015767`) es el fallback de la máquina 1 y **no cambia**.
+- `scripts/live/machine_local.json` está gitignoreado y es la selección local de esta
+  máquina: **NO lo edites**. El controlador lo actualiza en el despliegue.
+
+### Cambio de producción — lote
+
+En el bloque `CONFIGS_TOMACHINE` de `live_configs_20.py`, el volumen por config pasa de
+`0.3` a **`0.67`**, en ambos configs (S6-K2P0 y SuperTrend-p14x3-M15). El assert de módulo
+que fija el volumen pasa a `0.67`. Nada más cambia: sigue siendo ficha única
+(`active_fichas=1` en S6), siguen siendo deep copies, los dicts go-live compartidos siguen
+sin key `volume` ni `active_fichas`, y el roster `local` de la máquina 1 sigue en 0.1/0.01.
+
+### Tests
+
+- `tests/live/test_guard_cuenta.py`: actualizar la referencia a 2883016567. Los tests
+  deben terminar afirmando: 2883016902 está sancionada; 2883016567 **ya NO** lo está
+  (un login retirado es rechazado, no aceptado silenciosamente); 2883015767 sigue
+  sancionada; `REAL_LOGIN` sigue rechazado; `trade_mode != 0` sigue rechazado incluso
+  para un login sancionado. Preservar la intención de cada test existente.
+- `tests/live/test_machine_profile.py`: actualizar sus 3 referencias; debe seguir
+  probando que un `demo_login` fuera del conjunto sancionado levanta
+  `MachineProfileError` (usar un número no sancionado, y 2883016567 ahora sirve como
+  ejemplo real de login retirado).
+- Tests de volumen: actualizar `0.3` → `0.67` donde se afirme el volumen de tomachine
+  (`tests/strategies/test_live_configs_tomachine.py`,
+  `tests/strategies/test_live_configs_local.py`, `tests/scripts/test_run_live_20.py`).
+  Los tests del roster `local` (0.1/0.01) no cambian.
+
+### Verificación
+
+`python -m pytest tests/live tests/strategies tests/scripts -q` en verde sin limpiar
+variables de entorno a mano.
+
+---
+
+## Task 5 — `max_volume` por config (desbloquea el lote 0.67)
+
+**Archivos:** `sentinel_engine/live/reconciler.py`, `scripts/live/run_live_20.py`,
+`sentinel_engine/strategies/live_configs_20.py`, `tests/live/test_reconciler.py`,
+`tests/strategies/test_live_configs_tomachine.py`, `tests/scripts/test_run_live_20.py`
+
+### El bloqueador
+
+Hallazgo Critical de la revisión final de rama, verificado ejecutando el código real:
+`reconciler.MAX_VOLUME = 0.10` (`reconciler.py:41`) hace que `reconcile()` emita
+`REJECT_VOLUME` para cualquier `volume > 0.10` (`reconciler.py:254-259`), y
+`Action.sendable()` (`reconciler.py:67-72`) excluye `REJECT_VOLUME`, así que
+`execute_action` nunca llega a `order_send`. Con el lote de este roster el resultado sería
+un stack **silenciosamente desarmado**: guard OK, 2 configs, argv correcto, ciclos a
+tiempo, watchdog y UI sanos, y cero posiciones, logueando `REJECT_VOLUME` en cada señal.
+Nada en el preflight, el supervisor ni el banner lo delata antes del primer trade perdido.
+
+Nunca se había manifestado porque el roster `local` de la máquina 1 usa 0.1, que es
+`== MAX_VOLUME`, no `>`.
+
+### Cambio de producción
+
+**No** subir la constante global `MAX_VOLUME`: es el backstop anti-fat-finger de TODOS los
+rosters y de la máquina 1. En vez de eso, hacerlo overridable por config, con el default
+intacto:
+
+- `reconcile()` (`reconciler.py:114`) gana un keyword-only `max_volume: float = MAX_VOLUME`.
+  El chequeo de `:254` pasa a comparar contra ese parámetro, y el `reason` del
+  `REJECT_VOLUME` debe seguir nombrando el límite efectivo que se aplicó (no la constante),
+  para que el log diga la verdad. `MAX_VOLUME` sigue siendo el default y **no cambia de
+  valor**: todo llamador que no pase el parámetro se comporta byte-idéntico a hoy.
+  Validar `max_volume > 0`; un `max_volume` no positivo es un error de configuración y debe
+  fallar ruidosamente, no admitir órdenes.
+- `reconcile_config()` (`scripts/live/run_live_20.py`, junto al `cfg_volume` de `:394-397`)
+  lee `cfg.get("max_volume", MAX_VOLUME)` y lo pasa a `reconcile`. Un config sin la key se
+  comporta exactamente como hoy. Documentarlo en el mismo estilo que el comentario de
+  PER-CONFIG VOLUME que ya está ahí.
+- En el bloque `CONFIGS_TOMACHINE` de `live_configs_20.py`, las dos deep copies ganan
+  `max_volume` con el **mismo valor que su `volume`** — el tope es exactamente el lote
+  autorizado, ni un décimo más, así que sigue siendo un backstop real contra un dedo gordo
+  y no un cheque en blanco. Añadir el assert de módulo correspondiente.
+- El roster `local` de la máquina 1 y todos los demás **no** ganan la key: conservan el
+  tope 0.10.
+
+### Tests
+
+- `tests/live/test_reconciler.py`: `test_volume_cap_rejects` se conserva tal cual (prueba el
+  default). Nuevos: con `max_volume` elevado, un volumen por encima de 0.10 produce un
+  `OPEN` **sendable** con ese `volume`; con `max_volume` explícito, un volumen por encima de
+  ESE tope sigue produciendo `REJECT_VOLUME`; el `reason` nombra el límite efectivo; un
+  `max_volume` no positivo falla ruidosamente.
+- **El test que faltaba y que habría atrapado esto** (`tests/scripts/test_run_live_20.py`):
+  para CADA config de `CONFIGS_TOMACHINE`, un estado deseado con F1 y el `volume` propio del
+  config debe producir un `OPEN` **sendable** cuyo `volume` sea exactamente el del config.
+  Este test debe fallar si alguien vuelve a poner un `volume` por encima del `max_volume`
+  del config.
+- `tests/strategies/test_live_configs_tomachine.py`: pinear `max_volume == volume` en ambos
+  configs, y que los dicts go-live compartidos NO ganaron la key `max_volume`.
+
+### Verificación
+
+`python -m pytest tests/live tests/strategies tests/scripts -q` en verde.
