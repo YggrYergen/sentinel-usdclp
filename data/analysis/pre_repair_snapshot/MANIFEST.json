@@ -1,0 +1,172 @@
+{
+  "baseline_rows_sha256": "b068add0e93e97a09567b1eb5b02f3051001c6a2d86ab535baf03f967a229c16",
+  "combined": {
+    "n_rows_total": 2347,
+    "net_067lot_clp_sum_total": 147780084.05
+  },
+  "files": [
+    {
+      "bytes": 99417,
+      "mtime_iso": "2026-07-27T02:25:50.423054+00:00",
+      "path": "data/analysis/realtick_bt/positions_S6-K2P0.csv",
+      "sha256": "f875ce5d50d71788703bea9679be39ab42e73198a0d12a45705b764af2bf0cb5"
+    },
+    {
+      "bytes": 126768,
+      "mtime_iso": "2026-07-27T02:25:50.434037+00:00",
+      "path": "data/analysis/realtick_bt/positions_S7-TPNONE.csv",
+      "sha256": "63a40f3e877ce3d950aa7cc59c3cec4624f2ab41dad4e0a7e9e9a9598950720b"
+    },
+    {
+      "bytes": 29363,
+      "mtime_iso": "2026-07-27T02:25:50.438046+00:00",
+      "path": "data/analysis/realtick_bt/positions_SuperTrend-p14x3-M15.csv",
+      "sha256": "1cbb215f446e8f9c2ce197062a49e4fd711a22da7177de2209a4b0f7e878f2ec"
+    },
+    {
+      "bytes": 429,
+      "mtime_iso": "2026-07-27T02:27:35.234548+00:00",
+      "path": "data/analysis/monday_audit/a1_maxdd.json",
+      "sha256": "cb5acd318d00c812d43e8b188cb409192ddb0b94a73ceaa0f7adffa1c110b816"
+    },
+    {
+      "bytes": 552,
+      "mtime_iso": "2026-07-27T02:27:35.371865+00:00",
+      "path": "data/analysis/monday_audit/a2_overlap.json",
+      "sha256": "b45ee7fc36e0b763a4a9720c1034ab58c24372877595c854b30ac46b7940ea22"
+    },
+    {
+      "bytes": 1007,
+      "mtime_iso": "2026-07-27T02:27:35.514909+00:00",
+      "path": "data/analysis/monday_audit/a3_exit_reason.json",
+      "sha256": "75a3538ddeddd7f9fa05cb2ca7cb03a790640cd1358356ec698bb2fb982abade"
+    },
+    {
+      "bytes": 953,
+      "mtime_iso": "2026-07-27T02:27:35.520918+00:00",
+      "path": "data/analysis/monday_audit/a4_serial.json",
+      "sha256": "fc924a5dfe0b83be6a0f9583e6963cc8f1717aaa494808ca7404fd0d8bba51ee"
+    },
+    {
+      "bytes": 2265,
+      "mtime_iso": "2026-07-27T02:27:35.522917+00:00",
+      "path": "data/analysis/monday_audit/a5_spread_gate.json",
+      "sha256": "eacbbb924ad5cb45c06a6028aa8a0b4b48eeb1fe8f6b9bfd28cebb3e5ba0d273"
+    },
+    {
+      "bytes": 152350,
+      "mtime_iso": "2026-07-27T03:12:17.555542+00:00",
+      "path": "data/analysis/monday_audit/b1_robustness.json",
+      "sha256": "ecd3ee4e0492cbf3c063b49b8b83e7ef5cd1556ff96b8a01d0bba9637f32b7a9"
+    },
+    {
+      "bytes": 7964,
+      "mtime_iso": "2026-07-27T02:44:39.638838+00:00",
+      "path": "data/analysis/monday_audit/b1_wait_window.json",
+      "sha256": "ca6a484b6ab270118988dd652ff68886876a5f317003d553aa7cb434d17cb667"
+    },
+    {
+      "bytes": 1752,
+      "mtime_iso": "2026-07-27T02:42:51.508735+00:00",
+      "path": "data/analysis/monday_audit/b6_mask_verdicts.json",
+      "sha256": "9dde151cb33025cb3cdfe90ec1d8708e65d538f3c1c31fb12cf2786a9c7ffd29"
+    },
+    {
+      "bytes": 7592,
+      "mtime_iso": "2026-07-27T02:25:50.474101+00:00",
+      "path": "docs/REPORTE_BACKTEST_REALTICK_MENSUAL_2026-07-25.md",
+      "sha256": "5762bbf3b3f57466144924955ca62c4c0e27ca6a838fd04abed7da06b44fb895"
+    }
+  ],
+  "summary": {
+    "S6-K2P0": {
+      "columns": [
+        "side",
+        "ficha",
+        "reason",
+        "t_in",
+        "t_out",
+        "entry_fill",
+        "exit_fill",
+        "spread",
+        "entry_delay_bars",
+        "net_067lot_clp",
+        "month"
+      ],
+      "month_counts": {
+        "2026-01": 84,
+        "2026-02": 120,
+        "2026-03": 117,
+        "2026-04": 177,
+        "2026-05": 138,
+        "2026-06": 159,
+        "2026-07": 117
+      },
+      "n_rows": 912,
+      "net_067lot_clp_sum": 93630717.42,
+      "reason_counts": {
+        "EXIT_INITSL": 891,
+        "EXIT_TRAIL": 21
+      }
+    },
+    "S7-TPNONE": {
+      "columns": [
+        "side",
+        "ficha",
+        "reason",
+        "t_in",
+        "t_out",
+        "entry_fill",
+        "exit_fill",
+        "spread",
+        "entry_delay_bars",
+        "net_067lot_clp",
+        "month"
+      ],
+      "month_counts": {
+        "2026-01": 111,
+        "2026-02": 159,
+        "2026-03": 150,
+        "2026-04": 210,
+        "2026-05": 177,
+        "2026-06": 213,
+        "2026-07": 147
+      },
+      "n_rows": 1167,
+      "net_067lot_clp_sum": 33165389.1,
+      "reason_counts": {
+        "EXIT_INITSL": 1104,
+        "EXIT_TRAIL": 63
+      }
+    },
+    "SuperTrend-p14x3-M15": {
+      "columns": [
+        "side",
+        "ficha",
+        "reason",
+        "t_in",
+        "t_out",
+        "entry_fill",
+        "exit_fill",
+        "spread",
+        "entry_delay_bars",
+        "net_067lot_clp",
+        "month"
+      ],
+      "month_counts": {
+        "2026-01": 27,
+        "2026-02": 40,
+        "2026-03": 30,
+        "2026-04": 48,
+        "2026-05": 46,
+        "2026-06": 53,
+        "2026-07": 24
+      },
+      "n_rows": 268,
+      "net_067lot_clp_sum": 20983977.53,
+      "reason_counts": {
+        "EXIT_STLINE": 268
+      }
+    }
+  }
+}

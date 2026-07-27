@@ -1,0 +1,4769 @@
+{
+  "bar_minutes": 15,
+  "caveat": "All three checks are IN-SAMPLE over the same 7 months used to build the original b1_wait_window.json curve (Task 16). Surviving these checks means the curve's shape is not an artifact of a few large trades or of a single lucky month within this substrate -- it does NOT mean the curve, or any rung on it, will hold out of sample. This module does not recommend a rung to deploy; the B1 mask verdict is pre-committed at 50 minutes in b6_masks.py and does not move because of anything here.",
+  "m1_sign_consistency_by_month": {
+    "COMBINED": {
+      "N2": {
+        "months": [
+          {
+            "baseline_net_clp": 87475383.91000001,
+            "delta_clp": -15209509.149999991,
+            "delta_pct": -17.387187652298227,
+            "kept_net_clp": 72265874.76000002,
+            "month": "2026-01",
+            "n_blocked": 16
+          },
+          {
+            "baseline_net_clp": 12048391.059999961,
+            "delta_clp": 64372490.82999997,
+            "delta_pct": 534.282880672037,
+            "kept_net_clp": 76420881.88999993,
+            "month": "2026-02",
+            "n_blocked": 29
+          },
+          {
+            "baseline_net_clp": 30131016.579999957,
+            "delta_clp": -16969520.449999977,
+            "delta_pct": -56.31911025950522,
+            "kept_net_clp": 13161496.12999998,
+            "month": "2026-03",
+            "n_blocked": 19
+          },
+          {
+            "baseline_net_clp": -52022294.11999999,
+            "delta_clp": 8348288.779999994,
+            "delta_pct": -16.047521396774563,
+            "kept_net_clp": -43674005.339999996,
+            "month": "2026-04",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 60795997.19999991,
+            "delta_clp": 2625899.170000024,
+            "delta_pct": 4.31919746519106,
+            "kept_net_clp": 63421896.36999994,
+            "month": "2026-05",
+            "n_blocked": 4
+          },
+          {
+            "baseline_net_clp": -3590924.8700000225,
+            "delta_clp": -23547131.219999958,
+            "delta_pct": 655.7400132963464,
+            "kept_net_clp": -27138056.08999998,
+            "month": "2026-06",
+            "n_blocked": 13
+          },
+          {
+            "baseline_net_clp": 12942514.290000001,
+            "delta_clp": -7529.459999997169,
+            "delta_pct": -0.05817617683308093,
+            "kept_net_clp": 12934984.830000004,
+            "month": "2026-07",
+            "n_blocked": 2
+          }
+        ],
+        "n_months_negative": 4,
+        "n_months_positive": 3,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N3": {
+        "months": [
+          {
+            "baseline_net_clp": 87475383.91000001,
+            "delta_clp": -14780957.379999995,
+            "delta_pct": -16.897276375725934,
+            "kept_net_clp": 72694426.53000002,
+            "month": "2026-01",
+            "n_blocked": 17
+          },
+          {
+            "baseline_net_clp": 12048391.059999961,
+            "delta_clp": 64939710.14999999,
+            "delta_pct": 538.9907235464533,
+            "kept_net_clp": 76988101.20999995,
+            "month": "2026-02",
+            "n_blocked": 39
+          },
+          {
+            "baseline_net_clp": 30131016.579999957,
+            "delta_clp": 8451818.890000027,
+            "delta_pct": 28.050228134719106,
+            "kept_net_clp": 38582835.469999984,
+            "month": "2026-03",
+            "n_blocked": 43
+          },
+          {
+            "baseline_net_clp": -52022294.11999999,
+            "delta_clp": 11532622.919999927,
+            "delta_pct": -22.168616580802052,
+            "kept_net_clp": -40489671.20000006,
+            "month": "2026-04",
+            "n_blocked": 28
+          },
+          {
+            "baseline_net_clp": 60795997.19999991,
+            "delta_clp": 2792802.2000000253,
+            "delta_pct": 4.593727101494157,
+            "kept_net_clp": 63588799.39999994,
+            "month": "2026-05",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": -3590924.8700000225,
+            "delta_clp": -26459777.359999985,
+            "delta_pct": 736.851321537112,
+            "kept_net_clp": -30050702.230000008,
+            "month": "2026-06",
+            "n_blocked": 20
+          },
+          {
+            "baseline_net_clp": 12942514.290000001,
+            "delta_clp": 1796403.6700000055,
+            "delta_pct": 13.879866228063522,
+            "kept_net_clp": 14738917.960000006,
+            "month": "2026-07",
+            "n_blocked": 7
+          }
+        ],
+        "n_months_negative": 2,
+        "n_months_positive": 5,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N4": {
+        "months": [
+          {
+            "baseline_net_clp": 87475383.91000001,
+            "delta_clp": -14780957.379999995,
+            "delta_pct": -16.897276375725934,
+            "kept_net_clp": 72694426.53000002,
+            "month": "2026-01",
+            "n_blocked": 17
+          },
+          {
+            "baseline_net_clp": 12048391.059999961,
+            "delta_clp": 49666200.53999999,
+            "delta_pct": 412.2226801293761,
+            "kept_net_clp": 61714591.59999996,
+            "month": "2026-02",
+            "n_blocked": 45
+          },
+          {
+            "baseline_net_clp": 30131016.579999957,
+            "delta_clp": -12182038.799999923,
+            "delta_pct": -40.430228325206876,
+            "kept_net_clp": 17948977.780000035,
+            "month": "2026-03",
+            "n_blocked": 50
+          },
+          {
+            "baseline_net_clp": -52022294.11999999,
+            "delta_clp": 12633806.459999934,
+            "delta_pct": -24.285369712564947,
+            "kept_net_clp": -39388487.660000056,
+            "month": "2026-04",
+            "n_blocked": 32
+          },
+          {
+            "baseline_net_clp": 60795997.19999991,
+            "delta_clp": 5569290.56000004,
+            "delta_pct": 9.160620462690671,
+            "kept_net_clp": 66365287.75999995,
+            "month": "2026-05",
+            "n_blocked": 20
+          },
+          {
+            "baseline_net_clp": -3590924.8700000225,
+            "delta_clp": -17181600.289999973,
+            "delta_pct": 478.4728422903447,
+            "kept_net_clp": -20772525.159999996,
+            "month": "2026-06",
+            "n_blocked": 32
+          },
+          {
+            "baseline_net_clp": 12942514.290000001,
+            "delta_clp": 5852900.230000032,
+            "delta_pct": 45.222281381000755,
+            "kept_net_clp": 18795414.520000033,
+            "month": "2026-07",
+            "n_blocked": 13
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N5": {
+        "months": [
+          {
+            "baseline_net_clp": 87475383.91000001,
+            "delta_clp": -5475172.260000005,
+            "delta_pct": -6.259100578093141,
+            "kept_net_clp": 82000211.65,
+            "month": "2026-01",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": 12048391.059999961,
+            "delta_clp": 56595813.519999966,
+            "delta_pct": 469.73752128527065,
+            "kept_net_clp": 68644204.57999992,
+            "month": "2026-02",
+            "n_blocked": 62
+          },
+          {
+            "baseline_net_clp": 30131016.579999957,
+            "delta_clp": -1121262.08999997,
+            "delta_pct": -3.7212886164094092,
+            "kept_net_clp": 29009754.489999987,
+            "month": "2026-03",
+            "n_blocked": 60
+          },
+          {
+            "baseline_net_clp": -52022294.11999999,
+            "delta_clp": 12870356.999999925,
+            "delta_pct": -24.740079647990598,
+            "kept_net_clp": -39151937.120000064,
+            "month": "2026-04",
+            "n_blocked": 33
+          },
+          {
+            "baseline_net_clp": 60795997.19999991,
+            "delta_clp": -46498180.21999992,
+            "delta_pct": -76.48230535151085,
+            "kept_net_clp": 14297816.979999995,
+            "month": "2026-05",
+            "n_blocked": 41
+          },
+          {
+            "baseline_net_clp": -3590924.8700000225,
+            "delta_clp": -7853226.8299999805,
+            "delta_pct": 218.69649503415903,
+            "kept_net_clp": -11444151.700000003,
+            "month": "2026-06",
+            "n_blocked": 60
+          },
+          {
+            "baseline_net_clp": 12942514.290000001,
+            "delta_clp": 5852900.230000032,
+            "delta_pct": 45.222281381000755,
+            "kept_net_clp": 18795414.520000033,
+            "month": "2026-07",
+            "n_blocked": 13
+          }
+        ],
+        "n_months_negative": 4,
+        "n_months_positive": 3,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N6": {
+        "months": [
+          {
+            "baseline_net_clp": 87475383.91000001,
+            "delta_clp": -5475172.260000005,
+            "delta_pct": -6.259100578093141,
+            "kept_net_clp": 82000211.65,
+            "month": "2026-01",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": 12048391.059999961,
+            "delta_clp": 21018487.520000003,
+            "delta_pct": 174.4505753119211,
+            "kept_net_clp": 33066878.579999965,
+            "month": "2026-02",
+            "n_blocked": 75
+          },
+          {
+            "baseline_net_clp": 30131016.579999957,
+            "delta_clp": 13997893.570000041,
+            "delta_pct": 46.45675837997252,
+            "kept_net_clp": 44128910.15,
+            "month": "2026-03",
+            "n_blocked": 74
+          },
+          {
+            "baseline_net_clp": -52022294.11999999,
+            "delta_clp": 18010468.32999997,
+            "delta_pct": -34.62067299157389,
+            "kept_net_clp": -34011825.79000002,
+            "month": "2026-04",
+            "n_blocked": 46
+          },
+          {
+            "baseline_net_clp": 60795997.19999991,
+            "delta_clp": -61441021.029999934,
+            "delta_pct": -101.06096430638038,
+            "kept_net_clp": -645023.8300000193,
+            "month": "2026-05",
+            "n_blocked": 55
+          },
+          {
+            "baseline_net_clp": -3590924.8700000225,
+            "delta_clp": -14396327.53999998,
+            "delta_pct": 400.90862552632274,
+            "kept_net_clp": -17987252.410000004,
+            "month": "2026-06",
+            "n_blocked": 69
+          },
+          {
+            "baseline_net_clp": 12942514.290000001,
+            "delta_clp": 5766311.440000029,
+            "delta_pct": 44.553255347420055,
+            "kept_net_clp": 18708825.73000003,
+            "month": "2026-07",
+            "n_blocked": 19
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      }
+    },
+    "S6-K2P0": {
+      "N2": {
+        "months": [
+          {
+            "baseline_net_clp": 57854488.2,
+            "delta_clp": -6526159.439999998,
+            "delta_pct": -11.280299321704133,
+            "kept_net_clp": 51328328.760000005,
+            "month": "2026-01",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 3171785.0700000064,
+            "delta_clp": 33165388.94999998,
+            "delta_pct": 1045.6379678336752,
+            "kept_net_clp": 36337174.01999999,
+            "month": "2026-02",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 22095200.460000005,
+            "delta_clp": -9852298.409999998,
+            "delta_pct": -44.590219617315014,
+            "kept_net_clp": 12242902.050000006,
+            "month": "2026-03",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": -35060930.49000003,
+            "delta_clp": 2951548.3200000264,
+            "delta_pct": -8.418339954901818,
+            "kept_net_clp": -32109382.170000006,
+            "month": "2026-04",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 36440703.99,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 36440703.99,
+            "month": "2026-05",
+            "n_blocked": 0
+          },
+          {
+            "baseline_net_clp": -133647.89999999735,
+            "delta_clp": -11403367.169999996,
+            "delta_pct": 8532.395323832414,
+            "kept_net_clp": -11537015.069999993,
+            "month": "2026-06",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 9263118.08999999,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 9263118.08999999,
+            "month": "2026-07",
+            "n_blocked": 0
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 2,
+        "n_months_total": 7,
+        "n_months_zero": 2
+      },
+      "N3": {
+        "months": [
+          {
+            "baseline_net_clp": 57854488.2,
+            "delta_clp": -6526159.439999998,
+            "delta_pct": -11.280299321704133,
+            "kept_net_clp": 51328328.760000005,
+            "month": "2026-01",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 3171785.0700000064,
+            "delta_clp": 38191303.49999997,
+            "delta_pct": 1204.09493887932,
+            "kept_net_clp": 41363088.56999998,
+            "month": "2026-02",
+            "n_blocked": 15
+          },
+          {
+            "baseline_net_clp": 22095200.460000005,
+            "delta_clp": 6392511.539999984,
+            "delta_pct": 28.931674784180633,
+            "kept_net_clp": 28487711.99999999,
+            "month": "2026-03",
+            "n_blocked": 21
+          },
+          {
+            "baseline_net_clp": -35060930.49000003,
+            "delta_clp": 5167091.940000016,
+            "delta_pct": -14.737463803117711,
+            "kept_net_clp": -29893838.550000016,
+            "month": "2026-04",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 36440703.99,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 36440703.99,
+            "month": "2026-05",
+            "n_blocked": 0
+          },
+          {
+            "baseline_net_clp": -133647.89999999735,
+            "delta_clp": -11403367.169999996,
+            "delta_pct": 8532.395323832414,
+            "kept_net_clp": -11537015.069999993,
+            "month": "2026-06",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 9263118.08999999,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 9263118.08999999,
+            "month": "2026-07",
+            "n_blocked": 0
+          }
+        ],
+        "n_months_negative": 2,
+        "n_months_positive": 3,
+        "n_months_total": 7,
+        "n_months_zero": 2
+      },
+      "N4": {
+        "months": [
+          {
+            "baseline_net_clp": 57854488.2,
+            "delta_clp": -6526159.439999998,
+            "delta_pct": -11.280299321704133,
+            "kept_net_clp": 51328328.760000005,
+            "month": "2026-01",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 3171785.0700000064,
+            "delta_clp": 30795491.42999997,
+            "delta_pct": 970.9198684764573,
+            "kept_net_clp": 33967276.49999998,
+            "month": "2026-02",
+            "n_blocked": 18
+          },
+          {
+            "baseline_net_clp": 22095200.460000005,
+            "delta_clp": -3578375.879999999,
+            "delta_pct": -16.19526324949214,
+            "kept_net_clp": 18516824.580000006,
+            "month": "2026-03",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": -35060930.49000003,
+            "delta_clp": 5167091.940000016,
+            "delta_pct": -14.737463803117711,
+            "kept_net_clp": -29893838.550000016,
+            "month": "2026-04",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 36440703.99,
+            "delta_clp": -1088007.0,
+            "delta_pct": -2.9856914956927536,
+            "kept_net_clp": 35352696.99,
+            "month": "2026-05",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": -133647.89999999735,
+            "delta_clp": -6053685.839999995,
+            "delta_pct": 4529.577973166893,
+            "kept_net_clp": -6187333.739999993,
+            "month": "2026-06",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 9263118.08999999,
+            "delta_clp": 2275779.269999996,
+            "delta_pct": 24.568177236742947,
+            "kept_net_clp": 11538897.359999986,
+            "month": "2026-07",
+            "n_blocked": 3
+          }
+        ],
+        "n_months_negative": 4,
+        "n_months_positive": 3,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N5": {
+        "months": [
+          {
+            "baseline_net_clp": 57854488.2,
+            "delta_clp": -3102137.4899999946,
+            "delta_pct": -5.361965141366499,
+            "kept_net_clp": 54752350.71000001,
+            "month": "2026-01",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 3171785.0700000064,
+            "delta_clp": 37276474.109999955,
+            "delta_pct": 1175.252209318202,
+            "kept_net_clp": 40448259.17999996,
+            "month": "2026-02",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": 22095200.460000005,
+            "delta_clp": 899770.4399999864,
+            "delta_pct": 4.072243841502519,
+            "kept_net_clp": 22994970.89999999,
+            "month": "2026-03",
+            "n_blocked": 27
+          },
+          {
+            "baseline_net_clp": -35060930.49000003,
+            "delta_clp": 5167091.940000016,
+            "delta_pct": -14.737463803117711,
+            "kept_net_clp": -29893838.550000016,
+            "month": "2026-04",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 36440703.99,
+            "delta_clp": -27226527.390000004,
+            "delta_pct": -74.71460320160517,
+            "kept_net_clp": 9214176.599999998,
+            "month": "2026-05",
+            "n_blocked": 15
+          },
+          {
+            "baseline_net_clp": -133647.89999999735,
+            "delta_clp": 111059.5200000091,
+            "delta_pct": -83.09858965237112,
+            "kept_net_clp": -22588.379999988247,
+            "month": "2026-06",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": 9263118.08999999,
+            "delta_clp": 2275779.269999996,
+            "delta_pct": 24.568177236742947,
+            "kept_net_clp": 11538897.359999986,
+            "month": "2026-07",
+            "n_blocked": 3
+          }
+        ],
+        "n_months_negative": 2,
+        "n_months_positive": 5,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N6": {
+        "months": [
+          {
+            "baseline_net_clp": 57854488.2,
+            "delta_clp": -3102137.4899999946,
+            "delta_pct": -5.361965141366499,
+            "kept_net_clp": 54752350.71000001,
+            "month": "2026-01",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 3171785.0700000064,
+            "delta_clp": 20041540.139999986,
+            "delta_pct": 631.8694267641516,
+            "kept_net_clp": 23213325.209999993,
+            "month": "2026-02",
+            "n_blocked": 30
+          },
+          {
+            "baseline_net_clp": 22095200.460000005,
+            "delta_clp": 9227353.199999988,
+            "delta_pct": 41.76179897849176,
+            "kept_net_clp": 31322553.659999993,
+            "month": "2026-03",
+            "n_blocked": 33
+          },
+          {
+            "baseline_net_clp": -35060930.49000003,
+            "delta_clp": 9236765.04000001,
+            "delta_pct": -26.34489419108398,
+            "kept_net_clp": -25824165.45000002,
+            "month": "2026-04",
+            "n_blocked": 18
+          },
+          {
+            "baseline_net_clp": 36440703.99,
+            "delta_clp": -34309866.870000005,
+            "delta_pct": -94.15259068380036,
+            "kept_net_clp": 2130837.12,
+            "month": "2026-05",
+            "n_blocked": 21
+          },
+          {
+            "baseline_net_clp": -133647.89999999735,
+            "delta_clp": 13176.54000000842,
+            "delta_pct": -9.859144812607367,
+            "kept_net_clp": -120471.35999998893,
+            "month": "2026-06",
+            "n_blocked": 27
+          },
+          {
+            "baseline_net_clp": 9263118.08999999,
+            "delta_clp": 1848482.4299999978,
+            "delta_pct": 19.955293801074706,
+            "kept_net_clp": 11111600.519999988,
+            "month": "2026-07",
+            "n_blocked": 6
+          }
+        ],
+        "n_months_negative": 2,
+        "n_months_positive": 5,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      }
+    },
+    "S7-TPNONE": {
+      "N2": {
+        "months": [
+          {
+            "baseline_net_clp": 1761893.7299999986,
+            "delta_clp": -8978881.02,
+            "delta_pct": -509.61535688080386,
+            "kept_net_clp": -7216987.29,
+            "month": "2026-01",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 4500734.819999964,
+            "delta_clp": 21080605.650000025,
+            "delta_pct": 468.381419770032,
+            "kept_net_clp": 25581340.469999988,
+            "month": "2026-02",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 14529975.390000012,
+            "delta_clp": -8368994.760000005,
+            "delta_pct": -57.598134445291706,
+            "kept_net_clp": 6160980.630000006,
+            "month": "2026-03",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": -26776642.200000025,
+            "delta_clp": 2951548.3200000077,
+            "delta_pct": -11.022847069301337,
+            "kept_net_clp": -23825093.880000018,
+            "month": "2026-04",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 23422267.62,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 23422267.62,
+            "month": "2026-05",
+            "n_blocked": 0
+          },
+          {
+            "baseline_net_clp": 16250457.119999992,
+            "delta_clp": -12711610.830000002,
+            "delta_pct": -78.22309696356412,
+            "kept_net_clp": 3538846.2899999903,
+            "month": "2026-06",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": -523297.37999999966,
+            "delta_clp": 0.0,
+            "delta_pct": -0.0,
+            "kept_net_clp": -523297.37999999966,
+            "month": "2026-07",
+            "n_blocked": 0
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 2,
+        "n_months_total": 7,
+        "n_months_zero": 2
+      },
+      "N3": {
+        "months": [
+          {
+            "baseline_net_clp": 1761893.7299999986,
+            "delta_clp": -8978881.02,
+            "delta_pct": -509.61535688080386,
+            "kept_net_clp": -7216987.29,
+            "month": "2026-01",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 4500734.819999964,
+            "delta_clp": 24856629.840000022,
+            "delta_pct": 552.2793684609977,
+            "kept_net_clp": 29357364.659999985,
+            "month": "2026-02",
+            "n_blocked": 15
+          },
+          {
+            "baseline_net_clp": 14529975.390000012,
+            "delta_clp": 807534.6300000064,
+            "delta_pct": 5.557715056804414,
+            "kept_net_clp": 15337510.020000018,
+            "month": "2026-03",
+            "n_blocked": 21
+          },
+          {
+            "baseline_net_clp": -26776642.200000025,
+            "delta_clp": 3124725.900000006,
+            "delta_pct": -11.669595749387886,
+            "kept_net_clp": -23651916.30000002,
+            "month": "2026-04",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 23422267.62,
+            "delta_clp": 0.0,
+            "delta_pct": 0.0,
+            "kept_net_clp": 23422267.62,
+            "month": "2026-05",
+            "n_blocked": 0
+          },
+          {
+            "baseline_net_clp": 16250457.119999992,
+            "delta_clp": -14676799.92,
+            "delta_pct": -90.31622810128069,
+            "kept_net_clp": 1573657.1999999923,
+            "month": "2026-06",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": -523297.37999999966,
+            "delta_clp": 103530.08999999985,
+            "delta_pct": -19.784178930916855,
+            "kept_net_clp": -419767.2899999998,
+            "month": "2026-07",
+            "n_blocked": 3
+          }
+        ],
+        "n_months_negative": 2,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 1
+      },
+      "N4": {
+        "months": [
+          {
+            "baseline_net_clp": 1761893.7299999986,
+            "delta_clp": -8978881.02,
+            "delta_pct": -509.61535688080386,
+            "kept_net_clp": -7216987.29,
+            "month": "2026-01",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 4500734.819999964,
+            "delta_clp": 16978932.300000038,
+            "delta_pct": 377.2480045825089,
+            "kept_net_clp": 21479667.12,
+            "month": "2026-02",
+            "n_blocked": 18
+          },
+          {
+            "baseline_net_clp": 14529975.390000012,
+            "delta_clp": -10196771.160000013,
+            "delta_pct": -70.17748403770699,
+            "kept_net_clp": 4333204.229999999,
+            "month": "2026-03",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": -26776642.200000025,
+            "delta_clp": 4090379.160000004,
+            "delta_pct": -15.275922684585149,
+            "kept_net_clp": -22686263.04000002,
+            "month": "2026-04",
+            "n_blocked": 15
+          },
+          {
+            "baseline_net_clp": 23422267.62,
+            "delta_clp": 3864495.360000007,
+            "delta_pct": 16.499236635398017,
+            "kept_net_clp": 27286762.980000008,
+            "month": "2026-05",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": 16250457.119999992,
+            "delta_clp": -10748304.179999992,
+            "delta_pct": -66.1415497461403,
+            "kept_net_clp": 5502152.939999999,
+            "month": "2026-06",
+            "n_blocked": 18
+          },
+          {
+            "baseline_net_clp": -523297.37999999966,
+            "delta_clp": 1884247.379999998,
+            "delta_pct": -360.07200723993674,
+            "kept_net_clp": 1360949.9999999984,
+            "month": "2026-07",
+            "n_blocked": 6
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N5": {
+        "months": [
+          {
+            "baseline_net_clp": 1761893.7299999986,
+            "delta_clp": -6305922.719999998,
+            "delta_pct": -357.9059629209307,
+            "kept_net_clp": -4544028.989999999,
+            "month": "2026-01",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 4500734.819999964,
+            "delta_clp": 25265103.00000003,
+            "delta_pct": 561.3550677931349,
+            "kept_net_clp": 29765837.819999993,
+            "month": "2026-02",
+            "n_blocked": 27
+          },
+          {
+            "baseline_net_clp": 14529975.390000012,
+            "delta_clp": -4205203.380000008,
+            "delta_pct": -28.941572625746925,
+            "kept_net_clp": 10324772.010000004,
+            "month": "2026-03",
+            "n_blocked": 30
+          },
+          {
+            "baseline_net_clp": -26776642.200000025,
+            "delta_clp": 4090379.160000004,
+            "delta_pct": -15.275922684585149,
+            "kept_net_clp": -22686263.04000002,
+            "month": "2026-04",
+            "n_blocked": 15
+          },
+          {
+            "baseline_net_clp": 23422267.62,
+            "delta_clp": -15399628.019999992,
+            "delta_pct": -65.74781003206722,
+            "kept_net_clp": 8022639.600000009,
+            "month": "2026-05",
+            "n_blocked": 18
+          },
+          {
+            "baseline_net_clp": 16250457.119999992,
+            "delta_clp": -7776049.85999999,
+            "delta_pct": -47.85126844481034,
+            "kept_net_clp": 8474407.260000002,
+            "month": "2026-06",
+            "n_blocked": 33
+          },
+          {
+            "baseline_net_clp": -523297.37999999966,
+            "delta_clp": 1884247.379999998,
+            "delta_pct": -360.07200723993674,
+            "kept_net_clp": 1360949.9999999984,
+            "month": "2026-07",
+            "n_blocked": 6
+          }
+        ],
+        "n_months_negative": 4,
+        "n_months_positive": 3,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N6": {
+        "months": [
+          {
+            "baseline_net_clp": 1761893.7299999986,
+            "delta_clp": -6305922.719999998,
+            "delta_pct": -357.9059629209307,
+            "kept_net_clp": -4544028.989999999,
+            "month": "2026-01",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": 4500734.819999964,
+            "delta_clp": 5479564.470000022,
+            "delta_pct": 121.74821866088229,
+            "kept_net_clp": 9980299.289999986,
+            "month": "2026-02",
+            "n_blocked": 33
+          },
+          {
+            "baseline_net_clp": 14529975.390000012,
+            "delta_clp": 1161419.2199999914,
+            "delta_pct": 7.993263504075284,
+            "kept_net_clp": 15691394.610000003,
+            "month": "2026-03",
+            "n_blocked": 36
+          },
+          {
+            "baseline_net_clp": -26776642.200000025,
+            "delta_clp": 5321445.870000005,
+            "delta_pct": -19.873462214765674,
+            "kept_net_clp": -21455196.33000002,
+            "month": "2026-04",
+            "n_blocked": 21
+          },
+          {
+            "baseline_net_clp": 23422267.62,
+            "delta_clp": -24596863.40999999,
+            "delta_pct": -105.01486794129623,
+            "kept_net_clp": -1174595.7899999868,
+            "month": "2026-05",
+            "n_blocked": 24
+          },
+          {
+            "baseline_net_clp": 16250457.119999992,
+            "delta_clp": -14221267.590000005,
+            "delta_pct": -87.51303107958364,
+            "kept_net_clp": 2029189.5299999863,
+            "month": "2026-06",
+            "n_blocked": 39
+          },
+          {
+            "baseline_net_clp": -523297.37999999966,
+            "delta_clp": 2224955.429999997,
+            "delta_pct": -425.179929240234,
+            "kept_net_clp": 1701658.0499999975,
+            "month": "2026-07",
+            "n_blocked": 9
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      }
+    },
+    "SuperTrend-p14x3-M15": {
+      "N2": {
+        "months": [
+          {
+            "baseline_net_clp": 27859001.98,
+            "delta_clp": 295531.30999999866,
+            "delta_pct": 1.060810829519883,
+            "kept_net_clp": 28154533.29,
+            "month": "2026-01",
+            "n_blocked": 1
+          },
+          {
+            "baseline_net_clp": 4375871.169999995,
+            "delta_clp": 10126496.230000008,
+            "delta_pct": 231.4166902221671,
+            "kept_net_clp": 14502367.400000004,
+            "month": "2026-02",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": -6494159.270000001,
+            "delta_clp": 1251772.7200000007,
+            "delta_pct": -19.275362182486177,
+            "kept_net_clp": -5242386.550000001,
+            "month": "2026-03",
+            "n_blocked": 1
+          },
+          {
+            "baseline_net_clp": 9815278.570000002,
+            "delta_clp": 2445192.1400000025,
+            "delta_pct": 24.91210129759977,
+            "kept_net_clp": 12260470.710000005,
+            "month": "2026-04",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 933025.5899999982,
+            "delta_clp": 2625899.1700000027,
+            "delta_pct": 281.4391371623588,
+            "kept_net_clp": 3558924.7600000007,
+            "month": "2026-05",
+            "n_blocked": 4
+          },
+          {
+            "baseline_net_clp": -19707734.090000004,
+            "delta_clp": 567846.7799999975,
+            "delta_pct": -2.881339769487408,
+            "kept_net_clp": -19139887.310000006,
+            "month": "2026-06",
+            "n_blocked": 1
+          },
+          {
+            "baseline_net_clp": 4202693.579999998,
+            "delta_clp": -7529.460000000894,
+            "delta_pct": -0.1791579580255979,
+            "kept_net_clp": 4195164.119999997,
+            "month": "2026-07",
+            "n_blocked": 2
+          }
+        ],
+        "n_months_negative": 1,
+        "n_months_positive": 6,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N3": {
+        "months": [
+          {
+            "baseline_net_clp": 27859001.98,
+            "delta_clp": 724083.0800000019,
+            "delta_pct": 2.599099136860042,
+            "kept_net_clp": 28583085.060000002,
+            "month": "2026-01",
+            "n_blocked": 2
+          },
+          {
+            "baseline_net_clp": 4375871.169999995,
+            "delta_clp": 1891776.8100000033,
+            "delta_pct": 43.2320042456827,
+            "kept_net_clp": 6267647.979999999,
+            "month": "2026-02",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": -6494159.270000001,
+            "delta_clp": 1251772.7200000007,
+            "delta_pct": -19.275362182486177,
+            "kept_net_clp": -5242386.550000001,
+            "month": "2026-03",
+            "n_blocked": 1
+          },
+          {
+            "baseline_net_clp": 9815278.570000002,
+            "delta_clp": 3240805.080000002,
+            "delta_pct": 33.0179633403925,
+            "kept_net_clp": 13056083.650000004,
+            "month": "2026-04",
+            "n_blocked": 4
+          },
+          {
+            "baseline_net_clp": 933025.5899999982,
+            "delta_clp": 2792802.200000003,
+            "delta_pct": 299.327502903753,
+            "kept_net_clp": 3725827.790000001,
+            "month": "2026-05",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": -19707734.090000004,
+            "delta_clp": -379610.2700000033,
+            "delta_pct": 1.9261994720774276,
+            "kept_net_clp": -20087344.360000007,
+            "month": "2026-06",
+            "n_blocked": 2
+          },
+          {
+            "baseline_net_clp": 4202693.579999998,
+            "delta_clp": 1692873.5799999991,
+            "delta_pct": 40.28068065814115,
+            "kept_net_clp": 5895567.159999997,
+            "month": "2026-07",
+            "n_blocked": 4
+          }
+        ],
+        "n_months_negative": 1,
+        "n_months_positive": 6,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N4": {
+        "months": [
+          {
+            "baseline_net_clp": 27859001.98,
+            "delta_clp": 724083.0800000019,
+            "delta_pct": 2.599099136860042,
+            "kept_net_clp": 28583085.060000002,
+            "month": "2026-01",
+            "n_blocked": 2
+          },
+          {
+            "baseline_net_clp": 4375871.169999995,
+            "delta_clp": 1891776.8100000033,
+            "delta_pct": 43.2320042456827,
+            "kept_net_clp": 6267647.979999999,
+            "month": "2026-02",
+            "n_blocked": 9
+          },
+          {
+            "baseline_net_clp": -6494159.270000001,
+            "delta_clp": 1593108.240000002,
+            "delta_pct": -24.53140081364222,
+            "kept_net_clp": -4901051.029999999,
+            "month": "2026-03",
+            "n_blocked": 2
+          },
+          {
+            "baseline_net_clp": 9815278.570000002,
+            "delta_clp": 3376335.3600000013,
+            "delta_pct": 34.39877264736665,
+            "kept_net_clp": 13191613.930000003,
+            "month": "2026-04",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": 933025.5899999982,
+            "delta_clp": 2792802.200000003,
+            "delta_pct": 299.327502903753,
+            "kept_net_clp": 3725827.790000001,
+            "month": "2026-05",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": -19707734.090000004,
+            "delta_clp": -379610.2700000033,
+            "delta_pct": 1.9261994720774276,
+            "kept_net_clp": -20087344.360000007,
+            "month": "2026-06",
+            "n_blocked": 2
+          },
+          {
+            "baseline_net_clp": 4202693.579999998,
+            "delta_clp": 1692873.5799999991,
+            "delta_pct": 40.28068065814115,
+            "kept_net_clp": 5895567.159999997,
+            "month": "2026-07",
+            "n_blocked": 4
+          }
+        ],
+        "n_months_negative": 1,
+        "n_months_positive": 6,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N5": {
+        "months": [
+          {
+            "baseline_net_clp": 27859001.98,
+            "delta_clp": 3932887.9499999993,
+            "delta_pct": 14.117117163146846,
+            "kept_net_clp": 31791889.93,
+            "month": "2026-01",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 4375871.169999995,
+            "delta_clp": -5945763.589999996,
+            "delta_pct": -135.87611149895903,
+            "kept_net_clp": -1569892.420000001,
+            "month": "2026-02",
+            "n_blocked": 11
+          },
+          {
+            "baseline_net_clp": -6494159.270000001,
+            "delta_clp": 2184170.8500000015,
+            "delta_pct": -33.63285006097488,
+            "kept_net_clp": -4309988.42,
+            "month": "2026-03",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 9815278.570000002,
+            "delta_clp": 3612885.9000000004,
+            "delta_pct": 36.80879634983197,
+            "kept_net_clp": 13428164.470000003,
+            "month": "2026-04",
+            "n_blocked": 6
+          },
+          {
+            "baseline_net_clp": 933025.5899999982,
+            "delta_clp": -3872024.809999997,
+            "delta_pct": -414.99663583718046,
+            "kept_net_clp": -2938999.219999999,
+            "month": "2026-05",
+            "n_blocked": 8
+          },
+          {
+            "baseline_net_clp": -19707734.090000004,
+            "delta_clp": -188236.4900000021,
+            "delta_pct": 0.9551401959270197,
+            "kept_net_clp": -19895970.580000006,
+            "month": "2026-06",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 4202693.579999998,
+            "delta_clp": 1692873.5799999991,
+            "delta_pct": 40.28068065814115,
+            "kept_net_clp": 5895567.159999997,
+            "month": "2026-07",
+            "n_blocked": 4
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      },
+      "N6": {
+        "months": [
+          {
+            "baseline_net_clp": 27859001.98,
+            "delta_clp": 3932887.9499999993,
+            "delta_pct": 14.117117163146846,
+            "kept_net_clp": 31791889.93,
+            "month": "2026-01",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 4375871.169999995,
+            "delta_clp": -4502617.089999997,
+            "delta_pct": -102.8964728410869,
+            "kept_net_clp": -126745.9200000015,
+            "month": "2026-02",
+            "n_blocked": 12
+          },
+          {
+            "baseline_net_clp": -6494159.270000001,
+            "delta_clp": 3609121.150000001,
+            "delta_pct": -55.57487890191519,
+            "kept_net_clp": -2885038.1200000006,
+            "month": "2026-03",
+            "n_blocked": 5
+          },
+          {
+            "baseline_net_clp": 9815278.570000002,
+            "delta_clp": 3452257.42,
+            "delta_pct": 35.17228161564037,
+            "kept_net_clp": 13267535.990000002,
+            "month": "2026-04",
+            "n_blocked": 7
+          },
+          {
+            "baseline_net_clp": 933025.5899999982,
+            "delta_clp": -2534290.749999997,
+            "delta_pct": -271.620711924954,
+            "kept_net_clp": -1601265.1599999992,
+            "month": "2026-05",
+            "n_blocked": 10
+          },
+          {
+            "baseline_net_clp": -19707734.090000004,
+            "delta_clp": -188236.4900000021,
+            "delta_pct": 0.9551401959270197,
+            "kept_net_clp": -19895970.580000006,
+            "month": "2026-06",
+            "n_blocked": 3
+          },
+          {
+            "baseline_net_clp": 4202693.579999998,
+            "delta_clp": 1692873.5799999991,
+            "delta_pct": 40.28068065814115,
+            "kept_net_clp": 5895567.159999997,
+            "month": "2026-07",
+            "n_blocked": 4
+          }
+        ],
+        "n_months_negative": 3,
+        "n_months_positive": 4,
+        "n_months_total": 7,
+        "n_months_zero": 0
+      }
+    }
+  },
+  "m2_topk_sensitivity": {
+    "by_group": {
+      "K1": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.499999955,
+              "delta_pct": 17.941168118161038,
+              "n_blocked": 92,
+              "n_kept": 2252,
+              "net_clp": 128931335.95000021
+            },
+            "N3": {
+              "delta_clp": 48272623.08999944,
+              "delta_pct": 44.15784195061881,
+              "n_blocked": 159,
+              "n_kept": 2185,
+              "net_clp": 157590970.5399997
+            },
+            "N4": {
+              "delta_clp": 29577601.320000082,
+              "delta_pct": 27.056392645825724,
+              "n_blocked": 209,
+              "n_kept": 2135,
+              "net_clp": 138895948.77000034
+            },
+            "N5": {
+              "delta_clp": 14371229.34999998,
+              "delta_pct": 13.146218988146574,
+              "n_blocked": 293,
+              "n_kept": 2051,
+              "net_clp": 123689576.80000024
+            },
+            "N6": {
+              "delta_clp": -22519359.969999984,
+              "delta_pct": -20.59979911450805,
+              "n_blocked": 362,
+              "n_kept": 1982,
+              "net_clp": 86798987.48000027
+            },
+            "baseline": {
+              "n": 2344,
+              "net_clp": 109318347.45000026
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.249999896,
+              "delta_pct": 9.760326854557412,
+              "n_blocked": 36,
+              "n_kept": 875,
+              "net_clp": 93732992.60999994
+            },
+            "N3": {
+              "delta_clp": 31821380.37000008,
+              "delta_pct": 37.26249438025287,
+              "n_blocked": 60,
+              "n_kept": 851,
+              "net_clp": 117219260.73000012
+            },
+            "N4": {
+              "delta_clp": 20992134.48000002,
+              "delta_pct": 24.581563841522037,
+              "n_blocked": 81,
+              "n_kept": 830,
+              "net_clp": 106390014.84000006
+            },
+            "N5": {
+              "delta_clp": 15401510.40000008,
+              "delta_pct": 18.035003134824965,
+              "n_blocked": 114,
+              "n_kept": 797,
+              "net_clp": 100799390.76000012
+            },
+            "N6": {
+              "delta_clp": 2955312.9900000542,
+              "delta_pct": 3.460639746023847,
+              "n_blocked": 144,
+              "n_kept": 767,
+              "net_clp": 88353193.3500001
+            },
+            "baseline": {
+              "n": 911,
+              "net_clp": 85397880.36000004
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999982,
+              "delta_pct": -22.63537348330164,
+              "n_blocked": 39,
+              "n_kept": 1127,
+              "net_clp": 20600602.810000043
+            },
+            "N3": {
+              "delta_clp": 5236739.520000089,
+              "delta_pct": 19.666336993467826,
+              "n_blocked": 72,
+              "n_kept": 1094,
+              "net_clp": 31864674.970000114
+            },
+            "N4": {
+              "delta_clp": -3105902.1599999815,
+              "delta_pct": -11.664074242000533,
+              "n_blocked": 99,
+              "n_kept": 1067,
+              "net_clp": 23522033.290000044
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999566,
+              "delta_pct": -9.189876716484056,
+              "n_blocked": 141,
+              "n_kept": 1025,
+              "net_clp": 24180861.01000007
+            },
+            "N6": {
+              "delta_clp": -30936668.730000075,
+              "delta_pct": -116.18125178382932,
+              "n_blocked": 174,
+              "n_kept": 992,
+              "net_clp": -4308733.280000049
+            },
+            "baseline": {
+              "n": 1166,
+              "net_clp": 26627935.450000025
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.89000001,
+              "delta_pct": -639.165692410897,
+              "n_blocked": 17,
+              "n_kept": 250,
+              "net_clp": 14597740.530000003
+            },
+            "N3": {
+              "delta_clp": 11214503.19999998,
+              "delta_pct": -414.206251333624,
+              "n_blocked": 27,
+              "n_kept": 240,
+              "net_clp": 8507034.839999972
+            },
+            "N4": {
+              "delta_clp": 11691368.999999978,
+              "delta_pct": -431.8192290897147,
+              "n_blocked": 29,
+              "n_kept": 238,
+              "net_clp": 8983900.639999969
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000155,
+              "delta_pct": -52.32908391217585,
+              "n_blocked": 38,
+              "n_kept": 229,
+              "net_clp": -1290674.9699999928
+            },
+            "N6": {
+              "delta_clp": 5461995.769999998,
+              "delta_pct": -201.7381200347612,
+              "n_blocked": 44,
+              "n_kept": 223,
+              "net_clp": 2754527.4099999894
+            },
+            "baseline": {
+              "n": 267,
+              "net_clp": -2707468.3600000083
+            }
+          }
+        },
+        "n_removed": 3,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 44.15784195061881,
+              "net_clp": 157590970.5399997,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 27.056392645825724,
+              "net_clp": 138895948.77000034,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 17.941168118161038,
+              "net_clp": 128931335.95000021,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 13.146218988146574,
+              "net_clp": 123689576.80000024,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -20.59979911450805,
+              "net_clp": 86798987.48000027,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 37.26249438025287,
+              "net_clp": 117219260.73000012,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 24.581563841522037,
+              "net_clp": 106390014.84000006,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 18.035003134824965,
+              "net_clp": 100799390.76000012,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 9.760326854557412,
+              "net_clp": 93732992.60999994,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 3.460639746023847,
+              "net_clp": 88353193.3500001,
+              "rung": "N6"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 19.666336993467826,
+              "net_clp": 31864674.970000114,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -9.189876716484056,
+              "net_clp": 24180861.01000007,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -11.664074242000533,
+              "net_clp": 23522033.290000044,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -22.63537348330164,
+              "net_clp": 20600602.810000043,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -116.18125178382932,
+              "net_clp": -4308733.280000049,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -639.165692410897,
+              "net_clp": 14597740.530000003,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -431.8192290897147,
+              "net_clp": 8983900.639999969,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -414.206251333624,
+              "net_clp": 8507034.839999972,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -201.7381200347612,
+              "net_clp": 2754527.4099999894,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -52.32908391217585,
+              "net_clp": -1290674.9699999928,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          }
+        ]
+      },
+      "K10": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.500000056,
+              "delta_pct": -39.50907551141129,
+              "n_blocked": 92,
+              "n_kept": 2225,
+              "net_clp": -30028741.269999985
+            },
+            "N3": {
+              "delta_clp": 48272623.08999984,
+              "delta_pct": -97.24202463060102,
+              "n_blocked": 159,
+              "n_kept": 2158,
+              "net_clp": -1369106.6800002004
+            },
+            "N4": {
+              "delta_clp": 29577601.319999915,
+              "delta_pct": -59.58213272792627,
+              "n_blocked": 209,
+              "n_kept": 2108,
+              "net_clp": -20064128.450000126
+            },
+            "N5": {
+              "delta_clp": 53242694.06999993,
+              "delta_pct": -107.25390576977045,
+              "n_blocked": 288,
+              "n_kept": 2029,
+              "net_clp": 3600964.2999998895
+            },
+            "N6": {
+              "delta_clp": 16352104.750000034,
+              "delta_pct": -32.940239644675096,
+              "n_blocked": 357,
+              "n_kept": 1960,
+              "net_clp": -33289625.020000007
+            },
+            "baseline": {
+              "n": 2317,
+              "net_clp": -49641729.77000004
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.250000011,
+              "delta_pct": 45.381252069120556,
+              "n_blocked": 36,
+              "n_kept": 866,
+              "net_clp": 26701974.929999966
+            },
+            "N3": {
+              "delta_clp": 31821380.369999997,
+              "delta_pct": 173.25430545441458,
+              "n_blocked": 60,
+              "n_kept": 842,
+              "net_clp": 50188243.04999995
+            },
+            "N4": {
+              "delta_clp": 20992134.48000001,
+              "delta_pct": 114.293523318268,
+              "n_blocked": 81,
+              "n_kept": 821,
+              "net_clp": 39358997.15999997
+            },
+            "N5": {
+              "delta_clp": 39441193.82999995,
+              "delta_pct": 214.7410503207402,
+              "n_blocked": 111,
+              "n_kept": 791,
+              "net_clp": 57808056.50999991
+            },
+            "N6": {
+              "delta_clp": 26994996.420000046,
+              "delta_pct": 146.976633355001,
+              "n_blocked": 141,
+              "n_kept": 761,
+              "net_clp": 45361859.1
+            },
+            "baseline": {
+              "n": 902,
+              "net_clp": 18366862.679999955
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.640000061,
+              "delta_pct": -75.95476955205461,
+              "n_blocked": 39,
+              "n_kept": 1118,
+              "net_clp": 1908090.869999936
+            },
+            "N3": {
+              "delta_clp": 5236739.519999965,
+              "delta_pct": 65.99193494084813,
+              "n_blocked": 72,
+              "n_kept": 1085,
+              "net_clp": 13172163.029999962
+            },
+            "N4": {
+              "delta_clp": -3105902.160000026,
+              "delta_pct": -39.139715178226545,
+              "n_blocked": 99,
+              "n_kept": 1058,
+              "net_clp": 4829521.349999971
+            },
+            "N5": {
+              "delta_clp": -2447074.4400000395,
+              "delta_pct": -30.837351490015692,
+              "n_blocked": 141,
+              "n_kept": 1016,
+              "net_clp": 5488349.069999957
+            },
+            "N6": {
+              "delta_clp": -30936668.729999967,
+              "delta_pct": -389.85529494442795,
+              "n_blocked": 174,
+              "n_kept": 983,
+              "net_clp": -23001245.21999997
+            },
+            "baseline": {
+              "n": 1157,
+              "net_clp": 7935423.509999997
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.889999993,
+              "delta_pct": -22.78679718375008,
+              "n_blocked": 17,
+              "n_kept": 241,
+              "net_clp": -58638807.070000015
+            },
+            "N3": {
+              "delta_clp": 11214503.200000003,
+              "delta_pct": -14.766802964313504,
+              "n_blocked": 27,
+              "n_kept": 231,
+              "net_clp": -64729512.760000005
+            },
+            "N4": {
+              "delta_clp": 11691369.0,
+              "delta_pct": -15.394720508536034,
+              "n_blocked": 29,
+              "n_kept": 229,
+              "net_clp": -64252646.96000001
+            },
+            "N5": {
+              "delta_clp": 16248574.680000007,
+              "delta_pct": -21.395464112087765,
+              "n_blocked": 36,
+              "n_kept": 222,
+              "net_clp": -59695441.28
+            },
+            "N6": {
+              "delta_clp": 20293777.060000002,
+              "delta_pct": -26.7220225365601,
+              "n_blocked": 42,
+              "n_kept": 216,
+              "net_clp": -55650238.900000006
+            },
+            "baseline": {
+              "n": 258,
+              "net_clp": -75944015.96000001
+            }
+          }
+        },
+        "n_removed": 30,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": -107.25390576977045,
+              "net_clp": 3600964.2999998895,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -97.24202463060102,
+              "net_clp": -1369106.6800002004,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -59.58213272792627,
+              "net_clp": -20064128.450000126,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -39.50907551141129,
+              "net_clp": -30028741.269999985,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -32.940239644675096,
+              "net_clp": -33289625.020000007,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 214.7410503207402,
+              "net_clp": 57808056.50999991,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 173.25430545441458,
+              "net_clp": 50188243.04999995,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 146.976633355001,
+              "net_clp": 45361859.1,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": 114.293523318268,
+              "net_clp": 39358997.15999997,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 45.381252069120556,
+              "net_clp": 26701974.929999966,
+              "rung": "N2"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 65.99193494084813,
+              "net_clp": 13172163.029999962,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -30.837351490015692,
+              "net_clp": 5488349.069999957,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -39.139715178226545,
+              "net_clp": 4829521.349999971,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -75.95476955205461,
+              "net_clp": 1908090.869999936,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -389.85529494442795,
+              "net_clp": -23001245.21999997,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -26.7220225365601,
+              "net_clp": -55650238.900000006,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -22.78679718375008,
+              "net_clp": -58638807.070000015,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -21.395464112087765,
+              "net_clp": -59695441.28,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -15.394720508536034,
+              "net_clp": -64252646.96000001,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -14.766802964313504,
+              "net_clp": -64729512.760000005,
+              "rung": "N3"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 5891175.0,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-27T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6878161.71,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 6878161.71,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 6878161.71,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6267648.0,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-01-27T22:15:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 6267648.0,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-01-27T22:15:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 6267648.0,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-01-27T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": -6314079.66,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": -6314079.66,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": -6314079.66,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 5756899.62,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-03-22T21:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 10230026.32,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-20T01:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 7994404.15,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-02T21:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6617140.43,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-03T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6607728.61,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-04-01T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 5282543.65,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-04-20T22:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6837377.14,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6287099.1,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-07-01T21:15:00"
+          }
+        ]
+      },
+      "K3": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.50000023,
+              "delta_pct": 34.776320482500374,
+              "n_blocked": 92,
+              "n_kept": 2246,
+              "net_clp": 76010526.33000036
+            },
+            "N3": {
+              "delta_clp": 48272623.09000013,
+              "delta_pct": 85.59349387824157,
+              "n_blocked": 159,
+              "n_kept": 2179,
+              "net_clp": 104670160.92000026
+            },
+            "N4": {
+              "delta_clp": 29577601.320000164,
+              "delta_pct": 52.44484503766163,
+              "n_blocked": 209,
+              "n_kept": 2129,
+              "net_clp": 85975139.15000029
+            },
+            "N5": {
+              "delta_clp": 14371229.349999972,
+              "delta_pct": 25.482015532875504,
+              "n_blocked": 293,
+              "n_kept": 2045,
+              "net_clp": 70768767.1800001
+            },
+            "N6": {
+              "delta_clp": -22519359.970000125,
+              "delta_pct": -39.92968635950126,
+              "n_blocked": 362,
+              "n_kept": 1976,
+              "net_clp": 33878177.86
+            },
+            "baseline": {
+              "n": 2338,
+              "net_clp": 56397537.830000125
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.2500000745,
+              "delta_pct": 12.091753194406502,
+              "n_blocked": 36,
+              "n_kept": 873,
+              "net_clp": 77267318.49000004
+            },
+            "N3": {
+              "delta_clp": 31821380.370000064,
+              "delta_pct": 46.16329884931895,
+              "n_blocked": 60,
+              "n_kept": 849,
+              "net_clp": 100753586.61000003
+            },
+            "N4": {
+              "delta_clp": 20992134.48000008,
+              "delta_pct": 30.453304231859573,
+              "n_blocked": 81,
+              "n_kept": 828,
+              "net_clp": 89924340.72000004
+            },
+            "N5": {
+              "delta_clp": 15401510.399999991,
+              "delta_pct": 22.342981952988477,
+              "n_blocked": 114,
+              "n_kept": 795,
+              "net_clp": 84333716.63999996
+            },
+            "N6": {
+              "delta_clp": 2955312.989999965,
+              "delta_pct": 4.287274629961077,
+              "n_blocked": 144,
+              "n_kept": 765,
+              "net_clp": 71887519.22999993
+            },
+            "baseline": {
+              "n": 909,
+              "net_clp": 68932206.23999996
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999954,
+              "delta_pct": -44.472221065961406,
+              "n_blocked": 39,
+              "n_kept": 1125,
+              "net_clp": 7525695.509999987
+            },
+            "N3": {
+              "delta_clp": 5236739.520000087,
+              "delta_pct": 38.63888912530673,
+              "n_blocked": 72,
+              "n_kept": 1092,
+              "net_clp": 18789767.670000028
+            },
+            "N4": {
+              "delta_clp": -3105902.159999978,
+              "delta_pct": -22.91666574897501,
+              "n_blocked": 99,
+              "n_kept": 1065,
+              "net_clp": 10447125.989999963
+            },
+            "N5": {
+              "delta_clp": -2447074.439999927,
+              "delta_pct": -18.05555491301726,
+              "n_blocked": 141,
+              "n_kept": 1023,
+              "net_clp": 11105953.710000014
+            },
+            "N6": {
+              "delta_clp": -30936668.729999885,
+              "delta_pct": -228.263886030518,
+              "n_blocked": 174,
+              "n_kept": 990,
+              "net_clp": -17383640.579999946
+            },
+            "baseline": {
+              "n": 1164,
+              "net_clp": 13553028.14999994
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.890000015,
+              "delta_pct": -66.3347522852359,
+              "n_blocked": 17,
+              "n_kept": 248,
+              "net_clp": -8782487.669999996
+            },
+            "N3": {
+              "delta_clp": 11214503.20000001,
+              "delta_pct": -42.987709452259914,
+              "n_blocked": 27,
+              "n_kept": 238,
+              "net_clp": -14873193.360000003
+            },
+            "N4": {
+              "delta_clp": 11691369.000000011,
+              "delta_pct": -44.81564316385933,
+              "n_blocked": 29,
+              "n_kept": 236,
+              "net_clp": -14396327.560000002
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000155,
+              "delta_pct": -5.43088726419936,
+              "n_blocked": 38,
+              "n_kept": 227,
+              "net_clp": -24670903.169999998
+            },
+            "N6": {
+              "delta_clp": 5461995.769999996,
+              "delta_pct": -20.937056506456056,
+              "n_blocked": 44,
+              "n_kept": 221,
+              "net_clp": -20625700.790000018
+            },
+            "baseline": {
+              "n": 265,
+              "net_clp": -26087696.560000014
+            }
+          }
+        },
+        "n_removed": 9,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 85.59349387824157,
+              "net_clp": 104670160.92000026,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 52.44484503766163,
+              "net_clp": 85975139.15000029,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 34.776320482500374,
+              "net_clp": 76010526.33000036,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 25.482015532875504,
+              "net_clp": 70768767.1800001,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -39.92968635950126,
+              "net_clp": 33878177.86,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 46.16329884931895,
+              "net_clp": 100753586.61000003,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 30.453304231859573,
+              "net_clp": 89924340.72000004,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 22.342981952988477,
+              "net_clp": 84333716.63999996,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 12.091753194406502,
+              "net_clp": 77267318.49000004,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 4.287274629961077,
+              "net_clp": 71887519.22999993,
+              "rung": "N6"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 38.63888912530673,
+              "net_clp": 18789767.670000028,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -18.05555491301726,
+              "net_clp": 11105953.710000014,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -22.91666574897501,
+              "net_clp": 10447125.989999963,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -44.472221065961406,
+              "net_clp": 7525695.509999987,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -228.263886030518,
+              "net_clp": -17383640.579999946,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -66.3347522852359,
+              "net_clp": -8782487.669999996,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -44.81564316385933,
+              "net_clp": -14396327.560000002,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -42.987709452259914,
+              "net_clp": -14873193.360000003,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -20.937056506456056,
+              "net_clp": -20625700.790000018,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -5.43088726419936,
+              "net_clp": -24670903.169999998,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          }
+        ]
+      },
+      "K5": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.500000022,
+              "delta_pct": 56.39998580052671,
+              "n_blocked": 92,
+              "n_kept": 2240,
+              "net_clp": 54387799.56000008
+            },
+            "N3": {
+              "delta_clp": 48272623.09000013,
+              "delta_pct": 138.8149111916413,
+              "n_blocked": 159,
+              "n_kept": 2173,
+              "net_clp": 83047434.15000018
+            },
+            "N4": {
+              "delta_clp": 29577601.320000187,
+              "delta_pct": 85.05467152349824,
+              "n_blocked": 209,
+              "n_kept": 2123,
+              "net_clp": 64352412.38000024
+            },
+            "N5": {
+              "delta_clp": 38392089.12000001,
+              "delta_pct": 110.40200636535091,
+              "n_blocked": 290,
+              "n_kept": 2042,
+              "net_clp": 73166900.18000007
+            },
+            "N6": {
+              "delta_clp": 1501499.7999999523,
+              "delta_pct": 4.3177798936399165,
+              "n_blocked": 359,
+              "n_kept": 1973,
+              "net_clp": 36276310.86000001
+            },
+            "baseline": {
+              "n": 2332,
+              "net_clp": 34774811.060000055
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.249999955,
+              "delta_pct": 15.754643214246407,
+              "n_blocked": 36,
+              "n_kept": 871,
+              "net_clp": 61240862.869999945
+            },
+            "N3": {
+              "delta_clp": 31821380.369999975,
+              "delta_pct": 60.147299673639864,
+              "n_blocked": 60,
+              "n_kept": 847,
+              "net_clp": 84727130.98999996
+            },
+            "N4": {
+              "delta_clp": 20992134.480000034,
+              "delta_pct": 39.67836054492036,
+              "n_blocked": 81,
+              "n_kept": 826,
+              "net_clp": 73897885.10000002
+            },
+            "N5": {
+              "delta_clp": 31427966.019999966,
+              "delta_pct": 59.40368608647854,
+              "n_blocked": 112,
+              "n_kept": 795,
+              "net_clp": 84333716.63999996
+            },
+            "N6": {
+              "delta_clp": 18981768.60999994,
+              "delta_pct": 35.87846006824115,
+              "n_blocked": 142,
+              "n_kept": 765,
+              "net_clp": 71887519.22999993
+            },
+            "baseline": {
+              "n": 907,
+              "net_clp": 52905750.61999999
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999997,
+              "delta_pct": -23.021616750219884,
+              "n_blocked": 39,
+              "n_kept": 1123,
+              "net_clp": 20153854.83000003
+            },
+            "N3": {
+              "delta_clp": 5236739.520000089,
+              "delta_pct": 20.001917506609118,
+              "n_blocked": 72,
+              "n_kept": 1090,
+              "net_clp": 31417926.990000118
+            },
+            "N4": {
+              "delta_clp": -3105902.1599999852,
+              "delta_pct": -11.86310652852898,
+              "n_blocked": 99,
+              "n_kept": 1063,
+              "net_clp": 23075285.310000043
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999566,
+              "delta_pct": -9.346690033841899,
+              "n_blocked": 141,
+              "n_kept": 1021,
+              "net_clp": 23734113.030000072
+            },
+            "N6": {
+              "delta_clp": -30936668.73000007,
+              "delta_pct": -118.16373403784361,
+              "n_blocked": 174,
+              "n_kept": 988,
+              "net_clp": -4755481.260000044
+            },
+            "baseline": {
+              "n": 1162,
+              "net_clp": 26181187.47000003
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.890000027,
+              "delta_pct": -39.0529862813494,
+              "n_blocked": 17,
+              "n_kept": 246,
+              "net_clp": -27006918.139999997
+            },
+            "N3": {
+              "delta_clp": 11214503.200000014,
+              "delta_pct": -25.30797763873446,
+              "n_blocked": 27,
+              "n_kept": 236,
+              "net_clp": -33097623.83000001
+            },
+            "N4": {
+              "delta_clp": 11691369.000000019,
+              "delta_pct": -26.38412954558641,
+              "n_blocked": 29,
+              "n_kept": 234,
+              "net_clp": -32620758.030000005
+            },
+            "N5": {
+              "delta_clp": 9411197.540000007,
+              "delta_pct": -21.238424266179944,
+              "n_blocked": 37,
+              "n_kept": 226,
+              "net_clp": -34900929.49000002
+            },
+            "N6": {
+              "delta_clp": 13456399.92000002,
+              "delta_pct": -30.367307601573316,
+              "n_blocked": 43,
+              "n_kept": 220,
+              "net_clp": -30855727.110000003
+            },
+            "baseline": {
+              "n": 263,
+              "net_clp": -44312127.03000002
+            }
+          }
+        },
+        "n_removed": 15,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 138.8149111916413,
+              "net_clp": 83047434.15000018,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 110.40200636535091,
+              "net_clp": 73166900.18000007,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 85.05467152349824,
+              "net_clp": 64352412.38000024,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 56.39998580052671,
+              "net_clp": 54387799.56000008,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 4.3177798936399165,
+              "net_clp": 36276310.86000001,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 60.147299673639864,
+              "net_clp": 84727130.98999996,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 59.40368608647854,
+              "net_clp": 84333716.63999996,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 39.67836054492036,
+              "net_clp": 73897885.10000002,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 35.87846006824115,
+              "net_clp": 71887519.22999993,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": 15.754643214246407,
+              "net_clp": 61240862.869999945,
+              "rung": "N2"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 20.001917506609118,
+              "net_clp": 31417926.990000118,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -9.346690033841899,
+              "net_clp": 23734113.030000072,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -11.86310652852898,
+              "net_clp": 23075285.310000043,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -23.021616750219884,
+              "net_clp": 20153854.83000003,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -118.16373403784361,
+              "net_clp": -4755481.260000044,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -39.0529862813494,
+              "net_clp": -27006918.139999997,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -30.367307601573316,
+              "net_clp": -30855727.110000003,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -26.38412954558641,
+              "net_clp": -32620758.030000005,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -25.30797763873446,
+              "net_clp": -33097623.83000001,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -21.238424266179944,
+              "net_clp": -34900929.49000002,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": -6314079.66,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": -6314079.66,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-01T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 6537453.65,
+            "strategy": "S7-TPNONE",
+            "t_in": "2026-02-03T00:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 10230026.32,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-20T01:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 7994404.15,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-02T21:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          }
+        ]
+      }
+    },
+    "global": {
+      "K1": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.500000045,
+              "delta_pct": 15.80562796950922,
+              "n_blocked": 92,
+              "n_kept": 2254,
+              "net_clp": 143701626.66
+            },
+            "N3": {
+              "delta_clp": 48272623.08999969,
+              "delta_pct": 38.90172686701336,
+              "n_blocked": 159,
+              "n_kept": 2187,
+              "net_clp": 172361261.24999964
+            },
+            "N4": {
+              "delta_clp": 29577601.320000008,
+              "delta_pct": 23.83586584443181,
+              "n_blocked": 209,
+              "n_kept": 2137,
+              "net_clp": 153666239.47999996
+            },
+            "N5": {
+              "delta_clp": 14371229.350000277,
+              "delta_pct": 11.581422411510397,
+              "n_blocked": 293,
+              "n_kept": 2053,
+              "net_clp": 138459867.51000023
+            },
+            "N6": {
+              "delta_clp": -22519359.969999865,
+              "delta_pct": -18.147801687502923,
+              "n_blocked": 362,
+              "n_kept": 1984,
+              "net_clp": 101569278.19000009
+            },
+            "baseline": {
+              "n": 2346,
+              "net_clp": 124088638.15999995
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.250000164,
+              "delta_pct": 8.902112981374794,
+              "n_blocked": 36,
+              "n_kept": 876,
+              "net_clp": 101965829.67000009
+            },
+            "N3": {
+              "delta_clp": 31821380.370000243,
+              "delta_pct": 33.98604779162256,
+              "n_blocked": 60,
+              "n_kept": 852,
+              "net_clp": 125452097.79000017
+            },
+            "N4": {
+              "delta_clp": 20992134.480000228,
+              "delta_pct": 22.420136316841056,
+              "n_blocked": 81,
+              "n_kept": 831,
+              "net_clp": 114622851.90000015
+            },
+            "N5": {
+              "delta_clp": 15401510.400000215,
+              "delta_pct": 16.449206867564154,
+              "n_blocked": 114,
+              "n_kept": 798,
+              "net_clp": 109032227.82000014
+            },
+            "N6": {
+              "delta_clp": 2955312.9900002033,
+              "delta_pct": 3.1563498298785175,
+              "n_blocked": 144,
+              "n_kept": 768,
+              "net_clp": 96586030.41000013
+            },
+            "baseline": {
+              "n": 912,
+              "net_clp": 93630717.41999993
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999945,
+              "delta_pct": -18.173562269468253,
+              "n_blocked": 39,
+              "n_kept": 1128,
+              "net_clp": 27138056.4600001
+            },
+            "N3": {
+              "delta_clp": 5236739.519999966,
+              "delta_pct": 15.789772597602235,
+              "n_blocked": 72,
+              "n_kept": 1095,
+              "net_clp": 38402128.62000001
+            },
+            "N4": {
+              "delta_clp": -3105902.159999918,
+              "delta_pct": -9.36488985742041,
+              "n_blocked": 99,
+              "n_kept": 1068,
+              "net_clp": 30059486.940000128
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999343,
+              "delta_pct": -7.3783981023757415,
+              "n_blocked": 141,
+              "n_kept": 1026,
+              "net_clp": 30718314.660000112
+            },
+            "N6": {
+              "delta_clp": -30936668.73000006,
+              "delta_pct": -93.27998123803113,
+              "n_blocked": 174,
+              "n_kept": 993,
+              "net_clp": 2228720.3699999847
+            },
+            "baseline": {
+              "n": 1167,
+              "net_clp": 33165389.100000046
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.89000001,
+              "delta_pct": -639.165692410897,
+              "n_blocked": 17,
+              "n_kept": 250,
+              "net_clp": 14597740.530000003
+            },
+            "N3": {
+              "delta_clp": 11214503.19999998,
+              "delta_pct": -414.206251333624,
+              "n_blocked": 27,
+              "n_kept": 240,
+              "net_clp": 8507034.839999972
+            },
+            "N4": {
+              "delta_clp": 11691368.999999978,
+              "delta_pct": -431.8192290897147,
+              "n_blocked": 29,
+              "n_kept": 238,
+              "net_clp": 8983900.639999969
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000155,
+              "delta_pct": -52.32908391217585,
+              "n_blocked": 38,
+              "n_kept": 229,
+              "net_clp": -1290674.9699999928
+            },
+            "N6": {
+              "delta_clp": 5461995.769999998,
+              "delta_pct": -201.7381200347612,
+              "n_blocked": 44,
+              "n_kept": 223,
+              "net_clp": 2754527.4099999894
+            },
+            "baseline": {
+              "n": 267,
+              "net_clp": -2707468.3600000083
+            }
+          }
+        },
+        "n_removed": 1,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 38.90172686701336,
+              "net_clp": 172361261.24999964,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 23.83586584443181,
+              "net_clp": 153666239.47999996,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 15.80562796950922,
+              "net_clp": 143701626.66,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 11.581422411510397,
+              "net_clp": 138459867.51000023,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -18.147801687502923,
+              "net_clp": 101569278.19000009,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 33.98604779162256,
+              "net_clp": 125452097.79000017,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 22.420136316841056,
+              "net_clp": 114622851.90000015,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 16.449206867564154,
+              "net_clp": 109032227.82000014,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 8.902112981374794,
+              "net_clp": 101965829.67000009,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 3.1563498298785175,
+              "net_clp": 96586030.41000013,
+              "rung": "N6"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 15.789772597602235,
+              "net_clp": 38402128.62000001,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -7.3783981023757415,
+              "net_clp": 30718314.660000112,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -9.36488985742041,
+              "net_clp": 30059486.940000128,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -18.173562269468253,
+              "net_clp": 27138056.4600001,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -93.27998123803113,
+              "net_clp": 2228720.3699999847,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -639.165692410897,
+              "net_clp": 14597740.530000003,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -431.8192290897147,
+              "net_clp": 8983900.639999969,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -414.206251333624,
+              "net_clp": 8507034.839999972,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -201.7381200347612,
+              "net_clp": 2754527.4099999894,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -52.32908391217585,
+              "net_clp": -1290674.9699999928,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          }
+        ]
+      },
+      "K10": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.49999989,
+              "delta_pct": 46.98825989001492,
+              "n_blocked": 92,
+              "n_kept": 2245,
+              "net_clp": 61353177.52999987
+            },
+            "N3": {
+              "delta_clp": 48272623.09000016,
+              "delta_pct": 115.65022634493849,
+              "n_blocked": 159,
+              "n_kept": 2178,
+              "net_clp": 90012812.12000014
+            },
+            "N4": {
+              "delta_clp": 29577601.319999956,
+              "delta_pct": 70.86120596804584,
+              "n_blocked": 209,
+              "n_kept": 2128,
+              "net_clp": 71317790.34999993
+            },
+            "N5": {
+              "delta_clp": 38410912.77999986,
+              "delta_pct": 92.02381127788554,
+              "n_blocked": 290,
+              "n_kept": 2047,
+              "net_clp": 80151101.80999984
+            },
+            "N6": {
+              "delta_clp": 1520323.460000001,
+              "delta_pct": 3.6423492450101196,
+              "n_blocked": 359,
+              "n_kept": 1978,
+              "net_clp": 43260512.48999998
+            },
+            "baseline": {
+              "n": 2337,
+              "net_clp": 41740189.02999998
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.249999978,
+              "delta_pct": 18.566816316554377,
+              "n_blocked": 36,
+              "n_kept": 870,
+              "net_clp": 53227635.05999999
+            },
+            "N3": {
+              "delta_clp": 31821380.369999953,
+              "delta_pct": 70.88347541678276,
+              "n_blocked": 60,
+              "n_kept": 846,
+              "net_clp": 76713903.17999996
+            },
+            "N4": {
+              "delta_clp": 20992134.4799999,
+              "delta_pct": 46.760870554870685,
+              "n_blocked": 81,
+              "n_kept": 825,
+              "net_clp": 65884657.28999991
+            },
+            "N5": {
+              "delta_clp": 39441193.829999946,
+              "delta_pct": 87.85693331811204,
+              "n_blocked": 111,
+              "n_kept": 795,
+              "net_clp": 84333716.63999996
+            },
+            "N6": {
+              "delta_clp": 26994996.41999992,
+              "delta_pct": 60.13250031469976,
+              "n_blocked": 141,
+              "n_kept": 765,
+              "net_clp": 71887519.22999993
+            },
+            "baseline": {
+              "n": 906,
+              "net_clp": 44892522.81000001
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999945,
+              "delta_pct": -18.173562269468253,
+              "n_blocked": 39,
+              "n_kept": 1128,
+              "net_clp": 27138056.4600001
+            },
+            "N3": {
+              "delta_clp": 5236739.519999966,
+              "delta_pct": 15.789772597602235,
+              "n_blocked": 72,
+              "n_kept": 1095,
+              "net_clp": 38402128.62000001
+            },
+            "N4": {
+              "delta_clp": -3105902.159999918,
+              "delta_pct": -9.36488985742041,
+              "n_blocked": 99,
+              "n_kept": 1068,
+              "net_clp": 30059486.940000128
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999343,
+              "delta_pct": -7.3783981023757415,
+              "n_blocked": 141,
+              "n_kept": 1026,
+              "net_clp": 30718314.660000112
+            },
+            "N6": {
+              "delta_clp": -30936668.73000006,
+              "delta_pct": -93.27998123803113,
+              "n_blocked": 174,
+              "n_kept": 993,
+              "net_clp": 2228720.3699999847
+            },
+            "baseline": {
+              "n": 1167,
+              "net_clp": 33165389.100000046
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.890000004,
+              "delta_pct": -47.64948768175632,
+              "n_blocked": 17,
+              "n_kept": 247,
+              "net_clp": -19012513.990000013
+            },
+            "N3": {
+              "delta_clp": 11214503.200000029,
+              "delta_pct": -30.878872106201893,
+              "n_blocked": 27,
+              "n_kept": 237,
+              "net_clp": -25103219.67999999
+            },
+            "N4": {
+              "delta_clp": 11691369.000000026,
+              "delta_pct": -32.19191092632739,
+              "n_blocked": 29,
+              "n_kept": 235,
+              "net_clp": -24626353.87999999
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000006,
+              "delta_pct": -3.9011074418991765,
+              "n_blocked": 38,
+              "n_kept": 226,
+              "net_clp": -34900929.49000002
+            },
+            "N6": {
+              "delta_clp": 5461995.770000014,
+              "delta_pct": -15.03947752464378,
+              "n_blocked": 44,
+              "n_kept": 220,
+              "net_clp": -30855727.110000003
+            },
+            "baseline": {
+              "n": 264,
+              "net_clp": -36317722.88000002
+            }
+          }
+        },
+        "n_removed": 10,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 115.65022634493849,
+              "net_clp": 90012812.12000014,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 92.02381127788554,
+              "net_clp": 80151101.80999984,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 70.86120596804584,
+              "net_clp": 71317790.34999993,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 46.98825989001492,
+              "net_clp": 61353177.52999987,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 3.6423492450101196,
+              "net_clp": 43260512.48999998,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 87.85693331811204,
+              "net_clp": 84333716.63999996,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 70.88347541678276,
+              "net_clp": 76713903.17999996,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 60.13250031469976,
+              "net_clp": 71887519.22999993,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": 46.760870554870685,
+              "net_clp": 65884657.28999991,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 18.566816316554377,
+              "net_clp": 53227635.05999999,
+              "rung": "N2"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 15.789772597602235,
+              "net_clp": 38402128.62000001,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -7.3783981023757415,
+              "net_clp": 30718314.660000112,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -9.36488985742041,
+              "net_clp": 30059486.940000128,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -18.173562269468253,
+              "net_clp": 27138056.4600001,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -93.27998123803113,
+              "net_clp": 2228720.3699999847,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -47.64948768175632,
+              "net_clp": -19012513.990000013,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -32.19191092632739,
+              "net_clp": -24626353.87999999,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -30.878872106201893,
+              "net_clp": -25103219.67999999,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -15.03947752464378,
+              "net_clp": -30855727.110000003,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -3.9011074418991765,
+              "net_clp": -34900929.49000002,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 10230026.32,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-20T01:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F2",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          },
+          {
+            "ficha": "F3",
+            "net_clp": 8013227.81,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-05-05T19:00:00"
+          }
+        ]
+      },
+      "K3": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.500000313,
+              "delta_pct": 19.475025479788936,
+              "n_blocked": 92,
+              "n_kept": 2252,
+              "net_clp": 120321398.46000038
+            },
+            "N3": {
+              "delta_clp": 48272623.089999944,
+              "delta_pct": 47.933060515177566,
+              "n_blocked": 159,
+              "n_kept": 2185,
+              "net_clp": 148981033.05
+            },
+            "N4": {
+              "delta_clp": 29577601.3200002,
+              "delta_pct": 29.369544541263235,
+              "n_blocked": 209,
+              "n_kept": 2135,
+              "net_clp": 130286011.28000027
+            },
+            "N5": {
+              "delta_clp": 14371229.350000173,
+              "delta_pct": 14.27013826919541,
+              "n_blocked": 293,
+              "n_kept": 2051,
+              "net_clp": 115079639.31000024
+            },
+            "N6": {
+              "delta_clp": -22519359.969999984,
+              "delta_pct": -22.36095275354298,
+              "n_blocked": 362,
+              "n_kept": 1982,
+              "net_clp": 78189049.99000008
+            },
+            "baseline": {
+              "n": 2344,
+              "net_clp": 100708409.96000007
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.250000164,
+              "delta_pct": 8.902112981374794,
+              "n_blocked": 36,
+              "n_kept": 876,
+              "net_clp": 101965829.67000009
+            },
+            "N3": {
+              "delta_clp": 31821380.370000243,
+              "delta_pct": 33.98604779162256,
+              "n_blocked": 60,
+              "n_kept": 852,
+              "net_clp": 125452097.79000017
+            },
+            "N4": {
+              "delta_clp": 20992134.480000228,
+              "delta_pct": 22.420136316841056,
+              "n_blocked": 81,
+              "n_kept": 831,
+              "net_clp": 114622851.90000015
+            },
+            "N5": {
+              "delta_clp": 15401510.400000215,
+              "delta_pct": 16.449206867564154,
+              "n_blocked": 114,
+              "n_kept": 798,
+              "net_clp": 109032227.82000014
+            },
+            "N6": {
+              "delta_clp": 2955312.9900002033,
+              "delta_pct": 3.1563498298785175,
+              "n_blocked": 144,
+              "n_kept": 768,
+              "net_clp": 96586030.41000013
+            },
+            "baseline": {
+              "n": 912,
+              "net_clp": 93630717.41999993
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999945,
+              "delta_pct": -18.173562269468253,
+              "n_blocked": 39,
+              "n_kept": 1128,
+              "net_clp": 27138056.4600001
+            },
+            "N3": {
+              "delta_clp": 5236739.519999966,
+              "delta_pct": 15.789772597602235,
+              "n_blocked": 72,
+              "n_kept": 1095,
+              "net_clp": 38402128.62000001
+            },
+            "N4": {
+              "delta_clp": -3105902.159999918,
+              "delta_pct": -9.36488985742041,
+              "n_blocked": 99,
+              "n_kept": 1068,
+              "net_clp": 30059486.940000128
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999343,
+              "delta_pct": -7.3783981023757415,
+              "n_blocked": 141,
+              "n_kept": 1026,
+              "net_clp": 30718314.660000112
+            },
+            "N6": {
+              "delta_clp": -30936668.73000006,
+              "delta_pct": -93.27998123803113,
+              "n_blocked": 174,
+              "n_kept": 993,
+              "net_clp": 2228720.3699999847
+            },
+            "baseline": {
+              "n": 1167,
+              "net_clp": 33165389.100000046
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.890000015,
+              "delta_pct": -66.3347522852359,
+              "n_blocked": 17,
+              "n_kept": 248,
+              "net_clp": -8782487.669999996
+            },
+            "N3": {
+              "delta_clp": 11214503.20000001,
+              "delta_pct": -42.987709452259914,
+              "n_blocked": 27,
+              "n_kept": 238,
+              "net_clp": -14873193.360000003
+            },
+            "N4": {
+              "delta_clp": 11691369.000000011,
+              "delta_pct": -44.81564316385933,
+              "n_blocked": 29,
+              "n_kept": 236,
+              "net_clp": -14396327.560000002
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000155,
+              "delta_pct": -5.43088726419936,
+              "n_blocked": 38,
+              "n_kept": 227,
+              "net_clp": -24670903.169999998
+            },
+            "N6": {
+              "delta_clp": 5461995.769999996,
+              "delta_pct": -20.937056506456056,
+              "n_blocked": 44,
+              "n_kept": 221,
+              "net_clp": -20625700.790000018
+            },
+            "baseline": {
+              "n": 265,
+              "net_clp": -26087696.560000014
+            }
+          }
+        },
+        "n_removed": 3,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 47.933060515177566,
+              "net_clp": 148981033.05,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 29.369544541263235,
+              "net_clp": 130286011.28000027,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 19.475025479788936,
+              "net_clp": 120321398.46000038,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 14.27013826919541,
+              "net_clp": 115079639.31000024,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -22.36095275354298,
+              "net_clp": 78189049.99000008,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 33.98604779162256,
+              "net_clp": 125452097.79000017,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 22.420136316841056,
+              "net_clp": 114622851.90000015,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 16.449206867564154,
+              "net_clp": 109032227.82000014,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 8.902112981374794,
+              "net_clp": 101965829.67000009,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 3.1563498298785175,
+              "net_clp": 96586030.41000013,
+              "rung": "N6"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 15.789772597602235,
+              "net_clp": 38402128.62000001,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -7.3783981023757415,
+              "net_clp": 30718314.660000112,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -9.36488985742041,
+              "net_clp": 30059486.940000128,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -18.173562269468253,
+              "net_clp": 27138056.4600001,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -93.27998123803113,
+              "net_clp": 2228720.3699999847,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -66.3347522852359,
+              "net_clp": -8782487.669999996,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -44.81564316385933,
+              "net_clp": -14396327.560000002,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -42.987709452259914,
+              "net_clp": -14873193.360000003,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -20.937056506456056,
+              "net_clp": -20625700.790000018,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -5.43088726419936,
+              "net_clp": -24670903.169999998,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          }
+        ]
+      },
+      "K5": {
+        "curve": {
+          "COMBINED": {
+            "N2": {
+              "delta_clp": 19612988.50000012,
+              "delta_pct": 23.846869910363637,
+              "n_blocked": 92,
+              "n_kept": 2250,
+              "net_clp": 101858535.08000007
+            },
+            "N3": {
+              "delta_clp": 48272623.089999795,
+              "delta_pct": 58.69329720247549,
+              "n_blocked": 159,
+              "n_kept": 2183,
+              "net_clp": 130518169.66999975
+            },
+            "N4": {
+              "delta_clp": 29577601.32000029,
+              "delta_pct": 35.962556697498826,
+              "n_blocked": 209,
+              "n_kept": 2133,
+              "net_clp": 111823147.90000024
+            },
+            "N5": {
+              "delta_clp": 14371229.350000173,
+              "delta_pct": 17.473565375386407,
+              "n_blocked": 293,
+              "n_kept": 2049,
+              "net_clp": 96616775.93000013
+            },
+            "N6": {
+              "delta_clp": -22519359.97000005,
+              "delta_pct": -27.380643580616916,
+              "n_blocked": 362,
+              "n_kept": 1980,
+              "net_clp": 59726186.6099999
+            },
+            "baseline": {
+              "n": 2342,
+              "net_clp": 82245546.57999995
+            }
+          },
+          "S6-K2P0": {
+            "N2": {
+              "delta_clp": 8335112.249999896,
+              "delta_pct": 9.760326854557412,
+              "n_blocked": 36,
+              "n_kept": 875,
+              "net_clp": 93732992.60999994
+            },
+            "N3": {
+              "delta_clp": 31821380.37000008,
+              "delta_pct": 37.26249438025287,
+              "n_blocked": 60,
+              "n_kept": 851,
+              "net_clp": 117219260.73000012
+            },
+            "N4": {
+              "delta_clp": 20992134.48000002,
+              "delta_pct": 24.581563841522037,
+              "n_blocked": 81,
+              "n_kept": 830,
+              "net_clp": 106390014.84000006
+            },
+            "N5": {
+              "delta_clp": 15401510.40000008,
+              "delta_pct": 18.035003134824965,
+              "n_blocked": 114,
+              "n_kept": 797,
+              "net_clp": 100799390.76000012
+            },
+            "N6": {
+              "delta_clp": 2955312.9900000542,
+              "delta_pct": 3.460639746023847,
+              "n_blocked": 144,
+              "n_kept": 767,
+              "net_clp": 88353193.3500001
+            },
+            "baseline": {
+              "n": 911,
+              "net_clp": 85397880.36000004
+            }
+          },
+          "S7-TPNONE": {
+            "N2": {
+              "delta_clp": -6027332.639999945,
+              "delta_pct": -18.173562269468253,
+              "n_blocked": 39,
+              "n_kept": 1128,
+              "net_clp": 27138056.4600001
+            },
+            "N3": {
+              "delta_clp": 5236739.519999966,
+              "delta_pct": 15.789772597602235,
+              "n_blocked": 72,
+              "n_kept": 1095,
+              "net_clp": 38402128.62000001
+            },
+            "N4": {
+              "delta_clp": -3105902.159999918,
+              "delta_pct": -9.36488985742041,
+              "n_blocked": 99,
+              "n_kept": 1068,
+              "net_clp": 30059486.940000128
+            },
+            "N5": {
+              "delta_clp": -2447074.4399999343,
+              "delta_pct": -7.3783981023757415,
+              "n_blocked": 141,
+              "n_kept": 1026,
+              "net_clp": 30718314.660000112
+            },
+            "N6": {
+              "delta_clp": -30936668.73000006,
+              "delta_pct": -93.27998123803113,
+              "n_blocked": 174,
+              "n_kept": 993,
+              "net_clp": 2228720.3699999847
+            },
+            "baseline": {
+              "n": 1167,
+              "net_clp": 33165389.100000046
+            }
+          },
+          "SuperTrend-p14x3-M15": {
+            "N2": {
+              "delta_clp": 17305208.890000004,
+              "delta_pct": -47.64948768175632,
+              "n_blocked": 17,
+              "n_kept": 247,
+              "net_clp": -19012513.990000013
+            },
+            "N3": {
+              "delta_clp": 11214503.200000029,
+              "delta_pct": -30.878872106201893,
+              "n_blocked": 27,
+              "n_kept": 237,
+              "net_clp": -25103219.67999999
+            },
+            "N4": {
+              "delta_clp": 11691369.000000026,
+              "delta_pct": -32.19191092632739,
+              "n_blocked": 29,
+              "n_kept": 235,
+              "net_clp": -24626353.87999999
+            },
+            "N5": {
+              "delta_clp": 1416793.3900000006,
+              "delta_pct": -3.9011074418991765,
+              "n_blocked": 38,
+              "n_kept": 226,
+              "net_clp": -34900929.49000002
+            },
+            "N6": {
+              "delta_clp": 5461995.770000014,
+              "delta_pct": -15.03947752464378,
+              "n_blocked": 44,
+              "n_kept": 220,
+              "net_clp": -30855727.110000003
+            },
+            "baseline": {
+              "n": 264,
+              "net_clp": -36317722.88000002
+            }
+          }
+        },
+        "n_removed": 5,
+        "ranking": {
+          "COMBINED": [
+            {
+              "delta_pct": 58.69329720247549,
+              "net_clp": 130518169.66999975,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 35.962556697498826,
+              "net_clp": 111823147.90000024,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 23.846869910363637,
+              "net_clp": 101858535.08000007,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 17.473565375386407,
+              "net_clp": 96616775.93000013,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -27.380643580616916,
+              "net_clp": 59726186.6099999,
+              "rung": "N6"
+            }
+          ],
+          "S6-K2P0": [
+            {
+              "delta_pct": 37.26249438025287,
+              "net_clp": 117219260.73000012,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": 24.581563841522037,
+              "net_clp": 106390014.84000006,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": 18.035003134824965,
+              "net_clp": 100799390.76000012,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": 9.760326854557412,
+              "net_clp": 93732992.60999994,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": 3.460639746023847,
+              "net_clp": 88353193.3500001,
+              "rung": "N6"
+            }
+          ],
+          "S7-TPNONE": [
+            {
+              "delta_pct": 15.789772597602235,
+              "net_clp": 38402128.62000001,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -7.3783981023757415,
+              "net_clp": 30718314.660000112,
+              "rung": "N5"
+            },
+            {
+              "delta_pct": -9.36488985742041,
+              "net_clp": 30059486.940000128,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -18.173562269468253,
+              "net_clp": 27138056.4600001,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -93.27998123803113,
+              "net_clp": 2228720.3699999847,
+              "rung": "N6"
+            }
+          ],
+          "SuperTrend-p14x3-M15": [
+            {
+              "delta_pct": -47.64948768175632,
+              "net_clp": -19012513.990000013,
+              "rung": "N2"
+            },
+            {
+              "delta_pct": -32.19191092632739,
+              "net_clp": -24626353.87999999,
+              "rung": "N4"
+            },
+            {
+              "delta_pct": -30.878872106201893,
+              "net_clp": -25103219.67999999,
+              "rung": "N3"
+            },
+            {
+              "delta_pct": -15.03947752464378,
+              "net_clp": -30855727.110000003,
+              "rung": "N6"
+            },
+            {
+              "delta_pct": -3.9011074418991765,
+              "net_clp": -34900929.49000002,
+              "rung": "N5"
+            }
+          ]
+        },
+        "removed": [
+          {
+            "ficha": "F1",
+            "net_clp": 10230026.32,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-20T01:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 23691445.89,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-01-29T22:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 8232837.06,
+            "strategy": "S6-K2P0",
+            "t_in": "2026-01-30T03:00:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 12222195.94,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-02-05T23:15:00"
+          },
+          {
+            "ficha": "F1",
+            "net_clp": 11158032.26,
+            "strategy": "SuperTrend-p14x3-M15",
+            "t_in": "2026-03-22T22:45:00"
+          }
+        ]
+      }
+    }
+  },
+  "m3_blocked_vs_kept_profile": {
+    "COMBINED": {
+      "N2": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 4594852.96,
+          "mean_clp": -213184.65760869536,
+          "median_clp": -406277.115,
+          "n": 92,
+          "p10": -2714997.79,
+          "p25": -1056477.355,
+          "p75": 933025.58,
+          "p90": 2132719.54,
+          "profit_factor": 0.7619616938976727,
+          "sum_clp": -19612988.499999974,
+          "win_rate": 34.78260869565217
+        },
+        "concentration": {
+          "n_available": 92,
+          "top5_most_negative_frac_of_delta": -1.2496640794950775,
+          "top5_most_negative_sum": -24509647.220000003,
+          "top5_most_positive_frac_of_delta": 1.1413718016507293,
+          "top5_most_positive_sum": 22385712.02
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 23691445.89,
+          "mean_clp": 74231.96121951225,
+          "median_clp": -267923.28,
+          "n": 2255,
+          "p10": -1090516.79,
+          "p25": -696475.05,
+          "p75": 295531.31,
+          "p90": 1672167.5740000007,
+          "profit_factor": 1.1695341674406179,
+          "sum_clp": 167393072.5500001,
+          "win_rate": 34.41241685144124
+        }
+      },
+      "N3": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 5018385.09,
+          "mean_clp": -303601.40308176115,
+          "median_clp": -454904.88,
+          "n": 159,
+          "p10": -1876592.4179999998,
+          "p25": -1036555.66,
+          "p75": 83137.79000000001,
+          "p90": 2092562.42,
+          "profit_factor": 0.6201840469838353,
+          "sum_clp": -48272623.09000002,
+          "win_rate": 29.559748427672957
+        },
+        "concentration": {
+          "n_available": 159,
+          "top5_most_negative_frac_of_delta": -0.5077339007309393,
+          "top5_most_negative_sum": -24509647.220000003,
+          "top5_most_positive_frac_of_delta": 0.47860503658410375,
+          "top5_most_positive_sum": 23103520.540000003
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 23691445.89,
+          "mean_clp": 89603.61386654475,
+          "median_clp": -262276.19,
+          "n": 2188,
+          "p10": -1045340.03,
+          "p25": -680161.22,
+          "p75": 334276.65,
+          "p90": 1699148.14,
+          "profit_factor": 1.207975926256012,
+          "sum_clp": 196052707.13999993,
+          "win_rate": 34.78062157221206
+        }
+      },
+      "N4": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 5018385.09,
+          "mean_clp": -141519.62354067003,
+          "median_clp": -428551.77,
+          "n": 209,
+          "p10": -1675304.85,
+          "p25": -983849.44,
+          "p75": 237805.44,
+          "p90": 2465270.69,
+          "profit_factor": 0.7983263378472415,
+          "sum_clp": -29577601.320000034,
+          "win_rate": 29.66507177033493
+        },
+        "concentration": {
+          "n_available": 209,
+          "top5_most_negative_frac_of_delta": -0.8286556761256808,
+          "top5_most_negative_sum": -24509647.220000003,
+          "top5_most_positive_frac_of_delta": 0.7811154221075425,
+          "top5_most_positive_sum": 23103520.540000003
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 23691445.89,
+          "mean_clp": 82954.95106173976,
+          "median_clp": -260707.555,
+          "n": 2138,
+          "p10": -1076587.2939999998,
+          "p25": -677651.4,
+          "p75": 331923.695,
+          "p90": 1601327.9069999992,
+          "profit_factor": 1.1921318011229698,
+          "sum_clp": 177357685.36999962,
+          "win_rate": 34.892422825070156
+        }
+      },
+      "N5": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 8013227.81,
+          "mean_clp": -49048.5643344708,
+          "median_clp": -454904.88,
+          "n": 293,
+          "p10": -1492715.44,
+          "p25": -1022124.19,
+          "p75": 206432.69,
+          "p90": 2465270.69,
+          "profit_factor": 0.9253508547100916,
+          "sum_clp": -14371229.349999944,
+          "win_rate": 27.986348122866893
+        },
+        "concentration": {
+          "n_available": 293,
+          "top5_most_negative_frac_of_delta": -1.7054662912328111,
+          "top5_most_negative_sum": -24509647.220000003,
+          "top5_most_positive_frac_of_delta": 2.704811382054868,
+          "top5_most_positive_sum": 38871464.72
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 23691445.89,
+          "mean_clp": 78944.16426484897,
+          "median_clp": -257256.55,
+          "n": 2054,
+          "p10": -1035928.21,
+          "p25": -667612.12,
+          "p75": 336315.88,
+          "p90": 1608104.4230000009,
+          "profit_factor": 1.184840909758296,
+          "sum_clp": 162151313.39999977,
+          "win_rate": 35.34566699123661
+        }
+      },
+      "N6": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 8013227.81,
+          "mean_clp": 62208.17671270718,
+          "median_clp": -328158.96499999997,
+          "n": 362,
+          "p10": -1361640.0909999998,
+          "p25": -983849.44,
+          "p75": 308080.4,
+          "p90": 2547718.277000003,
+          "profit_factor": 1.1038814439107032,
+          "sum_clp": 22519359.97,
+          "win_rate": 33.70165745856354
+        },
+        "concentration": {
+          "n_available": 362,
+          "top5_most_negative_frac_of_delta": 1.088381164147268,
+          "top5_most_negative_sum": -24509647.220000003,
+          "top5_most_positive_frac_of_delta": -1.7261354128973487,
+          "top5_most_positive_sum": 38871464.72
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 23691445.89,
+          "mean_clp": 63103.63933501265,
+          "median_clp": -263531.1,
+          "n": 1985,
+          "p10": -1023379.1,
+          "p25": -671376.85,
+          "p75": 326276.6,
+          "p90": 1460087.78,
+          "profit_factor": 1.1468497621063687,
+          "sum_clp": 125260724.08000012,
+          "win_rate": 34.559193954659946
+        }
+      }
+    },
+    "S6-K2P0": {
+      "N2": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 4300576.57,
+          "mean_clp": -231530.89583333355,
+          "median_clp": -373021.995,
+          "n": 36,
+          "p10": -2714997.79,
+          "p25": -1234988.2999999998,
+          "p75": 1515303.825,
+          "p90": 2132719.54,
+          "profit_factor": 0.7826855115853261,
+          "sum_clp": -8335112.250000007,
+          "win_rate": 41.666666666666664
+        },
+        "concentration": {
+          "n_available": 36,
+          "top5_most_negative_frac_of_delta": -2.678786503445057,
+          "top5_most_negative_sum": -22327986.2,
+          "top5_most_positive_frac_of_delta": 2.059620587593126,
+          "top5_most_positive_sum": 17167168.79
+        },
+        "kept": {
+          "max_loss": -3260883.64,
+          "max_win": 8232837.06,
+          "mean_clp": 116399.34893835627,
+          "median_clp": -313413.77,
+          "n": 876,
+          "p10": -1220399.97,
+          "p25": -781338.3425,
+          "p75": 529728.8825,
+          "p90": 2140249.0,
+          "profit_factor": 1.2460046776091638,
+          "sum_clp": 101965829.67000009,
+          "win_rate": 36.3013698630137
+        }
+      },
+      "N3": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 4300576.57,
+          "mean_clp": -530356.3394999999,
+          "median_clp": -709965.335,
+          "n": 60,
+          "p10": -2226524.068,
+          "p25": -1381342.1824999999,
+          "p75": 87843.695,
+          "p90": 1893847.4260000004,
+          "profit_factor": 0.48579510816686644,
+          "sum_clp": -31821380.36999999,
+          "win_rate": 30.0
+        },
+        "concentration": {
+          "n_available": 60,
+          "top5_most_negative_frac_of_delta": -0.7016661735092364,
+          "top5_most_negative_sum": -22327986.2,
+          "top5_most_positive_frac_of_delta": 0.5394853582839677,
+          "top5_most_positive_sum": 17167168.79
+        },
+        "kept": {
+          "max_loss": -3260883.64,
+          "max_win": 8232837.06,
+          "mean_clp": 147244.24623239457,
+          "median_clp": -303060.765,
+          "n": 852,
+          "p10": -1165183.93,
+          "p25": -765651.9675,
+          "p75": 556081.9924999999,
+          "p90": 2179778.67,
+          "profit_factor": 1.3208839885039525,
+          "sum_clp": 125452097.79000017,
+          "win_rate": 36.971830985915496
+        }
+      },
+      "N4": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 4300576.57,
+          "mean_clp": -259162.154074074,
+          "median_clp": -524552.38,
+          "n": 81,
+          "p10": -2172249.21,
+          "p25": -1116242.44,
+          "p75": 670749.4,
+          "p90": 2465270.69,
+          "profit_factor": 0.7019616226214663,
+          "sum_clp": -20992134.479999993,
+          "win_rate": 33.333333333333336
+        },
+        "concentration": {
+          "n_available": 81,
+          "top5_most_negative_frac_of_delta": -1.063635821372642,
+          "top5_most_negative_sum": -22327986.2,
+          "top5_most_positive_frac_of_delta": 0.9312529894768371,
+          "top5_most_positive_sum": 19548987.990000002
+        },
+        "kept": {
+          "max_loss": -3260883.64,
+          "max_win": 8232837.06,
+          "mean_clp": 137933.63646209406,
+          "median_clp": -302433.31,
+          "n": 831,
+          "p10": -1165183.94,
+          "p25": -771769.65,
+          "p75": 549023.12,
+          "p90": 2140249.0,
+          "profit_factor": 1.2997396049487362,
+          "sum_clp": 114622851.90000015,
+          "win_rate": 36.82310469314079
+        }
+      },
+      "N5": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 8013227.81,
+          "mean_clp": -135100.96842105256,
+          "median_clp": -529572.02,
+          "n": 114,
+          "p10": -1650081.159,
+          "p25": -1109340.44,
+          "p75": 308080.4,
+          "p90": 2365505.3450000007,
+          "profit_factor": 0.8309853338266903,
+          "sum_clp": -15401510.399999991,
+          "win_rate": 28.94736842105263
+        },
+        "concentration": {
+          "n_available": 114,
+          "top5_most_negative_frac_of_delta": -1.4497270475498096,
+          "top5_most_negative_sum": -22327986.2,
+          "top5_most_positive_frac_of_delta": 2.119326983021064,
+          "top5_most_positive_sum": 32640836.57
+        },
+        "kept": {
+          "max_loss": -3260883.64,
+          "max_win": 8232837.06,
+          "mean_clp": 136631.8644360904,
+          "median_clp": -298982.305,
+          "n": 798,
+          "p10": -1165183.94,
+          "p25": -750436.18,
+          "p75": 555925.13,
+          "p90": 2140249.0,
+          "profit_factor": 1.301429530150978,
+          "sum_clp": 109032227.82000014,
+          "win_rate": 37.59398496240601
+        }
+      },
+      "N6": {
+        "blocked": {
+          "max_loss": -5632663.54,
+          "max_win": 8013227.81,
+          "mean_clp": -20523.006875000196,
+          "median_clp": -482826.62,
+          "n": 144,
+          "p10": -1578425.798,
+          "p25": -1065575.4500000002,
+          "p75": 398747.65,
+          "p90": 2367764.1830000053,
+          "profit_factor": 0.971452469825258,
+          "sum_clp": -2955312.990000028,
+          "win_rate": 35.416666666666664
+        },
+        "concentration": {
+          "n_available": 144,
+          "top5_most_negative_frac_of_delta": -7.5552018603614854,
+          "top5_most_negative_sum": -22327986.2,
+          "top5_most_positive_frac_of_delta": 11.044798530797157,
+          "top5_most_positive_sum": 32640836.57
+        },
+        "kept": {
+          "max_loss": -3260883.64,
+          "max_win": 8232837.06,
+          "mean_clp": 125763.06042968767,
+          "median_clp": -301492.125,
+          "n": 768,
+          "p10": -1165183.93,
+          "p25": -733965.49,
+          "p75": 550748.6225,
+          "p90": 2010365.82,
+          "profit_factor": 1.276497372622329,
+          "sum_clp": 96586030.41000013,
+          "win_rate": 36.71875
+        }
+      }
+    },
+    "S7-TPNONE": {
+      "N2": {
+        "blocked": {
+          "max_loss": -3487394.89,
+          "max_win": 4594852.96,
+          "mean_clp": 154546.99076923082,
+          "median_clp": -357649.35,
+          "n": 39,
+          "p10": -1812717.5,
+          "p25": -983849.44,
+          "p75": 933025.58,
+          "p90": 2738841.07,
+          "profit_factor": 1.2268669369825802,
+          "sum_clp": 6027332.6400000015,
+          "win_rate": 38.46153846153846
+        },
+        "concentration": {
+          "n_available": 39,
+          "top5_most_negative_frac_of_delta": 2.3372892308130733,
+          "top5_most_negative_sum": -14087619.67,
+          "top5_most_positive_frac_of_delta": -3.1958151591248787,
+          "top5_most_positive_sum": 19262241.02
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 6537453.65,
+          "mean_clp": 24058.560691489452,
+          "median_clp": -261962.46500000003,
+          "n": 1128,
+          "p10": -933025.58,
+          "p25": -607376.4375,
+          "p75": 243923.1275,
+          "p90": 1237341.26,
+          "profit_factor": 1.061248072905182,
+          "sum_clp": 27138056.4600001,
+          "win_rate": 35.37234042553192
+        }
+      },
+      "N3": {
+        "blocked": {
+          "max_loss": -3487394.89,
+          "max_win": 4594852.96,
+          "mean_clp": -72732.49333333335,
+          "median_clp": -349806.16,
+          "n": 72,
+          "p10": -1597500.43,
+          "p25": -993418.1275,
+          "p75": 304786.2625,
+          "p90": 2092562.42,
+          "profit_factor": 0.8802101254778228,
+          "sum_clp": -5236739.5200000005,
+          "win_rate": 33.333333333333336
+        },
+        "concentration": {
+          "n_available": 72,
+          "top5_most_negative_frac_of_delta": -2.690150926200754,
+          "top5_most_negative_sum": -14087619.67,
+          "top5_most_positive_frac_of_delta": 3.678288932728914,
+          "top5_most_positive_sum": 19262241.02
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 6537453.65,
+          "mean_clp": 35070.437095890426,
+          "median_clp": -257884.01,
+          "n": 1095,
+          "p10": -927378.49,
+          "p25": -603611.71,
+          "p75": 257256.55,
+          "p90": 1237341.26,
+          "profit_factor": 1.0901594069994878,
+          "sum_clp": 38402128.62000001,
+          "win_rate": 35.61643835616438
+        }
+      },
+      "N4": {
+        "blocked": {
+          "max_loss": -3487394.89,
+          "max_win": 4594852.96,
+          "mean_clp": 31372.749090909045,
+          "median_clp": -341962.97,
+          "n": 99,
+          "p10": -1258674.73,
+          "p25": -754828.36,
+          "p75": 237805.44,
+          "p90": 2625899.18,
+          "profit_factor": 1.057245947709096,
+          "sum_clp": 3105902.1599999955,
+          "win_rate": 30.303030303030305
+        },
+        "concentration": {
+          "n_available": 99,
+          "top5_most_negative_frac_of_delta": 4.535757710410418,
+          "top5_most_negative_sum": -14087619.67,
+          "top5_most_positive_frac_of_delta": -6.800202212422736,
+          "top5_most_positive_sum": 21120762.74
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 6537453.65,
+          "mean_clp": 28145.58702247203,
+          "median_clp": -255687.915,
+          "n": 1068,
+          "p10": -930515.76,
+          "p25": -604082.2999999999,
+          "p75": 258982.0525,
+          "p90": 1180242.86,
+          "profit_factor": 1.0723633535639003,
+          "sum_clp": 30059486.940000128,
+          "win_rate": 35.95505617977528
+        }
+      },
+      "N5": {
+        "blocked": {
+          "max_loss": -3487394.89,
+          "max_win": 5238621.79,
+          "mean_clp": 17355.137872340452,
+          "median_clp": -341962.97,
+          "n": 141,
+          "p10": -1258674.73,
+          "p25": -847064.25,
+          "p75": 228393.62,
+          "p90": 2625899.18,
+          "profit_factor": 1.032687133046331,
+          "sum_clp": 2447074.4400000037,
+          "win_rate": 29.78723404255319
+        },
+        "concentration": {
+          "n_available": 141,
+          "top5_most_negative_frac_of_delta": 5.756923222164168,
+          "top5_most_negative_sum": -14087619.67,
+          "top5_most_positive_frac_of_delta": -10.177692547023895,
+          "top5_most_positive_sum": 24905571.290000003
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 6537453.65,
+          "mean_clp": 29939.87783625742,
+          "median_clp": -254433.005,
+          "n": 1026,
+          "p10": -927378.49,
+          "p25": -591062.61,
+          "p75": 279844.93,
+          "p90": 1180242.86,
+          "profit_factor": 1.0778095652483208,
+          "sum_clp": 30718314.660000112,
+          "win_rate": 36.25730994152047
+        }
+      },
+      "N6": {
+        "blocked": {
+          "max_loss": -3487394.89,
+          "max_win": 5238621.79,
+          "mean_clp": 177796.94672413793,
+          "median_clp": -306198.04000000004,
+          "n": 174,
+          "p10": -1126093.4849999999,
+          "p25": -754828.36,
+          "p75": 505728.73,
+          "p90": 2605193.1620000014,
+          "profit_factor": 1.3748859486323755,
+          "sum_clp": 30936668.73,
+          "win_rate": 36.206896551724135
+        },
+        "concentration": {
+          "n_available": 174,
+          "top5_most_negative_frac_of_delta": 0.4553696389533655,
+          "top5_most_negative_sum": -14087619.67,
+          "top5_most_positive_frac_of_delta": -0.8085792522884849,
+          "top5_most_positive_sum": 25014748.470000003
+        },
+        "kept": {
+          "max_loss": -6314079.66,
+          "max_win": 6537453.65,
+          "mean_clp": 2244.4313897280813,
+          "median_clp": -257884.01,
+          "n": 993,
+          "p10": -927378.49,
+          "p25": -591062.61,
+          "p75": 254746.73,
+          "p90": 1148870.11,
+          "profit_factor": 1.0057570473323771,
+          "sum_clp": 2228720.3699999847,
+          "win_rate": 35.34743202416919
+        }
+      }
+    },
+    "SuperTrend-p14x3-M15": {
+      "N2": {
+        "blocked": {
+          "max_loss": -4124261.71,
+          "max_win": 87216.25,
+          "mean_clp": -1017953.4641176473,
+          "median_clp": -512003.28,
+          "n": 17,
+          "p10": -2636691.402,
+          "p25": -1251772.72,
+          "p75": -234040.72,
+          "p90": -11294.189999999937,
+          "profit_factor": 0.009516969224081047,
+          "sum_clp": -17305208.890000004,
+          "win_rate": 11.764705882352942
+        },
+        "concentration": {
+          "n_available": 17,
+          "top5_most_negative_frac_of_delta": -0.7483683827407411,
+          "top5_most_negative_sum": -12950671.19,
+          "top5_most_positive_frac_of_delta": -0.020413342725041205,
+          "top5_most_positive_sum": -353257.16
+        },
+        "kept": {
+          "max_loss": -4131163.72,
+          "max_win": 23691445.89,
+          "mean_clp": 152546.55944223102,
+          "median_clp": -193256.14,
+          "n": 251,
+          "p10": -1527225.47,
+          "p25": -756710.73,
+          "p75": -25725.66,
+          "p90": 1834050.97,
+          "profit_factor": 1.2949880594204646,
+          "sum_clp": 38289186.41999999,
+          "win_rate": 23.50597609561753
+        }
+      },
+      "N3": {
+        "blocked": {
+          "max_loss": -4124261.71,
+          "max_win": 5018385.09,
+          "mean_clp": -415351.97037037037,
+          "median_clp": -496944.36,
+          "n": 27,
+          "p10": -2198602.3219999997,
+          "p25": -911064.6599999999,
+          "p75": -190432.59,
+          "p90": 431312.57000000187,
+          "profit_factor": 0.4782519855088391,
+          "sum_clp": -11214503.2,
+          "win_rate": 18.51851851851852
+        },
+        "concentration": {
+          "n_available": 27,
+          "top5_most_negative_frac_of_delta": -1.1548145253549882,
+          "top5_most_negative_sum": -12950671.19,
+          "top5_most_positive_frac_of_delta": 0.916634030654162,
+          "top5_most_positive_sum": 10279595.270000001
+        },
+        "kept": {
+          "max_loss": -4131163.72,
+          "max_win": 23691445.89,
+          "mean_clp": 133603.65448132774,
+          "median_clp": -192001.23,
+          "n": 241,
+          "p10": -1558598.22,
+          "p25": -777416.75,
+          "p75": -26980.57,
+          "p90": 1824639.14,
+          "profit_factor": 1.25599760491778,
+          "sum_clp": 32198480.729999986,
+          "win_rate": 23.236514522821576
+        }
+      },
+      "N4": {
+        "blocked": {
+          "max_loss": -4124261.71,
+          "max_win": 5018385.09,
+          "mean_clp": -403150.6551724138,
+          "median_clp": -428551.77,
+          "n": 29,
+          "p10": -2165347.206,
+          "p25": -795612.94,
+          "p75": -166903.03,
+          "p90": 259264.4099999994,
+          "profit_factor": 0.46787183046108527,
+          "sum_clp": -11691369.0,
+          "win_rate": 17.24137931034483
+        },
+        "concentration": {
+          "n_available": 29,
+          "top5_most_negative_frac_of_delta": -1.107712124217446,
+          "top5_most_negative_sum": -12950671.19,
+          "top5_most_positive_frac_of_delta": 0.8792464997041833,
+          "top5_most_positive_sum": 10279595.270000001
+        },
+        "kept": {
+          "max_loss": -4131163.72,
+          "max_win": 23691445.89,
+          "mean_clp": 136716.93108786605,
+          "median_clp": -192001.23,
+          "n": 239,
+          "p10": -1560982.55,
+          "p25": -778985.385,
+          "p75": -25725.66,
+          "p90": 1826521.506,
+          "profit_factor": 1.2607776854367831,
+          "sum_clp": 32675346.529999986,
+          "win_rate": 23.430962343096233
+        }
+      },
+      "N5": {
+        "blocked": {
+          "max_loss": -4124261.71,
+          "max_win": 7994404.15,
+          "mean_clp": -37284.0365789474,
+          "median_clp": -326590.325,
+          "n": 38,
+          "p10": -2181974.764,
+          "p25": -744318.4925,
+          "p75": -115765.4475,
+          "p90": 1907463.2000000137,
+          "profit_factor": 0.9465928711754198,
+          "sum_clp": -1416793.3900000013,
+          "win_rate": 18.42105263157895
+        },
+        "concentration": {
+          "n_available": 38,
+          "top5_most_negative_frac_of_delta": -10.522143486284838,
+          "top5_most_negative_sum": -14907703.34,
+          "top5_most_positive_frac_of_delta": 17.606731620903354,
+          "top5_most_positive_sum": 24945100.98
+        },
+        "kept": {
+          "max_loss": -4131163.72,
+          "max_win": 23691445.89,
+          "mean_clp": 97394.656173913,
+          "median_clp": -194824.77500000002,
+          "n": 230,
+          "p10": -1559790.385,
+          "p25": -798907.075,
+          "p75": -25098.205,
+          "p90": 1689673.564999999,
+          "profit_factor": 1.1855252760945956,
+          "sum_clp": 22400770.91999999,
+          "win_rate": 23.47826086956522
+        }
+      },
+      "N6": {
+        "blocked": {
+          "max_loss": -4124261.71,
+          "max_win": 7994404.15,
+          "mean_clp": -124136.26750000003,
+          "median_clp": -326590.325,
+          "n": 44,
+          "p10": -1925408.413,
+          "p25": -853338.7999999999,
+          "p75": -99765.345,
+          "p90": 711408.4790000023,
+          "profit_factor": 0.8222816546480073,
+          "sum_clp": -5461995.770000001,
+          "win_rate": 18.181818181818183
+        },
+        "concentration": {
+          "n_available": 44,
+          "top5_most_negative_frac_of_delta": -2.72935094931426,
+          "top5_most_negative_sum": -14907703.34,
+          "top5_most_positive_frac_of_delta": 4.56703044645528,
+          "top5_most_positive_sum": 24945100.98
+        },
+        "kept": {
+          "max_loss": -4131163.72,
+          "max_win": 23691445.89,
+          "mean_clp": 118062.3808035714,
+          "median_clp": -192628.685,
+          "n": 224,
+          "p10": -1566943.375,
+          "p25": -778201.0675,
+          "p75": -22274.6575,
+          "p90": 1779650.6150000026,
+          "profit_factor": 1.2269327887209782,
+          "sum_clp": 26445973.299999993,
+          "win_rate": 23.660714285714285
+        }
+      }
+    }
+  },
+  "n_positions": 2347,
+  "n_reopens": 145,
+  "rungs_bars": [
+    2,
+    3,
+    4,
+    5,
+    6
+  ],
+  "topk_values": [
+    1,
+    3,
+    5,
+    10
+  ]
+}

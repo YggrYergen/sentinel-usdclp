@@ -54,6 +54,12 @@ data/analysis/monday_audit/*
 !data/analysis/monday_audit/a5_spread_gate.json
 !data/analysis/monday_audit/b6_mask_verdicts.json
 !data/analysis/monday_audit/b1_wait_window.json
+!data/analysis/monday_audit/b1_robustness.json
+# Snapshot INMUTABLE del substrato PRE-reparacion (Task R3a, 2026-07-27). Es la
+# unica base de comparacion del diff de R3: sin el, regenerar destruye el "antes"
+# (ya paso una vez con el reporte mensual). Se versiona entero, nunca se muta.
+!data/analysis/pre_repair_snapshot/
+!data/analysis/pre_repair_snapshot/**
 # El substrato real-tick (2347 posiciones, ~250 KB) es la base de TODO numero de
 # Track A. Versionarlo es requisito de R5 (cifra trazable a un archivo en disco).
 # Los ticks/barras de origen siguen fuera (cientos de MB, regenerables desde MT5).
