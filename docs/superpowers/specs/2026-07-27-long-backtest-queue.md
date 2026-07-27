@@ -217,6 +217,46 @@ periodo corto — si existe, debe añadirse aquí como referencia cuando se
 localice; si no existe todavía, esta entrada aplica igual una vez que se
 corra, tanto en corto como en largo.
 
+**Actualización 2026-07-27 (mismo día):** la prueba corta ya corrió — commit
+`059a5a2`, `scripts/analysis/monday_audit/b1_robustness.py`, artefacto
+`data/analysis/monday_audit/b1_robustness.json`, doc
+`docs/superpowers/research/2026-07-27-b1-robustness.md`. Resultado corto,
+in-sample: (a) la mejora de neto **no sobrevive** la consistencia mensual —
+sin 2026-02, los cinco peldaños N2..N6 quedan en negativo; (b) el *ranking*
+N3 > N4 > N2 > N5 **sí sobrevive** el recorte top-K global (K=1..10); (c) lo
+vetado es peor que lo conservado en mediana/WR/PF en N2–N5, y se invierte en
+N6. La repetición sobre periodo largo que pide esta entrada sigue pendiente.
+
+---
+
+## Entrada 6 — Concentración del neto en un puñado de operaciones (riesgo de primer orden)
+
+**Pregunta.** ¿Es estructural que una fracción minúscula de las operaciones
+sostenga casi todo el resultado — y que su ausencia lo vuelva negativo — o es
+un artefacto del periodo corto?
+
+**Por qué necesita periodo largo.** Sobre los 7 meses: una sola operación
+(SuperTrend, 2026-01-29 22:15, +23,69 MM) es el 16% del neto total; las 10
+mayores por |net| (0,43% de 2.347) sostienen el 72%; quitando las 10 mayores
+de cada estrategia (30 operaciones, 1,28%) el baseline completo se vuelve
+**−49,6 MM**. Con colas así de pesadas, 7 meses no alcanzan para estimar la
+frecuencia real de los grandes ganadores ni la probabilidad de atravesar un
+periodo sin ninguno — que es el escenario de riesgo que importa.
+
+**Métrica de decisión.** Sobre periodo largo: (a) fracción del neto aportada
+por el top 0,5% y el top 1% de operaciones por |net|, por año; (b) neto tras
+recorte top-K, por año; (c) frecuencia de ganadores por encima de un umbral
+(p. ej. > 5 MM a 0,67 lot) por semestre. Si la concentración se mantiene, el
+riesgo es estructural y toda decisión de despliegue debe dimensionarse contra
+el escenario "sin cola", no contra el neto agregado.
+
+**De qué hallazgo corto viene.** Commit `059a5a2` (medición M2 de
+`data/analysis/monday_audit/b1_robustness.json`, doc
+`docs/superpowers/research/2026-07-27-b1-robustness.md`). **In-sample.**
+Decisión del usuario 2026-07-27: es un riesgo de primer orden; requiere
+generar alternativas / estrategias en profundidad que ayuden a subsanarlo,
+sin sacrificar los grandes payouts que sostienen la rentabilidad.
+
 ---
 
 ## Cómo añadir una entrada nueva
