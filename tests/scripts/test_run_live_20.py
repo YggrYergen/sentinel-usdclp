@@ -15,7 +15,7 @@ from datetime import datetime, time as dtime, timezone
 import pytest
 
 from scripts.live import run_live_20
-from sentinel_engine.live.reconciler import Action
+from sentinel_engine.live.reconciler import Action, MAX_VOLUME, reconcile
 from sentinel_engine.live import guard_cuenta
 from sentinel_engine.strategies.live_configs_20 import (
     CONFIGS_GOLIVE,
@@ -474,6 +474,74 @@ def test_tomachine_configs_are_copies_matching_golive_except_active_fichas():
         strip = {k: v for k, v in tm["kwargs"].items() if k != "active_fichas"}
         assert strip == gl["kwargs"], \
             f"{cid} tomachine kwargs drifted from go-live beyond active_fichas"
+
+
+# ------------- THE END-TO-END SIZING TEST (the one that was missing) -------
+def test_every_tomachine_config_volume_actually_opens(caplog):
+    # THE BUG THIS TEST EXISTS FOR (Critical, 2026-07-27): a roster `volume`
+    # above the reconciler's volume cap does NOT clamp and does NOT crash -- it
+    # turns every OPEN into a NON-sendable REJECT_VOLUME, so the executor passes
+    # every health check (guard OK, cycles on time, watchdog green) and silently
+    # opens NOTHING. It reached deployment because no test ever fed a roster's
+    # OWN volume through the reconciler. This does exactly that, per config,
+    # reading volume + cap the SAME WAY `reconcile_config` does.
+    desired = {"open": {"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}},
+               "last_bar_exits": {}, "last_idx": 100}
+    for cfg in CONFIGS_TOMACHINE:
+        cfg_volume = cfg.get("volume", 0.01)
+        cfg_max_volume = cfg.get("max_volume", MAX_VOLUME)
+        res = reconcile(cfg["id"], cfg["magic"], desired, [],
+                        volume=cfg_volume, max_volume=cfg_max_volume)
+        kinds = [a.kind for a in res.actions]
+        assert kinds == ["OPEN"], \
+            (f"{cfg['id']}: volume {cfg_volume} vs cap {cfg_max_volume} produced "
+             f"{kinds}, not a single OPEN -- this roster would trade NOTHING")
+        act = res.actions[0]
+        assert act.sendable(), \
+            f"{cfg['id']}: the OPEN is not sendable -- no order would ever go out"
+        assert act.volume == cfg_volume, \
+            f"{cfg['id']}: OPEN volume {act.volume} != config volume {cfg_volume}"
+
+
+def test_reconcile_config_passes_the_per_config_max_volume(monkeypatch):
+    # The executor must actually READ `cfg["max_volume"]` and hand it to
+    # `reconcile` -- otherwise the config key above is decorative and the
+    # global cap still silently rejects. Spy on the reconcile call.
+    seen: list[dict] = []
+    real = run_live_20.reconcile
+
+    def _spy(*a, **kw):
+        seen.append(kw)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(run_live_20, "reconcile", _spy)
+    mt5 = MockMT5(_bars(n=600, seed=11))
+    for cfg in CONFIGS_TOMACHINE:
+        seen.clear()
+        run_live_20.reconcile_config(mt5, cfg, window=600, volume=0.01,
+                                     kill_switch=False, total_open_fichas=0)
+        assert seen, f"{cfg['id']}: reconcile was never called"
+        assert seen[0]["volume"] == cfg["volume"]
+        assert seen[0]["max_volume"] == cfg["max_volume"]
+
+
+def test_reconcile_config_without_max_volume_key_uses_the_global_cap(monkeypatch):
+    # BACKWARD COMPATIBILITY: every roster that does NOT carry the key (machine
+    # 1's `local` among them) must keep the 0.10 anti-fat-finger backstop.
+    seen: list[dict] = []
+    real = run_live_20.reconcile
+
+    def _spy(*a, **kw):
+        seen.append(kw)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(run_live_20, "reconcile", _spy)
+    mt5 = MockMT5(_bars(n=600, seed=11))
+    cfg = {c["id"]: c for c in CONFIGS_LOCAL}["S6-K2P0"]
+    assert "max_volume" not in cfg, "the local roster must NOT carry max_volume"
+    run_live_20.reconcile_config(mt5, cfg, window=600, volume=0.01,
+                                 kill_switch=False, total_open_fichas=0)
+    assert seen and seen[0]["max_volume"] == MAX_VOLUME
 
 
 # ----------------- supervisor SUPERVISOR_CONFIGS plumbing (tomachine) ------

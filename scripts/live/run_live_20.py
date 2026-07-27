@@ -56,7 +56,8 @@ sys.path.insert(0, str(REPO_ROOT))
 from sentinel_engine.live import guard_cuenta  # noqa: E402
 from sentinel_engine.live.machine_profile import load_profile  # noqa: E402
 from sentinel_engine.live.magic_seed import ensure_magic_allocations  # noqa: E402
-from sentinel_engine.live.reconciler import reconcile, ReconcileResult  # noqa: E402
+from sentinel_engine.live.reconciler import (  # noqa: E402
+    reconcile, ReconcileResult, MAX_VOLUME)
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
@@ -392,8 +393,20 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
     # key falls back to the global `volume`, behaving EXACTLY as before. Used by
     # the machine-1 `local` roster (S6/S7/SuperTrend @0.1, TK-Momentum @0.01).
     cfg_volume = cfg.get("volume", volume)
+    # PER-CONFIG VOLUME CAP (2026-07-27): an OPTIONAL `cfg["max_volume"]`
+    # overrides the reconciler's global `MAX_VOLUME` (0.10) for THIS config's
+    # OPENs only. A config WITHOUT the key falls back to `MAX_VOLUME`, behaving
+    # EXACTLY as before -- the anti-fat-finger backstop stays in force for the
+    # machine-1 `local` roster and every other one. Needed because a `volume`
+    # ABOVE the cap is not clamped and does not raise: it turns every OPEN into
+    # a NON-sendable REJECT_VOLUME, i.e. a stack that passes every health check
+    # and silently trades nothing. Used by the machine-2 `tomachine` roster
+    # (0.67 lot), whose cap is pinned to exactly its own volume -- a real
+    # backstop, not a blank cheque.
+    cfg_max_volume = cfg.get("max_volume", MAX_VOLUME)
     res = reconcile(cfg["id"], cfg["magic"], desired, live,
-                    volume=cfg_volume, bar_t=bars[-1]["t"], kill_switch=kill_switch,
+                    volume=cfg_volume, max_volume=cfg_max_volume,
+                    bar_t=bars[-1]["t"], kill_switch=kill_switch,
                     total_open_fichas=total_open_fichas)
     # SINGLE-POSITION EXECUTION GUARD (tk_momentum, trader 2026-07-21 "solo una
     # posicion"): NEVER send an OPEN while any live position already exists on

@@ -2,6 +2,8 @@
 same-bar-exit fallback, missing-SL alarm, caps, kill-switch."""
 from __future__ import annotations
 
+import pytest
+
 from sentinel_engine.live.reconciler import (
     reconcile, MAX_VOLUME, MAX_FICHAS_TOTAL,
 )
@@ -77,6 +79,55 @@ def test_volume_cap_rejects():
     desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
     res = reconcile("SS-M2", BASE, desired, [], volume=MAX_VOLUME + 0.01)
     assert [a.kind for a in res.actions] == ["REJECT_VOLUME"]
+
+
+def test_per_config_max_volume_allows_a_lot_above_the_global_cap():
+    # PER-CONFIG CAP (2026-07-27): a roster that legitimately trades above the
+    # 0.10 anti-fat-finger default passes its OWN cap; the OPEN must be SENDABLE
+    # and carry the exact volume (never clamped, never rejected).
+    desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
+    res = reconcile("SS-M2", BASE, desired, [], volume=0.67, max_volume=0.67)
+    assert [a.kind for a in res.actions] == ["OPEN"]
+    assert res.actions[0].sendable()
+    assert res.actions[0].volume == 0.67
+
+
+def test_per_config_max_volume_still_rejects_above_that_cap():
+    # The override is a real backstop, not a blank cheque: above the config's
+    # OWN cap we still REJECT (and still never clamp).
+    desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
+    res = reconcile("SS-M2", BASE, desired, [], volume=0.68, max_volume=0.67)
+    assert [a.kind for a in res.actions] == ["REJECT_VOLUME"]
+    assert not res.actions[0].sendable()
+
+
+def test_reject_volume_reason_names_the_effective_cap():
+    # The log must tell the TRUTH about which limit was applied -- naming the
+    # module constant while a per-config cap was in force would send a debugger
+    # down the wrong path.
+    desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
+    res = reconcile("SS-M2", BASE, desired, [], volume=0.68, max_volume=0.67)
+    reason = res.actions[0].reason
+    assert "0.67" in reason
+    assert str(MAX_VOLUME) not in reason
+
+
+def test_non_positive_max_volume_fails_loudly():
+    # A non-positive cap is a CONFIG ERROR, not "reject everything quietly".
+    desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
+    for bad in (0.0, -0.1):
+        with pytest.raises(ValueError):
+            reconcile("SS-M2", BASE, desired, [], volume=0.01, max_volume=bad)
+
+
+def test_default_max_volume_is_unchanged_for_callers_that_omit_it():
+    # Byte-identical behaviour for every existing caller.
+    assert MAX_VOLUME == 0.10
+    desired = _desired({"F1": {"side": "L", "entry": 2000.0, "sl": 1990.0}})
+    ok = reconcile("SS-M2", BASE, desired, [], volume=MAX_VOLUME)
+    assert [a.kind for a in ok.actions] == ["OPEN"]
+    bad = reconcile("SS-M2", BASE, desired, [], volume=MAX_VOLUME + 0.01)
+    assert [a.kind for a in bad.actions] == ["REJECT_VOLUME"]
 
 
 def test_total_ficha_cap_rejects():

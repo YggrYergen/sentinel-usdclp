@@ -529,6 +529,16 @@ assert min(_tk_bw2_band) == 725010 and max(_tk_bw2_band) == 725013, \
 # PER-CONFIG VOLUME: the executor's OPEN path reads `cfg.get("volume", <global
 # --volume>)`, so 0.67 here overrides the daemon's --volume for these two only.
 #
+# PER-CONFIG VOLUME CAP (2026-07-27, REQUIRED at this size): the reconciler's
+# global `MAX_VOLUME` is 0.10 and a volume ABOVE it is neither clamped nor
+# raised -- every OPEN becomes a NON-sendable REJECT_VOLUME, so the stack would
+# pass every health check and silently open NOTHING. So each copy also carries
+# `max_volume`, read by the executor as `cfg.get("max_volume", MAX_VOLUME)`. It
+# is set to EXACTLY this roster's `volume` (0.67), never above: the cap remains
+# a real anti-fat-finger backstop, not a blank cheque. The GLOBAL constant is
+# NOT raised -- machine 1's `local` roster (0.1 == MAX_VOLUME) and every other
+# roster carry no key and keep the 0.10 cap unchanged.
+#
 # SINGLE FICHA: S6-K2P0 runs `simular_variant`, whose `active_fichas` lever
 # (1/2/3, default 3) collapses the ladder to F1 only. SuperTrend gets NO
 # `active_fichas`: its engine is `supertrend_always_in`, whose target builder
@@ -542,10 +552,13 @@ assert set(_tomachine_golive_by_id) == set(_TOMACHINE_GOLIVE_IDS), \
 def _tomachine_copy(cid: str, volume: float, *,
                     active_fichas: int | None = None) -> dict[str, Any]:
     """Independent deep COPY of a shared go-live config carrying the machine-2
-    per-config volume and, when the engine supports it, the single-ficha lever.
+    per-config volume, its matching per-config volume cap and, when the engine
+    supports it, the single-ficha lever.
     NEVER mutates the source dict (the immutability invariant)."""
     c = copy.deepcopy(_tomachine_golive_by_id[cid])
     c["volume"] = volume
+    # cap == the authorized lot exactly (see the PER-CONFIG VOLUME CAP block).
+    c["max_volume"] = volume
     if active_fichas is not None:
         c["kwargs"]["active_fichas"] = active_fichas
     return c
@@ -576,6 +589,11 @@ assert {c["id"] for c in CONFIGS_SHADOW}.isdisjoint({c["id"] for c in CONFIGS_TO
 # OWNER'S 2026-07-27 SIZING/FICHA DECISION, pinned at import time.
 for _c in CONFIGS_TOMACHINE:
     assert _c["volume"] == 0.67, f"tomachine {_c['id']} volume must be 0.67"
+    # The 0.67 lot is ABOVE the reconciler's 0.10 default cap: without this key
+    # every OPEN would be rejected and the roster would trade nothing.
+    assert _c["max_volume"] == _c["volume"], \
+        (f"tomachine {_c['id']} max_volume must EQUAL its volume "
+         f"({_c['volume']}) -- a real backstop, never above it")
 assert {c["id"]: c for c in CONFIGS_TOMACHINE}["S6-K2P0"]["kwargs"]["active_fichas"] == 1, \
     "tomachine S6-K2P0 must run a SINGLE ficha (active_fichas == 1)"
 assert "active_fichas" not in \
@@ -583,10 +601,13 @@ assert "active_fichas" not in \
     "SuperTrend's always-in engine takes no active_fichas kwarg (already single-ficha)"
 
 # IMMUTABILITY: the SHARED go-live source objects must NOT have gained the
-# per-config volume nor the active_fichas lever.
+# per-config volume, its max_volume cap, nor the active_fichas lever.
 for _cid in _TOMACHINE_GOLIVE_IDS:
     assert "volume" not in _tomachine_golive_by_id[_cid], \
         f"tomachine's 0.67 leaked into the shared {_cid} dict (immutability violated)"
+    assert "max_volume" not in _tomachine_golive_by_id[_cid], \
+        (f"tomachine's max_volume leaked into the shared {_cid} dict -- every "
+         "other roster must keep the 0.10 anti-fat-finger cap")
     assert "active_fichas" not in _tomachine_golive_by_id[_cid]["kwargs"], \
         f"tomachine's active_fichas=1 leaked into the shared {_cid} kwargs"
 
@@ -653,6 +674,10 @@ for _c in CONFIGS_LOCAL:
         assert _c["volume"] == 0.01, "TK-Momentum local volume must be 0.01"
     else:
         assert _c["volume"] == 0.1, f"{_c['id']} local volume must be 0.1"
+    # NO per-config cap here: every local lot is <= the reconciler's 0.10
+    # MAX_VOLUME, so machine 1 keeps the global anti-fat-finger backstop.
+    assert "max_volume" not in _c, \
+        f"{_c['id']} local config must NOT carry max_volume (keeps the 0.10 cap)"
 # IMMUTABILITY: the SHARED source objects must NOT have gained a volume key.
 for _cid in _LOCAL_GOLIVE_IDS:
     assert "volume" not in _golive_by_id_for_local[_cid], \

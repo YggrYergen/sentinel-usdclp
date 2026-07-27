@@ -24,8 +24,12 @@ shadow-parity checker already tolerates spread + 1 tick, so this is expected,
 not a divergence.
 
 SAFETY CAPS (enforced HERE, re-checked by the daemon):
-  - `MAX_VOLUME` per ficha = 0.10; any computed volume above it -> the OPEN
-    action is REJECTED (kind REJECT_VOLUME), never silently clamped.
+  - `MAX_VOLUME` per ficha = 0.10 by DEFAULT; any computed volume above the
+    effective cap -> the OPEN action is REJECTED (kind REJECT_VOLUME), never
+    silently clamped. The cap is overridable PER CALL via the keyword-only
+    `max_volume=` (a roster whose authorized lot legitimately exceeds 0.10 sets
+    it to exactly that lot -- see `CONFIGS_TOMACHINE`); callers that omit it get
+    `MAX_VOLUME`, the anti-fat-finger backstop for every other roster.
   - `MAX_FICHAS_PER_CONFIG` = 3, `MAX_FICHAS_TOTAL` = 60: OPENs beyond the cap
     are REJECTED (kind REJECT_CAP).
   - Kill-switch: when `kill_switch=True`, OPEN actions are suppressed
@@ -118,6 +122,7 @@ def reconcile(
     live_positions: list[dict[str, Any]],
     *,
     volume: float = 0.01,
+    max_volume: float = MAX_VOLUME,
     bar_t: int | None = None,
     sl_tol: float = 0.05,
     kill_switch: bool = False,
@@ -136,7 +141,13 @@ def reconcile(
         {"ticket","magic","type"|"side","volume","sl"}. Only positions whose
         magic is in the config's ficha band are considered; callers SHOULD
         pre-filter, but we defensively filter again here.
-    volume : per-ficha order volume (config-level; capped at MAX_VOLUME).
+    volume : per-ficha order volume (config-level; capped at `max_volume`).
+    max_volume : effective per-ficha volume cap for THIS call. Defaults to the
+        module constant `MAX_VOLUME` (0.10), so any caller that omits it behaves
+        exactly as before. A roster sized above the default passes its OWN cap
+        (set to exactly its authorized lot, so the cap stays a real backstop).
+        Must be > 0: a non-positive cap is a configuration error and raises,
+        rather than quietly turning every OPEN into a REJECT.
     sl_tol : absolute price tolerance below which a SL difference is NOOP
         (avoids modify-thrash on sub-tick noise).
     kill_switch : suppress OPENs (still allow CLOSE/MODIFY + logging).
@@ -147,6 +158,14 @@ def reconcile(
     Ordering: CLOSE (orphans) first, then MODIFY, then OPEN -- so freed slots
     and risk reductions are applied before we add exposure.
     """
+    # FAIL LOUDLY on a nonsense cap: a 0/negative `max_volume` would reject every
+    # OPEN and read like "the strategy simply had no signals" in the logs -- the
+    # exact silent-no-trading failure this parameter exists to prevent.
+    if not max_volume > 0:
+        raise ValueError(
+            f"max_volume must be > 0 (got {max_volume!r}) -- a non-positive "
+            f"volume cap is a configuration error, not a valid backstop")
+
     res = ReconcileResult(config_id=config_id, base_magic=base_magic, bar_t=bar_t)
     open_state, last_bar_exits = _split_snapshot(desired_state)
 
@@ -251,11 +270,14 @@ def reconcile(
             d = open_state[tag]
             magic = base_magic + FICHA_OFFSET[tag]
             # volume cap: reject, never clamp.
-            if volume > MAX_VOLUME:
+            if volume > max_volume:
+                # the reason names the EFFECTIVE cap that was applied (which may
+                # be a per-config override), never the module constant -- the log
+                # must not send a debugger after the wrong limit.
                 res.actions.append(Action(
                     "REJECT_VOLUME", config_id, magic, tag, side=d["side"],
                     volume=volume, sl=d.get("sl"), price_ref=d.get("entry"),
-                    reason=f"volume {volume} > MAX_VOLUME {MAX_VOLUME}"))
+                    reason=f"volume {volume} > max_volume {max_volume}"))
                 continue
             # total-fichas cap (60 across all configs).
             if running_total >= MAX_FICHAS_TOTAL:

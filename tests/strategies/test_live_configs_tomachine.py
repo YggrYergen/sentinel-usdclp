@@ -150,6 +150,16 @@ def test_tomachine_volume_is_zero_point_six_seven_on_both_configs():
         assert c["volume"] == 0.67, f"{c['id']} tomachine volume must be 0.67"
 
 
+def test_tomachine_max_volume_equals_its_volume_on_both_configs():
+    # The 0.67 lot is above the reconciler's 0.10 anti-fat-finger default, so
+    # each config carries its OWN cap -- set EXACTLY at the authorized lot, not
+    # a decimal above: it stays a real backstop, not a blank cheque.
+    for c in CONFIGS_TOMACHINE:
+        assert "max_volume" in c, f"{c['id']} must carry a per-config max_volume"
+        assert c["max_volume"] == c["volume"] == 0.67, \
+            f"{c['id']} max_volume must equal its volume (0.67)"
+
+
 def test_tomachine_s6_runs_a_single_ficha():
     by_id = {c["id"]: c for c in CONFIGS_TOMACHINE}
     assert by_id["S6-K2P0"]["kwargs"]["active_fichas"] == 1
@@ -186,5 +196,8 @@ def test_shared_golive_dicts_have_no_volume_and_no_active_fichas():
     for cid in _SHARED_GOLIVE_IDS:
         src = golive_by_id[cid]
         assert "volume" not in src, f"a per-config volume leaked into shared {cid}"
+        assert "max_volume" not in src, \
+            (f"a per-config max_volume leaked into shared {cid} -- every roster "
+             "reading these dicts must keep the 0.10 anti-fat-finger cap")
         assert "active_fichas" not in src["kwargs"], \
             f"active_fichas leaked into shared {cid} kwargs (default 3 broken)"
