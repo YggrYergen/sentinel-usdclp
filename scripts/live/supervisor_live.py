@@ -120,10 +120,36 @@ SUPERVISOR_MAX_SPREAD_OPEN = os.environ.get("SUPERVISOR_MAX_SPREAD_OPEN")
 # logon and every self-heal relaunch preserve the protection.
 SUPERVISOR_BLOCKED_OPEN_WINDOW = os.environ.get("SUPERVISOR_BLOCKED_OPEN_WINDOW")
 
+# OPTIONAL kill-switch for the executor's ADAPTIVE open-spread gate, passed
+# through as the bare flag `--no-adaptive-spread` (see run_live_20.py:
+# dest="adaptive_spread", store_false; the adaptive gate is ON by default).
+# The adaptive gate derives its cap from a PERSISTENT ALL-TIME RUNNING MINIMUM
+# of the observed spread, and the executor applies the TIGHTER of that cap and
+# the static `--max-spread-open` one. On machine-2 (TOMACHINE) that running min
+# has ratcheted down to 0.20, so the adaptive cap started binding tighter than
+# the owner's intended 0.5 hard cap and EVERY entry was deferred with
+# `SPREAD_GATE_SKIP ... spread=0.50000 > cap=0.20000 (adaptive)` even though
+# the real 0.50 spread satisfies the owner's rule ("open when spread <= 0.5").
+# Disabling the adaptive gate does NOT remove spread protection: the STATIC
+# `--max-spread-open` cap (SUPERVISOR_MAX_SPREAD_OPEN=0.5) still applies and is
+# the real protection here; exits/MODIFY/CLOSE were never gated either way.
+# Accepted (case-insensitive): 1/true/yes/on to disable the adaptive gate,
+# 0/false/no/off/empty to keep it. UNSET (default, None) appends NOTHING to the
+# argv -- machine-1's argv, and therefore its behavior, stays byte-identical to
+# before this option existed.
+SUPERVISOR_NO_ADAPTIVE_SPREAD = os.environ.get("SUPERVISOR_NO_ADAPTIVE_SPREAD")
+
+# Explicit truthy/falsy spellings for SUPERVISOR_NO_ADAPTIVE_SPREAD. Anything
+# outside these two sets is a typo on a safety-adjacent setting and FAILS LOUD
+# (see build_executor_argv) rather than being silently coerced to False.
+_NO_ADAPTIVE_SPREAD_TRUE = frozenset({"1", "true", "yes", "on"})
+_NO_ADAPTIVE_SPREAD_FALSE = frozenset({"0", "false", "no", "off", ""})
+
 
 def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
                         max_spread_open: str | None = SUPERVISOR_MAX_SPREAD_OPEN,
                         blocked_open_window: str | None = SUPERVISOR_BLOCKED_OPEN_WINDOW,
+                        no_adaptive_spread: str | None = SUPERVISOR_NO_ADAPTIVE_SPREAD,
                         ) -> list[str]:
     """Builds the argv used to launch the armed executor. `configs` is passed
     straight through to `--configs` (unchanged behavior). `max_spread_open`,
@@ -144,9 +170,19 @@ def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
     itself uses, so there is exactly one source of truth about the format.
     Unset/empty means the flag is not appended at all (byte-identical argv).
 
-    A malformed cap (doesn't parse, non-positive, infinite/NaN) or a malformed
-    window is FAILED LOUD: these are safety settings, and arming the executor
-    without the intended protection because of a typo would be worse than
+    `no_adaptive_spread`, if truthy (case-insensitive 1/true/yes/on), appends
+    the bare flag `--no-adaptive-spread` LAST, which turns OFF the executor's
+    ADAPTIVE running-min open-spread gate (run_live_20's `dest="adaptive_spread"`
+    store_false). This is what machine-2 needs: its persistent all-time running
+    min ratcheted to 0.20 and began binding tighter than the intended 0.5 hard
+    cap, deferring every entry. The STATIC `--max-spread-open` cap still applies
+    and remains the real protection. Falsy (0/false/no/off/empty) or unset
+    appends nothing at all (byte-identical argv, machine-1 untouched).
+
+    A malformed cap (doesn't parse, non-positive, infinite/NaN), a malformed
+    window or an unrecognised `no_adaptive_spread` spelling is FAILED LOUD:
+    these are safety settings, and arming the executor with a gate in a state
+    the operator did not intend because of a typo would be worse than
     refusing to start at all. The error is logged to watchdog.log and the
     process exits via SystemExit(2) -- callers (e.g. `main()`) are expected to
     let this propagate rather than swallow it."""
@@ -187,6 +223,23 @@ def build_executor_argv(configs: str = SUPERVISOR_CONFIGS,
                 print(msg, file=sys.stderr)
             raise SystemExit(2)
         argv += ["--blocked-open-window", blocked_open_window]
+    if no_adaptive_spread is not None:
+        token = str(no_adaptive_spread).strip().lower()
+        if token not in _NO_ADAPTIVE_SPREAD_TRUE and token not in _NO_ADAPTIVE_SPREAD_FALSE:
+            msg = (f"SUPERVISOR_NO_ADAPTIVE_SPREAD={no_adaptive_spread!r} is not a "
+                   "recognised boolean -- accepted values are "
+                   f"{sorted(_NO_ADAPTIVE_SPREAD_TRUE)} (disable the adaptive "
+                   f"spread gate) or {sorted(_NO_ADAPTIVE_SPREAD_FALSE - {''})} / "
+                   "empty (keep it), case-insensitive. Refusing to arm the executor "
+                   "with a spread gate whose state the operator cannot have intended. "
+                   "Fix or unset SUPERVISOR_NO_ADAPTIVE_SPREAD and restart.")
+            try:
+                _log_watchdog(f"FATAL: {msg}")
+            except NameError:
+                print(msg, file=sys.stderr)
+            raise SystemExit(2)
+        if token in _NO_ADAPTIVE_SPREAD_TRUE:
+            argv += ["--no-adaptive-spread"]
     return argv
 
 

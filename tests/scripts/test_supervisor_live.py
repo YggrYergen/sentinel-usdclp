@@ -18,7 +18,8 @@ from scripts.live import preflight_live as pf
 # DEFAULT argv shape must clear these themselves (this machine's user
 # environment exports all three), never assume a clean invoking shell.
 _SUPERVISOR_ENV_VARS = ("SUPERVISOR_CONFIGS", "SUPERVISOR_MAX_SPREAD_OPEN",
-                        "SUPERVISOR_BLOCKED_OPEN_WINDOW")
+                        "SUPERVISOR_BLOCKED_OPEN_WINDOW",
+                        "SUPERVISOR_NO_ADAPTIVE_SPREAD")
 
 
 # --------------------------------------------------------------------------
@@ -650,6 +651,100 @@ def test_supervisor_blocked_window_uses_executor_parser_single_source():
     src = open(sup.__file__, encoding="utf-8").read()
     assert "parse_blocked_open_window" in src
     assert hasattr(run_live_20, "parse_blocked_open_window")
+
+
+# --------------------------------------------------------------------------
+# build_executor_argv: optional adaptive-spread kill switch
+# (SUPERVISOR_NO_ADAPTIVE_SPREAD -> executor's bare `--no-adaptive-spread`).
+# The adaptive running-min gate ratcheted to 0.20 and bound tighter than the
+# owner's 0.5 static cap; the static cap stays on and is the real protection.
+# Unset/falsy => argv byte-identical to before this option existed (machine-1).
+# --------------------------------------------------------------------------
+@pytest.mark.parametrize("value", [None, "", "0", "false", "FALSE", "no", "off",
+                                   "  Off  "])
+def test_build_executor_argv_no_adaptive_flag_when_unset_or_falsy(value):
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None,
+                                   blocked_open_window=None,
+                                   no_adaptive_spread=value)
+    assert "--no-adaptive-spread" not in argv
+    # byte-identical to the pre-existing argv shape.
+    assert argv == [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
+                    "--confirm-account", str(sup.guard_cuenta.DEMO_LOGIN),
+                    "--configs", "tomachine"]
+
+
+@pytest.mark.parametrize("value", ["1", "true", "TRUE", "True", "yes", "YES",
+                                   "on", "  On  "])
+def test_build_executor_argv_appends_bare_no_adaptive_flag_last(value):
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open=None,
+                                   blocked_open_window=None,
+                                   no_adaptive_spread=value)
+    # bare flag (no value follows it) and appended LAST.
+    assert argv[-1] == "--no-adaptive-spread"
+    assert argv.count("--no-adaptive-spread") == 1
+    assert argv[:-1] == [sys.executable, "-m", "scripts.live.run_live_20", "--arm",
+                         "--confirm-account", str(sup.guard_cuenta.DEMO_LOGIN),
+                         "--configs", "tomachine"]
+
+
+@pytest.mark.parametrize("value", ["ture", "sí", "2", "yes please", "none",
+                                   "disabled"])
+def test_build_executor_argv_invalid_no_adaptive_raises_system_exit(value):
+    """FAIL-LOUD: an unrecognised spelling must NOT be silently read as false,
+    which would arm the executor with a spread gate the operator believed was
+    off (or vice versa). Same tone/structure as the other two settings."""
+    with pytest.raises(SystemExit) as exc:
+        sup.build_executor_argv(no_adaptive_spread=value)
+    assert exc.value.code == 2
+
+
+def test_build_executor_argv_all_four_settings_together():
+    """Machine-2's real launch shape: tomachine roster + static 0.5 hard cap +
+    18:00-18:45 blocked window + adaptive gate OFF, still armed and account
+    confirmed."""
+    argv = sup.build_executor_argv(configs="tomachine", max_spread_open="0.5",
+                                   blocked_open_window="18:00-18:45",
+                                   no_adaptive_spread="1")
+    assert argv[argv.index("--configs") + 1] == "tomachine"
+    assert argv[argv.index("--max-spread-open") + 1] == "0.5"
+    assert argv[argv.index("--blocked-open-window") + 1] == "18:00-18:45"
+    assert argv[-1] == "--no-adaptive-spread"
+    assert "--arm" in argv
+    assert argv[argv.index("--confirm-account") + 1] == str(sup.guard_cuenta.DEMO_LOGIN)
+
+
+def test_supervisor_env_no_adaptive_spread_reaches_executor_argv(monkeypatch):
+    """With the env var set (user env -> scheduled task -> watchdog ->
+    supervisor), the module-level EXECUTOR_ARGV used by BOTH the auto-launch and
+    every self-heal relaunch carries the flag."""
+    for var in _SUPERVISOR_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    monkeypatch.setenv("SUPERVISOR_CONFIGS", "tomachine")
+    monkeypatch.setenv("SUPERVISOR_MAX_SPREAD_OPEN", "0.5")
+    monkeypatch.setenv("SUPERVISOR_NO_ADAPTIVE_SPREAD", "1")
+    reloaded = importlib.reload(sup)
+    try:
+        argv = reloaded.EXECUTOR_ARGV
+        assert reloaded.SUPERVISOR_NO_ADAPTIVE_SPREAD == "1"
+        assert argv[-1] == "--no-adaptive-spread"
+        assert argv[argv.index("--max-spread-open") + 1] == "0.5"
+        assert argv[argv.index("--configs") + 1] == "tomachine"
+    finally:
+        monkeypatch.undo()
+        importlib.reload(sup)
+
+
+def test_default_executor_argv_has_no_adaptive_flag_when_env_unset(monkeypatch):
+    """Machine-1 immutability: env var unset => the flag never appears."""
+    for var in _SUPERVISOR_ENV_VARS:
+        monkeypatch.delenv(var, raising=False)
+    reloaded = importlib.reload(sup)
+    try:
+        assert reloaded.SUPERVISOR_NO_ADAPTIVE_SPREAD is None
+        assert "--no-adaptive-spread" not in reloaded.EXECUTOR_ARGV
+    finally:
+        monkeypatch.undo()
+        importlib.reload(sup)
 
 
 def test_bars_ingester_argv_scoped_to_target_symbols():
