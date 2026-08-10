@@ -14,6 +14,25 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
 
 ## Abiertas
 
+- **2026-08-10** · Opus5 (verificación T0.9-min) · 🟠 **`run_id` del runner = `run_key` literal**,
+  no el formato `<FASE>-<AREA><n>-<seq>` de `LEDGER.schema.md`. El implementador hizo lo correcto
+  al **no** inventar la convención (es decisión de diseño, fuera de su rol). **Ruling del
+  controlador:** el manifiesto de T0.4 debe llevar el `run_id` explícito por corrida; si aparece
+  una tercera tarea con el mismo problema, se promueve a enmienda y el runner genera la secuencia ·
+  `scripts/research/runner/runner.py`
+- **2026-08-10** · Opus5 (verificación T0.9-min) · 🟠 `ledger.append_row()` escribe `line + "\n"`
+  asumiendo que el fichero **termina** en salto de línea. Si alguna vez no lo hace, la fila nueva
+  se fusiona con la última y **corrompe un artefacto append-only**. Endurecer al construir T0.4
+  (comprobar el último byte antes de escribir) · `scripts/research/runner/ledger.py:42`
+- **2026-08-10** · Opus5 (verificación T0.9-min) · 🟡 El test `test_lineage_completo_13_campos`
+  afirma cubrir "sin conversión de zona" pero solo comprueba que el timestamp no contenga `Z` ni
+  `+00:00`. **`datetime.utcnow()` pasaría ese test** desplazando 4 horas en silencio. La
+  implementación es correcta (`datetime.now()`), así que no hay defecto vivo — pero el test no
+  guarda lo que dice guardar · `tests/research/test_runner_scaffold.py:163-165`
+- **2026-08-10** · Opus5 (verificación T0.9-min) · 🟡 `test_fail_loud_corrida_aborta...` llama a
+  `tasks.register()` sobre el registro global sin limpiarlo después: contaminación de estado entre
+  tests · `tests/research/test_runner_scaffold.py:118`
+
 - **2026-08-10** · Opus5 · 🔴 `CUENTAS.md` es la **fuente única** de cuentas MT5 según charter
   §A.12, pero está **incompleta respecto del código**: no menciona el login `2883016567`, que
   `scripts/analysis/realtick_bt/extract_ticks.py:34` sí sanciona como demo operable

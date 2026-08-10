@@ -38,7 +38,7 @@
 | `[ ]` | T0.6 | **12 modificaciones de motor** (inventario en plan §4.1) | Spec: Opus · Impl: Sonnet TDD | 🔴 **Requiere SIGN-OFF del user antes de implementar.** TODAS juntas, antes del freeze |
 | `[ ]` | T0.7 | **A6 — Fidelidad** (diseño de dos patas, plan §4.2) | Impl: Sonnet · Análisis: Opus | **GATE DE TODO EL PROGRAMA.** Objetivo: señal bit-idéntica; neto ≤0,3 % (99,7) / ideal ≤0,15 % (99,85) |
 | `[ ]` | T0.8 | Freeze del motor (tag + SHA anotado aquí) | Controlador | Solo tras T0.6 + T0.7 verdes |
-| `[~]` | T0.9-min | **Scaffold mínimo de runner** (D-18) | Sonnet · impl. TDD | `scripts/research/`. Idempotente · reanudable · fail-loud · append-only al LEDGER · manifiesto declarativo. **Scaffold, NO framework**. Fija el patrón de las ~50 tareas siguientes |
+| `[x]` | T0.9-min | **Scaffold mínimo de runner** (D-18) | Sonnet · impl. TDD | ✅ **VERIFICADO** por el controlador contra artefactos crudos. `scripts/research/runner/` (7 módulos) + `tests/research/test_runner_scaffold.py`. Commit `b9ce5f2`, 8 ficheros / 606 líneas. 5/5 tests re-corridos en foreground; `tests/research` 118 passed. Fila `F0-INFRA-0017`. 4 observaciones diferidas → `BACKLOG.md` |
 | `[ ]` | T0.9 | Research OS — resto (supervisión durable) | Sonnet | Estructura y protocolos: `[x]`. Scaffold de runner: T0.9-min. Falta: supervisión durable de watcher/ingesta |
 | `[ ]` | T0.10 | Literatura formal — 7 áreas | Recolección: Sonnet · Memos: Opus | Cada área ANTES de cerrar su grilla |
 | `[ ]` | T0.11b | Análisis de las 28 transcripciones | Ver protocolo dedicado | **Protocolo exacto:** `research/fases/F0-preparacion/PROTOCOLO-REVISION-VIDEOS.md` |
@@ -82,6 +82,12 @@ A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-10** · Sonnet 5 impl. + Opus 5 verif. · **T0.9-min HECHA y verificada** (`b9ce5f2`).
+  Scaffold de runner en `scripts/research/runner/`: manifiesto YAML validado con fail-loud, tags
+  de lineage, escritor append-only del LEDGER con validación de los 13 campos, estado reanudable,
+  registro de task-types y CLI. 5 tests obligatorios + smoke del CLI. Verificación independiente
+  del controlador: tests re-corridos, `scripts/research/__init__.py` NO creado, scripts previos
+  intactos, LEDGER real sin tocar por el agente. 4 observaciones al backlog (ninguna bloqueante).
 - **2026-08-10** · User + Opus 5 · **Arranque autorizado.** Freeze de D-05 levantado para el orden
   0→7. Decisiones nuevas **D-16** (commitear el Research OS antes de despachar; `data/literature`
   NO entra al repo), **D-17** (lineage retroactivo acotado a `monday_audit/*.json` y
