@@ -1,0 +1,134 @@
+# DECISIONES DEL USER — vinculantes, fechadas, append-only
+
+> Toda decisión del user que gobierna el programa. **Vinculante**: ningún agente puede
+> contradecirla, reinterpretarla ni "mejorarla". Si una decisión parece incorrecta o entra en
+> conflicto con otra: **STOP y escalar**, nunca resolver por cuenta propia.
+> Append-only: una decisión superada se marca `SUPERSEDED por D-nn`, jamás se borra.
+
+---
+
+### D-01 · 2026-08-10 · Holdout — APROBADO
+La partición propuesta queda **aprobada**: se sella (a) el trimestre más reciente del sustrato
+combinado y (b) un año completo **no adyacente** de los ticks AVA (ej.: 2023 entero + may–jul 2026).
+Intocados hasta la evaluación final única. *Ejecutar en T0.12 y dejar constancia aquí con las
+fechas exactas una vez definidas contra el rango real descargado.*
+
+### D-02 · 2026-08-10 · Método de descarga AVA + bloqueo
+Indicación de la encargada regional de AVA (vía WhatsApp, 2026-08-07): en la plataforma instalada,
+**clic derecho sobre el listado de instrumentos (Market Watch, panel izquierdo) → Symbols → Ticks →
+seleccionar instrumento, ticks y fechas → Exportar**. El archivo es "sumamente pesado" (por eso no
+lo envían).
+**Evaluar** si es replicable programáticamente (`copy_ticks_range`), que sería preferible para
+trocear 2–4 años y registrar lineage — verificar contra el terminal real de AVA.
+🔴 **BLOQUEADO:** faltan las credenciales (el user tiene la clave, falta el login). Se retoma
+cuando el user las provea. Charter §A.12 aplica (attach-only; credenciales no persistidas).
+
+### D-03 · 2026-08-10 · Literatura informal — lista entregada
+28 videos entregados. Descarga completada (T0.11a). **Ninguna transcripción leída.** El protocolo
+de análisis, dictado por el user, está en
+`research/fases/F0-preparacion/PROTOCOLO-REVISION-VIDEOS.md` y es de cumplimiento obligatorio.
+
+### D-04 · 2026-08-10 · Limpieza de disco C: — solo propuesta
+Se autoriza **generar una propuesta** cruzando **tamaño × antigüedad** (ficheros grandes que no se
+han modificado ni visto hace mucho). 🔴 **PROHIBIDO BORRAR NADA.** El user revisa y **borra él
+mismo, a mano**.
+
+### D-05 · 2026-08-10 · El plan se detalla y cierra ANTES de ejecutar
+Primero se detalla y sella el plan de investigación completo con todos sus artefactos,
+infraestructura, trackers, reglas y prompts (el "sistema"). Solo después se ejecuta. Ninguna tarea
+de investigación arranca antes de ese cierre.
+
+### D-06 · 2026-08-10 · Ganadora = neto positivo
+"Ganadora" significa **neto positivo en backtest**, NO "supera a S6/ST". La dependencia del top-K
+es descriptor, no criterio de eliminación. Todas las netas positivas van a la conversación E0.
+
+### D-07 · 2026-08-10 · Comparabilidad por encima de todo
+Los resultados de los experimentos deben ser comparables entre sí, siempre. Por eso el
+vol-targeting y cualquier ajuste de tamaño va **al final** del programa, cuando las estrategias
+estén refinadas.
+
+### D-08 · 2026-08-10 · Real-tick es el sustrato
+Las barras M15 son irrelevantes para los veredictos de esta investigación. Se trabaja sobre
+real-tick aunque consuma más cómputo.
+
+### D-09 · 2026-08-10 · No teñir la investigación
+Las opiniones del orquestador sobre qué áreas tienen más o menos probabilidad **pueden extender**
+la profundidad de exploración, **nunca reducirla**. Ninguna hipótesis previa poda una grilla.
+Aplica explícitamente a: indicadores de tienda (aunque parezcan correlacionados con lo existente),
+familias de régimen (un representante por familia sería un error), y timeframes rápidos.
+
+### D-10 · 2026-08-10 · Motor congelado antes de ejecutar
+Toda modificación del motor exige re-verificar paridad/fidelidad (99,7 % / 99,85 %) empíricamente
+antes de usarlo. Se prefiere hacer **todas** las extensiones necesarias ANTES del programa y luego
+congelar: el riesgo de modificar durante la ejecución es demasiado grande.
+
+### D-11 · 2026-08-10 · Challengers — congelados hasta el final
+Nada sube a live-demo hasta terminar la investigación completa y analizar juntos, en detalle y con
+honestidad, la grilla completa de netas positivas con sus pros y contras.
+
+### D-12 · 2026-08-10 · Cuenta 902
+No es cuenta de R&D y **no debe existir riesgo de confundirla o tocarla**. Sus credenciales no se
+entregan salvo necesidad explícita y acotada, y jamás quedan registradas en el equipo local.
+Para datos: `MT5_Tester_2` la tiene abierta y se autoriza **descargar su historial** (solo lectura).
+
+### D-13 · 2026-08-10 · Familia F (estrategia del trader)
+Se implementa y preserva la **spec literal** del trader para poder mostrársela y discutirla, **y**
+se explora la familia completa de variantes, timeframes y configuraciones. El TP de 4500 (CLP)
+entra como **una hipótesis entre decenas**, normalizada por lote.
+
+### D-14 · 2026-08-10 · Routing 70/29/1 y paralelismo
+Sonnet 5 high ≈70 % · Opus 5 high ≤29 % (orquestación + toda interpretación) · Fable 5 ≈1 %.
+**Máximo 2 subagentes en paralelo.** A Sonnet nunca se le pide interpretar.
+
+### D-15 · 2026-08-10 · Minimizar LLM donde haya automatización posible
+Donde un script Python pueda ejecutar (colas de backtests paralelas/secuenciales, regeneraciones,
+conteos), **se prefiere el script** sobre un subagente que "corre y mira". Protege de
+alucinaciones, interpretaciones erróneas y costo. Requisito: la información queda registrada,
+persistida y categorizada con trazabilidad absoluta.
+
+### D-16 · 2026-08-10 · Commitear el Research OS ANTES de cualquier despacho
+El sistema de gobierno (plan v4 + `research/**`) estaba **sin commitear**: HEAD era `41fdb25`
+(2026-07-27), un commit que no contiene ni un solo fichero del programa. La "única fuente de verdad
+del estado" vivía solo en disco, sin historia ni respaldo — el peor modo de fallo del sistema.
+**Se commitea, scoped, a la rama `equipo1`, antes de despachar nada:** `research/**` +
+`docs/superpowers/plans/2026-08-10-plan-investigacion-integral-v4.md`.
+- **`data/literature/` NO entra al repo** (decisión del user, misma fecha): ni las 28
+  transcripciones ni `urls.txt`. `.gitignore:33` (`data/*`) las cubre y **no se modifica**. El
+  corpus queda como activo local; el LEDGER apunta a sus rutas.
+- **Corrección del LEDGER:** las tres filas existentes declaran `git_sha: 41fdb25`, donde sus
+  artefactos no existían. Se corrige **añadiendo filas nuevas** con `supersedes` + `reason`
+  (protocolo 04 parte 3). **Jamás se edita una fila existente.**
+
+### D-17 · 2026-08-10 · Lineage retroactivo ACOTADO
+No se backfillea todo el histórico. Se registran en el LEDGER **únicamente** los artefactos
+vigentes que otras tareas van a citar:
+- `data/analysis/monday_audit/*.json`
+- `data/analysis/realtick_bt/positions_*.csv`
+
+Con `substrate_id=repaired-7m`, `engine_sha` **declarado desconocido** (no inventado) y
+`generador=historico-pre-ledger`.
+**Regla derivada, vinculante:** todo número que no tenga fila en el LEDGER queda como **no
+verificado** y no se cita como base de ninguna decisión.
+
+### D-18 · 2026-08-10 · T0.4 sale como el PRIMER RUNNER del programa
+Resuelve la pregunta 6.3 del controlador: **runner, no script ad-hoc.** Pero **scaffold mínimo,
+no framework**: lo justo para cumplir `protocolos/06-runners.md` — idempotente, reanudable,
+fail-loud, escritura append-only al LEDGER, manifiesto declarativo. Vive en `scripts/research/`.
+Consecuencia: **T0.9 se parte** en `T0.9-min` (scaffold, ahora) y `T0.9` (resto: supervisión
+durable de watcher/ingesta, después). Es apenas más trabajo que un script y fija el patrón para
+las ~50 tareas siguientes.
+
+### D-19 · 2026-08-10 · Credenciales AVA entregadas — **B1 DESBLOQUEADO**
+Cuenta **DEMO** de AVA: login `101744074`. El user autoriza su uso. Condiciones, las tres
+vinculantes:
+1. **`CUENTAS.md` es la fuente única** (charter §A.12): la cuenta AVA se registra ahí, marcada
+   explícitamente como **DEMO de otro bróker**, con su propósito (descarga de histórico). El user
+   autorizó escribir la password siguiendo la convención existente del fichero; `CUENTAS.md` está
+   **gitignored** (`.gitignore:82`), así que no entra a git.
+2. 🔴 **El guard va a rechazar la cuenta.** `scripts/analysis/realtick_bt/extract_ticks.py:34`
+   tiene `SANCTIONED_DEMO = {2883015767, 2883016567}` con `REFUSE` explícito; `101744074` no está.
+   **Extender ese guard es tocar código de seguridad:** requiere **autorización explícita del user**,
+   va como cambio deliberado y documentado, con test, y **jamás de forma silenciosa** ni ampliando
+   el guard "por conveniencia".
+3. **Attach-only sigue vigente** (charter §A.12): AVA es otro bróker y necesita **su propio
+   terminal MT5 instalado y logueado, abierto por el user**. Ningún script lanza terminales.
