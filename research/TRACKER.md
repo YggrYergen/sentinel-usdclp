@@ -31,7 +31,7 @@
 | `[x]` | T0.1 | Backup del plan previo | — | `docs/superpowers/plans/backups/2026-08-10-programa-exploracion-artifact-PRE-INTEGRACION.html` (71,7 KB) |
 | `[x]` | T0.0 | Plan v4 redactado + Research OS construido | Fable | Plan: `plans/2026-08-10-plan-investigacion-integral-v4.md` · OS: `research/**` |
 | `[x]` | T0.11a | Descarga de 28 transcripciones YouTube | Fable | `data/literature/youtube_transcripts/` · 28/28 · **~233.723 tokens** · NINGUNA leída |
-| `[~]` | T0.2 | Propuesta de limpieza disco C: (95 % lleno) | Sonnet · INVESTIGADOR | **SOLO PROPUESTA. PROHIBIDO BORRAR** (D-04). El user borra a mano. Cruzar tamaño × antigüedad. 🔴 **Primera entrega: el user la lee antes que nada** |
+| `[x]` | T0.2 | Propuesta de limpieza disco C: (95 % lleno) | Sonnet · INVESTIGADOR | ✅ **VERIFICADO.** `04-resultados/T0.2-disco-C/inventario-espacio.md` (574 líneas). D-04 respetada (0 comandos destructivos, comprobado). C: 22,19 GB libres (4,92 %). Fila `F0-INFRA-0018`. 🔴 **PENDIENTE: que el user lo lea y borre él, a mano** |
 | `[ ]` | T0.3 | **R6-AVA**: descarga real-tick ≥2 años (objetivo 4) | Sonnet | ✅ **B1 DESBLOQUEADO** (D-19): demo AVA `101744074`. Requiere (a) terminal AVA abierto por el user (attach-only) y (b) 🔴 **autorización explícita para extender `SANCTIONED_DEMO`** en `extract_ticks.py:34` |
 | `[ ]` | T0.4 | **Top-up ticks Capitaria** (ventana completa de la 902) | Sonnet impl. + runner | Insumo directo de **A6 Pata A** (ventana en que operó la 902) — **no** es urgencia de ventana rodante: ver **ENMIENDA E-01**. Primer cliente del runner (D-18). Requiere `MT5_Tester` abierto por el user |
 | `[ ]` | T0.5 | Export historial cuenta 902 (deals/órdenes/balance) | Sonnet | Vía `MT5_Tester_2`. **SOLO LECTURA** (charter §A.12) |
