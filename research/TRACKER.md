@@ -31,7 +31,7 @@
 | `[x]` | T0.1 | Backup del plan previo | — | `docs/superpowers/plans/backups/2026-08-10-programa-exploracion-artifact-PRE-INTEGRACION.html` (71,7 KB) |
 | `[x]` | T0.0 | Plan v4 redactado + Research OS construido | Fable | Plan: `plans/2026-08-10-plan-investigacion-integral-v4.md` · OS: `research/**` |
 | `[x]` | T0.11a | Descarga de 28 transcripciones YouTube | Fable | `data/literature/youtube_transcripts/` · 28/28 · **~233.723 tokens** · NINGUNA leída |
-| `[x]` | T0.2 | Propuesta de limpieza disco C: (95 % lleno) | Sonnet · INVESTIGADOR | ✅ **VERIFICADO.** `04-resultados/T0.2-disco-C/inventario-espacio.md` (574 líneas). D-04 respetada (0 comandos destructivos, comprobado). C: 22,19 GB libres (4,92 %). Fila `F0-INFRA-0018`. 🔴 **PENDIENTE: que el user lo lea y borre él, a mano** |
+| `[x]` | T0.2 | Propuesta de limpieza disco C: (95 % lleno) | Sonnet · INVESTIGADOR | ✅ **VERIFICADO.** `04-resultados/T0.2-disco-C/inventario-espacio.md` (574 líneas). D-04 respetada (0 comandos destructivos, comprobado). C: 22,19 GB libres (4,92 %). Fila `F0-INFRA-0018`. ✅ **CERRADA por el user 2026-08-10**: vació `Downloads` a mano → **+53,75 GB** (C: 22,19 → 75,94 GB libres, verificado). Cachés de dev (~41 GB) quedan como reserva |
 | `[ ]` | T0.3 | **R6-AVA**: descarga real-tick ≥2 años (objetivo 4) | Sonnet | ✅ **B1 DESBLOQUEADO** (D-19): demo AVA `101744074`. Requiere (a) terminal AVA abierto por el user (attach-only) y (b) 🔴 **autorización explícita para extender `SANCTIONED_DEMO`** en `extract_ticks.py:34` |
 | `[ ]` | T0.4 | **Top-up ticks Capitaria** (ventana completa de la 902) | Sonnet impl. + runner | Insumo directo de **A6 Pata A** (ventana en que operó la 902) — **no** es urgencia de ventana rodante: ver **ENMIENDA E-01**. Primer cliente del runner (D-18). Requiere `MT5_Tester` abierto por el user |
 | `[ ]` | T0.5 | Export historial cuenta 902 (deals/órdenes/balance) | Sonnet | Vía `MT5_Tester_2`. **SOLO LECTURA** (charter §A.12) |
@@ -42,7 +42,7 @@
 | `[ ]` | T0.9 | Research OS — resto (supervisión durable) | Sonnet | Estructura y protocolos: `[x]`. Scaffold de runner: T0.9-min. Falta: supervisión durable de watcher/ingesta |
 | `[ ]` | T0.10 | Literatura formal — 7 áreas | Recolección: Sonnet · Memos: Opus | Cada área ANTES de cerrar su grilla |
 | `[ ]` | T0.11b | Análisis de las 28 transcripciones | Ver protocolo dedicado | **Protocolo exacto:** `research/fases/F0-preparacion/PROTOCOLO-REVISION-VIDEOS.md` |
-| `[ ]` | T0.12 | Sellar el holdout | Controlador | ✅ **Partición APROBADA por el user 2026-08-10.** Falta ejecutarlo y dejar constancia |
+| `[ ]` | T0.12 | Sellar el holdout | Controlador | ✅ Partición APROBADA (D-01). 🟠 **Se sella en DOS ACTOS, no uno**: la mitad Capitaria (trimestre más reciente) tras T0.4; la mitad AVA (año completo no adyacente) **solo tras T0.3**, porque hasta entonces no hay rango real contra el que fijar fechas |
 | `[ ]` | T0.13 | Modelado de la hora muerta desplazante | Sonnet · análisis Opus | 3 fuentes: ticks AVA, ticks Capitaria (7 m), historiales MT5 (~3 meses en suma) |
 
 **Criterio de cierre de Fase 0:** T0.3..T0.13 en `[x]`, motor congelado con SHA registrado abajo,
@@ -77,11 +77,24 @@ A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
 | B3 | Cierre de la matriz de indicadores de la autopsia (plan §5.2) | Motor mod #11 → A0 | **User** |
 | B4 | Umbrales operacionales de la puerta estadística (§9) | D170' | **User** (a fijar con Opus) |
 | B5 | Autorización explícita para extender `SANCTIONED_DEMO` (`extract_ticks.py:34`) con la demo AVA `101744074` — es código de seguridad | T0.3 | **User** |
+| B6 | **No hay terminal de AVA instalado** (verificado 2026-08-10: sin coincidencias en `C:\Program Files`, `C:\Program Files (x86)`, raíz de `D:`). Attach-only ⇒ lo instala y abre el user. El **servidor** de AVA también sigue sin confirmar | T0.3 | **User** |
+| B7 | Conflicto entre dos reglas del user: `PROTOCOLO-REVISION-VIDEOS.md` manda 2 orquestadores Sonnet × ~11 subagentes Haiku (anidamiento), y el charter §C fija **máx 2 en paralelo**. No se resuelve por cuenta propia | T0.11b | **User** |
 
 ---
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-10** · Opus 5 · Auditoría de terreno pedida por el user antes de seguir. Hallazgos:
+  (a) **no hay terminal de AVA instalado** → **B6**; (b) el servidor de AVA sigue sin confirmar;
+  (c) **ningún terminal MT5 corriendo**, así que T0.4/T0.3/T0.5 están parados hasta que el user
+  abra uno; (d) el protocolo de videos exige anidamiento de subagentes y choca con el máx-2 del
+  charter → **B7**; (e) **T0.12 se sella en dos actos**, no uno (la mitad AVA depende de T0.3).
+  Espacio: el user vació `Downloads` (+53,75 GB en C:); para AVA lo que cuenta es **D: con
+  153,88 GB libres**, suficiente para el objetivo de 4 años.
+- **2026-08-10** · Opus 5 · **T0.4 partida en dos**: `T0.4-impl` (task-type `ticks_mt5` del runner
+  + validación de integridad + manifiesto + tests **sin MT5**) y la descarga real, que ejecuta el
+  controlador cuando el user abra el terminal. No es reducción de alcance: T0.4 no se marca `[x]`
+  hasta que los ticks estén en disco y validados.
 - **2026-08-10** · Sonnet 5 impl. + Opus 5 verif. · **T0.9-min HECHA y verificada** (`b9ce5f2`).
   Scaffold de runner en `scripts/research/runner/`: manifiesto YAML validado con fail-loud, tags
   de lineage, escritor append-only del LEDGER con validación de los 13 campos, estado reanudable,
