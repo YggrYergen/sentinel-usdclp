@@ -33,7 +33,7 @@
 | `[x]` | T0.11a | Descarga de 28 transcripciones YouTube | Fable | `data/literature/youtube_transcripts/` · 28/28 · **~233.723 tokens** · NINGUNA leída |
 | `[x]` | T0.2 | Propuesta de limpieza disco C: (95 % lleno) | Sonnet · INVESTIGADOR | ✅ **VERIFICADO.** `04-resultados/T0.2-disco-C/inventario-espacio.md` (574 líneas). D-04 respetada (0 comandos destructivos, comprobado). C: 22,19 GB libres (4,92 %). Fila `F0-INFRA-0018`. ✅ **CERRADA por el user 2026-08-10**: vació `Downloads` a mano → **+53,75 GB** (C: 22,19 → 75,94 GB libres, verificado). Cachés de dev (~41 GB) quedan como reserva |
 | `[ ]` | T0.3 | **R6-AVA**: descarga real-tick ≥2 años (objetivo 4) | Sonnet | ✅ **B1 DESBLOQUEADO** (D-19): demo AVA `101744074`. Requiere (a) terminal AVA abierto por el user (attach-only) y (b) 🔴 **autorización explícita para extender `SANCTIONED_DEMO`** en `extract_ticks.py:34` |
-| `[ ]` | T0.4 | **Top-up ticks Capitaria** (ventana completa de la 902) | Sonnet impl. + runner | Insumo directo de **A6 Pata A** (ventana en que operó la 902) — **no** es urgencia de ventana rodante: ver **ENMIENDA E-01**. Primer cliente del runner (D-18). Requiere `MT5_Tester` abierto por el user |
+| `[~]` | T0.4 | **Top-up ticks Capitaria** (ventana completa de la 902) | Sonnet impl. + runner | ✅ **T0.4-impl HECHA y verificada** (`6544a1f`, fila `F0-INFRA-0019`): task-type `ticks_mt5` + validación de integridad + manifiesto `03-runs/T0.4-topup-capitaria.yaml` + 11 tests, 129 en la suite. 🔴 **FALTA la descarga real** — requiere que el user abra `MT5_Tester`. Insumo directo de **A6 Pata A** (ventana en que operó la 902) — **no** es urgencia de ventana rodante: ver **ENMIENDA E-01**. Primer cliente del runner (D-18). Requiere `MT5_Tester` abierto por el user |
 | `[ ]` | T0.5 | Export historial cuenta 902 (deals/órdenes/balance) | Sonnet | Vía `MT5_Tester_2`. **SOLO LECTURA** (charter §A.12) |
 | `[ ]` | T0.6 | **12 modificaciones de motor** (inventario en plan §4.1) | Spec: Opus · Impl: Sonnet TDD | 🔴 **Requiere SIGN-OFF del user antes de implementar.** TODAS juntas, antes del freeze |
 | `[ ]` | T0.7 | **A6 — Fidelidad** (diseño de dos patas, plan §4.2) | Impl: Sonnet · Análisis: Opus | **GATE DE TODO EL PROGRAMA.** Objetivo: señal bit-idéntica; neto ≤0,3 % (99,7) / ideal ≤0,15 % (99,85) |
@@ -84,6 +84,16 @@ A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-10** · Sonnet 5 impl. + Opus 5 verif. · **T0.4-impl HECHA y verificada** (`6544a1f`).
+  🔴 **Casi-incidente evitado por el protocolo:** el spec del controlador se contradecía —
+  idempotencia "por presencia" en el test vs "por completitud" en la prosa. Con la regla por
+  presencia, la corrida habría **saltado `202607.parquet`, que está truncado al 24-jul**, dejando
+  sin descargar el hueco 24→31 jul que necesita **A6 Pata A**, y reportando éxito. El implementador
+  implementó el test literal, **no tocó el activo de datos** y **escaló** en vez de resolverlo solo.
+  Corregido en ronda 1: completitud por tolerancia (72 h por defecto) + sobrescritura segura
+  `tmp → validar → bak → rename`, con el fichero previo **renombrado, jamás borrado**.
+  Verificación del controlador: md5 de `202607.parquet` idéntico antes y después, `runner.py`
+  modificado en exactamente 1 línea, sin `.tmp`/`.bak` huérfanos.
 - **2026-08-10** · Opus 5 · Auditoría de terreno pedida por el user antes de seguir. Hallazgos:
   (a) **no hay terminal de AVA instalado** → **B6**; (b) el servidor de AVA sigue sin confirmar;
   (c) **ningún terminal MT5 corriendo**, así que T0.4/T0.3/T0.5 están parados hasta que el user
