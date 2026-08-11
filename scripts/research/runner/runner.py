@@ -22,6 +22,7 @@ import sys
 from pathlib import Path
 
 from scripts.research.runner import lineage, tasks
+from scripts.research.runner import tasks_ticks  # noqa: F401 -- side effect: registers ticks_mt5
 from scripts.research.runner.ledger import append_row
 from scripts.research.runner.manifest import load_manifest
 from scripts.research.runner.state import RunnerState, state_path_for

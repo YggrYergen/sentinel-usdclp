@@ -21,15 +21,31 @@ datetimes passed to it below are on the host clock, not the server clock --
 this module does not correct for that (same as the reference) and does not
 need to, because it never decodes a t_msc into a datetime: t_msc is stored
 and reported as the raw int64 the provider returns, which already encodes
-the server wall clock. No `datetime.fromtimestamp()` / `.utcfromtimestamp()`
-call exists anywhere in this module -- zero zone-conversion surface.
+the server wall clock. No `datetime.fromtimestamp()` call exists anywhere in
+this module. The one datetime<->epoch arithmetic this module DOES do
+(month-end, for the completeness check below) uses `calendar.timegm()`,
+never `.timestamp()`: `timegm` never consults the host's actual OS timezone
+setting -- it is the zero-offset mirror of the sanctioned
+`datetime.utcfromtimestamp()` decode, so no host/server offset is ever
+applied in either direction.
 
 NO ORDERS. Guards, in order: terminal-running check, account guard
 (login_prohibido / logins_sancionados), anti-order self-check (below), then
 download.
+
+Completeness (ronda 1 correction): a month file counts as complete only if
+it exists AND its max(t_msc) is within `tolerancia_horas` (manifest
+parameter, default 72h -- covers a weekend market closure) of the end of
+the requested month. Otherwise the whole month is re-downloaded. Overwrite
+is always safe: write `<key>.parquet.tmp`, run integridad_ticks.validar_ticks
+on it (raises IntegrityError -- and aborts, leaving the .tmp on disk and the
+original untouched -- on any bid/ask anomaly), then rename the previous file
+(if any) to `<key>.parquet.bak-<YYYYmmddHHMMSS>` and the .tmp into place.
+The previous file is never deleted.
 """
 from __future__ import annotations
 
+import calendar
 import subprocess
 from datetime import date, datetime
 from pathlib import Path
@@ -38,6 +54,7 @@ import numpy as np
 import pandas as pd
 import MetaTrader5 as mt5
 
+from scripts.research.runner import integridad_ticks
 from scripts.research.runner.tasks import register
 
 # read-only self-check: this source must not reference the order API
@@ -80,6 +97,41 @@ def _month_range(desde: str, hasta: str) -> list[tuple[int, int]]:
     return months
 
 
+def _month_end_epoch_ms(y: int, mo: int) -> int:
+    """Zero-offset epoch ms for the first instant of the month after (y, mo).
+
+    Uses calendar.timegm, never .timestamp() / time.mktime() -- those
+    consult the host's actual OS timezone; timegm does not. This is the
+    exact inverse of the sanctioned `datetime.utcfromtimestamp()` decode.
+    """
+    end = datetime(y + (mo == 12), (mo % 12) + 1, 1)
+    return calendar.timegm(end.timetuple()) * 1000
+
+
+def _atomic_write_validated(df: pd.DataFrame, final_path: Path, report_dir: Path) -> Path | None:
+    """Write df to <final_path>.tmp, validate it, then swap it in atomically.
+
+    On success: if final_path already existed, it is renamed (never deleted)
+    to <name>.bak-<YYYYmmddHHMMSS> and the returned Path points to it;
+    otherwise returns None. On integrity failure, IntegrityError propagates,
+    the .tmp is left on disk for inspection, and final_path (if it existed)
+    is untouched.
+    """
+    tmp_path = final_path.with_name(final_path.name + ".tmp")
+    df.to_parquet(tmp_path, index=False)
+
+    integridad_ticks.validar_ticks(tmp_path, report_dir)  # raises IntegrityError -> abort, .tmp stays
+
+    bak_path = None
+    if final_path.exists():
+        ts = datetime.now().strftime("%Y%m%d%H%M%S")
+        bak_path = final_path.with_name(final_path.name + f".bak-{ts}")
+        final_path.rename(bak_path)
+
+    tmp_path.rename(final_path)
+    return bak_path
+
+
 def ticks_mt5(
     params: dict,
     out_dir: Path,
@@ -102,6 +154,9 @@ def ticks_mt5(
     destino = Path(params["destino"])
     logins_sancionados = set(params["logins_sancionados"])
     login_prohibido = params["login_prohibido"]
+    tolerancia_horas = params.get("tolerancia_horas", 72)
+    tolerancia_ms = tolerancia_horas * 3_600_000
+    out_dir = Path(out_dir)
 
     if not terminal_check():
         raise TicksMT5Error(
@@ -136,17 +191,32 @@ def ticks_mt5(
         for (y, mo) in _month_range(desde, hasta):
             key = f"{y}{mo:02d}"
             path = destino / f"{key}.parquet"
+            tramo_fin_ms = _month_end_epoch_ms(y, mo)
 
-            if path.exists():
+            existe = path.exists()
+            ticks_antes = None
+            rango_antes = None
+            completo = False
+
+            if existe:
                 existing = pd.read_parquet(path, columns=["t_msc"])
-                n = len(existing)
+                n_existente = len(existing)
+                if n_existente:
+                    min_existente = int(existing["t_msc"].min())
+                    max_existente = int(existing["t_msc"].max())
+                    ticks_antes = n_existente
+                    rango_antes = [min_existente, max_existente]
+                    completo = (tramo_fin_ms - max_existente) <= tolerancia_ms
+
+            if completo:
                 meses[key] = {
-                    "ticks": n,
-                    "t_msc_min": int(existing["t_msc"].min()) if n else None,
-                    "t_msc_max": int(existing["t_msc"].max()) if n else None,
+                    "ticks": ticks_antes,
+                    "t_msc_min": rango_antes[0],
+                    "t_msc_max": rango_antes[1],
                     "escrito": False,
+                    "redescargado": False,
                 }
-                ticks_total += n
+                ticks_total += ticks_antes
                 continue
 
             start = datetime(y, mo, 1)
@@ -155,7 +225,15 @@ def ticks_mt5(
             n_raw = 0 if raw is None else len(raw)
 
             if n_raw == 0:
-                meses[key] = {"ticks": 0, "t_msc_min": None, "t_msc_max": None, "escrito": False}
+                meses[key] = {
+                    "ticks": ticks_antes or 0,
+                    "t_msc_min": rango_antes[0] if rango_antes else None,
+                    "t_msc_max": rango_antes[1] if rango_antes else None,
+                    "escrito": False,
+                    "redescargado": False,
+                }
+                if ticks_antes:
+                    ticks_total += ticks_antes
                 continue
 
             df = pd.DataFrame({
@@ -163,15 +241,25 @@ def ticks_mt5(
                 "bid": np.asarray(raw["bid"]).astype("float64"),
                 "ask": np.asarray(raw["ask"]).astype("float64"),
             })
-            df.to_parquet(path, index=False)
+            bak_path = _atomic_write_validated(df, path, out_dir)
 
             n = len(df)
-            meses[key] = {
+            t_msc_min = int(df["t_msc"].min()) if n else None
+            t_msc_max = int(df["t_msc"].max()) if n else None
+            entry = {
                 "ticks": n,
-                "t_msc_min": int(df["t_msc"].min()) if n else None,
-                "t_msc_max": int(df["t_msc"].max()) if n else None,
+                "t_msc_min": t_msc_min,
+                "t_msc_max": t_msc_max,
                 "escrito": True,
+                "redescargado": existe,
             }
+            if existe:
+                entry["ticks_antes"] = ticks_antes
+                entry["ticks_despues"] = n
+                entry["rango_antes"] = rango_antes
+                entry["rango_despues"] = [t_msc_min, t_msc_max]
+                entry["bak"] = str(bak_path) if bak_path is not None else None
+            meses[key] = entry
             ficheros_escritos.append(str(path))
             ticks_total += n
 

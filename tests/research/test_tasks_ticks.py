@@ -14,7 +14,12 @@ detector are injected doubles. Covers the 7 required cases from the brief:
 """
 from __future__ import annotations
 
+import calendar
 import json
+import subprocess
+import sys
+from datetime import datetime
+from pathlib import Path
 from types import SimpleNamespace
 
 import numpy as np
@@ -22,6 +27,8 @@ import pandas as pd
 import pytest
 
 from scripts.research.runner import integridad_ticks, ledger, tasks_ticks
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
 
 REAL_LOGIN = 2883011573
 SANCTIONED_DEMO = [2883015767, 2883016567]
@@ -186,16 +193,29 @@ def test_camino_feliz_escribe_parquet_por_mes_y_metricas(tmp_path):
 
 
 # ---------------------------------------------------------------------------
-# 5. idempotencia dentro de la corrida: fichero de mes ya presente => no re-descarga
+# 5. idempotencia dentro de la corrida, por COMPLETITUD (correccion ronda 1):
+#    completo = existe y max(t_msc) esta a < tolerancia_horas (def. 72) del
+#    final del tramo solicitado para ese mes. Si no, se re-descarga el mes
+#    completo con sobrescritura segura (tmp -> validar -> .bak -> rename).
 # ---------------------------------------------------------------------------
 
-def test_idempotencia_dentro_de_la_corrida_no_redescarga_mes_existente(tmp_path):
+def _month_end_ms(y: int, mo: int) -> int:
+    """Independent (test-side) computation of the same zero-offset month-end
+    epoch tasks_ticks uses -- calendar.timegm, never .timestamp() (no host
+    tz consulted, mirrors the sanctioned utcfromtimestamp decode)."""
+    end = datetime(y + (mo == 12), (mo % 12) + 1, 1)
+    return calendar.timegm(end.timetuple()) * 1000
+
+
+def test_dentro_de_tolerancia_no_redescarga(tmp_path):
     destino = tmp_path / "destino"
     destino.mkdir(parents=True)
+
+    tramo_fin = _month_end_ms(2026, 7)
     existing = pd.DataFrame({
-        "t_msc": [1, 2, 3],
-        "bid": [1.0, 1.0, 1.0],
-        "ask": [1.1, 1.1, 1.1],
+        "t_msc": [tramo_fin - 2_000, tramo_fin - 1_000],  # 1s before month-end: well within 72h
+        "bid": [2000.0, 2000.1],
+        "ask": [2000.5, 2000.6],
     })
     p = destino / "202607.parquet"
     existing.to_parquet(p, index=False)
@@ -214,9 +234,101 @@ def test_idempotencia_dentro_de_la_corrida_no_redescarga_mes_existente(tmp_path)
 
     assert provider.copy_ticks_calls == []
     assert p.stat().st_mtime_ns == mtime_before
-    assert metrics["meses"]["202607"]["ticks"] == 3
+    assert metrics["meses"]["202607"]["ticks"] == 2
     assert metrics["meses"]["202607"]["escrito"] is False
+    assert metrics["meses"]["202607"]["redescargado"] is False
     assert metrics["ficheros_escritos"] == []
+    assert list(destino.glob("*.bak-*")) == []
+
+
+def test_truncado_mas_alla_de_la_tolerancia_redescarga_y_crea_bak(tmp_path):
+    destino = tmp_path / "destino"
+    destino.mkdir(parents=True)
+
+    tramo_fin = _month_end_ms(2026, 7)
+    old_max = tramo_fin - 8 * 24 * 3_600_000  # ~8 days before month-end (~jul 24), beyond 72h tolerance
+    old_min = old_max - 10_000
+    existing = pd.DataFrame({
+        "t_msc": [old_min, old_max],
+        "bid": [2000.0, 2000.1],
+        "ask": [2000.5, 2000.6],
+    })
+    p = destino / "202607.parquet"
+    existing.to_parquet(p, index=False)
+    old_bytes = p.read_bytes()
+
+    new_rows = [
+        (tramo_fin - 3_000, 2001.0, 2001.5),
+        (tramo_fin - 2_000, 2001.1, 2001.6),
+        (tramo_fin - 1_000, 2001.2, 2001.7),
+    ]
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        months_data={(2026, 7): make_ticks(new_rows)},
+    )
+    params = base_params(destino, desde="2026-07-01", hasta="2026-07-31")
+
+    metrics = tasks_ticks.ticks_mt5(
+        params, tmp_path / "out",
+        provider=provider, terminal_check=lambda: True,
+    )
+
+    assert provider.copy_ticks_calls  # re-downloaded
+    assert list(destino.glob("*.tmp")) == []  # tmp cleaned up (renamed into place)
+
+    baks = list(destino.glob("202607.parquet.bak-*"))
+    assert len(baks) == 1
+    assert baks[0].read_bytes() == old_bytes  # backup preserves the old content byte-for-byte
+
+    df_new = pd.read_parquet(p)
+    assert len(df_new) == 3
+    assert list(df_new.columns) == ["t_msc", "bid", "ask"]
+
+    entry = metrics["meses"]["202607"]
+    assert entry["escrito"] is True
+    assert entry["redescargado"] is True
+    assert entry["ticks_antes"] == 2
+    assert entry["ticks_despues"] == 3
+    assert entry["rango_antes"] == [old_min, old_max]
+    assert entry["rango_despues"] == [new_rows[0][0], new_rows[-1][0]]
+    assert entry["bak"] == str(baks[0])
+    assert str(p) in metrics["ficheros_escritos"]
+
+
+def test_validacion_del_temporal_falla_original_intacto_sin_bak(tmp_path):
+    destino = tmp_path / "destino"
+    destino.mkdir(parents=True)
+
+    tramo_fin = _month_end_ms(2026, 7)
+    old_max = tramo_fin - 8 * 24 * 3_600_000  # beyond tolerance -> triggers re-download
+    existing = pd.DataFrame({
+        "t_msc": [old_max - 1_000, old_max],
+        "bid": [2000.0, 2000.1],
+        "ask": [2000.5, 2000.6],
+    })
+    p = destino / "202607.parquet"
+    existing.to_parquet(p, index=False)
+    old_bytes = p.read_bytes()
+    mtime_before = p.stat().st_mtime_ns
+
+    # provider returns a row with ask < bid -> integrity validation on the .tmp must fail
+    bad_rows = [(tramo_fin - 1_000, 2001.5, 2001.4)]
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        months_data={(2026, 7): make_ticks(bad_rows)},
+    )
+    params = base_params(destino, desde="2026-07-01", hasta="2026-07-31")
+
+    with pytest.raises(integridad_ticks.IntegrityError):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert p.read_bytes() == old_bytes
+    assert p.stat().st_mtime_ns == mtime_before
+    assert list(destino.glob("202607.parquet.bak-*")) == []
+    assert list(destino.glob("202607.parquet.tmp")) != []  # left on disk for inspection
 
 
 # ---------------------------------------------------------------------------
@@ -300,3 +412,25 @@ def test_ledger_append_sin_newline_final_no_fusiona_lineas(tmp_path):
     parsed = [json.loads(line) for line in lines]
     assert parsed[0]["run_id"] == "F0-DATA-0001"
     assert parsed[1]["run_id"] == "F0-DATA-0002"
+
+
+# ---------------------------------------------------------------------------
+# HALLAZGO 2 (ronda 1): ticks_mt5 debe resolverse por la ruta del CLI del
+# runner sin que quien lo invoque tenga que importar tasks_ticks a mano.
+# Corre en un interprete nuevo (subprocess) e importa SOLO
+# scripts.research.runner.runner -- nunca toca MT5 ni tasks_ticks directo.
+# ---------------------------------------------------------------------------
+
+def test_ticks_mt5_resoluble_via_runner_cli_sin_import_manual():
+    script = (
+        "import scripts.research.runner.runner\n"
+        "from scripts.research.runner import tasks\n"
+        "assert 'ticks_mt5' in tasks.get_registry(), 'ticks_mt5 no registrado via runner import'\n"
+        "print('OK')\n"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", script],
+        capture_output=True, text=True, cwd=str(REPO_ROOT),
+    )
+    assert result.returncode == 0, f"stdout={result.stdout!r} stderr={result.stderr!r}"
+    assert "OK" in result.stdout
