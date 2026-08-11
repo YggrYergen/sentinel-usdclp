@@ -1,0 +1,44 @@
+# T0.4-topup-capitaria -- ticks_mt5 (research/protocolos/06-runners.md)
+#
+# Spec: research/fases/F0-preparacion/02-specs/T0.4-brief-task-type-ticks.md.
+# Descarga real NO ocurre en T0.4-impl: el controlador ejecuta este manifiesto
+# con el runner (scripts/research/runner/runner.py) cuando el user abra un
+# terminal MT5 a mano (attach-only, charter SS A.12).
+#
+# Cobertura: los meses que faltan por completar en data/lake_ticks/XAUUSD/ --
+# 202607 (escrito 2026-07-25, truncado a mitad de mes) y 202608 (no existe).
+#
+# NOTA para el controlador (no es una decision de este manifiesto): la
+# corrida F0-DATA-0001 (julio) apunta a un mes cuyo parquet YA EXISTE
+# (truncado). La idempotencia dentro-de-la-corrida de ticks_mt5 es
+# "si el fichero del mes ya existe, no lo re-descarga" (ver
+# tests/research/test_tasks_ticks.py, caso 5) -- por diseno del spec no
+# distingue truncado de completo. Si se quiere completar 202607 de verdad,
+# el fichero actual debe moverse o borrarse ANTES de correr esta corrida;
+# este manifiesto no lo hace (no es su alcance).
+experimento: T0.4-topup-capitaria
+area: INFRA
+etapa: F0
+hipotesis: "n/a"
+substrate_id: capitaria-ticks-2026
+engine_sha: "n/a"
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/T0.4-topup-capitaria/
+  ledger: append
+corridas:
+  - run_key: F0-DATA-0001
+    tipo: ticks_mt5
+    symbol: XAUUSD
+    desde: "2026-07-01"
+    hasta: "2026-07-31"
+    destino: data/lake_ticks/XAUUSD/
+    logins_sancionados: [2883015767, 2883016567]
+    login_prohibido: 2883011573
+  - run_key: F0-DATA-0002
+    tipo: ticks_mt5
+    symbol: XAUUSD
+    desde: "2026-08-01"
+    hasta: "2026-08-31"
+    destino: data/lake_ticks/XAUUSD/
+    logins_sancionados: [2883015767, 2883016567]
+    login_prohibido: 2883011573

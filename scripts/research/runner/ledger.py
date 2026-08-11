@@ -4,6 +4,12 @@ Validates the 13 required fields from research/LEDGER.schema.md BEFORE
 writing; if any is missing, nothing is written. Always opens in append
 mode -- never read-modify-rewrite, never edits or deletes an existing line.
 Explicit utf-8 encoding.
+
+Hardening (T0.4-impl backlog item): append_row assumed the file already
+ends in a newline. If it doesn't, opening in "a" mode and writing
+`line + "\n"` merges the new row onto the end of the last existing line,
+corrupting an append-only artifact. Before writing, if the file exists and
+is non-empty, this checks the last byte and prepends "\n" when missing.
 """
 from __future__ import annotations
 
@@ -39,5 +45,14 @@ def append_row(ledger_path: Path, row: dict) -> None:
     ledger_path = Path(ledger_path)
     ledger_path.parent.mkdir(parents=True, exist_ok=True)
     line = json.dumps(row, sort_keys=True, ensure_ascii=False)
+
+    prefix = ""
+    if ledger_path.exists() and ledger_path.stat().st_size > 0:
+        with ledger_path.open("rb") as f:
+            f.seek(-1, 2)
+            last_byte = f.read(1)
+        if last_byte != b"\n":
+            prefix = "\n"
+
     with ledger_path.open("a", encoding="utf-8") as f:
-        f.write(line + "\n")
+        f.write(prefix + line + "\n")
