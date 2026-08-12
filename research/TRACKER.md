@@ -184,6 +184,30 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2a HECHO: overlay de costes de AVA
+  (`ae3574a`), que es la modificación de motor #10.** Fila `F0-INFRA-0031`.
+  (a) **Verificado por el controlador contra artefactos crudos:** `backtest.py` **intacto**;
+  `tests/research` **204 passed** (181+23) + 4 deselected; **paridad D-22 `4 passed` antes y
+  después**. Regla del overlay leída en el código y confirmada: **conserva el mid de AVA y sustituye
+  la anchura por la calibrada** (`bid'=mid−s/2`, `ask'=mid+s/2`) — precios de AVA, costes de
+  Capitaria, que es literalmente D-21.
+  (b) 🟢 **Hallazgo medido: dentro de la ventana NY el spread de Capitaria toma EXACTAMENTE DOS
+  valores discretos** — `0,50` (**95,7717 %**) y `0,60` (**4,2283 %**), sobre 9.789.445 ticks. No es
+  un continuo. **Confirma sobre el sustrato la bimodalidad que llevaba tiempo registrada como
+  observación y nunca se había medido.** Mediana = p25 = p75 = p95 = `0,50` en las 8 horas; solo la
+  hora 18 tiene p95 = 0,60 y una std bastante mayor (0,0386 contra 0,011-0,020 del resto).
+  (c) **Consecuencia de diseño (controlador):** el gate vivo es `abs(sp−0.5)<=0.05`, que **excluye
+  0,60** — en vivo solo se opera a 0,50, luego el modo `mediana` **no subestima el coste: reproduce
+  la conducta viva**. 🟠 **Aproximación declarada:** sobre AVA se usa el filtro de ventana en lugar
+  del gate de spread, así que se operará también en ese 4,2283 % del tiempo de ventana en que
+  Capitaria estaba a 0,60, y ahí `mediana` sí subestima. Se hace constar además que **`p75` coincide
+  con la mediana en 7 de las 8 horas y por tanto NO es el modo conservador** que su nombre sugiere;
+  el contraste útil de sensibilidad es `media` (0,504228) o forzar 0,60.
+  (d) **Anomalía de entorno aclarada, y no era del agente:** `tests/analysis` dio **88** y no 97. La
+  causa fue el renombrado de `tests/analysis/test_bar_fill.py` a `.OBSOLETO` que hizo **el
+  controlador** (D-35 punto 4) mientras el agente trabajaba. El agente lo detectó, lo declaró fuera
+  de su alcance y **no lo tocó** — conducta correcta. 🔴 **NUEVA LÍNEA BASE: `tests/analysis` = 88.**
+
 - **2026-08-12** · User + Opus 5 controlador · **B3 y B4 CERRADOS, umbrales de A6 Pata B fijados, y
   el borde de la ventana REVOCADO por el user.** Ver **D-35** y **D-36**. (a) **B3:** matriz de
   indicadores **completa** (plan §5.2) — desbloquea el motor mod #11 → A0. (b) **B4:** umbrales
