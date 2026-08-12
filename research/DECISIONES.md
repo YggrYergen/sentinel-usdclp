@@ -467,3 +467,75 @@ variante de grilla en **D3** (contexto temporal), donde se mide en vez de supone
 
 **4 · El código de Paso 1 es correcto y no se toca por esto.** Implementa el spec que se le dio; lo
 que estaba incompleto era el spec. `ny_window.py` queda como está, con el borde conservador.
+
+🔴 **PUNTO 3 SUPERSEDED por D-36 (2026-08-12, mismo día):** el user revocó el borde conservador. Los
+puntos 1, 2 y 4 de esta decisión siguen vigentes.
+
+### D-35 · 2026-08-12 · Umbrales de A6 Pata B, matriz de indicadores (B3) y puerta estadística (B4)
+*(Procedencia: decisiones explícitas del user, 2026-08-12, sobre las opciones que le planteó el
+controlador. Cierran B3 y B4, que estaban abiertos desde el 2026-08-10.)*
+
+**1 · A6 Pata B — umbrales MEDIOS, fijados y fechados ANTES de correr** (lo exige D-24):
+
+| Criterio | Umbral |
+|---|---|
+| Emparejado de entradas | **≥90 %** dentro de **±1 barra M15** |
+| Divergencia de neto | **≤25 %** |
+| Meses del mismo signo | **≥70 %** |
+
+🔴 **Condición añadida por el user:** el gate es pasa/no-pasa, pero **la divergencia real se
+reporta como número exacto** y se revisa con él en ese momento. No basta con "pasó": hay que poder
+ver cuánta divergencia hubo. El informe de A6 Pata B lleva la cifra medida, no solo el veredicto.
+
+**2 · B3 CERRADO — matriz de indicadores COMPLETA** (plan §5.2, la lista entera):
+RSI · momentum(n) para varios n y TF · ATR multi-TF + percentil + pendiente · distancia a S/R y
+zonas por múltiples métodos y horizontes (intradía, día anterior, 2-3 días, semana) · estados y
+steps SAR · pendientes de EMAs · CHOP + pendiente · ADX · posición del precio en el rango de k días
+· tick-volume · hora/día/sesión · spread vigente · proximidad a hora muerta · ventana de noticias.
+*Razón registrada:* se instrumenta **una sola vez** (motor mod #11); añadir un indicador después
+obliga a re-correr 3,5 años de ticks. Coste marginal ahora ≈ nulo, después enorme. Es lo que D-23
+llama "instrumentar una vez y rico". **Desbloquea el motor mod #11 → A0.**
+
+**3 · B4 CERRADO — puerta estadística, umbrales MEDIOS:**
+
+| Criterio | Umbral |
+|---|---|
+| Consistencia mensual | **≥55 %** de meses positivos |
+| Intervalo de confianza | **bootstrap por bloques a nivel de episodio, 95 %, que excluya 0** |
+| PBO | **< 0,5** |
+
+*Razón registrada:* exigir 65 % de meses positivos eliminaría estrategias sanas — con
+trend-following la asimetría es el diseño, no un defecto, y penalizarla es el mismo error que
+amputar el top-K, que el charter §A.2 ya prohíbe. Gates y descriptores no se mezclan: "ganadora =
+neto positivo" (D-06) sigue siendo el criterio; esto es solo el control anti-suerte.
+
+**4 · Higiene de ficheros — borrado autorizado.** Los tres artefactos del `2026-08-02` en
+`data/analysis/2883016902/` (`open_positions.csv`, `analysis.json`, `equity_path.json`) se borran:
+son de otra extracción y convivían con los de T0.5 del 11-ago, con riesgo de que un agente futuro
+los leyera como si fueran T0.5. `bar_fill.py` / `test_bar_fill.py` se renombran a `.OBSOLETO`
+(nunca estuvieron en git; su premisa murió al cerrarse B9, y su compañero `fidelity_compare.py`
+no existe).
+
+### D-36 · 2026-08-12 · La ventana operativa se modela POR PERIODOS medidos, no con un borde fijo
+*(Procedencia: instrucción explícita del user, 2026-08-12, revocando el punto 3 de D-34:
+"queremos lo que sea correcto según periodos y cambios de horario para Chile respecto al mercado".)*
+
+**Se revoca el borde conservador fijo `18:00→02:00` ET.** En su lugar, la ventana se modela como
+**calendario de periodos medido sobre el gate de Capitaria**, que es donde el estado es observable,
+y se transfiere a AVA por reloj.
+
+**Lo medido (D-34, sobre 28.237.850 ticks):**
+- **Apertura: `18:00` hora de Nueva York, estable en todo el periodo.** Es el borde bien anclado.
+- **Cierre: cambia una vez.** `02:00` ET hasta el `2026-04-05`; `03:00` ET desde el `2026-04-06`.
+  El salto coincide con el **fin del DST chileno**. En hora de servidor el cierre también cambia una
+  sola vez, de `04:00` a `03:00`, y ahí el salto coincide con el **DST estadounidense**.
+  🔴 **Ninguno de los dos relojes deja el cierre constante**: cada uno lo explica con un salto
+  distinto. Por eso la regla correcta es un **calendario fechado**, no un offset fijo — que es
+  exactamente lo que pidió el user.
+
+🔴 **Limitación que se declara por adelantado, no se descubre después.** Capitaria solo cubre desde
+`2026-01`, así que el calendario **se mide** en 2026 y **se extrapola** a los años 2022-2025 del
+sustrato de AVA, donde no hay gate observable con el que verificarlo. Esa extrapolación es una
+**hipótesis declarada**, no un hecho medido, y así debe figurar en todo artefacto del backtest
+largo. La apertura (18:00 ET) es la parte sólida: coincide con la apertura de Globex para el oro,
+que es un ancla de mercado y no del bróker. **El cierre extrapolado es la parte frágil.**

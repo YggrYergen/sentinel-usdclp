@@ -125,8 +125,9 @@ A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
 |---|---|---|---|
 | ~~B1~~ | ~~Credenciales de AVA~~ | — | ✅ **RESUELTO 2026-08-10** (D-19). Quedan dos prerrequisitos operativos de T0.3, no bloqueos de programa: terminal AVA abierto + autorización del guard |
 | ~~B2~~ | ~~Sign-off del inventario de 12 modificaciones de motor~~ | — | ✅ **RESUELTO 2026-08-11** (D-22). El user aprobó las 12 modificaciones de motor. Desbloquea T0.6 → T0.7 → T0.8 |
-| B3 | Cierre de la matriz de indicadores de la autopsia (plan §5.2) | Motor mod #11 → A0 | **User** |
-| B4 | Umbrales operacionales de la puerta estadística (§9) | D170' | **User** (a fijar con Opus) |
+| ~~B3~~ | ✅ **CERRADO 2026-08-12 (D-35):** el user eligió la **matriz COMPLETA** del plan §5.2, la lista entera. Razón registrada: se instrumenta una sola vez (motor mod #11) y añadir un indicador después obliga a re-correr 3,5 años de ticks. **Desbloquea el motor mod #11 → A0** | — | ✅ |
+| ~~B4~~ | ✅ **CERRADO 2026-08-12 (D-35):** umbrales **medios** — consistencia mensual **≥55 %** de meses positivos · **bootstrap por bloques a nivel de episodio al 95 % que excluya 0** · **PBO < 0,5**. Razón: exigir 65 % eliminaría estrategias sanas, porque en trend-following la asimetría es el diseño y penalizarla es el mismo error que amputar top-K (§A.2) | — | ✅ |
+| — | ✅ **A6 Pata B — umbrales fijados y fechados ANTES de correr (D-35, lo exige D-24):** emparejado de entradas **≥90 % dentro de ±1 barra M15** · divergencia de neto **≤25 %** · meses del mismo signo **≥70 %**. 🔴 **Condición del user:** el informe reporta **la divergencia real como número exacto**, no solo pasa/no-pasa | — | ✅ |
 | ~~B5~~ | ~~Autorización explícita para extender `SANCTIONED_DEMO` (`extract_ticks.py:34`) con la demo AVA `101744074` — es código de seguridad~~ | — | **RETIRADO 2026-08-11** (D-20). Ya no existe la necesidad: la ingesta de ticks AVA es un CSV exportado a mano, no llama a la API de MT5 |
 | ~~B6~~ | ~~No hay terminal de AVA instalado~~ | — | ✅ **RESUELTO 2026-08-11.** No hizo falta instalar un terminal AVA aparte; el user inició sesión en la demo AVA dentro del terminal existente `D:\FOREX\MT5_Tester`. Servidor confirmado: `Ava-Demo 1-MT5` |
 | ~~B7~~ | ~~Conflicto entre dos reglas del user: `PROTOCOLO-REVISION-VIDEOS.md` manda 2 orquestadores Sonnet × ~11 subagentes Haiku (anidamiento), y el charter §C fija **máx 2 en paralelo**~~ | — | ✅ **RESUELTO 2026-08-11** (D-25, ruling del orquestador comunicado al user y no objetado, **revocable por él**). El máx-2 gobierna la concurrencia del *controlador*; los lectores Haiku son read-only, un fichero cada uno, sin escritura al repo. Resolución: ≤2 orquestadores Sonnet concurrentes, y cada uno procesa sus ~10 videos en tandas de ≤3 Haiku simultáneos |
@@ -182,6 +183,26 @@ del user.
 ---
 
 ## BITÁCORA (append-only · más reciente arriba)
+
+- **2026-08-12** · User + Opus 5 controlador · **B3 y B4 CERRADOS, umbrales de A6 Pata B fijados, y
+  el borde de la ventana REVOCADO por el user.** Ver **D-35** y **D-36**. (a) **B3:** matriz de
+  indicadores **completa** (plan §5.2) — desbloquea el motor mod #11 → A0. (b) **B4:** umbrales
+  medios (≥55 % meses positivos · bootstrap por bloques 95 % excluyendo 0 · PBO < 0,5). (c) **A6
+  Pata B:** ≥90 % de entradas dentro de ±1 barra M15 · neto ≤25 % · ≥70 % de meses con el mismo
+  signo, **fijados antes de correr** como exige D-24, y con la condición añadida por el user de
+  **reportar la divergencia real como cifra exacta**, no solo el veredicto. (d) 🔴 **D-36 revoca el
+  punto 3 de D-34:** el borde conservador fijo se sustituye por un **calendario de periodos medido**
+  ("lo que sea correcto según periodos y cambios de horario para Chile respecto al mercado"). Lo
+  medido lo respalda: **ningún reloj deja el cierre constante** — en NY salta con el DST chileno, en
+  hora de servidor con el estadounidense, y cada uno lo explica con un salto distinto; luego la
+  regla correcta es fechada, no un offset fijo. 🔴 **Limitación declarada por adelantado:** Capitaria
+  solo cubre desde `2026-01`, así que el calendario **se mide en 2026 y se extrapola** a 2022-2025
+  de AVA, donde no hay gate observable. La apertura (18:00 ET = Globex) es la parte sólida por ser
+  ancla de mercado; **el cierre extrapolado es la parte frágil**, y así debe figurar en todo
+  artefacto del backtest largo. (e) **Higiene ejecutada:** borrados los 3 artefactos del `2026-08-02`
+  en `data/analysis/2883016902/` (convivían con los de T0.5 del 11-ago y podían leerse como si lo
+  fueran); `bar_fill.py` / `test_bar_fill.py` renombrados a `.OBSOLETO` (nunca estuvieron en git;
+  premisa muerta al cerrarse B9).
 
 - **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 1 HECHO: el filtro de ventana NY existe
   (`f537646`), y su validación destapó que el spec de T0.13 estaba incompleto.** Ver **D-34**.
