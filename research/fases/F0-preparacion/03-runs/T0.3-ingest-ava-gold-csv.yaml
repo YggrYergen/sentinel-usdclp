@@ -60,3 +60,31 @@ corridas:
     tipo: ticks_csv_mt5
     csv_path: MT5_Tester/GOLD_202201022301_202608102246.csv
     destino: data/lake_ticks_ava/GOLD/
+
+  # --- B9, cierre PARCIAL (2026-08-11) ---------------------------------------
+  # Segunda exportacion manual del user, pedida para tapar el agujero que dejo
+  # la primera. NO se edita la corrida de arriba: su lineage ya esta en el
+  # LEDGER (F0-DATA-AVA-0001) y en git; se anade corrida nueva.
+  #
+  # 🔴 El agujero real, medido por el controlador a nivel de DIA sobre los 52
+  # parquet (no por presencia de fichero mensual, que fue como se diagnostico
+  # B9 y se quedo corto): el ultimo tick antes del hueco es 2026-02-19
+  # 23:59:59 y el primero despues es 2026-07-19 22:00:02 -> faltan 106 dias
+  # habiles, 2026-02-20 .. 2026-07-17. Los meses 202602 y 202607 EXISTEN pero
+  # estan TRUNCADOS; solo 202603..202606 faltaban por completo.
+  #
+  # Este CSV cubre 2026-03-01 23:05 .. 2026-06-30 23:23, o sea 202603..202606
+  # completos = 87 de esos 106 dias habiles. Ninguno de esos cuatro meses
+  # existe en destino, asi que esta corrida NO reescribe nada.
+  #
+  # 🔴 SIGUE ABIERTO tras esta corrida (B9 no se cierra aqui):
+  #   - 2026-02-20 .. 2026-02-27  (6 dias habiles, dentro de 202602)
+  #   - 2026-07-01 .. 2026-07-17  (13 dias habiles, dentro de 202607)
+  # Esos dos tramos NO se pueden ingerir con este task-type tal como esta: su
+  # idempotencia es por presencia de <YYYYMM>.parquet, luego se saltaria 202602
+  # y 202607 en silencio y reportaria exito. Requiere reprocesado explicito de
+  # mes -- ver TRACKER.md (B9) antes de anadir una tercera corrida.
+  - run_key: F0-DATA-AVA-0002
+    tipo: ticks_csv_mt5
+    csv_path: MT5_Tester/GOLD_202603012305_202606302323.csv
+    destino: data/lake_ticks_ava/GOLD/

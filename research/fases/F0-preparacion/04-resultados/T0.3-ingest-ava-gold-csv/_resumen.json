@@ -494,6 +494,69 @@
         "ticks_bid_arrastrado": 11157025
       },
       "run_key": "F0-DATA-AVA-0001"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\T0.3-ingest-ava-gold-csv\\F0-DATA-AVA-0002",
+      "estado": "ok",
+      "metricas": {
+        "bytes_salida": 273468228,
+        "csv_checksum_sha256": "d5a6990c5e30db42d77e17890205e416291ae64692d70007cc67c32810fcf153",
+        "csv_path": "MT5_Tester\\GOLD_202603012305_202606302323.csv",
+        "ficheros_escritos": [
+          "data\\lake_ticks_ava\\GOLD\\202603.parquet",
+          "data\\lake_ticks_ava\\GOLD\\202604.parquet",
+          "data\\lake_ticks_ava\\GOLD\\202605.parquet",
+          "data\\lake_ticks_ava\\GOLD\\202606.parquet"
+        ],
+        "filas_escritas": 31105832,
+        "filas_leidas": 31105832,
+        "flags_distribucion": {
+          "2": 877804,
+          "4": 835539,
+          "6": 29392489
+        },
+        "meses": {
+          "202603": {
+            "bak": null,
+            "escrito": true,
+            "filas_escritas": 9742594,
+            "filas_leidas": 9742594,
+            "ya_completo": false
+          },
+          "202604": {
+            "bak": null,
+            "escrito": true,
+            "filas_escritas": 7891764,
+            "filas_leidas": 7891764,
+            "ya_completo": false
+          },
+          "202605": {
+            "bak": null,
+            "escrito": true,
+            "filas_escritas": 6784909,
+            "filas_leidas": 6784909,
+            "ya_completo": false
+          },
+          "202606": {
+            "bak": null,
+            "escrito": true,
+            "filas_escritas": 6686565,
+            "filas_leidas": 6686565,
+            "ya_completo": false
+          }
+        },
+        "meses_generados": [
+          "202603",
+          "202604",
+          "202605",
+          "202606"
+        ],
+        "t_msc_max": 1782861786959,
+        "t_msc_min": 1772406300092,
+        "ticks_ask_arrastrado": 877804,
+        "ticks_bid_arrastrado": 835539
+      },
+      "run_key": "F0-DATA-AVA-0002"
     }
   ]
 }

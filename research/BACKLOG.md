@@ -116,6 +116,13 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   append-only, así que las filas ya escritas **no se editan**: la corrección es en el runner, para
   que normalice a `/` de aquí en adelante. A revisión de código de fin de fase ·
   `scripts/research/runner/` + `research/LEDGER.jsonl`
+- **2026-08-11** · Opus5 (auditoría de continuidad) · 🟡 En `data/lake_ticks/XAUUSD/` convive un
+  sidecar derivado `_bars_M15.parquet` (13.236 filas, esquema `t,o,h,l,c,v`) con los 8 parquet
+  mensuales de ticks (`t_msc,bid,ask`). El prefijo `_` lo aparta del patrón `<YYYYMM>.parquet`, así
+  que hoy no rompe nada, pero **cualquier código que haga `glob('*.parquet')` sobre el lago lo
+  recoge y revienta al pedir la columna `t_msc`** — le pasó al script de continuidad del
+  controlador. Decidir si se mueve a un directorio de derivados o si se fija el patrón de glob en
+  todos los lectores · `data/lake_ticks/XAUUSD/_bars_M15.parquet`
 
 ## Promovidas a tarea (con enmienda)
 
