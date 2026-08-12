@@ -578,3 +578,54 @@ periodo 3 resuelve un **empate exacto 3-3** entre `03:00` y `03:15`. Desde el `2
 mayoría de semanas mide `03:15`: puede ser un **corrimiento real del cierre**, no jitter. Es
 **inmaterial para el backtest** —`ventana_calendario._hora()` consume hora entera y ambos dan `3`—
 pero queda anotado por si **A6 Pata B** lo hace visible.
+
+### D-38 · 2026-08-12 · Los ticks que el overlay estrecharía son NO EVALUABLES
+*(Procedencia: **instrucción explícita del user**, 2026-08-12, resolviendo una ambigüedad de D-21
+que un subagente había intentado reinterpretar por su cuenta: "correcta interpretación D-21 como
+no evaluables".)*
+
+**El problema.** D-21 manda sustituir la anchura nativa de AVA por la calibrada sobre Capitaria, y
+afirma que el overlay **siempre ensancha** — premisa apoyada en que el spread de AVA (0,34-0,45)
+es más angosto que el de Capitaria (0,50-0,60). **Esa premisa es falsa parte del tiempo.** Existen
+ticks de AVA cuyo spread nativo ya supera al calibrado; sustituir ahí la anchura **estrecharía**,
+que es exactamente el fallo que D-21 existe para impedir.
+
+**La regla.** Esos ticks **no se estrechan y no se conservan crudos: se declaran NO EVALUABLES y
+se retiran** del store que ve el simulador. El fill usa el siguiente tick evaluable. Comparación
+`nativo > calibrado` **estricta**: la igualdad no estrecha, luego es evaluable. Se cuentan por mes
+y se declaran en el artefacto (`ticks_no_evaluables_d38`) — excluir sin declarar viola §A.13.
+
+🔴 **La magnitud desmiente la estimación que motivó la duda, y es la cifra más importante de este
+paso.** Un subagente había medido "~0,016 %" **sobre un solo mes de 2022** y generalizado. Medido
+sobre el sustrato entero: **16.549.795 ticks retirados**, y **concentrados en el tiempo de forma
+extrema**:
+
+| Año | Ticks retirados |
+|---|---:|
+| 2022 | 14.059 |
+| 2024 | 125.105 |
+| 2025 | 5.941.924 |
+| 2026 | 10.468.707 |
+
+No son outliers dispersos: es un **cambio de régimen en el feed de AVA a partir de 2025**. En
+`2026-02` se retiran 2,70 M de ticks; en `2022-10`, 73. La premisa de D-21 se sostiene en
+2022-2024 y **se rompe en 2025-2026** — justo el tramo donde vive el solape con Capitaria que
+A6 Pata B necesita.
+
+🔴 **Consecuencia medida, no estimada.** Con la regla anterior (estrechar) frente a la regla del
+user (retirar), el mismo backtest da:
+
+| Estrategia | Estrechando (rechazado) | No evaluables (D-38) | Δ |
+|---|---:|---:|---:|
+| S6-K2P0 | 117.399.340 | **84.913.485** | −28 % |
+| SuperTrend | 168.624.139 | **19.380.203** | **−88 %** |
+
+La sensibilidad de SuperTrend a esta única decisión es tal que **ninguna cifra suya es citable sin
+declarar qué regla se aplicó**. La razón está localizada: sus dos meses grandes eran `2026-01` y
+`2026-02`, que son también los dos meses con más ticks retirados.
+
+🟠 **Tercera vía no elegida, anotada para poder revocar con criterio.** Existe una lectura
+intermedia —aplicar `max(nativo, calibrado)`, es decir ensanchar siempre y no retirar nunca— que
+también respeta "el overlay nunca estrecha" y además **cobra** el coste real en vez de saltárselo.
+Retirar el tick no paga el spread ancho: lo omite. El user eligió "no evaluables"; queda escrito
+que la alternativa existe y que el cambio es de una línea más una corrida de 3,5 minutos.

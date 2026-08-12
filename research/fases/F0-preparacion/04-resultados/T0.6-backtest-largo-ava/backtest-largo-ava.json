@@ -1,0 +1,4590 @@
+{
+  "calendario_ventana": {
+    "generado": "2026-08-12T08:04:06Z",
+    "git_sha": "9fc6693cddfa83b8767e013f6807094115008e0c",
+    "path": "D:\\FOREX\\research\\fases\\F0-preparacion\\04-resultados\\T0.13-ventana-ny\\calendario-ventana.json"
+  },
+  "calibracion_costes": {
+    "generado": "2026-08-12T08:26:05Z",
+    "git_sha": "ce0be54afbeb581d504901fbc72152f31abbee61",
+    "path": "D:\\FOREX\\research\\fases\\F0-preparacion\\04-resultados\\T0.6-overlay-costes\\calibracion.json"
+  },
+  "cobertura_mensual": {
+    "2022-01": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 676,
+      "n_barras_ventana": 676
+    },
+    "2022-02": {
+      "cobertura_pct": 99.844,
+      "n_barras_tras_exclusiones": 639,
+      "n_barras_ventana": 640
+    },
+    "2022-03": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 738,
+      "n_barras_ventana": 738
+    },
+    "2022-04": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 700,
+      "n_barras_ventana": 700
+    },
+    "2022-05": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 800,
+      "n_barras_ventana": 800
+    },
+    "2022-06": {
+      "cobertura_pct": 99.873,
+      "n_barras_tras_exclusiones": 784,
+      "n_barras_ventana": 785
+    },
+    "2022-07": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 756,
+      "n_barras_ventana": 756
+    },
+    "2022-08": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 828,
+      "n_barras_ventana": 828
+    },
+    "2022-09": {
+      "cobertura_pct": 99.872,
+      "n_barras_tras_exclusiones": 783,
+      "n_barras_ventana": 784
+    },
+    "2022-10": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 740,
+      "n_barras_ventana": 740
+    },
+    "2022-11": {
+      "cobertura_pct": 98.714,
+      "n_barras_tras_exclusiones": 691,
+      "n_barras_ventana": 700
+    },
+    "2022-12": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 668,
+      "n_barras_ventana": 668
+    },
+    "2024-01": {
+      "cobertura_pct": 99.859,
+      "n_barras_tras_exclusiones": 707,
+      "n_barras_ventana": 708
+    },
+    "2024-02": {
+      "cobertura_pct": 99.851,
+      "n_barras_tras_exclusiones": 670,
+      "n_barras_ventana": 671
+    },
+    "2024-03": {
+      "cobertura_pct": 99.845,
+      "n_barras_tras_exclusiones": 644,
+      "n_barras_ventana": 645
+    },
+    "2024-04": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 772,
+      "n_barras_ventana": 772
+    },
+    "2024-05": {
+      "cobertura_pct": 99.878,
+      "n_barras_tras_exclusiones": 819,
+      "n_barras_ventana": 820
+    },
+    "2024-06": {
+      "cobertura_pct": 99.863,
+      "n_barras_tras_exclusiones": 727,
+      "n_barras_ventana": 728
+    },
+    "2024-07": {
+      "cobertura_pct": 99.879,
+      "n_barras_tras_exclusiones": 827,
+      "n_barras_ventana": 828
+    },
+    "2024-08": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 784,
+      "n_barras_ventana": 784
+    },
+    "2024-09": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 764,
+      "n_barras_ventana": 764
+    },
+    "2024-10": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 800,
+      "n_barras_ventana": 800
+    },
+    "2024-11": {
+      "cobertura_pct": 99.849,
+      "n_barras_tras_exclusiones": 663,
+      "n_barras_ventana": 664
+    },
+    "2024-12": {
+      "cobertura_pct": 99.851,
+      "n_barras_tras_exclusiones": 671,
+      "n_barras_ventana": 672
+    },
+    "2025-01": {
+      "cobertura_pct": 99.716,
+      "n_barras_tras_exclusiones": 702,
+      "n_barras_ventana": 704
+    },
+    "2025-02": {
+      "cobertura_pct": 99.844,
+      "n_barras_tras_exclusiones": 639,
+      "n_barras_ventana": 640
+    },
+    "2025-03": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 680,
+      "n_barras_ventana": 680
+    },
+    "2025-04": {
+      "cobertura_pct": 99.865,
+      "n_barras_tras_exclusiones": 740,
+      "n_barras_ventana": 741
+    },
+    "2025-05": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 784,
+      "n_barras_ventana": 784
+    },
+    "2025-06": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 764,
+      "n_barras_ventana": 764
+    },
+    "2025-07": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 828,
+      "n_barras_ventana": 828
+    },
+    "2025-08": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 756,
+      "n_barras_ventana": 756
+    },
+    "2025-09": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 792,
+      "n_barras_ventana": 792
+    },
+    "2025-10": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 792,
+      "n_barras_ventana": 792
+    },
+    "2025-11": {
+      "cobertura_pct": 99.845,
+      "n_barras_tras_exclusiones": 643,
+      "n_barras_ventana": 644
+    },
+    "2025-12": {
+      "cobertura_pct": 99.715,
+      "n_barras_tras_exclusiones": 699,
+      "n_barras_ventana": 701
+    },
+    "2026-01": {
+      "cobertura_pct": 99.66,
+      "n_barras_tras_exclusiones": 587,
+      "n_barras_ventana": 589
+    },
+    "2026-02": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 556,
+      "n_barras_ventana": 556
+    },
+    "2026-03": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 712,
+      "n_barras_ventana": 712
+    },
+    "2026-04": {
+      "cobertura_pct": 99.866,
+      "n_barras_tras_exclusiones": 748,
+      "n_barras_ventana": 749
+    },
+    "2026-05": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 756,
+      "n_barras_ventana": 756
+    },
+    "2026-06": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 790,
+      "n_barras_ventana": 790
+    },
+    "2026-07": {
+      "cobertura_pct": 99.876,
+      "n_barras_tras_exclusiones": 803,
+      "n_barras_ventana": 804
+    },
+    "2026-08": {
+      "cobertura_pct": 100.0,
+      "n_barras_tras_exclusiones": 278,
+      "n_barras_ventana": 278
+    }
+  },
+  "estrategias_no_reportadas": {
+    "S7-TPNONE": "descartada del informe por D-06 (PF 0.968, neto negativo); numeros calculados como subproducto gratis de build_all() (que corre las 3 estrategias en una pasada) y dejados en 'metricas_globales'/'mensual' para quien los necesite, pero fuera del informe (brief T0.6-backtest-largo-ava)."
+  },
+  "estrategias_reportadas": [
+    "S6-K2P0",
+    "SuperTrend-p14x3-M15"
+  ],
+  "exclusiones_continuidad": {
+    "horas_excluidas_en_ventana": 97.683,
+    "n_intervalos": 44,
+    "path": "D:\\FOREX\\research\\fases\\F0-preparacion\\04-resultados\\T0.3-continuidad\\exclusiones-ava.json"
+  },
+  "generado": "2026-08-12T10:44:40Z",
+  "git_sha": "7c394a3eae8fddd2ed2d47d7f2c88852341ddb8f",
+  "holdout_ava_excluido": [
+    "2023-01-01 00:00:00",
+    "2024-01-01 00:00:00"
+  ],
+  "limitaciones_declaradas": [
+    "D-38: una minoria de ticks de AVA se retira por NO EVALUABLE (ver 'ticks_no_evaluables_d38'). Es una exclusion declarada, no un filtro silencioso, y va en el mismo espiritu que D-33.",
+    "D-36: la extrapolacion del calendario de ventana operativa a 2022-2025 es una HIPOTESIS, no un hecho medido -- Capitaria solo cubre desde 2026-01 y no hay gate de spread observable antes de esa fecha con el que verificarla.",
+    "D-32: 'maxdd' y 'peak_margin' (dentro de cada entrada de 'metricas_globales'/'mensual') estan PROHIBIDOS como criterio de aprobacion o descarte. maxDD es pico-a-valle del P&L CERRADO (backtest.py:412-435) y el simulador no impone margen ni margin call -- no son medidas de supervivencia, son descriptores de excursion y de capital comprometido, nada mas."
+  ],
+  "lot": 0.67,
+  "mensual": {
+    "media": {
+      "S6-K2P0": {
+        "2022-01": {
+          "avg_loss": -166770.31,
+          "avg_win": 354808.19,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 3128138.63,
+          "n": 84,
+          "net": 3203384.57,
+          "peak_margin": 6918255.63,
+          "pf": 1.377,
+          "rom": 46.3,
+          "wr": 39.29
+        },
+        "2022-02": {
+          "avg_loss": -477244.23,
+          "avg_win": 439439.9,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 24285360.09,
+          "n": 96,
+          "net": -23815026.92,
+          "peak_margin": 7206747.51,
+          "pf": 0.307,
+          "rom": -330.45,
+          "wr": 25.0
+        },
+        "2022-03": {
+          "avg_loss": -402848.11,
+          "avg_win": 1294016.29,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 7142992.96,
+          "n": 84,
+          "net": 27247876.96,
+          "peak_margin": 7290945.02,
+          "pf": 2.409,
+          "rom": 373.72,
+          "wr": 42.86
+        },
+        "2022-04": {
+          "avg_loss": -289705.32,
+          "avg_win": 471184.96,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 12767940.52,
+          "n": 120,
+          "net": -7372588.41,
+          "peak_margin": 7468678.37,
+          "pf": 0.697,
+          "rom": -98.71,
+          "wr": 30.0
+        },
+        "2022-05": {
+          "avg_loss": -313198.54,
+          "avg_win": 398925.93,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6272668.89,
+          "n": 81,
+          "net": -4005347.35,
+          "peak_margin": 6973503.5,
+          "pf": 0.749,
+          "rom": -57.44,
+          "wr": 37.04
+        },
+        "2022-06": {
+          "avg_loss": -330621.22,
+          "avg_win": 909861.9,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 21662102.63,
+          "n": 102,
+          "net": -7673219.04,
+          "peak_margin": 6894783.05,
+          "pf": 0.713,
+          "rom": -111.29,
+          "wr": 20.59
+        },
+        "2022-07": {
+          "avg_loss": -243551.95,
+          "avg_win": 383602.29,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8513124.84,
+          "n": 114,
+          "net": 2338481.62,
+          "peak_margin": 6804523.08,
+          "pf": 1.145,
+          "rom": 34.37,
+          "wr": 42.11
+        },
+        "2022-08": {
+          "avg_loss": -135677.35,
+          "avg_win": 389695.51,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 6075257.74,
+          "n": 114,
+          "net": 293968.38,
+          "peak_margin": 6708203.03,
+          "pf": 1.026,
+          "rom": 4.38,
+          "wr": 26.32
+        },
+        "2022-09": {
+          "avg_loss": -312427.0,
+          "avg_win": 382922.02,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 19307961.43,
+          "n": 135,
+          "net": -17145080.28,
+          "peak_margin": 6468408.5,
+          "pf": 0.446,
+          "rom": -265.06,
+          "wr": 26.67
+        },
+        "2022-10": {
+          "avg_loss": -283293.05,
+          "avg_win": 594958.36,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 18413419.61,
+          "n": 105,
+          "net": -6032982.46,
+          "peak_margin": 6266035.21,
+          "pf": 0.727,
+          "rom": -96.28,
+          "wr": 25.71
+        },
+        "2022-11": {
+          "avg_loss": -258090.42,
+          "avg_win": 289267.53,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 8872327.43,
+          "n": 96,
+          "net": -6713868.14,
+          "peak_margin": 6684522.36,
+          "pf": 0.587,
+          "rom": -100.44,
+          "wr": 34.38
+        },
+        "2022-12": {
+          "avg_loss": -201514.65,
+          "avg_win": 2321934.71,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 8145382.44,
+          "n": 90,
+          "net": 42426466.33,
+          "peak_margin": 6712081.15,
+          "pf": 4.19,
+          "rom": 632.09,
+          "wr": 26.67
+        },
+        "2024-01": {
+          "avg_loss": -208833.67,
+          "avg_win": 298022.97,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 7153768.75,
+          "n": 99,
+          "net": -5468834.19,
+          "peak_margin": 7772134.72,
+          "pf": 0.62,
+          "rom": -70.36,
+          "wr": 30.3
+        },
+        "2024-02": {
+          "avg_loss": -216952.49,
+          "avg_win": 237968.81,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 9926832.82,
+          "n": 93,
+          "net": -7893706.76,
+          "peak_margin": 7627098.33,
+          "pf": 0.449,
+          "rom": -103.5,
+          "wr": 29.03
+        },
+        "2024-03": {
+          "avg_loss": -325169.29,
+          "avg_win": 1124639.45,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 14449882.31,
+          "n": 96,
+          "net": 16627436.68,
+          "peak_margin": 8199261.71,
+          "pf": 1.812,
+          "rom": 202.79,
+          "wr": 34.38
+        },
+        "2024-04": {
+          "avg_loss": -473819.94,
+          "avg_win": 828608.09,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 17868366.99,
+          "n": 96,
+          "net": -2506589.05,
+          "peak_margin": 8972307.69,
+          "pf": 0.916,
+          "rom": -27.94,
+          "wr": 34.38
+        },
+        "2024-05": {
+          "avg_loss": -406171.05,
+          "avg_win": 495844.89,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 14137822.62,
+          "n": 114,
+          "net": 10523504.69,
+          "peak_margin": 8814381.16,
+          "pf": 1.508,
+          "rom": 119.39,
+          "wr": 55.26
+        },
+        "2024-06": {
+          "avg_loss": -252180.37,
+          "avg_win": 384147.34,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 9635066.99,
+          "n": 105,
+          "net": -5480124.71,
+          "peak_margin": 4471267.49,
+          "pf": 0.698,
+          "rom": -122.56,
+          "wr": 31.43
+        },
+        "2024-07": {
+          "avg_loss": -329544.06,
+          "avg_win": 779462.68,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 15989895.09,
+          "n": 120,
+          "net": 7032995.93,
+          "peak_margin": 9270271.15,
+          "pf": 1.274,
+          "rom": 75.87,
+          "wr": 35.0
+        },
+        "2024-08": {
+          "avg_loss": -319268.22,
+          "avg_win": 777105.7,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 9365492.75,
+          "n": 126,
+          "net": -7336578.01,
+          "peak_margin": 9275617.07,
+          "pf": 0.761,
+          "rom": -79.1,
+          "wr": 23.81
+        },
+        "2024-09": {
+          "avg_loss": -373618.83,
+          "avg_win": 390796.19,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 17171898.62,
+          "n": 105,
+          "net": -11711036.53,
+          "peak_margin": 10005500.99,
+          "pf": 0.546,
+          "rom": -117.05,
+          "wr": 34.29
+        },
+        "2024-10": {
+          "avg_loss": -358376.25,
+          "avg_win": 656641.13,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 11322005.24,
+          "n": 126,
+          "net": -2524677.44,
+          "peak_margin": 10490420.2,
+          "pf": 0.916,
+          "rom": -24.07,
+          "wr": 33.33
+        },
+        "2024-11": {
+          "avg_loss": -453458.35,
+          "avg_win": 1918529.43,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 10371327.43,
+          "n": 96,
+          "net": 20511668.44,
+          "peak_margin": 10319275.51,
+          "pf": 1.656,
+          "rom": 198.77,
+          "wr": 28.12
+        },
+        "2024-12": {
+          "avg_loss": -400876.93,
+          "avg_win": 803202.51,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 7284611.37,
+          "n": 102,
+          "net": 6069651.12,
+          "peak_margin": 9790246.25,
+          "pf": 1.24,
+          "rom": 62.0,
+          "wr": 38.24
+        },
+        "2025-01": {
+          "avg_loss": -368709.35,
+          "avg_win": 1075732.44,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 11024839.38,
+          "n": 105,
+          "net": -4047878.64,
+          "peak_margin": 10112686.19,
+          "pf": 0.864,
+          "rom": -40.03,
+          "wr": 22.86
+        },
+        "2025-02": {
+          "avg_loss": -330797.1,
+          "avg_win": 962209.02,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 4920075.85,
+          "n": 90,
+          "net": 16776481.03,
+          "peak_margin": 10922319.38,
+          "pf": 1.939,
+          "rom": 153.6,
+          "wr": 40.0
+        },
+        "2025-03": {
+          "avg_loss": -362352.13,
+          "avg_win": 896329.74,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 8057588.18,
+          "n": 93,
+          "net": 11613799.01,
+          "peak_margin": 10946206.59,
+          "pf": 1.562,
+          "rom": 106.1,
+          "wr": 38.71
+        },
+        "2025-04": {
+          "avg_loss": -1133637.41,
+          "avg_win": 2341685.15,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 28187405.7,
+          "n": 117,
+          "net": 2902002.68,
+          "peak_margin": 12059173.72,
+          "pf": 1.033,
+          "rom": 24.06,
+          "wr": 33.33
+        },
+        "2025-05": {
+          "avg_loss": -731370.69,
+          "avg_win": 1435864.47,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 28127026.59,
+          "n": 126,
+          "net": 11874580.73,
+          "peak_margin": 12725540.33,
+          "pf": 1.208,
+          "rom": 93.31,
+          "wr": 38.1
+        },
+        "2025-06": {
+          "avg_loss": -481864.37,
+          "avg_win": 935136.71,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 19663161.26,
+          "n": 111,
+          "net": 6027100.54,
+          "peak_margin": 12955857.1,
+          "pf": 1.181,
+          "rom": 46.52,
+          "wr": 37.84
+        },
+        "2025-07": {
+          "avg_loss": -542048.6,
+          "avg_win": 501257.16,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 37846811.3,
+          "n": 132,
+          "net": -33991407.87,
+          "peak_margin": 12884316.98,
+          "pf": 0.347,
+          "rom": -263.82,
+          "wr": 27.27
+        },
+        "2025-08": {
+          "avg_loss": -419041.9,
+          "avg_win": 690707.29,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 14967051.93,
+          "n": 132,
+          "net": -5374817.21,
+          "peak_margin": 12774970.39,
+          "pf": 0.853,
+          "rom": -42.07,
+          "wr": 34.09
+        },
+        "2025-09": {
+          "avg_loss": -530956.3,
+          "avg_win": 913227.04,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 13776545.95,
+          "n": 135,
+          "net": 6306799.93,
+          "peak_margin": 14535063.3,
+          "pf": 1.147,
+          "rom": 43.39,
+          "wr": 40.0
+        },
+        "2025-10": {
+          "avg_loss": -1769384.79,
+          "avg_win": 1407688.16,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 152187478.29,
+          "n": 141,
+          "net": -135108628.73,
+          "peak_margin": 15058054.27,
+          "pf": 0.273,
+          "rom": -897.25,
+          "wr": 25.53
+        },
+        "2025-11": {
+          "avg_loss": -1112123.65,
+          "avg_win": 2097724.01,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 48356633.36,
+          "n": 90,
+          "net": -32684327.78,
+          "peak_margin": 7906225.97,
+          "pf": 0.574,
+          "rom": -413.4,
+          "wr": 23.33
+        },
+        "2025-12": {
+          "avg_loss": -533963.87,
+          "avg_win": 2347993.62,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 11602907.46,
+          "n": 120,
+          "net": 48320677.93,
+          "peak_margin": 16981935.47,
+          "pf": 2.117,
+          "rom": 284.54,
+          "wr": 32.5
+        },
+        "2026-01": {
+          "avg_loss": -628530.68,
+          "avg_win": 1889781.07,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 11285221.75,
+          "n": 60,
+          "net": 30282576.58,
+          "peak_margin": 17246614.01,
+          "pf": 2.46,
+          "rom": 175.59,
+          "wr": 45.0
+        },
+        "2026-03": {
+          "avg_loss": -1812197.07,
+          "avg_win": 4309027.71,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 30093977.26,
+          "n": 69,
+          "net": 132049843.12,
+          "peak_margin": 19292755.21,
+          "pf": 3.699,
+          "rom": 684.45,
+          "wr": 60.87
+        },
+        "2026-04": {
+          "avg_loss": -1019883.3,
+          "avg_win": 2662550.58,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 32151532.09,
+          "n": 120,
+          "net": 21228925.36,
+          "peak_margin": 17771850.32,
+          "pf": 1.257,
+          "rom": 119.45,
+          "wr": 32.5
+        },
+        "2026-05": {
+          "avg_loss": -1099889.3,
+          "avg_win": 2058825.72,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 50873823.98,
+          "n": 135,
+          "net": -6342879.41,
+          "peak_margin": 17669534.37,
+          "pf": 0.936,
+          "rom": -35.9,
+          "wr": 33.33
+        },
+        "2026-06": {
+          "avg_loss": -1339214.16,
+          "avg_win": 1311953.54,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 52906015.54,
+          "n": 132,
+          "net": -49520219.73,
+          "peak_margin": 16268743.76,
+          "pf": 0.56,
+          "rom": -304.39,
+          "wr": 36.36
+        },
+        "2026-07": {
+          "avg_loss": -868041.43,
+          "avg_win": 2221657.42,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 22312124.77,
+          "n": 117,
+          "net": 28206504.37,
+          "peak_margin": 15532268.98,
+          "pf": 1.433,
+          "rom": 181.6,
+          "wr": 35.9
+        },
+        "2026-08": {
+          "avg_loss": -804460.66,
+          "avg_win": 5691426.35,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 18630632.95,
+          "n": 54,
+          "net": 15022107.34,
+          "peak_margin": 16283191.36,
+          "pf": 1.415,
+          "rom": 92.26,
+          "wr": 16.67
+        }
+      },
+      "S7-TPNONE": {
+        "2022-01": {
+          "avg_loss": -147596.15,
+          "avg_win": 272112.74,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 5301892.6,
+          "n": 96,
+          "net": 940289.79,
+          "peak_margin": 6913701.27,
+          "pf": 1.106,
+          "rom": 13.6,
+          "wr": 37.5
+        },
+        "2022-02": {
+          "avg_loss": -360563.29,
+          "avg_win": 275349.54,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 25369283.09,
+          "n": 126,
+          "net": -24445851.19,
+          "peak_margin": 7196394.85,
+          "pf": 0.271,
+          "rom": -339.7,
+          "wr": 26.19
+        },
+        "2022-03": {
+          "avg_loss": -275184.42,
+          "avg_win": 924738.97,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 5303485.46,
+          "n": 93,
+          "net": 24804631.28,
+          "peak_margin": 3854752.73,
+          "pf": 2.767,
+          "rom": 643.48,
+          "wr": 45.16
+        },
+        "2022-04": {
+          "avg_loss": -218775.17,
+          "avg_win": 426135.63,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 11090135.8,
+          "n": 153,
+          "net": -8321079.75,
+          "peak_margin": 7468678.37,
+          "pf": 0.666,
+          "rom": -111.41,
+          "wr": 25.49
+        },
+        "2022-05": {
+          "avg_loss": -265427.46,
+          "avg_win": 280793.53,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6252032.9,
+          "n": 93,
+          "net": 1533853.78,
+          "peak_margin": 6973503.5,
+          "pf": 1.128,
+          "rom": 22.0,
+          "wr": 51.61
+        },
+        "2022-06": {
+          "avg_loss": -316139.71,
+          "avg_win": 606447.28,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 24131770.31,
+          "n": 114,
+          "net": -8362317.38,
+          "peak_margin": 3518489.8,
+          "pf": 0.685,
+          "rom": -237.67,
+          "wr": 26.32
+        },
+        "2022-07": {
+          "avg_loss": -208704.05,
+          "avg_win": 353380.46,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8446396.89,
+          "n": 141,
+          "net": -760961.11,
+          "peak_margin": 3409406.52,
+          "pf": 0.959,
+          "rom": -22.32,
+          "wr": 36.17
+        },
+        "2022-08": {
+          "avg_loss": -133278.85,
+          "avg_win": 309071.37,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 5693722.97,
+          "n": 126,
+          "net": 1785574.26,
+          "peak_margin": 6708203.03,
+          "pf": 1.159,
+          "rom": 26.62,
+          "wr": 33.33
+        },
+        "2022-09": {
+          "avg_loss": -219956.14,
+          "avg_win": 245711.21,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 12793469.53,
+          "n": 162,
+          "net": -9089855.88,
+          "peak_margin": 6139540.52,
+          "pf": 0.606,
+          "rom": -148.05,
+          "wr": 35.19
+        },
+        "2022-10": {
+          "avg_loss": -120398.75,
+          "avg_win": 343954.62,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 5926181.49,
+          "n": 120,
+          "net": 3661931.41,
+          "peak_margin": 6266035.21,
+          "pf": 1.375,
+          "rom": 58.44,
+          "wr": 32.5
+        },
+        "2022-11": {
+          "avg_loss": -214890.19,
+          "avg_win": 243522.05,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 7475695.51,
+          "n": 114,
+          "net": -5244167.34,
+          "peak_margin": 6684522.36,
+          "pf": 0.661,
+          "rom": -78.45,
+          "wr": 36.84
+        },
+        "2022-12": {
+          "avg_loss": -164794.99,
+          "avg_win": 1876241.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 7033782.57,
+          "n": 111,
+          "net": 42938841.29,
+          "peak_margin": 6712081.15,
+          "pf": 4.217,
+          "rom": 639.72,
+          "wr": 27.03
+        },
+        "2024-01": {
+          "avg_loss": -178950.22,
+          "avg_win": 253313.5,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 6550607.89,
+          "n": 117,
+          "net": -5375681.87,
+          "peak_margin": 7772134.72,
+          "pf": 0.629,
+          "rom": -69.17,
+          "wr": 30.77
+        },
+        "2024-02": {
+          "avg_loss": -154208.07,
+          "avg_win": 137423.8,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 10998711.78,
+          "n": 114,
+          "net": -8830763.68,
+          "peak_margin": 7627098.33,
+          "pf": 0.318,
+          "rom": -115.78,
+          "wr": 26.32
+        },
+        "2024-03": {
+          "avg_loss": -232944.49,
+          "avg_win": 484918.77,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 14134303.91,
+          "n": 111,
+          "net": -2167351.2,
+          "peak_margin": 4158644.83,
+          "pf": 0.881,
+          "rom": -52.12,
+          "wr": 29.73
+        },
+        "2024-04": {
+          "avg_loss": -343614.51,
+          "avg_win": 736898.93,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 10766651.94,
+          "n": 105,
+          "net": 6060500.28,
+          "peak_margin": 8475649.64,
+          "pf": 1.267,
+          "rom": 71.5,
+          "wr": 37.14
+        },
+        "2024-05": {
+          "avg_loss": -341790.39,
+          "avg_win": 320917.31,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 12509621.69,
+          "n": 132,
+          "net": 610499.82,
+          "peak_margin": 4588915.32,
+          "pf": 1.028,
+          "rom": 13.3,
+          "wr": 52.27
+        },
+        "2024-06": {
+          "avg_loss": -158220.98,
+          "avg_win": 221568.29,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 5978341.26,
+          "n": 123,
+          "net": -4649398.63,
+          "peak_margin": 4471267.49,
+          "pf": 0.65,
+          "rom": -103.98,
+          "wr": 31.71
+        },
+        "2024-07": {
+          "avg_loss": -208876.44,
+          "avg_win": 515781.43,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 11910387.08,
+          "n": 144,
+          "net": -6164497.37,
+          "peak_margin": 9270271.15,
+          "pf": 0.734,
+          "rom": -66.5,
+          "wr": 22.92
+        },
+        "2024-08": {
+          "avg_loss": -192258.14,
+          "avg_win": 355056.56,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 11159400.34,
+          "n": 147,
+          "net": -8558617.56,
+          "peak_margin": 9474187.75,
+          "pf": 0.599,
+          "rom": -90.34,
+          "wr": 24.49
+        },
+        "2024-09": {
+          "avg_loss": -148090.25,
+          "avg_win": 339642.74,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 5678603.34,
+          "n": 120,
+          "net": 2713955.83,
+          "peak_margin": 10003975.47,
+          "pf": 1.235,
+          "rom": 27.13,
+          "wr": 35.0
+        },
+        "2024-10": {
+          "avg_loss": -295802.05,
+          "avg_win": 471665.06,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 10860612.82,
+          "n": 156,
+          "net": -2399494.81,
+          "peak_margin": 10286560.0,
+          "pf": 0.918,
+          "rom": -23.33,
+          "wr": 36.54
+        },
+        "2024-11": {
+          "avg_loss": -424425.29,
+          "avg_win": 625725.44,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 15156679.59,
+          "n": 111,
+          "net": -9305780.84,
+          "peak_margin": 10319275.51,
+          "pf": 0.708,
+          "rom": -90.18,
+          "wr": 32.43
+        },
+        "2024-12": {
+          "avg_loss": -226488.14,
+          "avg_win": 670507.8,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 8137638.95,
+          "n": 135,
+          "net": 12479905.83,
+          "peak_margin": 5102716.26,
+          "pf": 1.633,
+          "rom": 244.57,
+          "wr": 35.56
+        },
+        "2025-01": {
+          "avg_loss": -297741.65,
+          "avg_win": 647215.49,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 12232886.08,
+          "n": 126,
+          "net": -6331862.59,
+          "peak_margin": 10112686.19,
+          "pf": 0.771,
+          "rom": -62.61,
+          "wr": 26.19
+        },
+        "2025-02": {
+          "avg_loss": -253461.79,
+          "avg_win": 638088.87,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 4245225.31,
+          "n": 114,
+          "net": 11225135.44,
+          "peak_margin": 10919109.95,
+          "pf": 1.642,
+          "rom": 102.8,
+          "wr": 39.47
+        },
+        "2025-03": {
+          "avg_loss": -284931.04,
+          "avg_win": 401219.53,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 8968218.11,
+          "n": 120,
+          "net": 4918857.68,
+          "peak_margin": 10946206.59,
+          "pf": 1.274,
+          "rom": 44.94,
+          "wr": 47.5
+        },
+        "2025-04": {
+          "avg_loss": -953834.42,
+          "avg_win": 1774951.9,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 26813256.57,
+          "n": 129,
+          "net": 7937102.71,
+          "peak_margin": 12059173.72,
+          "pf": 1.103,
+          "rom": 65.82,
+          "wr": 37.21
+        },
+        "2025-05": {
+          "avg_loss": -611366.02,
+          "avg_win": 1059295.58,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 24448467.49,
+          "n": 147,
+          "net": 10368891.18,
+          "peak_margin": 12641135.1,
+          "pf": 1.195,
+          "rom": 82.03,
+          "wr": 40.82
+        },
+        "2025-06": {
+          "avg_loss": -361618.77,
+          "avg_win": 698688.94,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 13178842.92,
+          "n": 114,
+          "net": 3308384.11,
+          "peak_margin": 12955857.1,
+          "pf": 1.127,
+          "rom": 25.54,
+          "wr": 36.84
+        },
+        "2025-07": {
+          "avg_loss": -386697.69,
+          "avg_win": 326560.62,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 30152395.99,
+          "n": 156,
+          "net": -26088440.35,
+          "peak_margin": 12492221.71,
+          "pf": 0.375,
+          "rom": -208.84,
+          "wr": 30.77
+        },
+        "2025-08": {
+          "avg_loss": -334040.65,
+          "avg_win": 743010.39,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 14807057.4,
+          "n": 159,
+          "net": -1414013.86,
+          "peak_margin": 12624927.71,
+          "pf": 0.962,
+          "rom": -11.2,
+          "wr": 30.19
+        },
+        "2025-09": {
+          "avg_loss": -429945.32,
+          "avg_win": 752477.02,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 11884318.49,
+          "n": 147,
+          "net": 11290645.41,
+          "peak_margin": 14535063.3,
+          "pf": 1.313,
+          "rom": 77.68,
+          "wr": 42.86
+        },
+        "2025-10": {
+          "avg_loss": -1369135.28,
+          "avg_win": 1137209.56,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 129565612.99,
+          "n": 159,
+          "net": -112426026.11,
+          "peak_margin": 14941009.63,
+          "pf": 0.298,
+          "rom": -752.47,
+          "wr": 26.42
+        },
+        "2025-11": {
+          "avg_loss": -811341.52,
+          "avg_win": 1044648.74,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 30502081.43,
+          "n": 105,
+          "net": -12807239.6,
+          "peak_margin": 7906225.97,
+          "pf": 0.761,
+          "rom": -161.99,
+          "wr": 37.14
+        },
+        "2025-12": {
+          "avg_loss": -498182.58,
+          "avg_win": 1726037.85,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 19141216.74,
+          "n": 135,
+          "net": 19489948.39,
+          "peak_margin": 16412519.77,
+          "pf": 1.408,
+          "rom": 118.75,
+          "wr": 28.89
+        },
+        "2026-01": {
+          "avg_loss": -439934.47,
+          "avg_win": 1819963.35,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 9880070.26,
+          "n": 66,
+          "net": 18422179.29,
+          "peak_margin": 17246614.01,
+          "pf": 1.931,
+          "rom": 106.82,
+          "wr": 31.82
+        },
+        "2026-03": {
+          "avg_loss": -732348.06,
+          "avg_win": 3882644.61,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 10624113.33,
+          "n": 81,
+          "net": 148354477.45,
+          "peak_margin": 19210090.14,
+          "pf": 6.627,
+          "rom": 772.27,
+          "wr": 55.56
+        },
+        "2026-04": {
+          "avg_loss": -744464.85,
+          "avg_win": 2214132.37,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 17331396.21,
+          "n": 138,
+          "net": 48152308.94,
+          "peak_margin": 17771850.32,
+          "pf": 1.743,
+          "rom": 270.95,
+          "wr": 36.96
+        },
+        "2026-05": {
+          "avg_loss": -873603.92,
+          "avg_win": 1500841.45,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 57395239.03,
+          "n": 159,
+          "net": -17806309.74,
+          "peak_margin": 17669534.37,
+          "pf": 0.811,
+          "rom": -100.77,
+          "wr": 32.08
+        },
+        "2026-06": {
+          "avg_loss": -927770.47,
+          "avg_win": 1314154.88,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 36836594.95,
+          "n": 147,
+          "net": -15318290.32,
+          "peak_margin": 16268743.76,
+          "pf": 0.822,
+          "rom": -94.16,
+          "wr": 36.73
+        },
+        "2026-07": {
+          "avg_loss": -514664.12,
+          "avg_win": 1329382.54,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 22531272.34,
+          "n": 141,
+          "net": 32543018.45,
+          "peak_margin": 15532268.98,
+          "pf": 1.753,
+          "rom": 209.52,
+          "wr": 40.43
+        },
+        "2026-08": {
+          "avg_loss": -595998.96,
+          "avg_win": 5973467.37,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 13302823.95,
+          "n": 57,
+          "net": 25153256.1,
+          "peak_margin": 16283191.36,
+          "pf": 1.879,
+          "rom": 154.47,
+          "wr": 15.79
+        }
+      },
+      "SuperTrend-p14x3-M15": {
+        "2022-01": {
+          "avg_loss": -214482.63,
+          "avg_win": 854974.8,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 4965596.96,
+          "n": 30,
+          "net": -17734.23,
+          "peak_margin": 1154460.15,
+          "pf": 0.997,
+          "rom": -1.54,
+          "wr": 20.0
+        },
+        "2022-02": {
+          "avg_loss": -394887.01,
+          "avg_win": 649712.72,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 8017715.58,
+          "n": 30,
+          "net": -7668211.29,
+          "peak_margin": 1201005.92,
+          "pf": 0.253,
+          "rom": -638.48,
+          "wr": 13.33
+        },
+        "2022-03": {
+          "avg_loss": -485529.86,
+          "avg_win": 1050817.42,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 11764955.02,
+          "n": 43,
+          "net": -8587005.72,
+          "peak_margin": 1254398.05,
+          "pf": 0.495,
+          "rom": -684.55,
+          "wr": 18.6
+        },
+        "2022-04": {
+          "avg_loss": -282170.6,
+          "avg_win": 941103.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 3706562.54,
+          "n": 32,
+          "net": -466542.66,
+          "peak_margin": 1241516.4,
+          "pf": 0.934,
+          "rom": -37.58,
+          "wr": 21.88
+        },
+        "2022-05": {
+          "avg_loss": -224163.52,
+          "avg_win": 823709.06,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 3242331.11,
+          "n": 51,
+          "net": 94258.8,
+          "peak_margin": 1190979.19,
+          "pf": 1.011,
+          "rom": 7.91,
+          "wr": 21.57
+        },
+        "2022-06": {
+          "avg_loss": -195132.41,
+          "avg_win": 1134653.64,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 4512031.13,
+          "n": 55,
+          "net": -2753566.22,
+          "peak_margin": 1178494.82,
+          "pf": 0.712,
+          "rom": -233.65,
+          "wr": 10.91
+        },
+        "2022-07": {
+          "avg_loss": -240506.79,
+          "avg_win": 728308.26,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8369769.92,
+          "n": 53,
+          "net": -5965154.76,
+          "peak_margin": 1137014.74,
+          "pf": 0.461,
+          "rom": -524.63,
+          "wr": 13.21
+        },
+        "2022-08": {
+          "avg_loss": -195138.21,
+          "avg_win": 509636.9,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 5265171.17,
+          "n": 56,
+          "net": -3879988.5,
+          "peak_margin": 1126547.99,
+          "pf": 0.568,
+          "rom": -344.41,
+          "wr": 17.86
+        },
+        "2022-09": {
+          "avg_loss": -272943.55,
+          "avg_win": 543315.66,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 7633070.36,
+          "n": 48,
+          "net": -4938698.15,
+          "peak_margin": 1081058.31,
+          "pf": 0.524,
+          "rom": -456.84,
+          "wr": 20.83
+        },
+        "2022-10": {
+          "avg_loss": -355262.11,
+          "avg_win": 1095155.92,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 4682324.33,
+          "n": 33,
+          "net": -1570723.44,
+          "peak_margin": 1082005.77,
+          "pf": 0.83,
+          "rom": -145.17,
+          "wr": 21.21
+        },
+        "2022-11": {
+          "avg_loss": -268705.82,
+          "avg_win": 1130668.57,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 3389453.65,
+          "n": 37,
+          "net": 5451003.08,
+          "peak_margin": 1113592.02,
+          "pf": 1.78,
+          "rom": 489.5,
+          "wr": 29.73
+        },
+        "2022-12": {
+          "avg_loss": -231727.6,
+          "avg_win": 2152930.63,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 2006972.76,
+          "n": 24,
+          "net": 20669778.12,
+          "peak_margin": 1139492.33,
+          "pf": 7.861,
+          "rom": 1813.95,
+          "wr": 45.83
+        },
+        "2024-01": {
+          "avg_loss": -119275.49,
+          "avg_win": 645307.63,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 2349286.52,
+          "n": 43,
+          "net": 2516984.97,
+          "peak_margin": 1291789.25,
+          "pf": 1.639,
+          "rom": 194.84,
+          "wr": 23.26
+        },
+        "2024-02": {
+          "avg_loss": -208687.8,
+          "avg_win": 586930.56,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 4364518.41,
+          "n": 34,
+          "net": -2321675.01,
+          "peak_margin": 1282258.09,
+          "pf": 0.603,
+          "rom": -181.06,
+          "wr": 17.65
+        },
+        "2024-03": {
+          "avg_loss": -202071.09,
+          "avg_win": 2204032.93,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 2545817.31,
+          "n": 29,
+          "net": 10982666.62,
+          "peak_margin": 1371023.11,
+          "pf": 3.47,
+          "rom": 801.06,
+          "wr": 24.14
+        },
+        "2024-04": {
+          "avg_loss": -452054.59,
+          "avg_win": 1465597.14,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 12753869.56,
+          "n": 47,
+          "net": -7823003.62,
+          "peak_margin": 1499588.81,
+          "pf": 0.567,
+          "rom": -521.68,
+          "wr": 14.89
+        },
+        "2024-05": {
+          "avg_loss": -260996.07,
+          "avg_win": 1481709.13,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 3862722.25,
+          "n": 44,
+          "net": 7685930.21,
+          "peak_margin": 1528081.77,
+          "pf": 1.892,
+          "rom": 502.98,
+          "wr": 25.0
+        },
+        "2024-06": {
+          "avg_loss": -399361.18,
+          "avg_win": 1065037.77,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 5211483.61,
+          "n": 40,
+          "net": -1330457.68,
+          "peak_margin": 1493233.5,
+          "pf": 0.889,
+          "rom": -89.1,
+          "wr": 25.0
+        },
+        "2024-07": {
+          "avg_loss": -207153.46,
+          "avg_win": 1758658.05,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 2291303.71,
+          "n": 53,
+          "net": 8678981.65,
+          "peak_margin": 1548506.01,
+          "pf": 1.974,
+          "rom": 560.47,
+          "wr": 18.87
+        },
+        "2024-08": {
+          "avg_loss": -437611.61,
+          "avg_win": 1272070.47,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 12346840.63,
+          "n": 45,
+          "net": -9434429.82,
+          "peak_margin": 1582953.06,
+          "pf": 0.447,
+          "rom": -596.0,
+          "wr": 13.33
+        },
+        "2024-09": {
+          "avg_loss": -370331.24,
+          "avg_win": 1526436.34,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 4126810.0,
+          "n": 29,
+          "net": 2537767.13,
+          "peak_margin": 1676995.26,
+          "pf": 1.311,
+          "rom": 151.33,
+          "wr": 24.14
+        },
+        "2024-10": {
+          "avg_loss": -308818.44,
+          "avg_win": 947392.22,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6791688.72,
+          "n": 48,
+          "net": 251242.64,
+          "peak_margin": 1745526.09,
+          "pf": 1.023,
+          "rom": 14.39,
+          "wr": 25.0
+        },
+        "2024-11": {
+          "avg_loss": -407286.45,
+          "avg_win": 2062371.36,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 2645990.79,
+          "n": 30,
+          "net": 12477984.63,
+          "peak_margin": 1728509.72,
+          "pf": 2.532,
+          "rom": 721.89,
+          "wr": 33.33
+        },
+        "2024-12": {
+          "avg_loss": -308467.9,
+          "avg_win": 1448420.4,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 2186455.07,
+          "n": 27,
+          "net": 5726473.11,
+          "peak_margin": 1701288.33,
+          "pf": 1.977,
+          "rom": 336.6,
+          "wr": 29.63
+        },
+        "2025-01": {
+          "avg_loss": -187280.96,
+          "avg_win": 817453.15,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 2248963.8,
+          "n": 41,
+          "net": 4378290.1,
+          "peak_margin": 3398920.6,
+          "pf": 1.806,
+          "rom": 128.81,
+          "wr": 29.27
+        },
+        "2025-02": {
+          "avg_loss": -303301.86,
+          "avg_win": 1202702.0,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 3188043.89,
+          "n": 41,
+          "net": 2624662.4,
+          "peak_margin": 1844712.67,
+          "pf": 1.279,
+          "rom": 142.28,
+          "wr": 24.39
+        },
+        "2025-03": {
+          "avg_loss": -318638.79,
+          "avg_win": 1809523.34,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 2169796.9,
+          "n": 35,
+          "net": 10129263.54,
+          "peak_margin": 1942042.65,
+          "pf": 2.272,
+          "rom": 521.58,
+          "wr": 28.57
+        },
+        "2025-04": {
+          "avg_loss": -1336227.54,
+          "avg_win": 4695138.48,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 25186766.78,
+          "n": 39,
+          "net": -3861945.96,
+          "peak_margin": 2165303.86,
+          "pf": 0.907,
+          "rom": -178.36,
+          "wr": 20.51
+        },
+        "2025-05": {
+          "avg_loss": -903850.49,
+          "avg_win": 2967381.39,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 11732989.61,
+          "n": 37,
+          "net": -2472612.99,
+          "peak_margin": 4088771.88,
+          "pf": 0.906,
+          "rom": -60.47,
+          "wr": 21.62
+        },
+        "2025-06": {
+          "avg_loss": -396581.94,
+          "avg_win": 2756097.59,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 6947020.35,
+          "n": 50,
+          "net": 5392339.42,
+          "peak_margin": 2164628.19,
+          "pf": 1.324,
+          "rom": 249.11,
+          "wr": 16.0
+        },
+        "2025-07": {
+          "avg_loss": -689104.53,
+          "avg_win": 2455812.2,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 19808246.14,
+          "n": 47,
+          "net": -19808246.14,
+          "peak_margin": 2152505.76,
+          "pf": 0.332,
+          "rom": -920.24,
+          "wr": 8.51
+        },
+        "2025-08": {
+          "avg_loss": -466139.16,
+          "avg_win": 1452310.07,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 7569700.45,
+          "n": 43,
+          "net": 1058957.59,
+          "peak_margin": 2144257.86,
+          "pf": 1.071,
+          "rom": 49.39,
+          "wr": 25.58
+        },
+        "2025-09": {
+          "avg_loss": -326665.06,
+          "avg_win": 2064107.42,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 5502105.68,
+          "n": 36,
+          "net": 12147782.61,
+          "peak_margin": 2367378.88,
+          "pf": 2.43,
+          "rom": 513.13,
+          "wr": 27.78
+        },
+        "2025-10": {
+          "avg_loss": -1567952.5,
+          "avg_win": 5155938.08,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 30087346.97,
+          "n": 43,
+          "net": -13630832.8,
+          "peak_margin": 2740196.76,
+          "pf": 0.752,
+          "rom": -497.44,
+          "wr": 18.6
+        },
+        "2025-11": {
+          "avg_loss": -874258.44,
+          "avg_win": 4476310.78,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 10831812.51,
+          "n": 27,
+          "net": 8498437.53,
+          "peak_margin": 2642254.19,
+          "pf": 1.463,
+          "rom": 321.64,
+          "wr": 22.22
+        },
+        "2025-12": {
+          "avg_loss": -827739.53,
+          "avg_win": 2673030.89,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 4369461.87,
+          "n": 25,
+          "net": 7312675.21,
+          "peak_margin": 5275205.56,
+          "pf": 1.52,
+          "rom": 138.62,
+          "wr": 32.0
+        },
+        "2026-01": {
+          "avg_loss": -1730782.82,
+          "avg_win": 5349065.69,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 6923131.28,
+          "n": 7,
+          "net": 9124065.79,
+          "peak_margin": 5787491.19,
+          "pf": 2.318,
+          "rom": 157.65,
+          "wr": 42.86
+        },
+        "2026-03": {
+          "avg_loss": -3822090.62,
+          "avg_win": 8639334.42,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 28134839.16,
+          "n": 22,
+          "net": -9317443.44,
+          "peak_margin": 6408932.04,
+          "pf": 0.848,
+          "rom": -145.38,
+          "wr": 27.27
+        },
+        "2026-04": {
+          "avg_loss": -1424129.58,
+          "avg_win": 2691060.23,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 28486335.12,
+          "n": 38,
+          "net": -21195405.55,
+          "peak_margin": 5962931.02,
+          "pf": 0.504,
+          "rom": -355.45,
+          "wr": 21.05
+        },
+        "2026-05": {
+          "avg_loss": -793208.79,
+          "avg_win": 2763803.69,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 10541359.95,
+          "n": 34,
+          "net": 1487000.99,
+          "peak_margin": 2973819.26,
+          "pf": 1.072,
+          "rom": 50.0,
+          "wr": 23.53
+        },
+        "2026-06": {
+          "avg_loss": -1706434.04,
+          "avg_win": 2751566.58,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 18786985.83,
+          "n": 40,
+          "net": -10303353.5,
+          "peak_margin": 5634250.65,
+          "pf": 0.776,
+          "rom": -182.87,
+          "wr": 32.5
+        },
+        "2026-07": {
+          "avg_loss": -956216.0,
+          "avg_win": 2810425.92,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 9835470.73,
+          "n": 40,
+          "net": -582220.86,
+          "peak_margin": 5130114.7,
+          "pf": 0.98,
+          "rom": -11.35,
+          "wr": 25.0
+        },
+        "2026-08": {
+          "avg_loss": -211571.62,
+          "avg_win": 6603380.65,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 1038831.69,
+          "n": 12,
+          "net": 17905997.38,
+          "peak_margin": 5107021.48,
+          "pf": 10.404,
+          "rom": 350.62,
+          "wr": 25.0
+        }
+      }
+    },
+    "mediana": {
+      "S6-K2P0": {
+        "2022-01": {
+          "avg_loss": -166589.3,
+          "avg_win": 354911.36,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 3123784.72,
+          "n": 84,
+          "net": 3216020.6,
+          "peak_margin": 6918256.08,
+          "pf": 1.379,
+          "rom": 46.49,
+          "wr": 39.29
+        },
+        "2022-02": {
+          "avg_loss": -476944.23,
+          "avg_win": 439610.66,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 24259920.12,
+          "n": 96,
+          "net": -23789328.87,
+          "peak_margin": 7206747.34,
+          "pf": 0.307,
+          "rom": -330.1,
+          "wr": 25.0
+        },
+        "2022-03": {
+          "avg_loss": -402590.81,
+          "avg_win": 1294073.65,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 7136986.9,
+          "n": 84,
+          "net": 27262292.29,
+          "peak_margin": 7290945.53,
+          "pf": 2.411,
+          "rom": 373.92,
+          "wr": 42.86
+        },
+        "2022-04": {
+          "avg_loss": -289469.64,
+          "avg_win": 471087.99,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 12762434.7,
+          "n": 120,
+          "net": -7356282.42,
+          "peak_margin": 7468678.43,
+          "pf": 0.697,
+          "rom": -98.5,
+          "wr": 30.0
+        },
+        "2022-05": {
+          "avg_loss": -312970.86,
+          "avg_win": 398998.63,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6262628.35,
+          "n": 81,
+          "net": -3991554.98,
+          "peak_margin": 6973503.5,
+          "pf": 0.75,
+          "rom": -57.24,
+          "wr": 37.04
+        },
+        "2022-06": {
+          "avg_loss": -330401.54,
+          "avg_win": 910033.84,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 21645315.14,
+          "n": 102,
+          "net": -7651813.73,
+          "peak_margin": 6894782.99,
+          "pf": 0.714,
+          "rom": -110.98,
+          "wr": 20.59
+        },
+        "2022-07": {
+          "avg_loss": -243281.42,
+          "avg_win": 383688.73,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8508289.8,
+          "n": 114,
+          "net": 2360485.71,
+          "peak_margin": 6804523.59,
+          "pf": 1.147,
+          "rom": 34.69,
+          "wr": 42.11
+        },
+        "2022-08": {
+          "avg_loss": -135597.51,
+          "avg_win": 389837.79,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 6074391.85,
+          "n": 114,
+          "net": 304943.13,
+          "peak_margin": 6708202.97,
+          "pf": 1.027,
+          "rom": 4.55,
+          "wr": 26.32
+        },
+        "2022-09": {
+          "avg_loss": -312187.38,
+          "avg_win": 383061.28,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 19282947.06,
+          "n": 135,
+          "net": -17116344.95,
+          "peak_margin": 6468408.5,
+          "pf": 0.446,
+          "rom": -264.61,
+          "wr": 26.67
+        },
+        "2022-10": {
+          "avg_loss": -283018.4,
+          "avg_win": 595106.21,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 18395411.96,
+          "n": 105,
+          "net": -6007567.9,
+          "peak_margin": 6266035.44,
+          "pf": 0.728,
+          "rom": -95.88,
+          "wr": 25.71
+        },
+        "2022-11": {
+          "avg_loss": -257854.13,
+          "avg_win": 289370.84,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 8854644.96,
+          "n": 96,
+          "net": -6695572.3,
+          "peak_margin": 6684522.82,
+          "pf": 0.588,
+          "rom": -100.17,
+          "wr": 34.38
+        },
+        "2022-12": {
+          "avg_loss": -201356.01,
+          "avg_win": 2322171.74,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 8135581.53,
+          "n": 90,
+          "net": 42442624.84,
+          "peak_margin": 6712080.65,
+          "pf": 4.194,
+          "rom": 632.33,
+          "wr": 26.67
+        },
+        "2024-01": {
+          "avg_loss": -208833.39,
+          "avg_win": 298041.12,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 7148281.09,
+          "n": 99,
+          "net": -5468270.33,
+          "peak_margin": 7772134.5,
+          "pf": 0.621,
+          "rom": -70.36,
+          "wr": 30.3
+        },
+        "2024-02": {
+          "avg_loss": -216728.66,
+          "avg_win": 238084.31,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 9910651.72,
+          "n": 93,
+          "net": -7875815.16,
+          "peak_margin": 7627098.27,
+          "pf": 0.449,
+          "rom": -103.26,
+          "wr": 29.03
+        },
+        "2024-03": {
+          "avg_loss": -325410.11,
+          "avg_win": 1124741.61,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 14465975.02,
+          "n": 96,
+          "net": 16615635.86,
+          "peak_margin": 8199261.94,
+          "pf": 1.81,
+          "rom": 202.65,
+          "wr": 34.38
+        },
+        "2024-04": {
+          "avg_loss": -473579.13,
+          "avg_win": 828753.97,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 17862702.67,
+          "n": 96,
+          "net": -2486604.16,
+          "peak_margin": 8972292.77,
+          "pf": 0.917,
+          "rom": -27.71,
+          "wr": 34.38
+        },
+        "2024-05": {
+          "avg_loss": -405926.48,
+          "avg_win": 495853.78,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 14134678.79,
+          "n": 114,
+          "net": 10536538.09,
+          "peak_margin": 8814381.17,
+          "pf": 1.509,
+          "rom": 119.54,
+          "wr": 55.26
+        },
+        "2024-06": {
+          "avg_loss": -252027.76,
+          "avg_win": 384287.67,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 9622649.88,
+          "n": 105,
+          "net": -5464505.59,
+          "peak_margin": 4471266.29,
+          "pf": 0.699,
+          "rom": -122.21,
+          "wr": 31.43
+        },
+        "2024-07": {
+          "avg_loss": -329136.35,
+          "avg_win": 779590.43,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 15960572.83,
+          "n": 120,
+          "net": 7070162.94,
+          "peak_margin": 9270271.15,
+          "pf": 1.275,
+          "rom": 76.27,
+          "wr": 35.0
+        },
+        "2024-08": {
+          "avg_loss": -319070.67,
+          "avg_win": 777197.14,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 9354412.87,
+          "n": 126,
+          "net": -7314870.39,
+          "peak_margin": 9275617.07,
+          "pf": 0.761,
+          "rom": -78.86,
+          "wr": 23.81
+        },
+        "2024-09": {
+          "avg_loss": -373444.85,
+          "avg_win": 390930.61,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 17164345.25,
+          "n": 105,
+          "net": -11694192.56,
+          "peak_margin": 10005485.27,
+          "pf": 0.546,
+          "rom": -116.88,
+          "wr": 34.29
+        },
+        "2024-10": {
+          "avg_loss": -358198.37,
+          "avg_win": 656721.29,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 11311131.28,
+          "n": 126,
+          "net": -2506369.0,
+          "peak_margin": 10490420.15,
+          "pf": 0.917,
+          "rom": -23.89,
+          "wr": 33.33
+        },
+        "2024-11": {
+          "avg_loss": -453199.83,
+          "avg_win": 1918652.81,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 10369007.6,
+          "n": 96,
+          "net": 20532837.42,
+          "peak_margin": 10319275.52,
+          "pf": 1.657,
+          "rom": 198.98,
+          "wr": 28.12
+        },
+        "2024-12": {
+          "avg_loss": -400644.96,
+          "avg_win": 803359.6,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 7280987.82,
+          "n": 102,
+          "net": 6090391.96,
+          "peak_margin": 9790246.25,
+          "pf": 1.241,
+          "rom": 62.21,
+          "wr": 38.24
+        },
+        "2025-01": {
+          "avg_loss": -368513.62,
+          "avg_win": 1075850.03,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 11014658.8,
+          "n": 105,
+          "net": -4029202.28,
+          "peak_margin": 10112685.96,
+          "pf": 0.865,
+          "rom": -39.84,
+          "wr": 22.86
+        },
+        "2025-02": {
+          "avg_loss": -330511.92,
+          "avg_win": 962332.96,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 4918619.75,
+          "n": 90,
+          "net": 16796342.9,
+          "peak_margin": 10922319.38,
+          "pf": 1.941,
+          "rom": 153.78,
+          "wr": 40.0
+        },
+        "2025-03": {
+          "avg_loss": -362173.63,
+          "avg_win": 896371.76,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 8052757.47,
+          "n": 93,
+          "net": 11625486.24,
+          "peak_margin": 10946206.59,
+          "pf": 1.563,
+          "rom": 106.21,
+          "wr": 38.71
+        },
+        "2025-04": {
+          "avg_loss": -1133388.86,
+          "avg_win": 2341830.99,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 28182768.78,
+          "n": 117,
+          "net": 2927077.57,
+          "peak_margin": 12059173.72,
+          "pf": 1.033,
+          "rom": 24.27,
+          "wr": 33.33
+        },
+        "2025-05": {
+          "avg_loss": -731190.2,
+          "avg_win": 1435989.59,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 28118768.37,
+          "n": 126,
+          "net": 11894664.44,
+          "peak_margin": 12725540.35,
+          "pf": 1.209,
+          "rom": 93.47,
+          "wr": 38.1
+        },
+        "2025-06": {
+          "avg_loss": -481694.48,
+          "avg_win": 935311.31,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 19671655.43,
+          "n": 111,
+          "net": 6046156.38,
+          "peak_margin": 12955857.12,
+          "pf": 1.182,
+          "rom": 46.67,
+          "wr": 37.84
+        },
+        "2025-07": {
+          "avg_loss": -542032.88,
+          "avg_win": 501493.41,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 37840242.41,
+          "n": 132,
+          "net": -33981394.16,
+          "peak_margin": 12884317.83,
+          "pf": 0.347,
+          "rom": -263.74,
+          "wr": 27.27
+        },
+        "2025-08": {
+          "avg_loss": -418847.85,
+          "avg_win": 690869.79,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 14964801.75,
+          "n": 132,
+          "net": -5350622.51,
+          "peak_margin": 12774971.25,
+          "pf": 0.853,
+          "rom": -41.88,
+          "wr": 34.09
+        },
+        "2025-09": {
+          "avg_loss": -530780.45,
+          "avg_win": 913278.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 13769499.98,
+          "n": 135,
+          "net": 6323805.22,
+          "peak_margin": 14535076.64,
+          "pf": 1.147,
+          "rom": 43.51,
+          "wr": 40.0
+        },
+        "2025-10": {
+          "avg_loss": -1769082.48,
+          "avg_win": 1407826.01,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 152167563.05,
+          "n": 141,
+          "net": -135071924.12,
+          "peak_margin": 15058054.11,
+          "pf": 0.273,
+          "rom": -897.01,
+          "wr": 25.53
+        },
+        "2025-11": {
+          "avg_loss": -1111945.74,
+          "avg_win": 2097985.43,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 48349486.21,
+          "n": 90,
+          "net": -32666562.21,
+          "peak_margin": 7906224.77,
+          "pf": 0.574,
+          "rom": -413.18,
+          "wr": 23.33
+        },
+        "2025-12": {
+          "avg_loss": -533778.29,
+          "avg_win": 2348226.2,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 11591603.67,
+          "n": 120,
+          "net": 48344780.3,
+          "peak_margin": 16981934.67,
+          "pf": 2.118,
+          "rom": 284.68,
+          "wr": 32.5
+        },
+        "2026-01": {
+          "avg_loss": -628424.7,
+          "avg_win": 1889894.46,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 11282895.81,
+          "n": 60,
+          "net": 30289135.21,
+          "peak_margin": 17246614.01,
+          "pf": 2.461,
+          "rom": 175.62,
+          "wr": 45.0
+        },
+        "2026-03": {
+          "avg_loss": -1812090.04,
+          "avg_win": 4310750.3,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 30093369.26,
+          "n": 69,
+          "net": 132125081.71,
+          "peak_margin": 19292754.18,
+          "pf": 3.7,
+          "rom": 684.84,
+          "wr": 60.87
+        },
+        "2026-04": {
+          "avg_loss": -1020509.08,
+          "avg_win": 2662725.96,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 32201618.06,
+          "n": 120,
+          "net": 21185076.89,
+          "peak_margin": 17771850.32,
+          "pf": 1.256,
+          "rom": 119.21,
+          "wr": 32.5
+        },
+        "2026-05": {
+          "avg_loss": -1099698.55,
+          "avg_win": 2058930.84,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 50856796.39,
+          "n": 135,
+          "net": -6320981.67,
+          "peak_margin": 17669534.37,
+          "pf": 0.936,
+          "rom": -35.77,
+          "wr": 33.33
+        },
+        "2026-06": {
+          "avg_loss": -1339011.38,
+          "avg_win": 1312086.84,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 52883162.31,
+          "n": 132,
+          "net": -49496787.67,
+          "peak_margin": 16268744.22,
+          "pf": 0.56,
+          "rom": -304.24,
+          "wr": 36.36
+        },
+        "2026-07": {
+          "avg_loss": -867833.01,
+          "avg_win": 2221795.75,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 22308848.8,
+          "n": 117,
+          "net": 28227945.54,
+          "peak_margin": 15532268.91,
+          "pf": 1.434,
+          "rom": 181.74,
+          "wr": 35.9
+        },
+        "2026-08": {
+          "avg_loss": -804250.9,
+          "avg_win": 5691539.73,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 18626942.86,
+          "n": 54,
+          "net": 15032566.89,
+          "peak_margin": 16283191.37,
+          "pf": 1.415,
+          "rom": 92.32,
+          "wr": 16.67
+        }
+      },
+      "S7-TPNONE": {
+        "2022-01": {
+          "avg_loss": -147373.49,
+          "avg_win": 272210.89,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 5290386.83,
+          "n": 96,
+          "net": 957182.6,
+          "peak_margin": 6913700.76,
+          "pf": 1.108,
+          "rom": 13.84,
+          "wr": 37.5
+        },
+        "2022-02": {
+          "avg_loss": -360290.73,
+          "avg_win": 275452.74,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 25341338.81,
+          "n": 126,
+          "net": -24417097.6,
+          "peak_margin": 7196394.34,
+          "pf": 0.271,
+          "rom": -339.3,
+          "wr": 26.19
+        },
+        "2022-03": {
+          "avg_loss": -275065.2,
+          "avg_win": 924846.26,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 5301681.02,
+          "n": 93,
+          "net": 24815217.79,
+          "peak_margin": 3854754.11,
+          "pf": 2.769,
+          "rom": 643.76,
+          "wr": 45.16
+        },
+        "2022-04": {
+          "avg_loss": -217776.42,
+          "avg_win": 426307.41,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 10975129.13,
+          "n": 153,
+          "net": -8200523.12,
+          "peak_margin": 7468678.43,
+          "pf": 0.67,
+          "rom": -109.8,
+          "wr": 25.49
+        },
+        "2022-05": {
+          "avg_loss": -265246.14,
+          "avg_win": 280942.98,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6247569.44,
+          "n": 93,
+          "net": 1549186.4,
+          "peak_margin": 6973503.5,
+          "pf": 1.13,
+          "rom": 22.22,
+          "wr": 51.61
+        },
+        "2022-06": {
+          "avg_loss": -315923.59,
+          "avg_win": 606592.12,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 24114036.83,
+          "n": 114,
+          "net": -8339818.13,
+          "peak_margin": 3518488.42,
+          "pf": 0.686,
+          "rom": -237.03,
+          "wr": 26.32
+        },
+        "2022-07": {
+          "avg_loss": -208461.47,
+          "avg_win": 353478.62,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8442407.02,
+          "n": 141,
+          "net": -734122.35,
+          "peak_margin": 3409405.37,
+          "pf": 0.961,
+          "rom": -21.53,
+          "wr": 36.17
+        },
+        "2022-08": {
+          "avg_loss": -133132.51,
+          "avg_win": 309200.86,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 5686624.66,
+          "n": 126,
+          "net": 1803305.67,
+          "peak_margin": 6708202.97,
+          "pf": 1.161,
+          "rom": 26.88,
+          "wr": 33.33
+        },
+        "2022-09": {
+          "avg_loss": -226234.44,
+          "avg_win": 245731.19,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 12773728.89,
+          "n": 162,
+          "net": -9069234.57,
+          "peak_margin": 6139540.51,
+          "pf": 0.607,
+          "rom": -147.72,
+          "wr": 35.19
+        },
+        "2022-10": {
+          "avg_loss": -120192.49,
+          "avg_win": 344134.93,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 5908743.74,
+          "n": 120,
+          "net": 3685670.67,
+          "peak_margin": 6266035.44,
+          "pf": 1.379,
+          "rom": 58.82,
+          "wr": 32.5
+        },
+        "2022-11": {
+          "avg_loss": -214668.04,
+          "avg_win": 243631.81,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 7456047.77,
+          "n": 114,
+          "net": -5223562.88,
+          "peak_margin": 6684522.82,
+          "pf": 0.662,
+          "rom": -78.14,
+          "wr": 36.84
+        },
+        "2022-12": {
+          "avg_loss": -164741.8,
+          "avg_win": 1876498.3,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 7034398.0,
+          "n": 111,
+          "net": 42950863.39,
+          "peak_margin": 6712080.65,
+          "pf": 4.219,
+          "rom": 639.9,
+          "wr": 27.03
+        },
+        "2024-01": {
+          "avg_loss": -185690.48,
+          "avg_win": 253544.11,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 6534630.1,
+          "n": 117,
+          "net": -5356269.61,
+          "peak_margin": 7772134.5,
+          "pf": 0.63,
+          "rom": -68.92,
+          "wr": 30.77
+        },
+        "2024-02": {
+          "avg_loss": -154029.0,
+          "avg_win": 137538.14,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 10984540.96,
+          "n": 114,
+          "net": -8812291.75,
+          "peak_margin": 7627098.27,
+          "pf": 0.319,
+          "rom": -115.54,
+          "wr": 26.32
+        },
+        "2024-03": {
+          "avg_loss": -232785.8,
+          "avg_win": 485022.72,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 14121502.23,
+          "n": 111,
+          "net": -2151543.19,
+          "peak_margin": 4158643.11,
+          "pf": 0.882,
+          "rom": -51.74,
+          "wr": 29.73
+        },
+        "2024-04": {
+          "avg_loss": -343403.27,
+          "avg_win": 736994.16,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 10762421.89,
+          "n": 105,
+          "net": 6078156.58,
+          "peak_margin": 8475649.59,
+          "pf": 1.268,
+          "rom": 71.71,
+          "wr": 37.14
+        },
+        "2024-05": {
+          "avg_loss": -341559.61,
+          "avg_win": 321120.56,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 12494197.69,
+          "n": 132,
+          "net": 639062.92,
+          "peak_margin": 4588914.1,
+          "pf": 1.03,
+          "rom": 13.93,
+          "wr": 52.27
+        },
+        "2024-06": {
+          "avg_loss": -158096.25,
+          "avg_win": 221346.82,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 5968979.41,
+          "n": 123,
+          "net": -4647559.18,
+          "peak_margin": 4471266.29,
+          "pf": 0.65,
+          "rom": -103.94,
+          "wr": 31.71
+        },
+        "2024-07": {
+          "avg_loss": -208662.7,
+          "avg_win": 515910.61,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 11889017.34,
+          "n": 144,
+          "net": -6136509.9,
+          "peak_margin": 9270271.15,
+          "pf": 0.735,
+          "rom": -66.2,
+          "wr": 22.92
+        },
+        "2024-08": {
+          "avg_loss": -192102.98,
+          "avg_win": 354851.95,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 11144541.98,
+          "n": 147,
+          "net": -8548760.65,
+          "peak_margin": 9474187.75,
+          "pf": 0.599,
+          "rom": -90.23,
+          "wr": 24.49
+        },
+        "2024-09": {
+          "avg_loss": -148031.11,
+          "avg_win": 339766.88,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 5674389.29,
+          "n": 120,
+          "net": 2723782.15,
+          "peak_margin": 10003960.56,
+          "pf": 1.236,
+          "rom": 27.23,
+          "wr": 35.0
+        },
+        "2024-10": {
+          "avg_loss": -295673.91,
+          "avg_win": 471730.58,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 10851834.22,
+          "n": 156,
+          "net": -2383074.09,
+          "peak_margin": 10286560.02,
+          "pf": 0.919,
+          "rom": -23.17,
+          "wr": 36.54
+        },
+        "2024-11": {
+          "avg_loss": -424222.33,
+          "avg_win": 625834.07,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 15142685.24,
+          "n": 111,
+          "net": -9286647.73,
+          "peak_margin": 10319275.52,
+          "pf": 0.708,
+          "rom": -89.99,
+          "wr": 32.43
+        },
+        "2024-12": {
+          "avg_loss": -226467.98,
+          "avg_win": 670690.57,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 8138405.08,
+          "n": 135,
+          "net": 12490432.96,
+          "peak_margin": 5102715.04,
+          "pf": 1.634,
+          "rom": 244.78,
+          "wr": 35.56
+        },
+        "2025-01": {
+          "avg_loss": -297555.35,
+          "avg_win": 647333.92,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 12221254.76,
+          "n": 126,
+          "net": -6310628.66,
+          "peak_margin": 10112685.96,
+          "pf": 0.772,
+          "rom": -62.4,
+          "wr": 26.19
+        },
+        "2025-02": {
+          "avg_loss": -253232.65,
+          "avg_win": 638184.48,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 4243791.89,
+          "n": 114,
+          "net": 11245248.51,
+          "peak_margin": 10919109.95,
+          "pf": 1.644,
+          "rom": 102.99,
+          "wr": 39.47
+        },
+        "2025-03": {
+          "avg_loss": -284774.93,
+          "avg_win": 401373.06,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 8962880.95,
+          "n": 120,
+          "net": 4937443.39,
+          "peak_margin": 10946206.59,
+          "pf": 1.275,
+          "rom": 45.11,
+          "wr": 47.5
+        },
+        "2025-04": {
+          "avg_loss": -953592.17,
+          "avg_win": 1775089.8,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 26808642.33,
+          "n": 129,
+          "net": 7963345.13,
+          "peak_margin": 12059173.72,
+          "pf": 1.103,
+          "rom": 66.04,
+          "wr": 37.21
+        },
+        "2025-05": {
+          "avg_loss": -611195.26,
+          "avg_win": 1058877.37,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 24439685.98,
+          "n": 147,
+          "net": 10358654.6,
+          "peak_margin": 12641135.1,
+          "pf": 1.195,
+          "rom": 81.94,
+          "wr": 40.82
+        },
+        "2025-06": {
+          "avg_loss": -361257.22,
+          "avg_win": 698828.01,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 13152084.25,
+          "n": 114,
+          "net": 3340256.69,
+          "peak_margin": 12955857.12,
+          "pf": 1.128,
+          "rom": 25.78,
+          "wr": 36.84
+        },
+        "2025-07": {
+          "avg_loss": -386529.71,
+          "avg_win": 326747.19,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 30130075.37,
+          "n": 156,
+          "net": -26061343.43,
+          "peak_margin": 12492221.2,
+          "pf": 0.376,
+          "rom": -208.62,
+          "wr": 30.77
+        },
+        "2025-08": {
+          "avg_loss": -333839.98,
+          "avg_win": 742945.94,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 14804800.72,
+          "n": 159,
+          "net": -1394832.46,
+          "peak_margin": 12624927.94,
+          "pf": 0.962,
+          "rom": -11.05,
+          "wr": 30.19
+        },
+        "2025-09": {
+          "avg_loss": -429817.88,
+          "avg_win": 752512.76,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 11881487.88,
+          "n": 147,
+          "net": 11303601.83,
+          "peak_margin": 14535076.64,
+          "pf": 1.313,
+          "rom": 77.77,
+          "wr": 42.86
+        },
+        "2025-10": {
+          "avg_loss": -1368881.57,
+          "avg_win": 1137374.23,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 129547182.85,
+          "n": 159,
+          "net": -112389425.87,
+          "peak_margin": 14941008.66,
+          "pf": 0.298,
+          "rom": -752.22,
+          "wr": 26.42
+        },
+        "2025-11": {
+          "avg_loss": -811213.75,
+          "avg_win": 1044881.51,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 30498077.73,
+          "n": 105,
+          "net": -12789728.99,
+          "peak_margin": 7906224.77,
+          "pf": 0.761,
+          "rom": -161.77,
+          "wr": 37.14
+        },
+        "2025-12": {
+          "avg_loss": -498012.99,
+          "avg_win": 1726201.1,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 19131416.68,
+          "n": 135,
+          "net": 19512595.59,
+          "peak_margin": 16412519.26,
+          "pf": 1.408,
+          "rom": 118.89,
+          "wr": 28.89
+        },
+        "2026-01": {
+          "avg_loss": -439825.04,
+          "avg_win": 1820067.68,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 9877710.34,
+          "n": 66,
+          "net": 18429294.53,
+          "peak_margin": 17246614.01,
+          "pf": 1.931,
+          "rom": 106.86,
+          "wr": 31.82
+        },
+        "2026-03": {
+          "avg_loss": -732239.99,
+          "avg_win": 3882879.78,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 10623126.88,
+          "n": 81,
+          "net": 148368950.48,
+          "peak_margin": 19210108.95,
+          "pf": 6.628,
+          "rom": 772.35,
+          "wr": 55.56
+        },
+        "2026-04": {
+          "avg_loss": -745059.54,
+          "avg_win": 2214141.06,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 17354464.12,
+          "n": 138,
+          "net": 48101014.03,
+          "peak_margin": 17771850.32,
+          "pf": 1.742,
+          "rom": 270.66,
+          "wr": 36.96
+        },
+        "2026-05": {
+          "avg_loss": -873443.5,
+          "avg_win": 1500946.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 57379191.11,
+          "n": 159,
+          "net": -17783643.34,
+          "peak_margin": 17669534.37,
+          "pf": 0.811,
+          "rom": -100.65,
+          "wr": 32.08
+        },
+        "2026-06": {
+          "avg_loss": -927965.46,
+          "avg_win": 1314309.07,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 36818118.22,
+          "n": 147,
+          "net": -15328098.19,
+          "peak_margin": 16268744.22,
+          "pf": 0.822,
+          "rom": -94.22,
+          "wr": 36.73
+        },
+        "2026-07": {
+          "avg_loss": -514501.9,
+          "avg_win": 1329478.07,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 22519673.68,
+          "n": 141,
+          "net": 32562090.95,
+          "peak_margin": 15532268.91,
+          "pf": 1.753,
+          "rom": 209.64,
+          "wr": 40.43
+        },
+        "2026-08": {
+          "avg_loss": -595827.35,
+          "avg_win": 5973580.75,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 13300791.09,
+          "n": 57,
+          "net": 25162514.14,
+          "peak_margin": 16283191.37,
+          "pf": 1.88,
+          "rom": 154.53,
+          "wr": 15.79
+        }
+      },
+      "SuperTrend-p14x3-M15": {
+        "2022-01": {
+          "avg_loss": -214380.46,
+          "avg_win": 855587.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 676,
+            "n_barras_ventana": 676
+          },
+          "maxdd": 4963796.5,
+          "n": 30,
+          "net": -11607.92,
+          "peak_margin": 1154454.45,
+          "pf": 0.998,
+          "rom": -1.01,
+          "wr": 20.0
+        },
+        "2022-02": {
+          "avg_loss": -394789.86,
+          "avg_win": 650200.24,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 8013855.26,
+          "n": 30,
+          "net": -7663735.37,
+          "peak_margin": 1201011.62,
+          "pf": 0.253,
+          "rom": -638.11,
+          "wr": 13.33
+        },
+        "2022-03": {
+          "avg_loss": -485865.3,
+          "avg_win": 1051183.2,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 738,
+            "n_barras_ventana": 738
+          },
+          "maxdd": 11781408.81,
+          "n": 43,
+          "net": -8595819.77,
+          "peak_margin": 1254392.35,
+          "pf": 0.495,
+          "rom": -685.26,
+          "wr": 18.6
+        },
+        "2022-04": {
+          "avg_loss": -281877.88,
+          "avg_win": 941630.68,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 700,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 3697278.59,
+          "n": 32,
+          "net": -455532.33,
+          "peak_margin": 1241510.7,
+          "pf": 0.935,
+          "rom": -36.69,
+          "wr": 21.88
+        },
+        "2022-05": {
+          "avg_loss": -223868.1,
+          "avg_win": 824219.18,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 3234844.25,
+          "n": 51,
+          "net": 111686.99,
+          "peak_margin": 1190984.88,
+          "pf": 1.012,
+          "rom": 9.38,
+          "wr": 21.57
+        },
+        "2022-06": {
+          "avg_loss": -194908.01,
+          "avg_win": 1134909.23,
+          "cobertura": {
+            "cobertura_pct": 99.873,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 785
+          },
+          "maxdd": 4506381.81,
+          "n": 55,
+          "net": -2741037.17,
+          "peak_margin": 1178489.12,
+          "pf": 0.713,
+          "rom": -232.59,
+          "wr": 10.91
+        },
+        "2022-07": {
+          "avg_loss": -240151.58,
+          "avg_win": 728564.89,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 8352053.5,
+          "n": 53,
+          "net": -5947018.49,
+          "peak_margin": 1137014.34,
+          "pf": 0.462,
+          "rom": -523.04,
+          "wr": 13.21
+        },
+        "2022-08": {
+          "avg_loss": -199126.33,
+          "avg_win": 509995.42,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 5247406.16,
+          "n": 56,
+          "net": -3860730.61,
+          "peak_margin": 1126548.39,
+          "pf": 0.569,
+          "rom": -342.7,
+          "wr": 17.86
+        },
+        "2022-09": {
+          "avg_loss": -272579.66,
+          "avg_win": 543564.27,
+          "cobertura": {
+            "cobertura_pct": 99.872,
+            "n_barras_tras_exclusiones": 783,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 7623578.25,
+          "n": 48,
+          "net": -4922384.48,
+          "peak_margin": 1081057.91,
+          "pf": 0.525,
+          "rom": -455.33,
+          "wr": 20.83
+        },
+        "2022-10": {
+          "avg_loss": -354886.13,
+          "avg_win": 1095536.43,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 740
+          },
+          "maxdd": 4674226.02,
+          "n": 33,
+          "net": -1558284.49,
+          "peak_margin": 1082005.36,
+          "pf": 0.831,
+          "rom": -144.02,
+          "wr": 21.21
+        },
+        "2022-11": {
+          "avg_loss": -268526.61,
+          "avg_win": 1130730.95,
+          "cobertura": {
+            "cobertura_pct": 98.714,
+            "n_barras_tras_exclusiones": 691,
+            "n_barras_ventana": 700
+          },
+          "maxdd": 3387629.54,
+          "n": 37,
+          "net": 5456348.68,
+          "peak_margin": 1113591.45,
+          "pf": 1.782,
+          "rom": 489.98,
+          "wr": 29.73
+        },
+        "2022-12": {
+          "avg_loss": -231434.36,
+          "avg_win": 2153168.87,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 668,
+            "n_barras_ventana": 668
+          },
+          "maxdd": 2005346.18,
+          "n": 24,
+          "net": 20676210.89,
+          "peak_margin": 1139492.79,
+          "pf": 7.872,
+          "rom": 1814.51,
+          "wr": 45.83
+        },
+        "2024-01": {
+          "avg_loss": -119054.83,
+          "avg_win": 645368.84,
+          "cobertura": {
+            "cobertura_pct": 99.859,
+            "n_barras_tras_exclusiones": 707,
+            "n_barras_ventana": 708
+          },
+          "maxdd": 2342603.24,
+          "n": 43,
+          "net": 2524878.92,
+          "peak_margin": 1291794.94,
+          "pf": 1.643,
+          "rom": 195.46,
+          "wr": 23.26
+        },
+        "2024-02": {
+          "avg_loss": -208315.06,
+          "avg_win": 587454.74,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 670,
+            "n_barras_ventana": 671
+          },
+          "maxdd": 4354537.7,
+          "n": 34,
+          "net": -2308093.22,
+          "peak_margin": 1282257.63,
+          "pf": 0.604,
+          "rom": -180.0,
+          "wr": 17.65
+        },
+        "2024-03": {
+          "avg_loss": -201812.34,
+          "avg_win": 2203039.32,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 644,
+            "n_barras_ventana": 645
+          },
+          "maxdd": 2550918.3,
+          "n": 29,
+          "net": 10981403.68,
+          "peak_margin": 1371017.41,
+          "pf": 3.473,
+          "rom": 800.97,
+          "wr": 24.14
+        },
+        "2024-04": {
+          "avg_loss": -453061.73,
+          "avg_win": 1466272.7,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 772,
+            "n_barras_ventana": 772
+          },
+          "maxdd": 12796944.73,
+          "n": 47,
+          "net": -7858560.15,
+          "peak_margin": 1499589.21,
+          "pf": 0.566,
+          "rom": -524.05,
+          "wr": 14.89
+        },
+        "2024-05": {
+          "avg_loss": -260840.65,
+          "avg_win": 1481364.21,
+          "cobertura": {
+            "cobertura_pct": 99.878,
+            "n_barras_tras_exclusiones": 819,
+            "n_barras_ventana": 820
+          },
+          "maxdd": 3861044.34,
+          "n": 44,
+          "net": 7687264.93,
+          "peak_margin": 1528081.95,
+          "pf": 1.893,
+          "rom": 503.07,
+          "wr": 25.0
+        },
+        "2024-06": {
+          "avg_loss": -399186.87,
+          "avg_win": 1065324.47,
+          "cobertura": {
+            "cobertura_pct": 99.863,
+            "n_barras_tras_exclusiones": 727,
+            "n_barras_ventana": 728
+          },
+          "maxdd": 5210386.32,
+          "n": 40,
+          "net": -1322361.41,
+          "peak_margin": 1493233.1,
+          "pf": 0.89,
+          "rom": -88.56,
+          "wr": 25.0
+        },
+        "2024-07": {
+          "avg_loss": -206914.23,
+          "avg_win": 1758756.37,
+          "cobertura": {
+            "cobertura_pct": 99.879,
+            "n_barras_tras_exclusiones": 827,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 2289269.57,
+          "n": 53,
+          "net": 8690251.75,
+          "peak_margin": 1548505.61,
+          "pf": 1.977,
+          "rom": 561.2,
+          "wr": 18.87
+        },
+        "2024-08": {
+          "avg_loss": -437682.04,
+          "avg_win": 1272165.01,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 12352079.13,
+          "n": 45,
+          "net": -9436609.47,
+          "peak_margin": 1582952.89,
+          "pf": 0.447,
+          "rom": -596.14,
+          "wr": 13.33
+        },
+        "2024-09": {
+          "avg_loss": -369970.28,
+          "avg_win": 1527046.2,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 4123634.26,
+          "n": 29,
+          "net": 2549977.12,
+          "peak_margin": 1676989.57,
+          "pf": 1.313,
+          "rom": 152.06,
+          "wr": 24.14
+        },
+        "2024-10": {
+          "avg_loss": -308516.14,
+          "avg_win": 947640.06,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 800,
+            "n_barras_ventana": 800
+          },
+          "maxdd": 6784984.64,
+          "n": 48,
+          "net": 265099.74,
+          "peak_margin": 1745526.48,
+          "pf": 1.024,
+          "rom": 15.19,
+          "wr": 25.0
+        },
+        "2024-11": {
+          "avg_loss": -407045.74,
+          "avg_win": 2062789.69,
+          "cobertura": {
+            "cobertura_pct": 99.849,
+            "n_barras_tras_exclusiones": 663,
+            "n_barras_ventana": 664
+          },
+          "maxdd": 2642840.46,
+          "n": 30,
+          "net": 12486981.95,
+          "peak_margin": 1728509.9,
+          "pf": 2.534,
+          "rom": 722.41,
+          "wr": 33.33
+        },
+        "2024-12": {
+          "avg_loss": -308344.6,
+          "avg_win": 1448793.59,
+          "cobertura": {
+            "cobertura_pct": 99.851,
+            "n_barras_tras_exclusiones": 671,
+            "n_barras_ventana": 672
+          },
+          "maxdd": 2186053.22,
+          "n": 27,
+          "net": 5731801.42,
+          "peak_margin": 1701287.76,
+          "pf": 1.978,
+          "rom": 336.91,
+          "wr": 29.63
+        },
+        "2025-01": {
+          "avg_loss": -187252.04,
+          "avg_win": 818201.32,
+          "cobertura": {
+            "cobertura_pct": 99.716,
+            "n_barras_tras_exclusiones": 702,
+            "n_barras_ventana": 704
+          },
+          "maxdd": 2246288.9,
+          "n": 41,
+          "net": 4388106.54,
+          "peak_margin": 3398920.6,
+          "pf": 1.808,
+          "rom": 129.1,
+          "wr": 29.27
+        },
+        "2025-02": {
+          "avg_loss": -303455.45,
+          "avg_win": 1203678.3,
+          "cobertura": {
+            "cobertura_pct": 99.844,
+            "n_barras_tras_exclusiones": 639,
+            "n_barras_ventana": 640
+          },
+          "maxdd": 3196255.77,
+          "n": 41,
+          "net": 2629663.91,
+          "peak_margin": 1844711.43,
+          "pf": 1.28,
+          "rom": 142.55,
+          "wr": 24.39
+        },
+        "2025-03": {
+          "avg_loss": -318571.45,
+          "avg_win": 1809768.46,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 680,
+            "n_barras_ventana": 680
+          },
+          "maxdd": 2169425.66,
+          "n": 35,
+          "net": 10133398.25,
+          "peak_margin": 1942042.25,
+          "pf": 2.272,
+          "rom": 521.79,
+          "wr": 28.57
+        },
+        "2025-04": {
+          "avg_loss": -1335821.33,
+          "avg_win": 4695245.76,
+          "cobertura": {
+            "cobertura_pct": 99.865,
+            "n_barras_tras_exclusiones": 740,
+            "n_barras_ventana": 741
+          },
+          "maxdd": 25181024.06,
+          "n": 39,
+          "net": -3848495.24,
+          "peak_margin": 2165303.28,
+          "pf": 0.907,
+          "rom": -177.73,
+          "wr": 20.51
+        },
+        "2025-05": {
+          "avg_loss": -903805.65,
+          "avg_win": 2967666.07,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 784,
+            "n_barras_ventana": 784
+          },
+          "maxdd": 11733408.5,
+          "n": 37,
+          "net": -2469035.42,
+          "peak_margin": 4088766.59,
+          "pf": 0.906,
+          "rom": -60.39,
+          "wr": 21.62
+        },
+        "2025-06": {
+          "avg_loss": -402114.48,
+          "avg_win": 2755547.06,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 764,
+            "n_barras_ventana": 764
+          },
+          "maxdd": 6799416.11,
+          "n": 49,
+          "net": 5557682.66,
+          "peak_margin": 2164490.73,
+          "pf": 1.337,
+          "rom": 256.77,
+          "wr": 16.33
+        },
+        "2025-07": {
+          "avg_loss": -688624.57,
+          "avg_win": 2456172.6,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 828,
+            "n_barras_ventana": 828
+          },
+          "maxdd": 19786165.97,
+          "n": 47,
+          "net": -19786165.97,
+          "peak_margin": 2152500.06,
+          "pf": 0.332,
+          "rom": -919.22,
+          "wr": 8.51
+        },
+        "2025-08": {
+          "avg_loss": -465983.38,
+          "avg_win": 1452444.24,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 7563342.57,
+          "n": 43,
+          "net": 1065418.59,
+          "peak_margin": 2144252.17,
+          "pf": 1.071,
+          "rom": 49.69,
+          "wr": 25.58
+        },
+        "2025-09": {
+          "avg_loss": -326397.26,
+          "avg_win": 2064358.32,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 5498388.17,
+          "n": 36,
+          "net": 12157254.35,
+          "peak_margin": 2367378.3,
+          "pf": 2.433,
+          "rom": 513.53,
+          "wr": 27.78
+        },
+        "2025-10": {
+          "avg_loss": -1567714.24,
+          "avg_win": 5156229.11,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 792,
+            "n_barras_ventana": 792
+          },
+          "maxdd": 30087722.16,
+          "n": 43,
+          "net": -13620165.68,
+          "peak_margin": 2740196.38,
+          "pf": 0.752,
+          "rom": -497.05,
+          "wr": 18.6
+        },
+        "2025-11": {
+          "avg_loss": -877630.27,
+          "avg_win": 4476316.26,
+          "cobertura": {
+            "cobertura_pct": 99.845,
+            "n_barras_tras_exclusiones": 643,
+            "n_barras_ventana": 644
+          },
+          "maxdd": 10828932.12,
+          "n": 27,
+          "net": 8427661.83,
+          "peak_margin": 2642253.79,
+          "pf": 1.457,
+          "rom": 318.96,
+          "wr": 22.22
+        },
+        "2025-12": {
+          "avg_loss": -827410.14,
+          "avg_win": 2673664.19,
+          "cobertura": {
+            "cobertura_pct": 99.715,
+            "n_barras_tras_exclusiones": 699,
+            "n_barras_ventana": 701
+          },
+          "maxdd": 4365831.89,
+          "n": 25,
+          "net": 7323341.03,
+          "peak_margin": 5275205.56,
+          "pf": 1.521,
+          "rom": 138.83,
+          "wr": 32.0
+        },
+        "2026-01": {
+          "avg_loss": -1730677.75,
+          "avg_win": 5349263.03,
+          "cobertura": {
+            "cobertura_pct": 99.66,
+            "n_barras_tras_exclusiones": 587,
+            "n_barras_ventana": 589
+          },
+          "maxdd": 6922711.01,
+          "n": 7,
+          "net": 9125078.07,
+          "peak_margin": 5787491.19,
+          "pf": 2.318,
+          "rom": 157.67,
+          "wr": 42.86
+        },
+        "2026-03": {
+          "avg_loss": -3815828.37,
+          "avg_win": 8639793.91,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 712,
+            "n_barras_ventana": 712
+          },
+          "maxdd": 28033120.76,
+          "n": 22,
+          "net": -9214490.4,
+          "peak_margin": 6408932.04,
+          "pf": 0.849,
+          "rom": -143.78,
+          "wr": 27.27
+        },
+        "2026-04": {
+          "avg_loss": -1427512.41,
+          "avg_win": 2691350.57,
+          "cobertura": {
+            "cobertura_pct": 99.866,
+            "n_barras_tras_exclusiones": 748,
+            "n_barras_ventana": 749
+          },
+          "maxdd": 28627320.65,
+          "n": 38,
+          "net": -21294567.79,
+          "peak_margin": 5962930.75,
+          "pf": 0.503,
+          "rom": -357.12,
+          "wr": 21.05
+        },
+        "2026-05": {
+          "avg_loss": -792017.14,
+          "avg_win": 2764174.57,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 756,
+            "n_barras_ventana": 756
+          },
+          "maxdd": 10514890.89,
+          "n": 34,
+          "net": 1520950.92,
+          "peak_margin": 2973813.56,
+          "pf": 1.074,
+          "rom": 51.14,
+          "wr": 23.53
+        },
+        "2026-06": {
+          "avg_loss": -1707572.3,
+          "avg_win": 2751872.83,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 790,
+            "n_barras_ventana": 790
+          },
+          "maxdd": 18822708.82,
+          "n": 40,
+          "net": -10330105.39,
+          "peak_margin": 5634251.0,
+          "pf": 0.776,
+          "rom": -183.34,
+          "wr": 32.5
+        },
+        "2026-07": {
+          "avg_loss": -956680.64,
+          "avg_win": 2792676.71,
+          "cobertura": {
+            "cobertura_pct": 99.876,
+            "n_barras_tras_exclusiones": 803,
+            "n_barras_ventana": 804
+          },
+          "maxdd": 9853867.05,
+          "n": 40,
+          "net": -773652.02,
+          "peak_margin": 5130109.73,
+          "pf": 0.973,
+          "rom": -15.08,
+          "wr": 25.0
+        },
+        "2026-08": {
+          "avg_loss": -211417.48,
+          "avg_win": 6603650.15,
+          "cobertura": {
+            "cobertura_pct": 100.0,
+            "n_barras_tras_exclusiones": 278,
+            "n_barras_ventana": 278
+          },
+          "maxdd": 1038124.3,
+          "n": 12,
+          "net": 17908193.15,
+          "peak_margin": 5107016.25,
+          "pf": 10.412,
+          "rom": 350.66,
+          "wr": 25.0
+        }
+      }
+    }
+  },
+  "metricas_globales": {
+    "media": {
+      "S6-K2P0": {
+        "avg_loss": -548090.63,
+        "avg_win": 1156903.39,
+        "maxdd": 227170100.38,
+        "n": 4578,
+        "net": 84137014.67,
+        "peak_margin": 19292755.21,
+        "pf": 1.05,
+        "rom": 436.11,
+        "wr": 33.22
+      },
+      "S7-TPNONE": {
+        "avg_loss": -400302.11,
+        "avg_win": 844965.26,
+        "maxdd": 169291966.12,
+        "n": 5364,
+        "net": 142826187.54,
+        "peak_margin": 19210090.14,
+        "pf": 1.101,
+        "rom": 743.5,
+        "wr": 34.28
+      },
+      "SuperTrend-p14x3-M15": {
+        "avg_loss": -535113.87,
+        "avg_win": 1950890.45,
+        "maxdd": 56835659.07,
+        "n": 1618,
+        "net": 19203291.18,
+        "peak_margin": 6408932.04,
+        "pf": 1.028,
+        "rom": 299.63,
+        "wr": 22.0
+      }
+    },
+    "mediana": {
+      "S6-K2P0": {
+        "avg_loss": -547917.54,
+        "avg_win": 1157066.0,
+        "maxdd": 227020748.46,
+        "n": 4578,
+        "net": 84913485.15,
+        "peak_margin": 19292754.18,
+        "pf": 1.051,
+        "rom": 440.13,
+        "wr": 33.22
+      },
+      "S7-TPNONE": {
+        "avg_loss": -400809.75,
+        "avg_win": 845058.54,
+        "maxdd": 169111671.6,
+        "n": 5364,
+        "net": 143613155.31,
+        "peak_margin": 19210108.95,
+        "pf": 1.102,
+        "rom": 747.59,
+        "wr": 34.28
+      },
+      "SuperTrend-p14x3-M15": {
+        "avg_loss": -535758.18,
+        "avg_win": 1950661.54,
+        "maxdd": 56667343.42,
+        "n": 1617,
+        "net": 19380202.58,
+        "peak_margin": 6408932.04,
+        "pf": 1.029,
+        "rom": 302.39,
+        "wr": 22.02
+      }
+    }
+  },
+  "modos_overlay": [
+    "mediana",
+    "media"
+  ],
+  "n_barras_todas": 85101,
+  "n_barras_tras_exclusiones_d33": 31700,
+  "n_barras_tras_ventana_ny": 31731,
+  "substrate_id": "ava-ticks-2022-2026-sans-holdout",
+  "sustrato_barras": "data/lake_bars_ava/GOLD_M15.parquet",
+  "sustrato_ticks": "data/lake_ticks_ava/GOLD/ (ticks reales AVA)",
+  "ticks_no_evaluables_d38": {
+    "por_modo_y_mes": {
+      "media": {
+        "202201": 139,
+        "202202": 5985,
+        "202203": 3526,
+        "202204": 1728,
+        "202205": 1114,
+        "202206": 716,
+        "202210": 66,
+        "202401": 1781,
+        "202402": 1808,
+        "202403": 2962,
+        "202404": 9091,
+        "202405": 3390,
+        "202406": 2394,
+        "202407": 2425,
+        "202408": 2828,
+        "202409": 618,
+        "202410": 257,
+        "202411": 2315,
+        "202412": 93575,
+        "202501": 31216,
+        "202502": 214376,
+        "202503": 23951,
+        "202504": 581734,
+        "202505": 905902,
+        "202506": 186470,
+        "202507": 23019,
+        "202508": 63744,
+        "202509": 94608,
+        "202510": 1653386,
+        "202511": 991027,
+        "202512": 1151669,
+        "202601": 2583655,
+        "202602": 2699099,
+        "202603": 1944232,
+        "202604": 637789,
+        "202605": 107556,
+        "202606": 1151200,
+        "202607": 1081636,
+        "202608": 258669
+      },
+      "mediana": {
+        "202201": 160,
+        "202202": 6216,
+        "202203": 3848,
+        "202204": 1853,
+        "202205": 1176,
+        "202206": 733,
+        "202210": 73,
+        "202401": 1804,
+        "202402": 1874,
+        "202403": 3010,
+        "202404": 9532,
+        "202405": 3558,
+        "202406": 2515,
+        "202407": 2504,
+        "202408": 2973,
+        "202409": 643,
+        "202410": 284,
+        "202411": 2465,
+        "202412": 93943,
+        "202501": 31997,
+        "202502": 215060,
+        "202503": 24732,
+        "202504": 585204,
+        "202505": 908387,
+        "202506": 188617,
+        "202507": 23608,
+        "202508": 64271,
+        "202509": 95776,
+        "202510": 1655966,
+        "202511": 994084,
+        "202512": 1154222,
+        "202601": 2583716,
+        "202602": 2699099,
+        "202603": 1945658,
+        "202604": 639811,
+        "202605": 108100,
+        "202606": 1151485,
+        "202607": 1081969,
+        "202608": 258869
+      }
+    },
+    "regla": "D-21, interpretada por el user el 2026-08-12 (D-38): el overlay NUNCA estrecha. Los ticks cuyo spread NATIVO de AVA ya es mas ancho que el calibrado de su hora (huecos / iliquidez puntual) se declaran NO EVALUABLES y se RETIRAN del store que ve el simulador; el fill usa el siguiente tick evaluable. NO se estrechan y NO se conservan crudos.",
+    "total_por_modo": {
+      "media": 16521656,
+      "mediana": 16549795
+    }
+  },
+  "tiempo_medido_seg": {
+    "media": 102.24,
+    "mediana": 103.67,
+    "total": 207.99
+  },
+  "ventana_barras_finales": [
+    "2022-01-02 23:00:00",
+    "2026-08-12 04:15:00"
+  ],
+  "ventana_barras_todas": [
+    "2022-01-02 23:00:00",
+    "2026-08-12 04:15:00"
+  ]
+}

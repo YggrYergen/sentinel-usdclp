@@ -193,6 +193,41 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 corrección/corrida/interpretación · 🔴 **PASO 3b HECHO:
+  EL BACKTEST LARGO EXISTE. S6 y SuperTrend sobre 3,5 años de AVA.** Fila `F0-BT-LARGO-0001`.
+  🔴 **NO ES UN VEREDICTO: A6 (T0.7) es el gate y sigue abierto.**
+  (a) **Cómo se hizo, sin violar R1-bis:** `scripts/research/backtest_largo_ava.py` subclasea
+  `bt.Ticks` y sobrescribe **solo `_load`** —único método que toca disco— para servir ticks de AVA
+  con el overlay aplicado. `first_at`, `range` y `_candidates` se heredan byte-idénticos.
+  `backtest.py` **no se toca**. Barras: 85.101 → **31.731** tras ventana periodizada → **31.700**
+  tras exclusiones D-33. Holdout de AVA 2023 verificado en los dos extremos. 208,0 s en primer
+  plano.
+  (b) 🔴 **D-38 — el user resolvió una ambigüedad de D-21 y la consecuencia es enorme.** Los ticks
+  cuyo spread nativo ya supera al calibrado se declaran **no evaluables** y se retiran. Un
+  subagente había estimado "~0,016 %" midiendo **un solo mes de 2022**; medido sobre el sustrato
+  entero son **16.549.795 ticks**, y **concentrados**: 14.059 en 2022 · 125.105 en 2024 ·
+  **5.941.924 en 2025** · **10.468.707 en 2026**. Es un **cambio de régimen del feed de AVA desde
+  2025**, no outliers dispersos — y cae justo en el tramo del solape con Capitaria que A6 Pata B
+  necesita. Con la regla rechazada S6 daba 117,4 MM y ST 168,6 MM; con la del user dan **84,9 MM**
+  y **19,4 MM**: **SuperTrend cae un 88 % por una sola decisión de tratamiento de datos.**
+  (c) **Resultados, modo `mediana`** (`media` difiere <1 %, coherente con el spread bimodal):
+
+  | Estrategia | n | Neto CLP | WR | PF | Meses + |
+  |---|---:|---:|---:|---:|---:|
+  | S6-K2P0 | 4.578 | 84.913.485 | 33,2 % | **1,051** | **51,2 %** |
+  | SuperTrend-p14x3-M15 | 1.617 | 19.380.203 | 22,0 % | **1,029** | **51,2 %** |
+  | *(S7-TPNONE, no reportada)* | 5.364 | 143.613.155 | 34,3 % | 1,102 | — |
+
+  (d) 🔴 **Las dos FALLAN el umbral que el propio user fijó en D-35 (B4): 51,2 % de meses
+  positivos frente al ≥55 % exigido.** Es el primer gate de la puerta estadística y lo fallan las
+  dos, antes incluso de correr bootstrap por bloques y PBO.
+  (e) 🔴 **Concentración extrema:** en ambas, los **tres mejores meses aportan ~263 % del neto** —
+  sin ellos las dos quedan en negativo. Y no hay estabilidad temporal: S6 pierde **107,1 MM en
+  2025** y gana **171,0 MM en 2026**; SuperTrend gana en 2024-2025 y pierde en 2022 y 2026.
+  (f) 🟠 **S7-TPNONE, descartada por D-06 sobre Capitaria (PF 0,968), sale aquí con el neto MÁS
+  ALTO de las tres.** Otro sustrato y otro periodo, así que no revoca el descarte — pero exige
+  revisarlo antes de darlo por cerrado.
+
 - **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 3a HECHO: el overlay de costes consume
   la ventana PERIODIZADA — el backtest largo queda desbloqueado.** Filas `F0-INFRA-0034` y
   `F0-DATA-AVA-0008` (retroactiva).
