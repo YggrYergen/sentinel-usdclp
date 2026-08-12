@@ -252,3 +252,43 @@ sustrato se declara apto sin un chequeo explícito de continuidad** que enumere 
 esperados, los compare con los presentes y **falle en voz alta** ante cualquier ausencia. Los
 huecos legítimos (fines de semana, festivos, cierres de mercado) se declaran de antemano; lo no
 declarado es un fallo, no una curiosidad.
+
+### D-30 · 2026-08-12 · Se AUTORIZA interrogar al servidor de AVA con `copy_ticks_range` (solo lectura)
+*(Procedencia: instrucción explícita del user, en respuesta a la recomendación del controlador.)*
+
+**Lo que se autoriza:** obtener los ticks que faltan del sustrato AVA pidiéndoselos **al servidor**
+vía la API Python de MT5 (`copy_ticks_range`) desde el terminal ya logueado en la demo de AVA,
+en lugar de seguir exportando a mano desde la GUI.
+
+**Por qué cambia la decisión anterior.** **D-20 no se revoca por capricho: se le cayó la premisa.**
+D-20 retiró B5 y prohibió ampliar `SANCTIONED_DEMO` razonando que *"la ingesta AVA es CSV manual,
+no API MT5"*, luego no existía la necesidad. Esa premisa **dejó de ser cierta** la noche del
+2026-08-11, con evidencia registrada (fila B9 del TRACKER): la exportación manual **no honra el
+rango pedido** — cuatro peticiones de rango devolvieron uno o dos días cada una, después de que
+una idéntica en forma devolviera cuatro meses. Y está probado que **el dato existe en AVA**
+(`julio del 1 al 17.csv` devolvió `2026-07-16`, un día que estaba dentro del hueco). El principio
+que D-20 fijó —*no se modifica código de seguridad por un requisito que dejó de existir*— sigue
+**intacto y vigente**; lo que ha cambiado es que ahora el requisito **sí existe**.
+
+**Cómo se ejecuta — el precedente aplicable es D-28, no la ampliación de una lista blanca.**
+La pregunta correcta ante el guard no es *"¿lo amplío?"* sino *"¿está respondiendo a la pregunta
+que le corresponde?"*. **Leer ticks no es colocar órdenes.**
+- 🔴 `sentinel_engine/live/guard_cuenta.py` **NO se toca**. `SANCTIONED_DEMO_LOGINS` y `REAL_LOGIN`
+  quedan exactamente como están. **La autoridad de orden no se amplía ni en un login.**
+- 🔴 `scripts/analysis/realtick_bt/extract_ticks.py:34` (`SANCTIONED_DEMO`) **tampoco se amplía**:
+  ese script no interviene en esta vía.
+- La vía de lectura debe exigir, como mínimo, lo mismo que ya exige la de la 902 (D-28):
+  coincidencia obligatoria de **login Y servidor** declarados en el manifiesto, gate real de
+  `trade_mode == DEMO`, y aborto duro fail-loud si algo no cuadra.
+- **Antes de escribir código: verificar leyendo `scripts/research/runner/tasks_ticks.py` si su
+  guard de identidad ya admite un login declarado en el manifiesto.** Puede que no haga falta
+  tocar nada. No se asume: se lee.
+
+**Condiciones vinculantes, sin excepción:** attach-only (charter §A.12) — ningún script lanza
+terminales, los abre el user; **un solo terminal MT5 abierto** durante la extracción; **solo
+lectura**, jamás una orden; credenciales de AVA **no persistidas** en el repo (`CUENTAS.md` está
+gitignored); destino **`data/lake_ticks_ava/GOLD/`**, jamás `data/lake_ticks/`; y **R1-bis
+intacto**.
+
+**Alcance:** cerrar el hueco `2026-07-01`→`2026-07-15` y, si se puede, extender a
+`2026-08-11`. **No** autoriza explorar, muestrear ni graficar el sustrato (charter §A.14).
