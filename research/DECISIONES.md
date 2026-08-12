@@ -211,3 +211,34 @@ prohibidos. El verificador no está obligado a re-derivar cada cifra. **Consecue
 los números de un artefacto report-only NO son citables por ninguna tarea posterior salvo que
 tengan fila propia en el `LEDGER.jsonl`.** Aplica retroactivamente a T0.2 y a la captura de
 especificación del feed AVA.
+
+### D-28 · 2026-08-11 · Separación entre autoridad de LECTURA y autoridad de ORDEN
+*(Procedencia: decisión explícita del user, tomada sobre una escalación de un subagente que se
+negó a resolverla por su cuenta.)*
+**El problema encontrado:** `scripts/analysis/pull_account_deals.py`, que solo **lee** historial,
+usaba `sentinel_engine.live.guard_cuenta.SANCTIONED_DEMO_LOGINS` como control de identidad. Esa
+lista responde a una pregunta distinta —"¿puede este proceso **COLOCAR ÓRDENES** aquí?"— y
+gobierna `assert_demo()` del ejecutor live. La cuenta 902 (`2883016902`) no está en ella, así que
+el script abortaba antes de conectar.
+
+**Lo que se descartó expresamente:** añadir la 902 a `SANCTIONED_DEMO_LOGINS`. Habría concedido
+**autoridad de operación** a una cuenta que el charter §A.12 declara NO-R&D y de solo lectura.
+Habría resuelto el síntoma creando un riesgo real y permanente en el sitio equivocado.
+
+**Lo decidido:** separar las dos autorizaciones, tocando **únicamente** la vía de lectura.
+- 🔴 `sentinel_engine/live/guard_cuenta.py` **NO se modifica**. `SANCTIONED_DEMO_LOGINS` y
+  `REAL_LOGIN` quedan exactamente como estaban. **La autoridad de orden no se amplía ni en un
+  login.**
+- En `pull_account_deals.py`: se **mantiene** el bloqueo duro de `REAL_LOGIN` (pre y post
+  conexión); se **retira** el requisito de pertenecer a `SANCTIONED_DEMO_LOGINS`; y en su lugar la
+  vía de lectura gana tres controles que antes no tenía: `trade_mode == DEMO` como **gate real**
+  (antes el valor solo se imprimía, nunca bloqueaba), coincidencia obligatoria e independiente de
+  **login Y servidor** declarados por quien invoca, y un **test estructural** que demuestra que el
+  módulo no contiene ninguna llamada capaz de escribir en la cuenta.
+- **Balance neto: la vía de lectura queda MÁS estricta que antes; la autoridad de orden,
+  idéntica.**
+
+**Precedente que fija esta decisión, aplicable a todo el programa:** cuando un guard estorbe, la
+pregunta correcta no es "¿lo amplío?" sino "¿está respondiendo a la pregunta que le corresponde?".
+Ampliar una lista blanca de seguridad para desbloquear un caso de uso distinto es un debilitamiento
+disfrazado de arreglo.

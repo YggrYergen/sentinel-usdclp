@@ -82,6 +82,20 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   previamente (ver entrada 2026-08-10 arriba); se reitera porque ahora tiene consecuencia directa
   sobre A6 Pata A. Ver bloqueo **B8** en `TRACKER.md` · `CUENTAS.md` + `extract_ticks.py:34`
 
+- **2026-08-11** · Opus5 (verificación T0.3-ingest-ava-gold-csv) · 🟡 `<LAST>` y `<VOLUME>` del CSV
+  de AVA se descartan. El lago tiene esquema `[t_msc, bid, ask]` y esas columnas vienen vacías en
+  el feed spot. Si alguna vez hiciera falta volumen real, habría que reingerir ·
+  `scripts/research/runner/tasks_ticks_csv.py`
+- **2026-08-11** · Opus5 (verificación T0.3-ingest-ava-gold-csv) · 🟡 Criterio de "mes completo" en
+  `ticks_csv_mt5` = el parquet final existe. Es correcto para un CSV estático, pero si el fichero
+  de origen se sustituyera alguna vez por uno más largo, los meses ya escritos se saltarían en
+  silencio. El checksum del origen queda en las métricas, así que la detección es posible pero
+  **no automática** · `scripts/research/runner/tasks_ticks_csv.py`
+- **2026-08-11** · Opus5 (verificación T0.3-ingest-ava-gold-csv) · 🟡 Divergencia de comportamiento
+  entre task-types ante aborto: `ticks_mt5` deja los `.tmp` para inspección; `ticks_csv_mt5` los
+  borra. Unificar el criterio en la revisión de código de fin de fase ·
+  `scripts/research/runner/tasks_ticks.py` + `scripts/research/runner/tasks_ticks_csv.py`
+
 ## Promovidas a tarea (con enmienda)
 
 _(ninguna todavía)_
