@@ -199,6 +199,40 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 (investigador) + verificación del controlador · 🔴 **HIPÓTESIS DEL
+  CONTROLADOR REFUTADA, y aparecen DOS divergencias de config que la sustituyen.**
+  - **Refutado:** la granularidad de evaluación del trail (barra M15 vs tick) explica solo el
+    **5,8 %** de la brecha de duración (384 s de los 6.581 s que separan la mediana simulada de la
+    real). Forzoso: el nivel `sl_check` solo se actualiza al cierre de barra en **ambos** modos, así
+    que el tick solo mueve el instante *dentro* de la última barra. Negativo bien medido.
+  - 🔑 **DIVERGENCIA 1 — el trail NUNCA dispara en el harness.** De 192 episodios «SL» del motor,
+    **192/192 salen por `EXIT_INITSL`** y **0 por `EXIT_TRAIL`**. Causa medida: `trail_atr_floor_k
+    =2.0` eleva el trail efectivo a `max(1,00 ; 2,0×ATR14)` y el floor **gana en 1.098/1.098 barras
+    (100 %)** de la ventana (ATR14-M15 mediana **7,79 USD** ⇒ floor **15,59**). Con el SL inicial en
+    **17,54** (rango×2,5), el inicial siempre gana la carrera. **La realidad hace lo contrario:** sus
+    salidas se agrupan en **−1,00 USD** (p25 −1,70 / p75 −0,55), que es **exactamente el ancho del
+    trail plano** `f1_trail_pips=100.0 × pip 0,01 = 1,00 USD`. ⇒ **el sistema vivo se comporta como si
+    el floor ATR no estuviera aplicado.**
+  - 🔑 **DIVERGENCIA 2 — nº de fichas.** El harness abre **3 fichas por señal** (231 episodios desde
+    77 señales). La realidad abre **exactamente 1**: verificado por el controlador sobre
+    `deals_raw.csv` — magics de apertura **724011 ×84** y **724071 ×68**, comentario `S6-K2P0:F1`;
+    **724012/724013 (F2/F3) NO aparecen jamás**. Coincide con el diseño declarado por el user («una
+    sola ficha por estrategia»). ⚠️ **Contradice** la afirmación previa de otro agente de que
+    `active_fichas ∈ {1,2,3}` daba «las 12 celdas idénticas» — esa afirmación queda **marcada como
+    sospechosa**; la evidencia directa de magics manda.
+  - **Descartado con número:** `_clamp_sl` no es factor — `trade_stops_level` de XAUUSD = 50 puntos =
+    **0,5 USD**, menor que el trail plano (1,00) y que el floor ATR (15,59).
+  - 🔑 **SÍNTESIS (hipótesis única que explica ambas):** el ejecutor de la 902 **no corre
+    `live_configs_20._GOLIVE_M15` tal como está en este repo**, sino una variante con **1 ficha** y
+    **sin floor ATR sobre el trail**. Encaja con lo declarado por el user: la máquina 2 **nunca
+    commiteó** sus últimos cambios al integrar las estrategias. Refuerza **B13**.
+  - Artefacto: `data/analysis/trail_granularity_experiment_S6K2P0_20260812.json` (mtime 11:06:13;
+    ignorado por `.gitignore:47`, **no forzado** al índice).
+  - 🟢 **Material para Familia B / autopsia A0:** los 11 cierres manuales quedan como **conjunto
+    etiquetado de «salida en óptimo»** — movimiento mediano **+30,49 USD/oz**, 90,9 % a favor,
+    **+28,4 MM CLP**, con timestamp y precio, y contexto reconstruible desde los ticks. Es el
+    objetivo declarado del programa (automatizar ese criterio), no una crítica al plan.
+
 - **2026-08-12** · Opus 5 (sub-orquestador) + verificación del controlador · 🔴 **LA CAUSA DE LA
   NO-PARIDAD ES EL SL, NO EL ESTADO DE POSICIÓN. La hipótesis de la mod #12 queda REFUTADA con
   números.** Se paró ANTES de implementar nada: motor byte-idéntico, cero mods escritas.
