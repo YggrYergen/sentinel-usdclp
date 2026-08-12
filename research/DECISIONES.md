@@ -181,3 +181,33 @@ Capitaria contra las posiciones reales de la 902) sí persigue señal idéntica 
 temporal declarada, y divergencia de neto bajo un umbral fijado **de antemano**. Ambos umbrales se
 escriben y fechan antes de correr nada. Pedirle bit-identidad a Pata B dejaría la puerta cerrada
 para siempre y atascaría el programa contra un imposible.
+
+### D-25 · 2026-08-11 · Protocolo de revisión de videos frente al máximo de 2 subagentes en paralelo (cierra B7)
+*(Procedencia: ruling del orquestador, comunicado al user y no objetado. Revocable por el user.)*
+`PROTOCOLO-REVISION-VIDEOS.md` manda 2 orquestadores Sonnet, cada uno despachando ~10 subagentes
+Haiku, uno por video; el charter fija un máximo de 2 subagentes en paralelo. No es un conflicto
+real: **el máximo de 2 gobierna la concurrencia del *controlador* sobre agentes que tocan ficheros
+del repo**, y los lectores Haiku son read-only, un fichero cada uno, sin escritura al repo.
+Resolución: **como máximo 2 orquestadores Sonnet concurrentes en el nivel del controlador, y cada
+orquestador procesa sus ~10 videos en tandas de ≤3 subagentes Haiku simultáneos.** Honra la
+estructura que pidió el user y la restricción real de la plataforma, donde el anidamiento profundo
+es poco fiable.
+
+### D-26 · 2026-08-11 · El holdout se sella en DOS ACTOS
+*(Procedencia: hallazgo de una sesión de ejecución, aceptado por el orquestador; corrige un error
+de ordenación del propio orquestador.)*
+D-01 define un holdout con dos mitades: el trimestre más reciente del sustrato combinado **y** un
+año completo no adyacente de los ticks de AVA. La mitad de AVA **no tiene fechas** hasta conocer el
+rango real efectivamente ingerido. Por tanto: **Acto 1** — sellar la mitad Capitaria inmediatamente
+después de T0.4. **Acto 2** — sellar la mitad AVA inmediatamente después de T0.3. 🔴 **Ninguna
+exploración, muestreo ni gráfico del sustrato AVA antes del Acto 2.** El sellado va antes de la
+exploración, nunca después.
+
+### D-27 · 2026-08-11 · Verificación de artefactos REPORT-ONLY
+*(Procedencia: norma propuesta por el orquestador tras la entrega de T0.2.)*
+La verificación de un artefacto report-only es **estructural, no numérica**: existencia en la ruta
+declarada, secciones exigidas por el brief, cabecera de lineage, y ausencia de comandos
+prohibidos. El verificador no está obligado a re-derivar cada cifra. **Consecuencia vinculante:
+los números de un artefacto report-only NO son citables por ninguna tarea posterior salvo que
+tengan fila propia en el `LEDGER.jsonl`.** Aplica retroactivamente a T0.2 y a la captura de
+especificación del feed AVA.

@@ -36,7 +36,7 @@
 | `[ ]` | T0.3 | **R6-AVA**: descarga real-tick ≥2 años (objetivo 4) | Sonnet | ✅ **B1 DESBLOQUEADO** (D-19). ✅ **B5 RETIRADO** (D-20): ya no hace falta extender `SANCTIONED_DEMO` — la ingesta AVA es CSV manual, no API MT5. ✅ **B6 RESUELTO**: demo AVA logueada en el terminal existente `D:\FOREX\MT5_Tester` |
 | `[x]` | PENDIENTE-ORQUESTADOR | Guard de identidad en el task-type `ticks_mt5` | Sonnet · IMPLEMENTADOR · TDD | ✅ **VERIFICADO** por el orquestador contra artefactos crudos, no contra el reporte: `pytest tests/research/ -q` re-corrido en foreground → **137 passed**; commit `cab4acb` scoped a 3 ficheros; `extract_ticks.py` sin tocar desde `1b9e968` (2026-07-26) y `guard_cuenta.py` desde `6467046` (2026-07-15), ambos anteriores; `scripts/research/__init__.py` sigue ausente; **orden del guard confirmado leyendo el código**: `account_info()` en L197, guard en L213-235, primer `copy_ticks_range` en L286. Aborta con `TicksMT5IdentityError` si falla login, servidor, `trade_mode != DEMO` o el símbolo no resuelve. Desbloquea T0.4 y T0.5. Fila `F0-INFRA-0021` |
 | `[~]` | T0.4 | **Top-up ticks Capitaria** (ventana completa de la 902) | Sonnet impl. + runner | ✅ **T0.4-impl HECHA y verificada** (`6544a1f`, fila `F0-INFRA-0019`): task-type `ticks_mt5` + validación de integridad + manifiesto `03-runs/T0.4-topup-capitaria.yaml` + 11 tests, 129 en la suite. ✅ **Guard de identidad añadido y verificado** (`cab4acb`, fila `F0-INFRA-0021`). 🔴 **FALTA la descarga real** — requiere que el user abra `MT5_Tester`. Insumo directo de **A6 Pata A** (ventana en que operó la 902) — **no** es urgencia de ventana rodante: ver **ENMIENDA E-01**. Primer cliente del runner (D-18). Requiere `MT5_Tester` abierto por el user |
-| `[ ]` | T0.5 | Export historial cuenta 902 (deals/órdenes/balance) | Sonnet | Vía ~~`MT5_Tester_2`~~ (nombre de terminal superado — ver **ENMIENDA E-02** — este equipo tiene un único terminal, `D:\FOREX\MT5_Tester`; la 902 opera desde el otro equipo). **SOLO LECTURA** (charter §A.12) |
+| `[ ]` | T0.5 | Export historial cuenta 902 (deals/órdenes/balance) | Sonnet | Vía `MT5_Tester_2` (terminal de Capitaria — ver **ENMIENDA E-02**: nombre correcto, no estaba corriendo al verificar). **SOLO LECTURA** (charter §A.12) |
 | `[ ]` | T0.6 | **12 modificaciones de motor** (inventario en plan §4.1) | Spec: Opus · Impl: Sonnet TDD | ✅ **B2 RESUELTO (D-22): SIGN-OFF recibido del user.** TODAS juntas, antes del freeze. R1-bis vigente sin excepción; **paridad re-verificada tras CADA modificación**, nunca al final del lote |
 | `[ ]` | T0.7 | **A6 — Fidelidad** (diseño de dos patas, plan §4.2) | Impl: Sonnet · Análisis: Opus | **GATE DE TODO EL PROGRAMA.** Objetivo: señal bit-idéntica; neto ≤0,3 % (99,7) / ideal ≤0,15 % (99,85) |
 | `[ ]` | T0.8 | Freeze del motor (tag + SHA anotado aquí) | Controlador | Solo tras T0.6 + T0.7 verdes |
@@ -81,51 +81,100 @@ A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
 | ~~B5~~ | ~~Autorización explícita para extender `SANCTIONED_DEMO` (`extract_ticks.py:34`) con la demo AVA `101744074` — es código de seguridad~~ | — | **RETIRADO 2026-08-11** (D-20). Ya no existe la necesidad: la ingesta de ticks AVA es un CSV exportado a mano, no llama a la API de MT5 |
 | ~~B6~~ | ~~No hay terminal de AVA instalado~~ | — | ✅ **RESUELTO 2026-08-11.** No hizo falta instalar un terminal AVA aparte; el user inició sesión en la demo AVA dentro del terminal existente `D:\FOREX\MT5_Tester`. Servidor confirmado: `Ava-Demo 1-MT5` |
 | B7 | Conflicto entre dos reglas del user: `PROTOCOLO-REVISION-VIDEOS.md` manda 2 orquestadores Sonnet × ~11 subagentes Haiku (anidamiento), y el charter §C fija **máx 2 en paralelo**. No se resuelve por cuenta propia | T0.11b | **User** |
-| B8 | 🟠 ¿El login sancionado `2883016567` y la cuenta de Capitaria terminada en **902** son la misma cuenta o dos distintas? `CUENTAS.md` no documenta ninguna de las dos. **No bloquea T0.4** (la descarga de ticks usa `2883015767`), pero **sí afecta a A6 Pata A**, que necesita el historial real de la 902. Un subagente afirmó que son la misma; el orquestador no pudo verificarlo y lo escala sin resolverlo | A6 Pata A | **User** |
+| ~~B8~~ | ~~¿El login sancionado `2883016567` y la cuenta de Capitaria terminada en 902 son la misma cuenta o dos distintas?~~ | — | ✅ **RESUELTO 2026-08-11** por el user, en persona: son cuentas **distintas**. La 902 es login **`2883016902`**, servidor **`Capitaria Latam Spa`**. `2883016567` es otra cuenta, no la 902. La afirmación de un subagente anterior de que eran la misma cuenta queda anulada. Añadida a `CUENTAS.md` (NO-R&D / SOLO LECTURA, sin contraseña persistida — charter §A.12) |
 
 ---
 
 ## ENMIENDAS (append-only · formato `protocolos/04-enmiendas-trazabilidad.md`)
 
-> Nota del registrador: el brief de origen de E-02 pedía propagar también al plan maestro
-> `docs/superpowers/plans/2026-08-10-plan-investigacion-integral-v4.md`. Ese fichero está fuera de
-> los cuatro ficheros que este agente tiene autorización para tocar (regla dura del propio brief).
-> No se editó. Queda pendiente de un despacho con alcance explícito sobre ese fichero.
+> Nota del registrador (actualización 2026-08-11): la propagación de E-02 al plan maestro
+> `docs/superpowers/plans/2026-08-10-plan-investigacion-integral-v4.md`, pendiente en la tarea
+> anterior por falta de alcance de escritura sobre ese fichero, **se completó** en esta tarea (ver
+> Bitácora). **Corrección posterior, mismo día:** el cuerpo original de E-02 (y su propagación al
+> plan) afirmaba que este equipo tiene **un único terminal** MT5. Esa afirmación era **falsa** —
+> ver el cuerpo corregido de E-02 abajo y la Bitácora. `MT5_Tester_2` **sí existe** y sus
+> referencias, tachadas por error en una ronda anterior, quedan revertidas a texto normal (fila
+> T0.5 de este TRACKER y §0.12 + fila T0.5 del plan).
 
-### ENMIENDA E-02 · 2026-08-11 · Corrección de nomenclatura de terminales
+### ENMIENDA E-02 · 2026-08-11 · Corrección de nomenclatura de terminales MT5
 **Fase / frontera:** Fase 0, en curso (no hay experimento a mitad — corrección de un hecho de
 infraestructura).
-**Causa:** el plan y varios briefs se refieren a terminales `MT5_Tester_1` y `MT5_Tester_2` como si
-ambos existieran en esta máquina. **Verificado el 2026-08-11:** en este equipo hay un único
-terminal, instalado en `D:\FOREX\MT5_Tester` (proceso PID 9696 en el momento de la comprobación), y
-no existen carpetas con sufijo numérico. La cuenta 902 opera desde el otro equipo. Evidencia:
+**Causa:** el plan y varios briefs usan los nombres `MT5_Tester_1` y `MT5_Tester_2`. Verificado en
+disco el 2026-08-11 con `Test-Path` sobre `terminal64.exe` y **confirmado por el user**:
+`D:\FOREX\MT5_Tester\terminal64.exe` existe (es el terminal al que coloquialmente se llama "tester
+1" — por eso `MT5_Tester_1` no existe: va **sin sufijo**; alojó la sesión de AVA);
+`D:\FOREX\MT5_Tester_2\terminal64.exe` **existe** (terminal de Capitaria, no estaba corriendo al
+comprobar); `D:\FOREX\MT5_Tester_1\` **no existe**; existe además una instalación en
+`C:\Program Files\MetaTrader 5`. Evidencia:
 `research/fases/F0-preparacion/04-resultados/T0.3-ava/especificacion-feed.md` (sección "Anomalía de
 nomenclatura de terminales").
-**Cambio exacto:** donde el plan y los briefs digan `MT5_Tester_1` / `MT5_Tester_2` asumiendo que
-ambos corren localmente, se corrige a: un único terminal local `D:\FOREX\MT5_Tester`, que sirve
-Capitaria o AVA según qué sesión esté logueada; la 902 se lee, si acaso, desde el otro equipo. El
-texto superado se marca `~~tachado~~` en las tablas del TRACKER, nunca se borra.
-**Afecta a:** fila T0.5 de este TRACKER (referencia a `MT5_Tester_2`); el plan maestro
-`docs/superpowers/plans/2026-08-10-plan-investigacion-integral-v4.md` donde nombre estos
-terminales (no editado por este agente — ver nota arriba).
+🔴 **Corrección del propio registro:** una versión anterior de esta enmienda (misma fecha) afirmó
+que "en este equipo hay un único terminal" — **esa afirmación era falsa** y quedó corregida antes
+de que el orquestador la diera por definitiva; ver Bitácora.
+**Cambio exacto:** **único cambio real: toda referencia a `MT5_Tester_1` se lee `MT5_Tester`.** Las
+referencias a `MT5_Tester_2` son correctas y se conservan **sin marca** — cualquier tachado que se
+les haya puesto queda revertido (fila T0.5 de este TRACKER; §0.12 y fila T0.5 del plan maestro).
+**Afecta a:** fila T0.5 de este TRACKER; el plan maestro
+`docs/superpowers/plans/2026-08-10-plan-investigacion-integral-v4.md` (§0.12 y fila T0.5 de la
+tabla de Fase 0, más el cuerpo de esta misma enmienda en su §15).
 **Re-validación requerida:** no. Es corrección de nomenclatura, no de resultados. Consecuencia
-metodológica que se conserva: el riesgo de identidad **no** es "hay dos terminales, ¿a cuál me
-conecté?", sino el más difícil de detectar — **un mismo terminal que sirve Capitaria o AVA según
-qué sesión esté logueada**. El guard de identidad (T0.4, fila `F0-INFRA-0021`) sigue siendo la
-defensa correcta y su justificación queda reforzada, no debilitada.
-**Firmada por:** controlador (Opus), sobre verificación de terreno del 2026-08-11.
+metodológica que se conserva y se refuerza — **los DOS riesgos de identidad están vivos, no uno**:
+(a) hay varios terminales instalados, luego `initialize()` sin `path=` puede engancharse al que no
+es; y (b) un mismo terminal sirve datos de un bróker u otro según qué sesión esté logueada —
+`MT5_Tester` alojó la sesión de AVA. El guard de identidad (T0.4, fila `F0-INFRA-0021` del LEDGER)
+defiende contra ambos y su justificación queda reforzada, no debilitada. **Regla operativa
+derivada:** un solo terminal MT5 abierto a la vez durante cualquier corrida de extracción.
+**Firmada por:** controlador (Opus), sobre verificación de terreno del 2026-08-11 y confirmación
+del user.
 
 ---
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-11** · Sonnet 5 registrador · **Registro con retraso de D-25/D-26/D-27** (protocolo de
+  revisión de videos vs. máx-2 en paralelo, cierra B7 · holdout en dos actos · verificación
+  estructural de artefactos report-only). Se registran tarde porque el despacho original que los
+  llevaba fue sustituido por otro flujo — **error de proceso del orquestador**, no de contenido: las
+  tres ya estaban decididas y comunicadas, solo faltaba dejarlas escritas en `DECISIONES.md`.
+  Búsqueda de referencias erróneas a "D-23" en el contexto de la retirada de B5 / no-ampliación de
+  `SANCTIONED_DEMO`: **ninguna encontrada** en `DECISIONES.md`, `TRACKER.md` ni `BACKLOG.md` — las
+  dos únicas menciones de "D-23" en el repo son al Baseline Largo (BL-0), correctas, sin tocar.
+  **`F0-INFRA-0020` corregida por `supersedes`** (fila `F0-INFRA-0022`): sus métricas (368
+  líneas / 17.841 bytes) fueron medidas por el orquestador **antes** de un addendum que añadió al
+  artefacto la Sección F (calendario de sesión, no evaluable) y su salida cruda en anexo; medición
+  propia del registrador sobre el fichero en disco confirma **840 líneas / 32.463 bytes**. La fila
+  `0020` no se editó. **Propagación de ENMIENDA E-02 al plan maestro completada** (quedó pendiente
+  en la tarea anterior por falta de alcance de escritura sobre ese fichero): añadida a §15 del plan
+  y referenciada en §0.12 y en la fila T0.5 de la tabla de Fase 0 (§4). 🔴 **Corrección posterior,
+  misma tarea:** ver entrada siguiente — el cuerpo de E-02 propagado en esta ronda contenía un
+  hecho invertido (afirmaba "un único terminal"), corregido antes de cerrar la tarea. Ninguna
+  operación de git ejecutada por este agente.
+- **2026-08-11** · Sonnet 5 registrador · 🔴 **CORRECCIÓN — E-02 quedó escrita con el hecho
+  invertido.** La versión de E-02 registrada más arriba en esta misma tarea (y propagada al plan
+  maestro) afirmaba que "este equipo tiene un único terminal" y que `MT5_Tester_1`/`MT5_Tester_2`
+  no existían por separado. **Falso.** El orquestador verificó en disco con `Test-Path` sobre
+  `terminal64.exe`, confirmado por el user: `D:\FOREX\MT5_Tester\terminal64.exe` **existe** (es el
+  terminal al que coloquialmente se llama "tester 1" — el nombre erróneo es `MT5_Tester_1`, que va
+  **sin sufijo**; alojó la sesión de AVA); `D:\FOREX\MT5_Tester_2\terminal64.exe` **existe**
+  (terminal de Capitaria, no corriendo al comprobar); `D:\FOREX\MT5_Tester_1\` **no existe**; existe
+  además `C:\Program Files\MetaTrader 5`. Causa raíz: **un subagente reportó un hecho de disco
+  incorrecto (que no existían carpetas con sufijo numérico) y el orquestador no lo verificó de
+  forma independiente antes de convertirlo en enmienda formal — fallo de verificación del
+  orquestador**, no del registrador que transcribió el brief. Corregido: cuerpo de E-02 reescrito
+  (arriba, en la sección ENMIENDAS), fila T0.5 de este TRACKER y §0.12 + fila T0.5 del plan maestro
+  revertidos (tachados de `MT5_Tester_2` quitados — esas referencias eran correctas). También se
+  cierra **B8** en esta misma entrada: el user confirmó en persona que la 902 y el login sancionado
+  `2883016567` son cuentas **distintas** — ver fila B8 (BLOQUEOS ACTIVOS) y `CUENTAS.md`. Ninguna
+  operación de git ejecutada por este agente.
 - **2026-08-11** · Sonnet 5 investigador + Opus 5 verif. · **Captura de especificación del feed
   AVA VERIFICADA.** Artefacto `04-resultados/T0.3-ava/especificacion-feed.md`. Identidad: login
   `101744074`, servidor `Ava-Demo 1-MT5`, `Ava Trade Ltd.`, DEMO. Símbolo `GOLD`:
   `trade_contract_size=100.0`, `digits=2`, `point=0.01` — idénticos a Capitaria. Fila
   `F0-INFRA-0020`. 🔴 **Anomalía reportada por el propio agente, no resuelta por él:** el brief
-  suponía dos terminales locales (`MT5_Tester_1`/`MT5_Tester_2`); solo existe uno
-  (`D:\FOREX\MT5_Tester`) → ver **ENMIENDA E-02**.
+  suponía dos terminales locales (`MT5_Tester_1`/`MT5_Tester_2`); ~~solo existe uno
+  (`D:\FOREX\MT5_Tester`)~~ **[corrección posterior: SÍ existen dos — `MT5_Tester` (el mal llamado
+  `MT5_Tester_1`) y `MT5_Tester_2`, ambos en disco; ver ENMIENDA E-02 corregida]** → ver
+  **ENMIENDA E-02**.
 - **2026-08-11** · Opus 5 · Addendum a la captura anterior: se pidió `symbol_info_session_quote` /
   `symbol_info_session_trade` sobre `GOLD`. **Esas funciones no existen en la API Python de MT5
   instalada** (paquete `5.0.5735`; `dir(mt5)` — 269 atributos públicos, ninguno con la subcadena
@@ -154,11 +203,17 @@ defensa correcta y su justificación queda reforzada, no debilitada.
 - **2026-08-11** · Opus 5 · 🟠 **B8 abierto:** ¿el login sancionado `2883016567` y la cuenta de
   Capitaria terminada en 902 son la misma cuenta? `CUENTAS.md` no documenta ninguna de las dos. No
   bloquea T0.4; sí afecta a A6 Pata A. Un subagente afirmó que son la misma; no verificado por el
-  orquestador, escalado sin resolver.
-- **2026-08-11** · Opus 5 · **ENMIENDA E-02**: corrección de nomenclatura de terminales — un único
-  terminal local (`D:\FOREX\MT5_Tester`), no `MT5_Tester_1`/`MT5_Tester_2`; la 902 opera desde el
-  otro equipo. Propagada a la fila T0.5 de este TRACKER. Pendiente de propagar al plan maestro por
-  un agente con alcance de escritura sobre ese fichero (ver nota en la sección ENMIENDAS).
+  orquestador, escalado sin resolver. **[B8 RESUELTO 2026-08-11 por el user — ver entrada más
+  arriba y fila B8 en BLOQUEOS ACTIVOS: son cuentas distintas; la 902 es `2883016902`, servidor
+  `Capitaria Latam Spa`.]**
+- **2026-08-11** · Opus 5 · **ENMIENDA E-02**: corrección de nomenclatura de terminales — ~~un único
+  terminal local (`D:\FOREX\MT5_Tester`), no `MT5_Tester_1`/`MT5_Tester_2`~~ **[corrección
+  posterior: hecho invertido — `MT5_Tester_1` no existe (ese terminal va sin sufijo: `MT5_Tester`),
+  pero `MT5_Tester_2` SÍ existe; ver ENMIENDA E-02 corregida y entrada más arriba]**; la 902 opera
+  desde el otro equipo. Propagada a la fila T0.5 de este TRACKER. Pendiente de propagar al plan
+  maestro por un agente con alcance de escritura sobre ese fichero (ver nota en la sección
+  ENMIENDAS). **[Propagación completada 2026-08-11, con el texto corregido — ver entrada más
+  arriba.]**
 
 - **2026-08-10** · Sonnet 5 impl. + Opus 5 verif. · **T0.4-impl HECHA y verificada** (`6544a1f`).
   🔴 **Casi-incidente evitado por el protocolo:** el spec del controlador se contradecía —

@@ -63,7 +63,9 @@ sobre harness pareado → puerta estadística → cola de backtest largo real-ti
 11. **R1-bis (verbatim, sin excepción):** los S6/ST (y S7 histórica) VIVOS se preservan
     byte-identical. Toda modificación va sobre copia independiente (cfg deep-copy, módulo nuevo,
     banda mágica nueva). Quien concluya que hay que tocar el original está equivocado: PARAR y escalar.
-12. **MT5:** `CUENTAS.md` = fuente única. Cuenta **902 = NO-R&D**: solo lectura vía `MT5_Tester_2`,
+12. **MT5:** `CUENTAS.md` = fuente única. Cuenta **902 = NO-R&D**: solo lectura vía `MT5_Tester_2`
+    (nombre correcto — ver **ENMIENDA E-02, §15**: hay varios terminales instalados en este equipo,
+    `MT5_Tester_2` entre ellos; solo `MT5_Tester_1` era el nombre erróneo),
     PROHIBIDO modificarla/agregarle nada, jamás corre posiciones desde este equipo, credenciales
     jamás persistidas. Attach-only global; toda orden (en la DEMO autorizada) requiere
     `guard_cuenta.assert_demo()`. Reales READ-ONLY.
@@ -154,7 +156,7 @@ qué artefacto exacto debe existir para declararla hecha · qué decisiones del 
 | T0.2 | Propuesta limpieza disco C: (95%) | Sonnet | SOLO propuesta; cero borrado sin aprobación del user |
 | T0.3 | **R6-AVA**: descarga real-tick ≥2 años (objetivo 4) | Sonnet (spec cerrada tras instrucciones del user) | Registrar en ledger con lineage; validar integridad (huecos, duplicados, calendario); destino `data/lake_ticks_ava/XAUUSD/` en D: |
 | T0.4 | **Top-up ticks Capitaria** (ventana 902 completa) | Sonnet | ⚠️ VENTANA RODANTE (~7 meses): descargar YA la ventana jul-ago antes de que ruede fuera. Mismo servidor `Capitaria-All` — 🔴 **JUSTIFICACIÓN SUPERADA: ver ENMIENDA E-01 (§15).** El motivo real es que A6 Pata A necesita esa ventana |
-| T0.5 | **Export historial 902** vía `MT5_Tester_2` | Sonnet | Deals+órdenes+balance. SOLO LECTURA (§0.12) |
+| T0.5 | **Export historial 902** vía `MT5_Tester_2` (terminal de Capitaria — ver **ENMIENDA E-02, §15**: nombre correcto) | Sonnet | Deals+órdenes+balance. SOLO LECTURA (§0.12) |
 | T0.6 | **Inventario + implementación de modificaciones de motor** (12 ítems, abajo) | Specs: Opus · Implementación: Sonnet (TDD) | TODAS JUNTAS antes del freeze; sobre copias (R1-bis) |
 | T0.7 | **A6 — Fidelidad** (diseño de dos patas, abajo) | Implementación Sonnet · Análisis Opus | GATE de todo el programa |
 | T0.8 | **Freeze del motor** (tag SHA) | Controlador | Tras T0.6+T0.7 verdes |
@@ -568,6 +570,39 @@ descarga exactamente lo mismo, por otra razón y con otra secuenciación aguas a
 **Firmada por:** user (2026-08-10) · redactada por el controlador (Opus 5).
 **Propagada a:** `research/fases/F0-preparacion/00-README.md` (orden de ejecución + riesgos),
 `research/TRACKER.md` (fila T0.4 + bitácora).
+
+### ENMIENDA E-02 · 2026-08-11 · Corrección de nomenclatura de terminales MT5
+**Fase / frontera:** Fase 0, en curso (no hay experimento a mitad — corrección de un hecho de
+infraestructura).
+**Causa:** el plan y varios briefs usan los nombres `MT5_Tester_1` y `MT5_Tester_2`. Verificado en
+disco el 2026-08-11 con `Test-Path` sobre `terminal64.exe` y **confirmado por el user**:
+`D:\FOREX\MT5_Tester\terminal64.exe` existe (es el terminal al que coloquialmente se llama "tester
+1" — por eso `MT5_Tester_1` no existe: va **sin sufijo**; alojó la sesión de AVA);
+`D:\FOREX\MT5_Tester_2\terminal64.exe` **existe** (terminal de Capitaria, no estaba corriendo al
+comprobar); `D:\FOREX\MT5_Tester_1\` **no existe**; existe además una instalación en
+`C:\Program Files\MetaTrader 5`. Evidencia:
+`research/fases/F0-preparacion/04-resultados/T0.3-ava/especificacion-feed.md` (sección "Anomalía de
+nomenclatura de terminales").
+🔴 **Corrección del propio registro:** una versión anterior de esta misma enmienda (misma fecha)
+afirmó que "en este equipo hay un único terminal" — **esa afirmación era falsa**, causada por un
+reporte de disco erróneo de un subagente que el orquestador no verificó de forma independiente
+antes de convertirlo en enmienda formal. Corregida antes de cerrar la tarea; ver
+`research/TRACKER.md` (Bitácora, entrada de corrección).
+**Cambio exacto:** **único cambio real: toda referencia a `MT5_Tester_1` se lee `MT5_Tester`.** Las
+referencias a `MT5_Tester_2` son correctas y se conservan **sin marca** — cualquier tachado que se
+les haya puesto en el plan o en el TRACKER queda revertido (§0.12 y fila T0.5 de la tabla de Fase 0
+de este plan; fila T0.5 de `research/TRACKER.md`).
+**Afecta a:** §0.12 (bloque de reglas MT5) y la fila T0.5 de la tabla de Fase 0 de este plan;
+también la fila T0.5 de `research/TRACKER.md`.
+**Re-validación requerida:** no. Es corrección de nomenclatura, no de resultados. Consecuencia
+metodológica que se conserva y se refuerza — **los DOS riesgos de identidad están vivos, no uno**:
+(a) hay varios terminales instalados, luego `initialize()` sin `path=` puede engancharse al que no
+es; y (b) un mismo terminal sirve datos de un bróker u otro según qué sesión esté logueada —
+`MT5_Tester` alojó la sesión de AVA. El guard de identidad (T0.4, fila `F0-INFRA-0021` del LEDGER)
+defiende contra ambos y su justificación queda reforzada, no debilitada. **Regla operativa
+derivada:** un solo terminal MT5 abierto a la vez durante cualquier corrida de extracción.
+**Firmada por:** controlador (Opus), sobre verificación de terreno del 2026-08-11 y confirmación
+del user.
 
 ---
 
