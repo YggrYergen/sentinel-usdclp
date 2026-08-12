@@ -9,6 +9,9 @@ sin etiqueta de motor no es comparable con ningún otro y no vale como medición
 | `faulty` | tag `engine-faulty-tomachine-902` → `b113eb7` | **congelado — preservar, no arreglar** | [FAULTY-tomachine-902.md](FAULTY-tomachine-902.md) |
 | `fixed` | — | pendiente | — |
 
+Procedencia del motor faulty y qué más llegó con él:
+[ENTREGA-M2-2026-08-12-inventario.md](ENTREGA-M2-2026-08-12-inventario.md).
+
 ## Por qué existe este registro
 
 El motor que corrió en producción sobre la DEMO 2883016902 tiene un fallo estructural (D-39: abre

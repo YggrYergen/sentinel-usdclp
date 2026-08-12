@@ -663,3 +663,136 @@ es decir, los momentos en que operar de verdad costaba caro. **Eso hace el backt
 conservador.** Refuerza la tercera vía anotada al final de D-38 (`max(nativo, calibrado)`), que
 cobra la cola en vez de omitirla. Queda para decisión del user; no se aplica nada por iniciativa
 propia.
+
+### D-39 · 2026-08-12 · El fallo de paridad de ENTRADAS es consecuencia del de SALIDAS
+*(Procedencia: hallazgo de la sesión de ejecución del 2026-08-12, verificado de forma independiente
+en el repo de máquina 1 y corroborado después por la entrega de máquina 2. No es instrucción del
+user. **Se registra con retraso**: las sesiones anteriores lo citaban como «D-39» pero nunca llegó
+a escribirse en este ledger — el ledger terminaba en D-38.)*
+
+El ejecutor **abre a precio de mercado pero hereda el SL ya trailleado del sim**.
+`reconciler.py:296-299` emite la acción `OPEN` con `sl=d["sl"]` (el SL **actual**, ya arrastrado por
+el trail) y `price_ref=d["entry"]`, declarado en `reconciler.py:60` como *«sim entry/stop reference
+(for logs)»*; `run_live_20.py:786` manda la orden con `price = tick.ask/bid`. **`price_ref` no se
+usa nunca.**
+
+Consecuencia: cuando la señal del sim es de hace varias barras y el precio ya corrió a favor, la
+posición viva nace con el stop a un pelo en vez de a los ~17,5 USD del SL inicial. De ahí las
+salidas agrupadas en −1,00 USD (= ancho exacto del trail plano) y las duraciones de segundos:
+mediana **169 s**, **41,7 %** bajo el minuto, cuenta plana el **68 %** del tiempo y re-entrando sin
+parar.
+
+La ruta está en la base compartida `origin/alvaro` y los 10 commits locales de máquina 2 no la
+tocan: **no es divergencia máquina-1-vs-máquina-2, es divergencia ejecutor-vs-backtest**, y nuestro
+repo la tiene igual. Huella en el audit log de la ventana: 943 `OPEN_SKIPPED_SL_CROSSED`, 441
+`MODIFY`, 35 `SL_CLAMPED`, y **solo 3 `CLOSE`** ⇒ prácticamente todas las salidas las hizo el
+bróker por SL.
+
+**Esto invierte la causalidad que se venía asumiendo.** No son dos fallos de paridad: el de
+entradas es consecuencia del de salidas, porque con `active_fichas=1` y concurrencia 1 cada salida
+prematura reabre la ventana de entrada.
+
+### D-40 · 2026-08-12 · El motor faulty se PRESERVA como ref inmutable, y todo resultado se etiqueta con su motor
+*(Procedencia: instrucción explícita del user — «es definitivamente necesario para continuar el
+proceso con la rigurosidad requerida para que los resultados sean transferibles y sustentados en
+datos reales, repetibles y proyectables». **Revierte** la instrucción anterior de «no integrar
+rama, no traer bundle», por motivo de rigor: sin la copia byte-exacta, el motor faulty sería «uno
+que creemos equivalente», y eso no sostiene una proyección de años.)*
+
+El motor que operó la DEMO 2883016902 queda congelado en el tag `engine-faulty-tomachine-902`
+(`b113eb7`), importado a `refs/m2/*` para que no se pueda checkoutear ni mergear por accidente.
+Descriptor en `research/motores/FAULTY-tomachine-902.md`.
+
+Tres reglas vinculantes: **(a)** ese ref se preserva, **no se arregla** — los arreglos van sobre un
+motor separado `engine=fixed`; **(b)** todo resultado de backtest se etiqueta con su motor
+(`engine=faulty@b113eb7` / `engine=fixed@<sha>`), y un resultado sin etiqueta no es comparable y no
+vale; **(c)** R1-bis sigue intacto por encima de esto.
+
+Secuencia acordada: preservar → modelar la ruta faulty en el harness → **certificar con A6** →
+backtest largo faulty → arreglar → backtest largo fixed → perillas. La corrección de orden sobre la
+propuesta original del user (que ponía A6 al final) es que **A6 es el certificado del backtest
+faulty**, no un trámite pendiente: sin él se proyectan años de un motor que sólo *creemos* haber
+replicado. Aceptada.
+
+### D-41 · 2026-08-12 · `equipo1` es exclusiva del equipo local de R&D
+*(Procedencia: aclaración explícita del user.)*
+La máquina 2 no usa `equipo1`. Commit y push sobre esa rama son libres y no requieren coordinación.
+Deja sin efecto la cautela de «intercambio bidireccional» anotada al importar el bundle.
+
+### D-42 · 2026-08-12 · Los 8 meses de Capitaria son un límite del bróker, no nuestro
+*(Procedencia: aclaración explícita del user.)*
+El lake de ticks de Capitaria cubre sólo 2026-01 → 2026-08 porque **Capitaria no quiso o no pudo
+compartir más** — no es un tope de nuestra descarga ni algo que quede por intentar. **AVA sí los
+tenía y los compartió, con ayuda exhaustiva cuando hizo falta.** Cierra esa línea de indagación.
+
+Refuerza el reparto de roles de D-21: AVA es el sustrato de historia larga (2022-01 → 2026-08,
+~4,7 años) y **el backtest largo corre sobre AVA**, sin alternativa. Capitaria sigue siendo la
+referencia de economía real, con la salvedad de que su spread es un escalón degenerado
+(p25=p50=0,500 · p75=p99=0,600) frente a la distribución real de AVA.
+
+### D-43 · 2026-08-12 · El objetivo es REPLICAR, no proyectar — y los cierres manuales se simulan
+*(Procedencia: instrucción explícita del user.)*
+
+El fin del ejercicio no es estimar cómo le habría ido a las estrategias: es **reproducir sobre
+sustrato AVA las mismas señales y prácticamente las mismas salidas** que las estrategias obtuvieron
+corriendo en Capitaria. Se intentó repetidamente en backtests real-tick y **falló todas las veces**,
+porque se desconocían las particularidades de la implementación hoy identificada como faulty. Con
+el motor faulty preservado y sus logs, la réplica pasa a ser alcanzable. La estructura de medición
+ya existe: es **D-24** (Pata A = mismos ticks de Capitaria, persigue señal idéntica; Pata B =
+transferibilidad a AVA).
+
+**Los cierres manuales se simulan** (condicionado por el user a «de ser posible»), y la razón no es
+el PnL: es reproducir las **ventanas de disponibilidad para tomar posición**. Con `active_fichas=1`
+y concurrencia máxima 1 por estrategia, una posición abierta **bloquea toda señal posterior**; un
+cierre manual libera la estrategia antes de tiempo y le abre una entrada que el sim nunca tiene.
+
+🔴 **Esto no corrige un confusor: lo da vuelta.** Los 11 cierres manuales se descartaron con
+«atacan sólo el 7 %». Ese 7 % era **11 de 151 por CUENTA**, arrastrado después como si fuera
+participación en el neto. Es el mismo error de clase que el de `SPREAD_GATE_SKIP`: contar eventos y
+hablar de magnitudes.
+
+Medido sobre `deals_raw` de la entrega de máquina 2 (ventana canónica 2026-07-27 18:53:30 →
+2026-08-11 01:15:04; reproduce exactamente 118 SL · 21 expert · 11 manuales · 1 TP = 151 cierres, y
+su neto total cuadra al peso con la LEDGER F0-INFRA-0025):
+
+| | NETO (= LEDGER) | **Sin cierres manuales** | Aporte manual |
+|---|---:|---:|---:|
+| `SAR::S6-K2P0` | +9.272.144,35 | **+3.009.841,01** | +6.262.303,34 · 3 cierres · **68 %** de su neto |
+| `SuperTrend::SuperTrend-p14x3-M15` | +5.930.966,98 | **−16.223.085,46** | +22.154.052,44 · 8 cierres · **374 %** de su neto |
+| **Cuenta** | **+15.203.111,33** | **−13.213.244,45** | **+28.416.355,78** |
+
+**Los 11 cierres manuales no aportan el 7 % del neto: aportan la totalidad de la rentabilidad.**
+Sin ellos la cuenta pierde 13,2 M CLP. **SuperTrend no es una estrategia ganadora — es
+catastróficamente perdedora y el operador la rescató**; sus 58 salidas por SL suman −17,38 M. S6
+sigue siendo ganadora pero vale un tercio de lo que aparentaba.
+
+**Consecuencia sobre las cifras de la LEDGER:** los +9.272.144 y +5.930.966 registrados por
+estrategia **incluyen los cierres manuales** y por tanto no miden a las estrategias. Toda
+comparación de paridad de neto contra esas cifras estaba comparando contra el desempeño de un
+humano. Hay que declarar cuál de los dos objetivos se persigue:
+
+- **Neto de estrategia** (sólo salidas automáticas): objetivo +3,01 M / −16,22 M.
+- **Neto de operación** (incluye discrecionales): objetivo +9,27 M / +5,93 M, y exige reproducir
+  los cierres manuales por marca temporal — no es modelable, es replay.
+
+Esto **refuerza y no contradice** el criterio ya fijado por el user («que el operador aporte el neto
+no es crítica al plan: automatizar ese criterio es el objetivo»): ahora está cuantificado, y da a
+Familia B su cifra objetivo — la política de salida que se busque debe recuperar del orden de
++28,4 M CLP que las salidas automáticas dejan sobre la mesa. Los 11 cierres quedan como **datos
+etiquetados** para esa familia.
+
+### D-38 · ADENDA 2 · 2026-08-12 · La tercera vía no debe decidirse todavía
+*(Procedencia: recomendación del orquestador a raíz de D-39 + D-43. **No es decisión tomada** — la
+elección entre estrechar, no evaluar y `max(nativo, calibrado)` sigue siendo del user.)*
+
+El overlay de costes de D-21 existe para que AVA reproduzca la economía de Capitaria, y se calibró
+**contra una brecha observada** entre backtest y operativa real. D-39 y `active_fichas` muestran que
+**buena parte de esa brecha era del motor, no de los costes**. Calibrar un modelo de costes para
+cerrar una brecha causada por un fallo de ejecución produce un modelo de costes equivocado — y
+explica por qué las réplicas previas fallaban de forma inconsistente: se depuraba una brecha de dos
+variables con una sola medición, y el overlay absorbía el error del motor.
+
+**Recomendación: no fijar `max(nativo, calibrado)` antes de haber replicado el motor faulty.**
+Decidirlo ahora hornea la contaminación en el modelo de costes. Se re-deriva después, con el motor
+ya fiel y con la ventana viva —donde existen **ambos** feeds a la vez— como base empírica del
+traspaso, en vez de por extrapolación.

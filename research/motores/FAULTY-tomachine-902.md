@@ -95,6 +95,9 @@ Huella en el audit log de la ventana:
 Solo 3 CLOSE en toda la ventana ⇒ **prácticamente todas las salidas las hizo el bróker por SL**,
 no el reconciliador. Salidas reales por `reason` de MT5: 118 SL · 21 expert · 11 manuales · 1 TP.
 
+Y esas salidas por SL son ruinosas: **−16.290.173 CLP** en la ventana. El motor faulty, dejado a
+su propia gestión de salidas, **pierde dinero** (ver §7 y D-43).
+
 El descarte por SL ya cruzado (las 943) es **parte del motor**: modela pérdida de entradas, y
 cualquier réplica debe incluirlo.
 
@@ -169,7 +172,11 @@ No re-medir. Cada uno se cerró con una cifra:
    Además la dirección no cierra — un gate más restrictivo en vivo daría **menos** entradas
    reales, y el déficit es que el harness genera **menos** que la realidad. Mismo caveat para
    `OPEN/F1` 98.365 y `NOOP/F1` 50.484: son acciones deseadas por ciclo, no órdenes.
-3. **Mod #12 / cierres manuales** — atacan el 7% (11 de 151).
+3. ~~**Mod #12 / cierres manuales** — atacan el 7%.~~ 🔴 **REVOCADO — ver D-43.** El «7 %» era
+   11 de 151 **por cuenta**, no participación en el neto. Medido: los 11 cierres manuales aportan
+   **+28.416.355,78 CLP** sobre un neto total de **+15.203.111,33** — sin ellos la cuenta pierde
+   **13,2 M**. `SuperTrend` sin manuales hace **−16.223.085**. No es un confusor menor: es la
+   totalidad de la rentabilidad de la ventana.
 4. **Granularidad del trail (barra vs tick)** — explica el 5,8%. Forzoso: `sl_check` se actualiza
    al cierre de barra en ambos modos.
 5. **`trail_atr_floor_k` ausente** — **refutada**. Existe en ambos lados con el mismo valor (2.0)
@@ -187,6 +194,27 @@ La réplica en harness es fiel sólo si reproduce esto:
 - Salidas agrupadas en **−1,00 USD** (= ancho del trail plano), no en el SL inicial (~17,5 USD).
 - Concurrencia máxima verificada: **1 posición por estrategia**. Las hasta 8 posiciones por barra
   son **re-entradas secuenciales de una sola señal**, siempre en la misma dirección.
+
+### Neto objetivo — y por qué hay que declarar cuál se persigue
+
+Medido sobre `deals_raw` de la entrega (ventana canónica; reproduce 118 SL · 21 expert · 11 manual
+· 1 TP = 151 cierres y cuadra al peso con la LEDGER F0-INFRA-0025):
+
+| | NETO (= LEDGER) | Sin cierres manuales | Aporte manual |
+|---|---:|---:|---:|
+| `SAR::S6-K2P0` | +9.272.144,35 | **+3.009.841,01** | +6.262.303,34 (3 cierres) |
+| `SuperTrend::SuperTrend-p14x3-M15` | +5.930.966,98 | **−16.223.085,46** | +22.154.052,44 (8 cierres) |
+| **Cuenta** | **+15.203.111,33** | **−13.213.244,45** | **+28.416.355,78** |
+
+🔴 **Las cifras de la LEDGER incluyen los cierres manuales**, así que no miden a las estrategias.
+El motor faulty **con sus propias salidas pierde 13,2 M CLP**; lo que lo pone en positivo es un
+humano cerrando a mano 11 veces. Una réplica que persiga el neto de la LEDGER está persiguiendo el
+desempeño de un operador, no del motor. Declarar el objetivo antes de medir:
+
+- **Neto de estrategia** (sólo salidas automáticas) → +3,01 M / −16,22 M. Es lo que el harness
+  puede reproducir por sí solo.
+- **Neto de operación** (incluye discrecionales) → +9,27 M / +5,93 M. Exige **replay por marca
+  temporal** de los 11 cierres; no es modelable.
 
 ## 8 · Reglas de uso
 
