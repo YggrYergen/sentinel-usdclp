@@ -1,0 +1,83 @@
+{
+  "anomalia": false,
+  "gap_threshold_min": 60,
+  "huecos": [
+    {
+      "duracion_min": 62.004216666666665,
+      "fin_t_msc": 1770073260142,
+      "inicio_t_msc": 1770069539889
+    },
+    {
+      "duracion_min": 62.01408333333333,
+      "fin_t_msc": 1770159660040,
+      "inicio_t_msc": 1770155939195
+    },
+    {
+      "duracion_min": 62.005383333333334,
+      "fin_t_msc": 1770246060013,
+      "inicio_t_msc": 1770242339690
+    },
+    {
+      "duracion_min": 62.00835,
+      "fin_t_msc": 1770332460090,
+      "inicio_t_msc": 1770328739589
+    },
+    {
+      "duracion_min": 2946.0464166666666,
+      "fin_t_msc": 1770591900045,
+      "inicio_t_msc": 1770415137260
+    },
+    {
+      "duracion_min": 62.004983333333335,
+      "fin_t_msc": 1770678060009,
+      "inicio_t_msc": 1770674339710
+    },
+    {
+      "duracion_min": 62.013616666666664,
+      "fin_t_msc": 1770764460007,
+      "inicio_t_msc": 1770760739190
+    },
+    {
+      "duracion_min": 62.01476666666667,
+      "fin_t_msc": 1770850860039,
+      "inicio_t_msc": 1770847139153
+    },
+    {
+      "duracion_min": 62.013283333333334,
+      "fin_t_msc": 1770937260014,
+      "inicio_t_msc": 1770933539217
+    },
+    {
+      "duracion_min": 2946.0055,
+      "fin_t_msc": 1771196700051,
+      "inicio_t_msc": 1771019939721
+    },
+    {
+      "duracion_min": 62.986333333333334,
+      "fin_t_msc": 1771282860007,
+      "inicio_t_msc": 1771279080827
+    },
+    {
+      "duracion_min": 62.019616666666664,
+      "fin_t_msc": 1771369260567,
+      "inicio_t_msc": 1771365539390
+    },
+    {
+      "duracion_min": 62.01736666666667,
+      "fin_t_msc": 1771455660331,
+      "inicio_t_msc": 1771451939289
+    },
+    {
+      "duracion_min": 62.00306666666667,
+      "fin_t_msc": 1771542060054,
+      "inicio_t_msc": 1771538339870
+    }
+  ],
+  "n_bid_ask_invalidos": 0,
+  "n_duplicados_exactos": 9,
+  "n_no_monotonicos": 0,
+  "n_ticks": 5923984,
+  "parquet": "data\\lake_ticks_ava\\GOLD\\202602.parquet.tmp",
+  "t_msc_max": 1771545599342,
+  "t_msc_min": 1769987100001
+}

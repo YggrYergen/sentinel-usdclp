@@ -1,0 +1,67 @@
+{
+  "corridas": [
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\T0.4-topup-capitaria\\F0-DATA-0001",
+      "estado": "ok",
+      "metricas": {
+        "ficheros_escritos": [
+          "data\\lake_ticks\\XAUUSD\\202607.parquet"
+        ],
+        "identidad": {
+          "login": 2883015767,
+          "server": "Capitaria-All",
+          "symbol_resuelto": "XAUUSD",
+          "trade_mode": 0
+        },
+        "meses": {
+          "202607": {
+            "bak": "data\\lake_ticks\\XAUUSD\\202607.parquet.bak-20260811222730",
+            "escrito": true,
+            "rango_antes": [
+              1782878400171,
+              1784912099898
+            ],
+            "rango_despues": [
+              1782878400171,
+              1785516899974
+            ],
+            "redescargado": true,
+            "t_msc_max": 1785516899974,
+            "t_msc_min": 1782878400171,
+            "ticks": 10855025,
+            "ticks_antes": 8270356,
+            "ticks_despues": 10855025
+          }
+        },
+        "ticks_total": 10855025
+      },
+      "run_key": "F0-DATA-0001"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\T0.4-topup-capitaria\\F0-DATA-0002",
+      "estado": "ok",
+      "metricas": {
+        "ficheros_escritos": [
+          "data\\lake_ticks\\XAUUSD\\202608.parquet"
+        ],
+        "identidad": {
+          "login": 2883015767,
+          "server": "Capitaria-All",
+          "symbol_resuelto": "XAUUSD",
+          "trade_mode": 0
+        },
+        "meses": {
+          "202608": {
+            "escrito": true,
+            "redescargado": false,
+            "t_msc_max": 1786487251136,
+            "t_msc_min": 1785693605896,
+            "ticks": 3324988
+          }
+        },
+        "ticks_total": 3324988
+      },
+      "run_key": "F0-DATA-0002"
+    }
+  ]
+}

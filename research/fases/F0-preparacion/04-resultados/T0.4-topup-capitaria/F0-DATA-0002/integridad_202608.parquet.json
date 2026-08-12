@@ -1,0 +1,48 @@
+{
+  "anomalia": false,
+  "gap_threshold_min": 60,
+  "huecos": [
+    {
+      "duracion_min": 61.103366666666666,
+      "fin_t_msc": 1785780006090,
+      "inicio_t_msc": 1785776339888
+    },
+    {
+      "duracion_min": 61.1089,
+      "fin_t_msc": 1785866406196,
+      "inicio_t_msc": 1785862739662
+    },
+    {
+      "duracion_min": 61.113816666666665,
+      "fin_t_msc": 1785952806396,
+      "inicio_t_msc": 1785949139567
+    },
+    {
+      "duracion_min": 61.13175,
+      "fin_t_msc": 1786039206165,
+      "inicio_t_msc": 1786035538260
+    },
+    {
+      "duracion_min": 2945.1026666666667,
+      "fin_t_msc": 1786298405894,
+      "inicio_t_msc": 1786121699734
+    },
+    {
+      "duracion_min": 61.10358333333333,
+      "fin_t_msc": 1786384806138,
+      "inicio_t_msc": 1786381139923
+    },
+    {
+      "duracion_min": 61.13185,
+      "fin_t_msc": 1786471206266,
+      "inicio_t_msc": 1786467538355
+    }
+  ],
+  "n_bid_ask_invalidos": 0,
+  "n_duplicados_exactos": 1327,
+  "n_no_monotonicos": 0,
+  "n_ticks": 3324988,
+  "parquet": "data\\lake_ticks\\XAUUSD\\202608.parquet.tmp",
+  "t_msc_max": 1786487251136,
+  "t_msc_min": 1785693605896
+}

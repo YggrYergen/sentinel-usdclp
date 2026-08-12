@@ -71,13 +71,6 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   manifiesto. Resolver en la revisión de código de fin de fase: decidir si `expected_login`
   supersede a `logins_sancionados` o si pasa a ser lista ·
   `research/fases/F0-preparacion/03-runs/T0.4-topup-capitaria.yaml`
-- **2026-08-11** · Opus5 (verificación T0.3-ava) · 🟡 Falta la especificación del símbolo `XAUUSD`
-  de Capitaria. El repo solo documenta `trade_contract_size` (100), `point` (0.01), `spread`
-  (0,60) y `spread_float` (False) — fuente
-  `docs/superpowers/research/2026-07-14-diag-h3h5-spread-slip.md:108`. Faltan `digits`, valores de
-  tick, volúmenes mín/máx/paso, `filling_mode`, monedas y swaps. **Tiene ventana**: debe capturarse
-  durante el mismo login de Capitaria en que se corra T0.4, o costará otro cambio manual de sesión
-  al user · `docs/superpowers/research/2026-07-14-diag-h3h5-spread-slip.md:108`
 - **2026-08-11** · Opus5 · 🔴 `CUENTAS.md` no documenta la 902 ni el login `2883016567`. Ya anotado
   previamente (ver entrada 2026-08-10 arriba); se reitera porque ahora tiene consecuencia directa
   sobre A6 Pata A. Ver bloqueo **B8** en `TRACKER.md` · `CUENTAS.md` + `extract_ticks.py:34`
@@ -96,10 +89,46 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   borra. Unificar el criterio en la revisión de código de fin de fase ·
   `scripts/research/runner/tasks_ticks.py` + `scripts/research/runner/tasks_ticks_csv.py`
 
+- **2026-08-11** · Opus5 (verificación T0.5-especificación-XAUUSD-Capitaria) · 🟡 Spread de
+  Capitaria declarado **FIJO en 50 puntos** (`spread_float=False`), lo que choca con la
+  observación previa del programa de un comportamiento **bimodal entre 0,50 y 0,60**. Discrepancia
+  a investigar contra los ticks reales; no resolver por ahora ·
+  `data/lake_ticks/XAUUSD/` + especificación de símbolo capturada 2026-08-11
+- **2026-08-11** · Opus5 (verificación T0.5-especificación-XAUUSD-Capitaria) · 🟠 **Swap asimétrico
+  en Capitaria: `swap_long=-65.0` contra `swap_short=+30.0`.** Es un sesgo direccional estructural
+  en el coste de mantener posición, directamente relevante para la familia de experimentos de
+  sesgo largo/corto (área LS) · especificación de símbolo capturada 2026-08-11
+- **2026-08-11** · Opus5 (verificación T0.3-ingest-ava-gold-csv) · 🟡 `ticks_csv_mt5` abre **todos**
+  los escritores parquet mensuales a la vez y no cierra ninguno hasta el final del CSV — la RAM del
+  proceso llegó a **2,6 GB** con 52 meses. Con un fichero varias veces mayor reventaría por
+  memoria. El CSV viene ordenado por fecha, así que lo correcto es cerrar cada mes al pasar al
+  siguiente. A revisión de código de fin de fase · `scripts/research/runner/tasks_ticks_csv.py`
+- **2026-08-11** · Opus5 (verificación T0.5-export-902) · 🟡 Ficheros obsoletos conviviendo con los
+  nuevos en `data/analysis/2883016902/`: `analysis.json`, `equity_path.json` y
+  `open_positions.csv` son del 2 de agosto, junto a los CSV nuevos (`_deals_raw.csv`,
+  `_positions.csv`) del 11. Riesgo de que alguien cite un número viejo creyéndolo actual. Decidir
+  si se archivan o se regeneran · `data/analysis/2883016902/`
+- **2026-08-11** · Opus5 (verificación del registro de T0.3/T0.4/T0.5) · 🟡 Las filas del LEDGER
+  escritas por el runner (`F0-DATA-AVA-0001`, `F0-DATA-0001`, `F0-DATA-0002`) llevan el campo
+  `artefactos` con separadores **Windows** (`research\fases\...`), mientras que las escritas por
+  agentes usan `/`. El campo es precisamente el que sirve para rastrear un número a su origen
+  (charter §A.9), y una ruta con `\` no es portable ni greppeable igual que las demás. El LEDGER es
+  append-only, así que las filas ya escritas **no se editan**: la corrección es en el runner, para
+  que normalice a `/` de aquí en adelante. A revisión de código de fin de fase ·
+  `scripts/research/runner/` + `research/LEDGER.jsonl`
+
 ## Promovidas a tarea (con enmienda)
 
 _(ninguna todavía)_
 
 ## Cerradas sin promover
 
-_(ninguna todavía)_
+- **2026-08-11** · CERRADA — Falta la especificación del símbolo `XAUUSD` de Capitaria (abierta
+  2026-08-11 por Opus5 en verificación de T0.3-ava). Capturada por el orquestador en solo lectura
+  sobre `2883015767 @ Capitaria-All`: `digits=2`, `point=0.01`, `trade_contract_size=100.0`,
+  `trade_tick_size=0.01`, `trade_tick_value=913.15`, `volume_min/max/step=0.01/10.0/0.01`,
+  `filling_mode=3`, `spread=50`, `spread_float=False`, monedas USD/USD/USD, `swap_mode=1`,
+  `swap_long=-65.0`, `swap_short=+30.0`. Comparación con AVA `GOLD`: `digits`, `point` y
+  `trade_contract_size` idénticos — los dos sustratos son directamente comparables en
+  dimensionamiento. Dos observaciones derivadas quedan abiertas arriba (spread fijo vs. bimodal;
+  swap asimétrico) · ver TRACKER.md bitácora 2026-08-11

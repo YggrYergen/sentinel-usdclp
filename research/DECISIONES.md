@@ -242,3 +242,13 @@ Habría resuelto el síntoma creando un riesgo real y permanente en el sitio equ
 pregunta correcta no es "¿lo amplío?" sino "¿está respondiendo a la pregunta que le corresponde?".
 Ampliar una lista blanca de seguridad para desbloquear un caso de uso distinto es un debilitamiento
 disfrazado de arreglo.
+
+### D-29 · 2026-08-11 · La continuidad temporal es un chequeo OBLIGATORIO antes de declarar cualquier sustrato apto para veredictos
+*(Procedencia: fallo de diseño detectado por el orquestador al revisar los resultados de T0.3.)*
+La validación actual detecta `ask<bid`, precios ≤0 y timestamps no monótonos, pero **no detecta
+que falten periodos enteros**. Un sustrato con un agujero de meses pasa hoy por bueno, y cualquier
+backtest que lo cruce produce resultados silenciosamente incompletos. Queda establecido: **ningún
+sustrato se declara apto sin un chequeo explícito de continuidad** que enumere los periodos
+esperados, los compare con los presentes y **falle en voz alta** ante cualquier ausencia. Los
+huecos legítimos (fines de semana, festivos, cierres de mercado) se declaran de antemano; lo no
+declarado es un fallo, no una curiosidad.

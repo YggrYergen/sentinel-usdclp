@@ -1,0 +1,494 @@
+{
+  "completed": {
+    "F0-DATA-AVA-0001": {
+      "bytes_salida": 1758976636,
+      "csv_checksum_sha256": "e2a4eed5a383230d41064d76a22cbf8dcc4bf7dfd2d5719ef60b130fb0b8ae74",
+      "csv_path": "MT5_Tester\\GOLD_202201022301_202608102246.csv",
+      "ficheros_escritos": [
+        "data\\lake_ticks_ava\\GOLD\\202201.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202202.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202203.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202204.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202205.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202206.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202207.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202208.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202209.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202210.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202211.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202212.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202301.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202302.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202303.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202304.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202305.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202306.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202307.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202308.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202309.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202310.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202311.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202312.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202401.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202402.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202403.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202404.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202405.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202406.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202407.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202408.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202409.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202410.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202411.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202412.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202501.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202502.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202503.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202504.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202505.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202506.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202507.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202508.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202509.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202510.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202511.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202512.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202601.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202602.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202607.parquet",
+        "data\\lake_ticks_ava\\GOLD\\202608.parquet"
+      ],
+      "filas_escritas": 209894471,
+      "filas_leidas": 209894471,
+      "flags_distribucion": {
+        "2": 11779095,
+        "4": 11157025,
+        "6": 186958351
+      },
+      "meses": {
+        "202201": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 1584273,
+          "filas_leidas": 1584273,
+          "ya_completo": false
+        },
+        "202202": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2172129,
+          "filas_leidas": 2172129,
+          "ya_completo": false
+        },
+        "202203": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3011299,
+          "filas_leidas": 3011299,
+          "ya_completo": false
+        },
+        "202204": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2285355,
+          "filas_leidas": 2285355,
+          "ya_completo": false
+        },
+        "202205": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2339229,
+          "filas_leidas": 2339229,
+          "ya_completo": false
+        },
+        "202206": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2388282,
+          "filas_leidas": 2388282,
+          "ya_completo": false
+        },
+        "202207": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 1995157,
+          "filas_leidas": 1995157,
+          "ya_completo": false
+        },
+        "202208": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2361641,
+          "filas_leidas": 2361641,
+          "ya_completo": false
+        },
+        "202209": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2725728,
+          "filas_leidas": 2725728,
+          "ya_completo": false
+        },
+        "202210": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2966332,
+          "filas_leidas": 2966332,
+          "ya_completo": false
+        },
+        "202211": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3089740,
+          "filas_leidas": 3089740,
+          "ya_completo": false
+        },
+        "202212": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2731549,
+          "filas_leidas": 2731549,
+          "ya_completo": false
+        },
+        "202301": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2656313,
+          "filas_leidas": 2656313,
+          "ya_completo": false
+        },
+        "202302": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2394922,
+          "filas_leidas": 2394922,
+          "ya_completo": false
+        },
+        "202303": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3023280,
+          "filas_leidas": 3023280,
+          "ya_completo": false
+        },
+        "202304": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2061114,
+          "filas_leidas": 2061114,
+          "ya_completo": false
+        },
+        "202305": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2662947,
+          "filas_leidas": 2662947,
+          "ya_completo": false
+        },
+        "202306": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2346931,
+          "filas_leidas": 2346931,
+          "ya_completo": false
+        },
+        "202307": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2027685,
+          "filas_leidas": 2027685,
+          "ya_completo": false
+        },
+        "202308": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 1991662,
+          "filas_leidas": 1991662,
+          "ya_completo": false
+        },
+        "202309": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 1757194,
+          "filas_leidas": 1757194,
+          "ya_completo": false
+        },
+        "202310": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2416493,
+          "filas_leidas": 2416493,
+          "ya_completo": false
+        },
+        "202311": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2340187,
+          "filas_leidas": 2340187,
+          "ya_completo": false
+        },
+        "202312": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2381105,
+          "filas_leidas": 2381105,
+          "ya_completo": false
+        },
+        "202401": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2629794,
+          "filas_leidas": 2629794,
+          "ya_completo": false
+        },
+        "202402": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2192167,
+          "filas_leidas": 2192167,
+          "ya_completo": false
+        },
+        "202403": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3894740,
+          "filas_leidas": 3894740,
+          "ya_completo": false
+        },
+        "202404": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5939380,
+          "filas_leidas": 5939380,
+          "ya_completo": false
+        },
+        "202405": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5509581,
+          "filas_leidas": 5509581,
+          "ya_completo": false
+        },
+        "202406": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 4548945,
+          "filas_leidas": 4548945,
+          "ya_completo": false
+        },
+        "202407": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5426680,
+          "filas_leidas": 5426680,
+          "ya_completo": false
+        },
+        "202408": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 4617203,
+          "filas_leidas": 4617203,
+          "ya_completo": false
+        },
+        "202409": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3317918,
+          "filas_leidas": 3317918,
+          "ya_completo": false
+        },
+        "202410": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3646171,
+          "filas_leidas": 3646171,
+          "ya_completo": false
+        },
+        "202411": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3763523,
+          "filas_leidas": 3763523,
+          "ya_completo": false
+        },
+        "202412": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3456346,
+          "filas_leidas": 3456346,
+          "ya_completo": false
+        },
+        "202501": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5667845,
+          "filas_leidas": 5667845,
+          "ya_completo": false
+        },
+        "202502": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 3800027,
+          "filas_leidas": 3800027,
+          "ya_completo": false
+        },
+        "202503": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5153022,
+          "filas_leidas": 5153022,
+          "ya_completo": false
+        },
+        "202504": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 7864015,
+          "filas_leidas": 7864015,
+          "ya_completo": false
+        },
+        "202505": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5949654,
+          "filas_leidas": 5949654,
+          "ya_completo": false
+        },
+        "202506": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5173153,
+          "filas_leidas": 5173153,
+          "ya_completo": false
+        },
+        "202507": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5499039,
+          "filas_leidas": 5499039,
+          "ya_completo": false
+        },
+        "202508": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5299849,
+          "filas_leidas": 5299849,
+          "ya_completo": false
+        },
+        "202509": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 7679233,
+          "filas_leidas": 7679233,
+          "ya_completo": false
+        },
+        "202510": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 11838211,
+          "filas_leidas": 11838211,
+          "ya_completo": false
+        },
+        "202511": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 8821682,
+          "filas_leidas": 8821682,
+          "ya_completo": false
+        },
+        "202512": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 11047014,
+          "filas_leidas": 11047014,
+          "ya_completo": false
+        },
+        "202601": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 9223558,
+          "filas_leidas": 9223558,
+          "ya_completo": false
+        },
+        "202602": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 5923984,
+          "filas_leidas": 5923984,
+          "ya_completo": false
+        },
+        "202607": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 2707151,
+          "filas_leidas": 2707151,
+          "ya_completo": false
+        },
+        "202608": {
+          "bak": null,
+          "escrito": true,
+          "filas_escritas": 1594039,
+          "filas_leidas": 1594039,
+          "ya_completo": false
+        }
+      },
+      "meses_generados": [
+        "202201",
+        "202202",
+        "202203",
+        "202204",
+        "202205",
+        "202206",
+        "202207",
+        "202208",
+        "202209",
+        "202210",
+        "202211",
+        "202212",
+        "202301",
+        "202302",
+        "202303",
+        "202304",
+        "202305",
+        "202306",
+        "202307",
+        "202308",
+        "202309",
+        "202310",
+        "202311",
+        "202312",
+        "202401",
+        "202402",
+        "202403",
+        "202404",
+        "202405",
+        "202406",
+        "202407",
+        "202408",
+        "202409",
+        "202410",
+        "202411",
+        "202412",
+        "202501",
+        "202502",
+        "202503",
+        "202504",
+        "202505",
+        "202506",
+        "202507",
+        "202508",
+        "202509",
+        "202510",
+        "202511",
+        "202512",
+        "202601",
+        "202602",
+        "202607",
+        "202608"
+      ],
+      "t_msc_max": 1786401973322,
+      "t_msc_min": 1641164460106,
+      "ticks_ask_arrastrado": 11779095,
+      "ticks_bid_arrastrado": 11157025
+    }
+  }
+}

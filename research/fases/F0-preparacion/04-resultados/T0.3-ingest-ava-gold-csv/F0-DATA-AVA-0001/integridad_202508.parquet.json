@@ -1,0 +1,118 @@
+{
+  "anomalia": false,
+  "gap_threshold_min": 60,
+  "huecos": [
+    {
+      "duracion_min": 2946.01295,
+      "fin_t_msc": 1754258700221,
+      "inicio_t_msc": 1754081939444
+    },
+    {
+      "duracion_min": 62.07671666666667,
+      "fin_t_msc": 1754344860040,
+      "inicio_t_msc": 1754341135437
+    },
+    {
+      "duracion_min": 62.010083333333334,
+      "fin_t_msc": 1754431260041,
+      "inicio_t_msc": 1754427539436
+    },
+    {
+      "duracion_min": 62.014966666666666,
+      "fin_t_msc": 1754517660068,
+      "inicio_t_msc": 1754513939170
+    },
+    {
+      "duracion_min": 62.01655,
+      "fin_t_msc": 1754604060031,
+      "inicio_t_msc": 1754600339038
+    },
+    {
+      "duracion_min": 2946.0027333333333,
+      "fin_t_msc": 1754863500099,
+      "inicio_t_msc": 1754686739935
+    },
+    {
+      "duracion_min": 62.02688333333333,
+      "fin_t_msc": 1754949660149,
+      "inicio_t_msc": 1754945938536
+    },
+    {
+      "duracion_min": 62.08485,
+      "fin_t_msc": 1755036060181,
+      "inicio_t_msc": 1755032335090
+    },
+    {
+      "duracion_min": 62.05948333333333,
+      "fin_t_msc": 1755122460015,
+      "inicio_t_msc": 1755118736446
+    },
+    {
+      "duracion_min": 62.006816666666666,
+      "fin_t_msc": 1755208860098,
+      "inicio_t_msc": 1755205139689
+    },
+    {
+      "duracion_min": 2946.0167666666666,
+      "fin_t_msc": 1755468300110,
+      "inicio_t_msc": 1755291539104
+    },
+    {
+      "duracion_min": 62.00675,
+      "fin_t_msc": 1755554460177,
+      "inicio_t_msc": 1755550739772
+    },
+    {
+      "duracion_min": 62.0078,
+      "fin_t_msc": 1755640860157,
+      "inicio_t_msc": 1755637139689
+    },
+    {
+      "duracion_min": 62.0009,
+      "fin_t_msc": 1755727260043,
+      "inicio_t_msc": 1755723539989
+    },
+    {
+      "duracion_min": 62.03195,
+      "fin_t_msc": 1755813660206,
+      "inicio_t_msc": 1755809938289
+    },
+    {
+      "duracion_min": 2946.0007833333334,
+      "fin_t_msc": 1756073100036,
+      "inicio_t_msc": 1755896339989
+    },
+    {
+      "duracion_min": 62.01691666666667,
+      "fin_t_msc": 1756159260115,
+      "inicio_t_msc": 1756155539100
+    },
+    {
+      "duracion_min": 62.0265,
+      "fin_t_msc": 1756245660181,
+      "inicio_t_msc": 1756241938591
+    },
+    {
+      "duracion_min": 62.00801666666667,
+      "fin_t_msc": 1756332060071,
+      "inicio_t_msc": 1756328339590
+    },
+    {
+      "duracion_min": 62.00346666666667,
+      "fin_t_msc": 1756418460171,
+      "inicio_t_msc": 1756414739963
+    },
+    {
+      "duracion_min": 2946.0029666666665,
+      "fin_t_msc": 1756677900067,
+      "inicio_t_msc": 1756501139889
+    }
+  ],
+  "n_bid_ask_invalidos": 0,
+  "n_duplicados_exactos": 1,
+  "n_no_monotonicos": 0,
+  "n_ticks": 5299849,
+  "parquet": "data\\lake_ticks_ava\\GOLD\\202508.parquet.tmp",
+  "t_msc_max": 1756684799991,
+  "t_msc_min": 1754006401016
+}
