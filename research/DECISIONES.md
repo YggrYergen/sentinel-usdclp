@@ -629,3 +629,37 @@ intermedia —aplicar `max(nativo, calibrado)`, es decir ensanchar siempre y no 
 también respeta "el overlay nunca estrecha" y además **cobra** el coste real en vez de saltárselo.
 Retirar el tick no paga el spread ancho: lo omite. El user eligió "no evaluables"; queda escrito
 que la alternativa existe y que el cambio es de una línea más una corrida de 3,5 minutos.
+
+#### D-38 · ADENDA de corrección · 2026-08-12 · «AVA se encareció» era una lectura ERRÓNEA
+*(Motivo: objeción del user — "los de AVA promocionan spread más bajo que Capitaria y son de los
+más grandes del mundo, no van a mentir en algo con consecuencias legales". Tenía razón; la
+comprobé y me obliga a corregir el cuerpo de D-38 arriba.)*
+
+**Medido en ventana, meses fuera del holdout, los dos feeds a la vez:**
+
+| Mes | Feed | p10 | p50 | p75 | p90 | p99 | media |
+|---|---|---:|---:|---:|---:|---:|---:|
+| 2026-04 | AVA | 0,450 | **0,450** | 0,490 | 0,590 | 1,260 | **0,5066** |
+| 2026-04 | Capitaria | 0,500 | **0,500** | 0,500 | 0,500 | 0,600 | **0,5071** |
+| 2026-08 | AVA | 0,320 | **0,450** | 0,560 | 0,730 | 1,190 | **0,5049** |
+| 2026-08 | Capitaria | 0,500 | **0,500** | 0,500 | 0,500 | 0,600 | **0,5018** |
+
+🟢 **AVA no es más caro: en media son prácticamente idénticos** (0,5066 vs 0,5071 · 0,5049 vs
+0,5018), y **en mediana AVA es MEJOR** (0,45 vs 0,50), con un p10 muy superior (0,32 vs 0,50). **La
+promesa comercial de AVA se sostiene en el dato.** Lo que difiere es la **forma**, no el nivel.
+
+🔴 **Y ahí está el hallazgo real, que es más incómodo que el anterior.** Capitaria es
+**degenerada**: `p10 = p50 = p75 = p90 = 0,500` y `p99 = 0,600`. Eso no es el spread de un
+mercado, es una **función escalón fijada por el bróker** — coherente con la bimodalidad 0,50/0,60
+ya medida. AVA sí tiene una distribución real. Y en 2022/2024 el feed de AVA también era
+degenerado (`p50 = p75 = p90 = 0,34` y `0,27`): **lo que cambió en 2025 no es el precio de AVA,
+es la granularidad con que su feed reporta el spread.**
+
+🔴 **Consecuencia sobre D-21 que hay que asumir.** La premisa de D-21 —AVA sistemáticamente más
+angosto, luego el overlay siempre ensancha— **no se sostiene en 2026**: son equivalentes en media.
+El overlay no está «encareciendo AVA hasta el coste real»: está **sustituyendo una distribución de
+costes realista por el escalón plano de Capitaria**, y con D-38 además **retira justo la cola** —
+es decir, los momentos en que operar de verdad costaba caro. **Eso hace el backtest OPTIMISTA, no
+conservador.** Refuerza la tercera vía anotada al final de D-38 (`max(nativo, calibrado)`), que
+cobra la cola en vez de omitirla. Queda para decisión del user; no se aplica nada por iniciativa
+propia.
