@@ -1,0 +1,148 @@
+{
+  "generado": "2026-08-12T06:14:16Z",
+  "git_sha": "a859ad9be8d352ed4adae4f7dd0f8b9c3f8907ff",
+  "broker": "capitaria",
+  "substrate_id": "capitaria-ticks-2026-preholdout",
+  "sustrato": "data/lake_ticks/XAUUSD/ (ticks reales Capitaria)",
+  "rango_medido": [
+    "2026-01-01",
+    "2026-05-12"
+  ],
+  "holdout_excluido": [
+    "2026-05-12",
+    "2026-07-27"
+  ],
+  "condicion_estrecho": "abs((ask-bid) - 0.5) <= 0.05  (backtest.py:358, verbatim)",
+  "ventana_ny": "18:00 -> 02:00 hora America/New_York (T0.13)",
+  "agregado": {
+    "n_ticks": 28237850,
+    "n_dentro_ventana": 8052474,
+    "n_fuera_ventana": 20185376,
+    "pct_estrecho_dentro_ventana": 95.0841,
+    "pct_estrecho_fuera_ventana": 4.5927
+  },
+  "desglose_dst_eeuu_2026-03-08": [
+    {
+      "n_ticks": 776895,
+      "n_dentro_ventana": 217994,
+      "n_fuera_ventana": 558901,
+      "pct_estrecho_dentro_ventana": 99.0926,
+      "pct_estrecho_fuera_ventana": 0.6944,
+      "semana_offset": -3,
+      "fecha_ini": "2026-02-15",
+      "fecha_fin": "2026-02-21"
+    },
+    {
+      "n_ticks": 917203,
+      "n_dentro_ventana": 287802,
+      "n_fuera_ventana": 629401,
+      "pct_estrecho_dentro_ventana": 100.0,
+      "pct_estrecho_fuera_ventana": 1.5159,
+      "semana_offset": -2,
+      "fecha_ini": "2026-02-22",
+      "fecha_fin": "2026-02-28"
+    },
+    {
+      "n_ticks": 1174190,
+      "n_dentro_ventana": 348975,
+      "n_fuera_ventana": 825215,
+      "pct_estrecho_dentro_ventana": 69.4981,
+      "pct_estrecho_fuera_ventana": 0.0549,
+      "semana_offset": -1,
+      "fecha_ini": "2026-03-01",
+      "fecha_fin": "2026-03-07"
+    },
+    {
+      "n_ticks": 1041138,
+      "n_dentro_ventana": 298339,
+      "n_fuera_ventana": 742799,
+      "pct_estrecho_dentro_ventana": 98.8044,
+      "pct_estrecho_fuera_ventana": 3.9805,
+      "semana_offset": 0,
+      "fecha_ini": "2026-03-08",
+      "fecha_fin": "2026-03-14"
+    },
+    {
+      "n_ticks": 1108452,
+      "n_dentro_ventana": 286367,
+      "n_fuera_ventana": 822085,
+      "pct_estrecho_dentro_ventana": 73.2857,
+      "pct_estrecho_fuera_ventana": 0.2539,
+      "semana_offset": 1,
+      "fecha_ini": "2026-03-15",
+      "fecha_fin": "2026-03-21"
+    },
+    {
+      "n_ticks": 2595227,
+      "n_dentro_ventana": 601339,
+      "n_fuera_ventana": 1993888,
+      "pct_estrecho_dentro_ventana": 100.0,
+      "pct_estrecho_fuera_ventana": 0.48,
+      "semana_offset": 2,
+      "fecha_ini": "2026-03-22",
+      "fecha_fin": "2026-03-28"
+    }
+  ],
+  "desglose_dst_chile_2026-04-05": [
+    {
+      "n_ticks": 1108452,
+      "n_dentro_ventana": 286367,
+      "n_fuera_ventana": 822085,
+      "pct_estrecho_dentro_ventana": 73.2857,
+      "pct_estrecho_fuera_ventana": 0.2539,
+      "semana_offset": -3,
+      "fecha_ini": "2026-03-15",
+      "fecha_fin": "2026-03-21"
+    },
+    {
+      "n_ticks": 2595227,
+      "n_dentro_ventana": 601339,
+      "n_fuera_ventana": 1993888,
+      "pct_estrecho_dentro_ventana": 100.0,
+      "pct_estrecho_fuera_ventana": 0.48,
+      "semana_offset": -2,
+      "fecha_ini": "2026-03-22",
+      "fecha_fin": "2026-03-28"
+    },
+    {
+      "n_ticks": 2467321,
+      "n_dentro_ventana": 713998,
+      "n_fuera_ventana": 1753323,
+      "pct_estrecho_dentro_ventana": 97.6752,
+      "pct_estrecho_fuera_ventana": 0.5726,
+      "semana_offset": -1,
+      "fecha_ini": "2026-03-29",
+      "fecha_fin": "2026-04-04"
+    },
+    {
+      "n_ticks": 2326342,
+      "n_dentro_ventana": 652242,
+      "n_fuera_ventana": 1674100,
+      "pct_estrecho_dentro_ventana": 99.6143,
+      "pct_estrecho_fuera_ventana": 7.8809,
+      "semana_offset": 0,
+      "fecha_ini": "2026-04-05",
+      "fecha_fin": "2026-04-11"
+    },
+    {
+      "n_ticks": 2128800,
+      "n_dentro_ventana": 533095,
+      "n_fuera_ventana": 1595705,
+      "pct_estrecho_dentro_ventana": 88.422,
+      "pct_estrecho_fuera_ventana": 5.6802,
+      "semana_offset": 1,
+      "fecha_ini": "2026-04-12",
+      "fecha_fin": "2026-04-18"
+    },
+    {
+      "n_ticks": 2217126,
+      "n_dentro_ventana": 594557,
+      "n_fuera_ventana": 1622569,
+      "pct_estrecho_dentro_ventana": 90.3052,
+      "pct_estrecho_fuera_ventana": 21.8985,
+      "semana_offset": 2,
+      "fecha_ini": "2026-04-19",
+      "fecha_fin": "2026-04-25"
+    }
+  ]
+}
