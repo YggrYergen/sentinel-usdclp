@@ -1,0 +1,113 @@
+# T0.3-ava-topup-servidor -- ticks_mt5 contra el SERVIDOR de AVA (D-30)
+#
+# Autorizacion: research/DECISIONES.md D-30 (2026-08-12, instruccion explicita
+# del user). Se abandona la exportacion manual por GUI -- esta probado que no
+# honra el rango pedido (cuatro peticiones devolvieron 1-2 dias cada una) -- y
+# se piden los ticks que faltan al servidor con copy_ticks_range, SOLO LECTURA.
+#
+# 🔴 CODIGO DE SEGURIDAD NO TOCADO, verificado leyendo el modulo:
+# scripts/research/runner/tasks_ticks.py NO importa guard_cuenta ni
+# extract_ticks (imports en L63-75: solo integridad_ticks y tasks), y
+# expected_login / expected_server / logins_sancionados son campos DE ESTE
+# MANIFIESTO sin default (tasks_ticks.py L179-182: params["..."] -> KeyError
+# si faltan). Por tanto declarar aqui la demo de AVA no amplia ninguna lista
+# blanca de autoridad de ORDEN: sentinel_engine/live/guard_cuenta.py y
+# scripts/analysis/realtick_bt/extract_ticks.py:34 quedan byte-identicos.
+# Precedente aplicado: D-28 -- leer ticks no es colocar ordenes.
+#
+# Attach-only (charter SS A.12): este manifiesto NO lanza ningun terminal. El
+# user abrio a mano el terminal de AVA (D:\FOREX\MT5_Tester) y es el UNICO
+# terminal MT5 abierto durante esta corrida (regla operativa de ENMIENDA
+# E-02). El guard de identidad de tasks_ticks.py L218-238 aborta con
+# TicksMT5IdentityError antes del primer copy_ticks_range si el terminal
+# conectado no es exactamente login 101744074 @ "Ava-Demo 1-MT5" en
+# trade_mode DEMO con el simbolo GOLD resuelto.
+#
+# 🔴 DESTINO: data/lake_ticks_ava/GOLD/ -- JAMAS data/lake_ticks/ (que es el
+# sustrato Capitaria que usa A6 Pata A). D-30 lo exige de forma explicita.
+# Nota de riesgo conocida y aceptada por el controlador: a diferencia de
+# ticks_csv_mt5, el task-type ticks_mt5 NO tiene guarda de destino (L247 es
+# un mkdir pelado), asi que la unica defensa es que esta ruta este bien
+# escrita. Verificada a mano antes de correr.
+#
+# POR QUE tolerancia_horas: 1 EN LOS TRES MESES.
+# La completitud de ticks_mt5 (L256-271) es un chequeo de COLA:
+#   completo = (fin_de_mes - max(t_msc)) <= tolerancia
+# Medido por el controlador sobre los parquet reales (solo columna t_msc --
+# higiene de holdout SS A.14, jamas bid/ask), 2026-08-12:
+#   202602: 5.923.984 ticks, 2026-02-01 23:05 -> 2026-02-19 23:59, cola 216,0 h
+#   202607: 2.707.151 ticks, 2026-07-19 22:00 -> 2026-07-31 20:58, cola   3,0 h
+#   202608: 1.594.039 ticks, 2026-08-02 22:00 -> 2026-08-10 22:46, cola 505,2 h
+# 🔴 Con la tolerancia por defecto (72 h), 202607 se considera COMPLETO y el
+# runner lo SALTARIA EN SILENCIO reportando exito -- pese a que le faltan sus
+# 13 primeros dias habiles (2026-07-01 -> 2026-07-17). El predicado solo mira
+# max(t_msc): detecta una cola truncada y es CIEGO a un agujero en la CABEZA.
+# Es el modo de fallo de D-29 un nivel mas abajo. tolerancia_horas: 1 es una
+# exigencia ESTRICTA (no un rodeo): declara que estos tres meses deben estar
+# cubiertos hasta 1 h del cierre de mes, cosa que ninguno cumple, luego los
+# tres se redescargan enteros.
+#
+# Sobrescritura segura ya existente (L135-156): .tmp -> validar integridad ->
+# renombrar el anterior a .bak-<YYYYmmddHHMMSS> -> rename. El fichero previo
+# NUNCA se borra, asi que cualquier degradacion es reversible renombrando el
+# .bak. 🔴 Lo que NO existe todavia es una guarda que ABORTE si el mes nuevo
+# cubre menos dias que el que reemplaza: por eso el controlador compara
+# cobertura contra el .bak DESPUES de correr, antes de aceptar nada.
+#
+# Huecos declarados de origen (D-29), NO son fallos de esta corrida:
+#   2026-02-27 -- no existe en el feed de AVA, demostrado por prueba de
+#     flancos (se pidio 02-26 -> 03-01, volvieron ambos flancos, el 27 no).
+#     Capitaria SI tiene ese dia. Febrero quedara 02-01 -> 02-26.
+#   2022-04-15 -- Viernes Santo, unico otro dia habil ausente en 4,6 anos.
+# Ademas: copy_ticks_range interpreta datetimes naive en el reloj del HOST,
+# asi que la cabeza del mes puede quedar recortada unas horas respecto al
+# reloj del servidor (el 202607 de Capitaria empieza 04:00 por esto mismo).
+# Se mide despues y se declara; no se corrige aqui.
+experimento: T0.3-ava-topup-servidor
+area: INFRA
+etapa: F0
+hipotesis: "n/a"
+substrate_id: ava-ticks-2022-2026
+engine_sha: "n/a"
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/T0.3-ava-topup-servidor/
+  ledger: append
+corridas:
+  # Julio primero: es el hueco que B9 necesita cerrar (13 dias habiles).
+  - run_key: F0-DATA-AVA-0004
+    tipo: ticks_mt5
+    symbol: GOLD
+    desde: "2026-07-01"
+    hasta: "2026-07-31"
+    destino: data/lake_ticks_ava/GOLD/
+    logins_sancionados: [101744074]
+    login_prohibido: 2883011573
+    tolerancia_horas: 1
+    expected_login: 101744074
+    expected_server: "Ava-Demo 1-MT5"
+  # Febrero: cierra 2026-02-20 -> 2026-02-26 sin depender del CSV manual ni
+  # del reprocesado de mes. El 27 no existe en AVA (hueco declarado).
+  - run_key: F0-DATA-AVA-0005
+    tipo: ticks_mt5
+    symbol: GOLD
+    desde: "2026-02-01"
+    hasta: "2026-02-28"
+    destino: data/lake_ticks_ava/GOLD/
+    logins_sancionados: [101744074]
+    login_prohibido: 2883011573
+    tolerancia_horas: 1
+    expected_login: 101744074
+    expected_server: "Ava-Demo 1-MT5"
+  # Agosto: extension no exigida por B9. Lleva el lago hasta hoy, que es lo
+  # que el backtest largo quiere. Mes en curso: nunca dara "completo".
+  - run_key: F0-DATA-AVA-0006
+    tipo: ticks_mt5
+    symbol: GOLD
+    desde: "2026-08-01"
+    hasta: "2026-08-31"
+    destino: data/lake_ticks_ava/GOLD/
+    logins_sancionados: [101744074]
+    login_prohibido: 2883011573
+    tolerancia_horas: 1
+    expected_login: 101744074
+    expected_server: "Ava-Demo 1-MT5"

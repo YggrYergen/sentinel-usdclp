@@ -292,3 +292,39 @@ intacto**.
 
 **Alcance:** cerrar el hueco `2026-07-01`→`2026-07-15` y, si se puede, extender a
 `2026-08-11`. **No** autoriza explorar, muestrear ni graficar el sustrato (charter §A.14).
+
+### D-31 · 2026-08-12 · HOLDOUT SELLADO — fechas exactas de los dos actos
+*(Procedencia: **acto 1** = aceptación explícita del user de la propuesta del controlador,
+2026-08-12: "lo del holdout se acepta la propuesta". **Acto 2** = ejecución por el controlador de
+la partición que D-01 ya aprobó, con su propio ejemplo literal, una vez que el rango real de AVA
+quedó cerrado esta misma noche.)*
+
+D-01 aprobó la partición y ordenó *"dejar constancia aquí con las fechas exactas una vez definidas
+contra el rango real descargado"*. Queda constancia. **El holdout está SELLADO:**
+
+| Acto | Sustrato | Tramo sellado | Fuente del rango |
+|---|---|---|---|
+| **1** | Capitaria `XAUUSD` | **`2026-05-12` → `2026-07-26`** | `data/lake_ticks/XAUUSD/` |
+| **2** | AVA `GOLD` | **`2023-01-01` → `2023-12-31`** (año completo, no adyacente) | `data/lake_ticks_ava/GOLD/` |
+
+**Por qué el acto 1 no es el trimestre calendario.** El "trimestre más reciente" de D-01 contiene
+la ventana en que operó la 902 (`2026-07-27`→`2026-08-11`), que es **exactamente** la que A6 Pata A
+necesita para medir el motor contra operaciones reales; el propio ejemplo de D-01 ("may–jul 2026")
+la solapa cinco días. El corte en `2026-07-26` deja esos 16 días fuera del sello. Razón de fondo:
+el holdout protege contra el sobreajuste de **selección de estrategias**, y A6 Pata A no selecciona
+nada — solo comprueba que el motor reproduce operaciones ya ocurridas.
+
+**Por qué 2023 en el acto 2.** Es el año que D-01 pone como ejemplo literal, es un año natural
+completo, y no es adyacente al tramo del acto 1. Verificado en disco el 2026-08-12: el lago AVA
+cubre `2022-01-02` → `2026-08-12` sin un solo día hábil ausente en 2023 (auditoría de continuidad
+D-29, artefacto `04-resultados/T0.3-continuidad/continuidad-diaria-ava-2026-08-12.txt`).
+
+🔴 **Consecuencias vinculantes desde este momento (charter §A.14):**
+- Ambos tramos quedan **prohibidos**: no se abren, no se muestrean, no se grafican, no se
+  backtestean. **UNA sola** evaluación final, con hipótesis pre-registradas y autorización
+  explícita del user.
+- **El Baseline Largo BL-0 (D-23) excluye el holdout**, tal como su condición (a) ya anticipaba:
+  quedan ≈3,5 años efectivos de AVA de los 4,6 disponibles.
+- A6 Pata A conserva su ventana íntegra (`2026-07-27`→`2026-08-11`), que es el objeto del sello.
+- Leer **solo `t_msc`** para auditorías de continuidad **no** constituye exploración del sustrato
+  y sigue permitido; leer `bid`/`ask` de un tramo sellado, no.

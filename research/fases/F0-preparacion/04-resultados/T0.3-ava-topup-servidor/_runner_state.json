@@ -1,0 +1,100 @@
+{
+  "completed": {
+    "F0-DATA-AVA-0004": {
+      "ficheros_escritos": [
+        "data\\lake_ticks_ava\\GOLD\\202607.parquet"
+      ],
+      "identidad": {
+        "login": 101744074,
+        "server": "Ava-Demo 1-MT5",
+        "symbol_resuelto": "GOLD",
+        "trade_mode": 0
+      },
+      "meses": {
+        "202607": {
+          "bak": "data\\lake_ticks_ava\\GOLD\\202607.parquet.bak-20260812002849",
+          "escrito": true,
+          "rango_antes": [
+            1784498402033,
+            1785531539782
+          ],
+          "rango_despues": [
+            1782878400024,
+            1785531539782
+          ],
+          "redescargado": true,
+          "t_msc_max": 1785531539782,
+          "t_msc_min": 1782878400024,
+          "ticks": 6410562,
+          "ticks_antes": 2707151,
+          "ticks_despues": 6410562
+        }
+      },
+      "ticks_total": 6410562
+    },
+    "F0-DATA-AVA-0005": {
+      "ficheros_escritos": [
+        "data\\lake_ticks_ava\\GOLD\\202602.parquet"
+      ],
+      "identidad": {
+        "login": 101744074,
+        "server": "Ava-Demo 1-MT5",
+        "symbol_resuelto": "GOLD",
+        "trade_mode": 0
+      },
+      "meses": {
+        "202602": {
+          "bak": "data\\lake_ticks_ava\\GOLD\\202602.parquet.bak-20260812002856",
+          "escrito": true,
+          "rango_antes": [
+            1769987100001,
+            1771545599342
+          ],
+          "rango_despues": [
+            1769987100001,
+            1772150399750
+          ],
+          "redescargado": true,
+          "t_msc_max": 1772150399750,
+          "t_msc_min": 1769987100001,
+          "ticks": 7348595,
+          "ticks_antes": 5923984,
+          "ticks_despues": 7348595
+        }
+      },
+      "ticks_total": 7348595
+    },
+    "F0-DATA-AVA-0006": {
+      "ficheros_escritos": [
+        "data\\lake_ticks_ava\\GOLD\\202608.parquet"
+      ],
+      "identidad": {
+        "login": 101744074,
+        "server": "Ava-Demo 1-MT5",
+        "symbol_resuelto": "GOLD",
+        "trade_mode": 0
+      },
+      "meses": {
+        "202608": {
+          "bak": "data\\lake_ticks_ava\\GOLD\\202608.parquet.bak-20260812002858",
+          "escrito": true,
+          "rango_antes": [
+            1785708000600,
+            1786401973322
+          ],
+          "rango_despues": [
+            1785708000600,
+            1786508936176
+          ],
+          "redescargado": true,
+          "t_msc_max": 1786508936176,
+          "t_msc_min": 1785708000600,
+          "ticks": 1914237,
+          "ticks_antes": 1594039,
+          "ticks_despues": 1914237
+        }
+      },
+      "ticks_total": 1914237
+    }
+  }
+}
