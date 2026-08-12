@@ -183,6 +183,30 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 1 HECHO: el filtro de ventana NY existe
+  (`f537646`), y su validación destapó que el spec de T0.13 estaba incompleto.** Ver **D-34**.
+  (a) **Verificado por el controlador contra artefactos crudos, no contra el reporte:** `backtest.py`
+  **sin tocar** (último commit suyo `4bb0fc4`, anterior); `tests/research` **181 passed** (164→181,
+  17 nuevos) + 4 deselected; `tests/analysis` **97 passed**; **paridad D-22 `4 passed` antes Y
+  después**, re-corrida por el controlador. Módulo `scripts/research/ny_window.py` leído línea a
+  línea: la cadena de reloj es la correcta (`utcfromtimestamp` → adjuntar tz del bróker → NY), la
+  condición es la **disyunción** y no un rango, y el `fold=0` está justificado.
+  (b) 🟢 **El implementador PARÓ y escaló donde debía.** El brief le ordenaba parar si la validación
+  divergía en los cruces de DST; divergió, y **no diagnosticó**. Tercer caso del programa en que un
+  implementador escala en vez de resolver por su cuenta, y el primero en que la instrucción de
+  parada estaba escrita de antemano en el brief.
+  (c) **Diagnóstico del controlador (D-14: la interpretación no se delega). La apertura está
+  CONFIRMADA en `18:00` NY** — es el único de los tres relojes candidatos que la mantiene estable
+  (NY 1 valor dominante en 20 semanas; UTC 4; servidor 6). **El cierre NO está anclado a NY:** la
+  hora `02:00` ET pasa de 9,5 % / 7,9 % de estado estrecho a **99,9 % desde el 6-abr**, saltando con
+  el **fin del DST chileno**, no el estadounidense. En hora de servidor el cierre se estabiliza en
+  `03:00` y atraviesa ese DST sin moverse: es un horario del lado del bróker.
+  (d) **Decisión D-34: se adopta el borde conservador `18:00→02:00` ET.** Es subconjunto estricto
+  del tiempo operable — sesga en contra del sistema, nunca a favor — y es el que reproduce la
+  conducta viva, porque el gate de spread en esa hora no se abre. Coste declarado, no silencioso:
+  desde el 6-abr se descarta ≈1 h/día operable. **La hora en disputa entra como variante de grilla
+  en D3**, donde se mide en vez de suponerse. El código no se toca: lo incompleto era el spec.
+
 - **2026-08-12** · Opus 5 controlador · **B11 CERRADO por exclusión (D-33). El problema era 4×
   menor de lo temido, y la razón es T0.13.** Instrucción del user: dejar fuera los huecos en vez de
   repararlos, para avanzar. Es reducción de alcance y la autoriza él por escrito (§A.13); se

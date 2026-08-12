@@ -433,3 +433,37 @@ aislada y no encadenaba el último tick de un mes con el primero del siguiente. 
 validación del instrumento nuevo. El tercero de esos huecos es el **artefacto de reloj ya declarado**
 en B9 (julio arranca a las 04:00 porque `copy_ticks_range` interpreta datetimes naive en el reloj
 del host), no un corte del feed.
+
+### D-34 · 2026-08-12 · La ventana NY: apertura confirmada, cierre corregido, y se adopta el borde CONSERVADOR
+*(Procedencia: escalación correcta del implementador de Paso 1 — el brief le ordenaba parar si la
+validación divergía en los cruces de DST, y paró sin diagnosticar. El diagnóstico es del
+controlador, por D-14: toda interpretación de resultados es Opus.)*
+**Evidencia:** ticks de Capitaria, 28.237.850 ticks, `2026-01-01`→`2026-05-11`, holdout excluido.
+Condición de estado estrecho copiada verbatim de `backtest.py:358`. Fila `F0-INFRA-0030`.
+
+**1 · La apertura está confirmada: `18:00` hora de Nueva York.** Medida semana a semana en los tres
+relojes candidatos, es el único que la mantiene estable: **NY toma 1 valor dominante** (18:00 en 16
+de 20 semanas, 18:15 en 3 parciales), mientras **UTC toma 4** y **hora de servidor 6**. T0.13
+acertaba, y acertaba en el borde que más importa.
+
+**2 · El cierre NO está anclado a Nueva York — ahí T0.13 estaba incompleta.** La hora `02:00-02:59`
+ET pasa de estar **fuera** a estar **dentro**: 9,5 % de ticks estrechos en ene→1-mar, 7,9 % en
+16-mar→5-abr, y **99,9 % desde el 6-abr**. El salto coincide con el **fin del DST chileno
+(2026-04-05)**, no con el estadounidense. En hora de servidor el cierre se estabiliza en `03:00`
+desde mediados de marzo y **atraviesa el cambio de DST chileno sin moverse** — el perfil de un
+horario fijado del lado del bróker, no del mercado. La ventana real es `18:00→02:00` ET hasta el
+5-abr y `18:00→03:00` ET desde el 6-abr.
+
+**3 · Decisión: se adopta `18:00→02:00` ET, el borde CONSERVADOR** (juicio del controlador dentro
+del alcance; el user puede revocarlo). Razones: (a) es un **subconjunto estricto** del tiempo
+operable — nunca hace operar en una hora de spread ancho, así que sesga el resultado **en contra**
+del sistema y nunca a favor; (b) la alternativa (`03:00`) haría operar en una hora que está al
+7,9 % de estado estrecho durante buena parte del año, metiendo coste real; (c) el sistema **vivo**
+opera bajo el gate de spread, que en esa hora sencillamente no se abre — así que este borde es el
+que reproduce la conducta viva.
+**Consecuencia declarada:** desde el 6-abr el filtro descarta ≈1 h/día de tiempo genuinamente
+operable. **No es una pérdida silenciosa: queda escrita aquí**, y la hora en disputa entra como
+variante de grilla en **D3** (contexto temporal), donde se mide en vez de suponerse.
+
+**4 · El código de Paso 1 es correcto y no se toca por esto.** Implementa el spec que se le dio; lo
+que estaba incompleto era el spec. `ny_window.py` queda como está, con el borde conservador.
