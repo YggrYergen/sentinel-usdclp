@@ -184,6 +184,32 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2b HECHO: el calendario de ventana por
+  periodos existe (`bc19867`), y trae un problema de sobre-fragmentación que hay que resolver antes
+  de usarlo.** Fila `F0-INFRA-0032`.
+  (a) **Verificado por el controlador:** `backtest.py` **intacto** y `ny_window.py` **intacto**
+  (último commit suyo `f537646`, anterior — el agente respetó la orden de no tocarlo y construyó un
+  módulo nuevo); `tests/research` **219 passed** (204+15) + 4 deselected; **paridad `4 passed` antes
+  y después**. Medición sobre **34.004.053 ticks**, 23 semanas, los dos tramos fuera del holdout.
+  (b) 🟢 **La propiedad que define la tarea está verificada en el módulo:** `2026-04-05 → (18, 2)` y
+  `2026-04-06 → (18, 3)`. El cruce cae donde D-34 lo había medido.
+  (c) 🔴 **PROBLEMA ABIERTO — el calendario sale con 11 periodos en 7 meses, y eso no es un horario
+  de bróker: es ruido de medición.** Los cierres emitidos son `02:15 · 02:00 · 02:15 · 02:00 ·
+  03:00 · 02:00 · 03:00 · 03:15 · 03:15 · 03:00 · 03:15`. El jitter de ±15 min proviene de cruzar
+  el 50 % a resolución de 15 min, y **la semana `2026-03-08→03-13` mide `03:00` aislada entre dos
+  periodos de `02:00`** — es justo la semana del DST estadounidense, que en la medición anterior
+  (D-34) salía al **63,5 %**, o sea por debajo de cualquier umbral limpio. **Aplicar los 11 periodos
+  al backtest largo codificaría ruido como si fuera señal.**
+  🟢 **La señal estructural sí está y es la de D-34:** cierre `02:00/02:15` **antes** del 5-abr y
+  `03:00/03:15` **después**. El agente reportó los 11 periodos sin interpretarlos, que es lo que se
+  le pidió, y **ya canonicalizó la apertura a 18:00** conservando el jitter crudo en
+  `bordes_por_semana` para auditoría.
+  🔴 **PENDIENTE PARA LA SIGUIENTE SESIÓN, antes del backtest largo:** aplicar al **cierre** el mismo
+  tratamiento que ya recibió la apertura — canonicalizar a los **dos periodos estructuralmente
+  respaldados** (`02:00` hasta `2026-04-05`, `03:00` desde `2026-04-06`), conservando la medición
+  cruda por semana en el JSON. Es un pase de canonicalización pequeño; el módulo y los tests están
+  bien y no se tocan.
+
 - **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2a HECHO: overlay de costes de AVA
   (`ae3574a`), que es la modificación de motor #10.** Fila `F0-INFRA-0031`.
   (a) **Verificado por el controlador contra artefactos crudos:** `backtest.py` **intacto**;
