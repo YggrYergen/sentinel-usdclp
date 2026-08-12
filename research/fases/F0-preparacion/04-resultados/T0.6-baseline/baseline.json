@@ -1,0 +1,58 @@
+{
+  "barras": "data/lake_ticks/XAUUSD/_bars_M15.parquet",
+  "estrategias": [
+    "S6-K2P0",
+    "S7-TPNONE",
+    "SuperTrend-p14x3-M15"
+  ],
+  "generado": "2026-08-12T04:41:36Z",
+  "git_sha": "4c1011bc859fa15aab0fcbb60a958d9586a3918a",
+  "holdout_excluido": [
+    "2026-05-12 00:00:00",
+    "2026-07-27 00:00:00"
+  ],
+  "lot": 0.67,
+  "metricas": {
+    "S6-K2P0": {
+      "avg_loss": -838755.88,
+      "avg_win": 1967936.55,
+      "maxdd": 73803766.92,
+      "n": 633,
+      "net": 24792629.42,
+      "peak_margin": 19516812.09,
+      "pf": 1.068,
+      "rom": 127.03,
+      "wr": 31.28
+    },
+    "S7-TPNONE": {
+      "avg_loss": -712149.95,
+      "avg_win": 1508025.35,
+      "maxdd": 53952345.63,
+      "n": 717,
+      "net": -11072070.93,
+      "peak_margin": 19516812.09,
+      "pf": 0.968,
+      "rom": -56.73,
+      "wr": 31.38
+    },
+    "SuperTrend-p14x3-M15": {
+      "avg_loss": -771726.75,
+      "avg_win": 3654071.34,
+      "maxdd": 24662118.77,
+      "n": 153,
+      "net": 41254538.8,
+      "peak_margin": 3438629.09,
+      "pf": 1.457,
+      "rom": 1199.74,
+      "wr": 23.53
+    }
+  },
+  "n_barras": 8334,
+  "nota": "Linea base congelada para la puerta de paridad de D-22. Toda modificacion de motor se compara contra posiciones_*.json.",
+  "substrate_id": "capitaria-ticks-2026-preholdout",
+  "sustrato": "data/lake_ticks/XAUUSD/ (ticks reales Capitaria)",
+  "ventana_barras": [
+    "2026-01-01 20:00:00",
+    "2026-05-11 23:45:00"
+  ]
+}
