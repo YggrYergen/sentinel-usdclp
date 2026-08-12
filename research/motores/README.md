@@ -12,6 +12,26 @@ sin etiqueta de motor no es comparable con ningún otro y no vale como medición
 Procedencia del motor faulty y qué más llegó con él:
 [ENTREGA-M2-2026-08-12-inventario.md](ENTREGA-M2-2026-08-12-inventario.md).
 
+En qué se comporta distinto nuestro harness de backtest respecto del motor vivo, con sitio de
+código y mecanismo por cada divergencia:
+[DIVERGENCIAS-harness-vs-faulty.md](DIVERGENCIAS-harness-vs-faulty.md).
+
+## Los dos hitos de paridad, antes de tocar nada
+
+| Hito | Sustrato | Criterio |
+|---|---|---|
+| **P-CAP** | ticks Capitaria, ventana 902 | **bit-idéntico** contra el historial de la 902. Requisito duro: sin él no se procede. |
+| **P-AVA** | ticks AVA, misma ventana | lo más par posible. Bit-idéntico es meta asintótica, no criterio de paso. |
+
+Ambos se persisten y documentan **antes** de arreglar o modificar el motor. Son el instrumento con
+el que se medirá toda mejora posterior: sin ellos, cualquier ganancia atribuida a un cambio es
+indistinguible de un artefacto del harness.
+
+Y hace falta una **tercera corrida dedicada: el motor faulty sin cierres manuales.** El desempeño
+100 % autónomo de las estrategias no se puede derivar restando deals del historial — una posición
+abierta ocupa el cupo de su estrategia, así que suprimir un cierre manual cambia toda la secuencia
+posterior de entradas. Sólo se obtiene re-simulando.
+
 ## Por qué existe este registro
 
 El motor que corrió en producción sobre la DEMO 2883016902 tiene un fallo estructural (D-39: abre
