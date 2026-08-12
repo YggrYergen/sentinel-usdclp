@@ -61,6 +61,27 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   de implementar la instrumentación de camino (motor mod #11): añadir un indicador después obliga
   a re-correr la autopsia completa · plan §5.2
 
+- **2026-08-11** · User · 🟢 Explorar una política de ratchet **restringida al régimen de spread
+  estrecho**: solo permitir abrir posición cuando el spread esté en el modo bajo de su
+  distribución. Sin tarea asociada por ahora · idea, sin origen documental
+- **2026-08-11** · Opus5 (verificación guard de identidad `ticks_mt5`) · 🟡 Dos chequeos de
+  identidad solapados: el manifiesto ya traía `logins_sancionados` (lista) y ahora además
+  `expected_login` (exacto) — semánticas distintas para lo mismo. No es defecto: si el operador
+  está logueado en la otra demo sancionada, la corrida aborta con mensaje claro y se edita el
+  manifiesto. Resolver en la revisión de código de fin de fase: decidir si `expected_login`
+  supersede a `logins_sancionados` o si pasa a ser lista ·
+  `research/fases/F0-preparacion/03-runs/T0.4-topup-capitaria.yaml`
+- **2026-08-11** · Opus5 (verificación T0.3-ava) · 🟡 Falta la especificación del símbolo `XAUUSD`
+  de Capitaria. El repo solo documenta `trade_contract_size` (100), `point` (0.01), `spread`
+  (0,60) y `spread_float` (False) — fuente
+  `docs/superpowers/research/2026-07-14-diag-h3h5-spread-slip.md:108`. Faltan `digits`, valores de
+  tick, volúmenes mín/máx/paso, `filling_mode`, monedas y swaps. **Tiene ventana**: debe capturarse
+  durante el mismo login de Capitaria en que se corra T0.4, o costará otro cambio manual de sesión
+  al user · `docs/superpowers/research/2026-07-14-diag-h3h5-spread-slip.md:108`
+- **2026-08-11** · Opus5 · 🔴 `CUENTAS.md` no documenta la 902 ni el login `2883016567`. Ya anotado
+  previamente (ver entrada 2026-08-10 arriba); se reitera porque ahora tiene consecuencia directa
+  sobre A6 Pata A. Ver bloqueo **B8** en `TRACKER.md` · `CUENTAS.md` + `extract_ticks.py:34`
+
 ## Promovidas a tarea (con enmienda)
 
 _(ninguna todavía)_

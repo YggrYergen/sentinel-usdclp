@@ -132,3 +132,52 @@ vinculantes:
    el guard "por conveniencia".
 3. **Attach-only sigue vigente** (charter §A.12): AVA es otro bróker y necesita **su propio
    terminal MT5 instalado y logueado, abierto por el user**. Ningún script lanza terminales.
+
+### D-20 · 2026-08-11 · B5 RETIRADO — no se amplía `SANCTIONED_DEMO`
+*(Procedencia: instrucción explícita del user.)*
+La ingesta de ticks de AVA se hace desde un CSV exportado a mano y no llama a la API de MT5, así
+que ampliar la lista blanca `SANCTIONED_DEMO` en `extract_ticks.py:34` ya no responde a ninguna
+necesidad. Principio general que queda fijado: *no se modifica código de seguridad por un
+requisito que dejó de existir.* El bloqueo B5 se cierra como **RETIRADO**, no como resuelto.
+
+### D-21 · 2026-08-11 · Modelo de costes para el sustrato AVA
+*(Procedencia: criterio explícito del user.)*
+Los backtests sobre datos de AVA usan **precios de AVA con un modelo de costes calibrado sobre
+Capitaria** — spread, comisión y deslizamiento extrapolados profesionalmente desde los datos de
+Capitaria. **El spread nativo de AVA no se usa para veredictos.** Evidencia que lo motiva: spread
+medido en AVA de 0,34 (tick de 2022-01-02) y 0,45 (captura de 2026-08-11), frente al 0,60
+documentado para Capitaria. Consecuencia de rol: **AVA es el sustrato de historia larga; Capitaria
+es el sustrato de referencia para todo lo que toque economía real.**
+
+### D-22 · 2026-08-11 · Las 12 modificaciones de motor quedan AUTORIZADAS (cierra B2)
+*(Procedencia: aprobación explícita del user.)*
+Condiciones del charter intactas y vinculantes: **R1-bis** — S6, S7 y SuperTrend vivas permanecen
+**byte-idénticas**; todo cambio va sobre copias independientes (cfg deep-copiada, módulo nuevo,
+banda de magic nueva); quien concluya que hay que tocar un original **PARA y escala**. Y **cada
+modificación exige re-verificación de paridad antes de pasar a la siguiente**, nunca al final del
+lote. Desbloquea T0.6 → T0.7 → T0.8.
+
+### D-23 · 2026-08-11 · Baseline Largo (BL-0)
+*(Procedencia: propuesta del orquestador en respuesta a una pregunta de planificación del user;
+aceptada al autorizar éste la continuación. No es instrucción literal del user — regístralo así.)*
+El desglose mes a mes de S6 y SuperTrend en la configuración viva (1 ficha de 0,67 cada una,
+**una** posición a la vez) sobre el sustrato largo certificado se ejecuta **como primer entregable
+de la fase LBT, con A6 como puerta de entrada**. Justificación: es el denominador contra el que se
+mide toda mejora marginal, y es el insumo del cálculo de potencia que dimensiona la matriz de
+experimentos — cálculo que debe ocurrir **antes** de diseñarla. Tres condiciones vinculantes:
+**(a)** el holdout queda excluido (≈3,5 años efectivos de los 4,6); **(b)** la corrida se
+instrumenta **una sola vez y rica**: persiste el flujo completo de entradas, el **MFE/MAE por
+posición**, el spread en entrada y salida y la equity barra a barra, porque la mayor palanca
+estadística del programa es probar K políticas de salida sobre **un** flujo de entradas y
+reprocesar 3,5 años de ticks por variante mata el ritmo; **(c)** es **descriptivo, no selectivo** —
+toda regla que surja de mirarlo pasa por pre-registro.
+
+### D-24 · 2026-08-11 · A6 Pata B no exige bit-identidad
+*(Procedencia: corrección de diseño del orquestador, comunicada y aceptada por el user.)*
+Son dos brókers con dos flujos de ticks distintos: los precios difieren por construcción y la
+bit-identidad entre feeds es inalcanzable. **Pata A** (motor sobre **los mismos** ticks de
+Capitaria contra las posiciones reales de la 902) sí persigue señal idéntica y neto dentro de
+99,7 % / 99,85 %. **Pata B mide transferibilidad**: mismas entradas dentro de una tolerancia
+temporal declarada, y divergencia de neto bajo un umbral fijado **de antemano**. Ambos umbrales se
+escriben y fechan antes de correr nada. Pedirle bit-identidad a Pata B dejaría la puerta cerrada
+para siempre y atascaría el programa contra un imposible.
