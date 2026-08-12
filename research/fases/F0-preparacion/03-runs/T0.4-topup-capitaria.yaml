@@ -16,6 +16,18 @@
 # borra). F0-DATA-0001 (julio) por tanto SI completa 202607.parquet al
 # correr: su cobertura actual (hasta ~2026-07-24) esta muy por encima de
 # tolerancia_horas del cierre de mes.
+#
+# Guard de identidad (ronda 2026-08-11): esta maquina corre dos terminales
+# MT5 a la vez y el mismo terminal puede estar logueado en brokers
+# distintos segun el momento -- sin este guard, correr esta cola con el
+# terminal logueado en la cuenta/broker equivocado escribiria ticks ajenos
+# dentro de data/lake_ticks/XAUUSD/ (el sustrato que usa A6) y el runner
+# reportaria exito igual. expected_login / expected_server abajo son la
+# demo Capitaria SANCIONADA -- CUENTAS.md fila "2883015767 | Tomas Gemes 2
+# (usuario) | DEMO | Capitaria-All | ... UNICA cuenta donde se permite
+# operar". El guard tambien exige trade_mode==DEMO y que `symbol` resuelva
+# en el terminal conectado; si cualquiera falla, aborta antes de descargar
+# un solo tick (scripts/research/runner/tasks_ticks.py, TicksMT5IdentityError).
 experimento: T0.4-topup-capitaria
 area: INFRA
 etapa: F0
@@ -35,6 +47,8 @@ corridas:
     logins_sancionados: [2883015767, 2883016567]
     login_prohibido: 2883011573
     tolerancia_horas: 72
+    expected_login: 2883015767
+    expected_server: "Capitaria-All"
   - run_key: F0-DATA-0002
     tipo: ticks_mt5
     symbol: XAUUSD
@@ -44,3 +58,5 @@ corridas:
     logins_sancionados: [2883015767, 2883016567]
     login_prohibido: 2883011573
     tolerancia_horas: 72
+    expected_login: 2883015767
+    expected_server: "Capitaria-All"

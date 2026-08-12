@@ -30,8 +30,25 @@ setting -- it is the zero-offset mirror of the sanctioned
 applied in either direction.
 
 NO ORDERS. Guards, in order: terminal-running check, account guard
-(login_prohibido / logins_sancionados), anti-order self-check (below), then
-download.
+(login_prohibido / logins_sancionados), identity guard (expected_login /
+expected_server / trade_mode==DEMO / symbol resolves -- see below),
+anti-order self-check (below), then download.
+
+Identity guard (two MT5 terminals attached at once on this machine, either
+possibly logged into a different broker/account than the manifest expects):
+after `provider.initialize()` and before any `copy_ticks_range`, this module
+checks `account_info().login == expected_login`,
+`account_info().server == expected_server`,
+`account_info().trade_mode == provider.ACCOUNT_TRADE_MODE_DEMO`, and
+`symbol_info(symbol) is not None`. `expected_login`, `expected_server` and
+`symbol` are manifest fields with no default -- their absence is a
+validation error (plain `KeyError`, same as the pre-existing required
+fields `symbol` / `desde` / `hasta` / `destino`), never silently filled in.
+Any of the four conditions failing raises `TicksMT5IdentityError` (a
+`TicksMT5Error` subclass) naming what was expected and what was found, and
+aborts before downloading a single tick -- never a warning, never
+degraded, never configurable off. `provider.shutdown()` still runs on this
+path (see `finally` below).
 
 Completeness (ronda 1 correction): a month file counts as complete only if
 it exists AND its max(t_msc) is within `tolerancia_horas` (manifest
@@ -64,6 +81,13 @@ assert _ORDER_CALL not in open(__file__, encoding="utf-8").read(), "order call p
 
 class TicksMT5Error(Exception):
     """Raised when ticks_mt5 aborts: attach-only guard, account guard, or MT5 error."""
+
+
+class TicksMT5IdentityError(TicksMT5Error):
+    """Raised when the identity guard fails: login/server/trade_mode/symbol
+    of the connected terminal do not match what the manifest expects (two
+    MT5 terminals can be attached on this machine, possibly to different
+    brokers/accounts). Hard abort -- never a warning, never configurable."""
 
 
 def terminal64_running() -> bool:
@@ -154,6 +178,8 @@ def ticks_mt5(
     destino = Path(params["destino"])
     logins_sancionados = set(params["logins_sancionados"])
     login_prohibido = params["login_prohibido"]
+    expected_login = params["expected_login"]
+    expected_server = params["expected_server"]
     tolerancia_horas = params.get("tolerancia_horas", 72)
     tolerancia_ms = tolerancia_horas * 3_600_000
     out_dir = Path(out_dir)
@@ -181,6 +207,42 @@ def ticks_mt5(
                 f"login {login} no esta en logins_sancionados {sorted(logins_sancionados)} -- "
                 "abortando antes de leer ticks"
             )
+
+        # Guard de identidad (dos terminales MT5 a la vez en esta maquina --
+        # cualquiera puede estar logueado en un broker/cuenta distinto del
+        # que el manifiesto espera). Corre ANTES de cualquier copy_ticks_range.
+        server = getattr(account, "server", None)
+        trade_mode = getattr(account, "trade_mode", None)
+        symbol_info = provider.symbol_info(symbol)
+
+        if login != expected_login:
+            raise TicksMT5IdentityError(
+                f"guard de identidad: login esperado={expected_login} encontrado={login} -- "
+                "abortando antes de leer ticks"
+            )
+        if server != expected_server:
+            raise TicksMT5IdentityError(
+                f"guard de identidad: server esperado={expected_server!r} encontrado={server!r} -- "
+                "abortando antes de leer ticks"
+            )
+        if trade_mode != provider.ACCOUNT_TRADE_MODE_DEMO:
+            raise TicksMT5IdentityError(
+                "guard de identidad: trade_mode esperado=ACCOUNT_TRADE_MODE_DEMO"
+                f"({provider.ACCOUNT_TRADE_MODE_DEMO}) encontrado={trade_mode} -- "
+                "abortando antes de leer ticks"
+            )
+        if symbol_info is None:
+            raise TicksMT5IdentityError(
+                f"guard de identidad: symbol {symbol!r} no resuelve en el terminal conectado "
+                f"(login={login}, server={server!r}) -- abortando antes de leer ticks"
+            )
+
+        identidad = {
+            "login": login,
+            "server": server,
+            "trade_mode": trade_mode,
+            "symbol_resuelto": symbol,
+        }
 
         destino.mkdir(parents=True, exist_ok=True)
 
@@ -267,6 +329,7 @@ def ticks_mt5(
             "meses": meses,
             "ticks_total": ticks_total,
             "ficheros_escritos": ficheros_escritos,
+            "identidad": identidad,
         }
     finally:
         provider.shutdown()

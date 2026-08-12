@@ -57,14 +57,24 @@ class FakeProvider:
     """Injected double for the MT5 module surface ticks_mt5 uses."""
 
     COPY_TICKS_ALL = 1
+    ACCOUNT_TRADE_MODE_DEMO = 0
+    ACCOUNT_TRADE_MODE_CONTEST = 1
+    ACCOUNT_TRADE_MODE_REAL = 2
 
-    def __init__(self, *, login, months_data=None, initialize_ok=True):
+    def __init__(
+        self, *, login, months_data=None, initialize_ok=True,
+        server="Capitaria-All", trade_mode=0, symbol_resolves=True,
+    ):
         self.login = login
         self.months_data = months_data or {}
         self.initialize_ok = initialize_ok
+        self.server = server
+        self.trade_mode = trade_mode
+        self.symbol_resolves = symbol_resolves
         self.initialize_calls = 0
         self.account_info_calls = 0
         self.copy_ticks_calls = []
+        self.symbol_info_calls = []
         self.shutdown_calls = 0
 
     def initialize(self):
@@ -73,7 +83,11 @@ class FakeProvider:
 
     def account_info(self):
         self.account_info_calls += 1
-        return SimpleNamespace(login=self.login)
+        return SimpleNamespace(login=self.login, server=self.server, trade_mode=self.trade_mode)
+
+    def symbol_info(self, symbol):
+        self.symbol_info_calls.append(symbol)
+        return SimpleNamespace(name=symbol) if self.symbol_resolves else None
 
     def copy_ticks_range(self, symbol, start, end, flags):
         self.copy_ticks_calls.append((symbol, start, end, flags))
@@ -94,6 +108,8 @@ def base_params(destino, *, desde="2026-07-01", hasta="2026-07-31"):
         "destino": str(destino),
         "logins_sancionados": list(SANCTIONED_DEMO),
         "login_prohibido": REAL_LOGIN,
+        "expected_login": SANCTIONED_DEMO[0],
+        "expected_server": "Capitaria-All",
     }
 
 
@@ -329,6 +345,166 @@ def test_validacion_del_temporal_falla_original_intacto_sin_bak(tmp_path):
     assert p.stat().st_mtime_ns == mtime_before
     assert list(destino.glob("202607.parquet.bak-*")) == []
     assert list(destino.glob("202607.parquet.tmp")) != []  # left on disk for inspection
+
+
+# ---------------------------------------------------------------------------
+# GUARD DE IDENTIDAD (dos terminales MT5 a la vez, cuenta/broker equivocado):
+# expected_login / expected_server / trade_mode==DEMO / symbol resuelve.
+# Corre DESPUES de initialize() y ANTES de cualquier copy_ticks_range.
+# ---------------------------------------------------------------------------
+
+def test_login_no_coincide_con_expected_login_aborta_guard_identidad(tmp_path):
+    # login SI esta en logins_sancionados (pasa el guard viejo) pero NO es
+    # el expected_login especifico de esta corrida -> debe abortar igual.
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[1],
+        months_data={(2026, 7): make_ticks([(1, 1.0, 1.1)])},
+    )
+    params = base_params(tmp_path / "destino")  # expected_login = SANCTIONED_DEMO[0]
+
+    with pytest.raises(tasks_ticks.TicksMT5IdentityError, match=str(SANCTIONED_DEMO[0])):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.copy_ticks_calls == []
+    assert provider.shutdown_calls == 1
+    assert not (tmp_path / "destino").exists() or list((tmp_path / "destino").glob("*.parquet")) == []
+
+
+def test_server_no_coincide_con_expected_server_aborta_guard_identidad(tmp_path):
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        server="AVA-Demo",  # terminal esta logueado en un broker distinto
+        months_data={(2026, 7): make_ticks([(1, 1.0, 1.1)])},
+    )
+    params = base_params(tmp_path / "destino")  # expected_server = "Capitaria-All"
+
+    with pytest.raises(tasks_ticks.TicksMT5IdentityError, match="AVA-Demo"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.copy_ticks_calls == []
+    assert provider.shutdown_calls == 1
+    assert not (tmp_path / "destino").exists() or list((tmp_path / "destino").glob("*.parquet")) == []
+
+
+def test_trade_mode_no_demo_aborta_guard_identidad(tmp_path):
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        trade_mode=FakeProvider.ACCOUNT_TRADE_MODE_REAL,  # cuenta real o de concurso
+        months_data={(2026, 7): make_ticks([(1, 1.0, 1.1)])},
+    )
+    params = base_params(tmp_path / "destino")
+
+    with pytest.raises(tasks_ticks.TicksMT5IdentityError, match="trade_mode"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.copy_ticks_calls == []
+    assert provider.shutdown_calls == 1
+    assert not (tmp_path / "destino").exists() or list((tmp_path / "destino").glob("*.parquet")) == []
+
+
+def test_symbol_no_resuelve_aborta_guard_identidad(tmp_path):
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        symbol_resolves=False,  # p.ej. terminal en un broker cuyo simbolo es "GOLD", no "XAUUSD"
+        months_data={(2026, 7): make_ticks([(1, 1.0, 1.1)])},
+    )
+    params = base_params(tmp_path / "destino")
+
+    with pytest.raises(tasks_ticks.TicksMT5IdentityError, match="XAUUSD"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.copy_ticks_calls == []
+    assert provider.shutdown_calls == 1
+    assert not (tmp_path / "destino").exists() or list((tmp_path / "destino").glob("*.parquet")) == []
+
+
+def test_identidad_correcta_procede_y_registra_metricas(tmp_path):
+    rows = [(1751328000000 + i * 1000, 2000.0, 2000.5) for i in range(3)]
+    provider = FakeProvider(
+        login=SANCTIONED_DEMO[0],
+        server="Capitaria-All",
+        trade_mode=FakeProvider.ACCOUNT_TRADE_MODE_DEMO,
+        symbol_resolves=True,
+        months_data={(2026, 7): make_ticks(rows)},
+    )
+    params = base_params(tmp_path / "destino")
+
+    metrics = tasks_ticks.ticks_mt5(
+        params, tmp_path / "out",
+        provider=provider, terminal_check=lambda: True,
+    )
+
+    assert provider.copy_ticks_calls  # llego a descargar: el guard dejo pasar
+    assert provider.symbol_info_calls == ["XAUUSD"]
+    assert metrics["identidad"]["login"] == SANCTIONED_DEMO[0]
+    assert metrics["identidad"]["server"] == "Capitaria-All"
+    assert metrics["identidad"]["trade_mode"] == FakeProvider.ACCOUNT_TRADE_MODE_DEMO
+    assert metrics["identidad"]["symbol_resuelto"] == "XAUUSD"
+
+
+# ---------------------------------------------------------------------------
+# Campos nuevos obligatorios en el manifiesto (expected_login, expected_server;
+# symbol reutiliza el campo ya existente): su ausencia es error de validacion,
+# nunca un valor por defecto.
+# ---------------------------------------------------------------------------
+
+def test_manifiesto_sin_expected_login_es_error_de_validacion(tmp_path):
+    provider = FakeProvider(login=SANCTIONED_DEMO[0])
+    params = base_params(tmp_path / "destino")
+    del params["expected_login"]
+
+    with pytest.raises(KeyError, match="expected_login"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.initialize_calls == 0
+    assert provider.copy_ticks_calls == []
+
+
+def test_manifiesto_sin_expected_server_es_error_de_validacion(tmp_path):
+    provider = FakeProvider(login=SANCTIONED_DEMO[0])
+    params = base_params(tmp_path / "destino")
+    del params["expected_server"]
+
+    with pytest.raises(KeyError, match="expected_server"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.initialize_calls == 0
+    assert provider.copy_ticks_calls == []
+
+
+def test_manifiesto_sin_symbol_es_error_de_validacion(tmp_path):
+    # symbol reutiliza el campo ya existente (no se duplica) -- sigue siendo
+    # obligatorio: su ausencia tambien es error de validacion.
+    provider = FakeProvider(login=SANCTIONED_DEMO[0])
+    params = base_params(tmp_path / "destino")
+    del params["symbol"]
+
+    with pytest.raises(KeyError, match="symbol"):
+        tasks_ticks.ticks_mt5(
+            params, tmp_path / "out",
+            provider=provider, terminal_check=lambda: True,
+        )
+
+    assert provider.initialize_calls == 0
+    assert provider.copy_ticks_calls == []
 
 
 # ---------------------------------------------------------------------------
