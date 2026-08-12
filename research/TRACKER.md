@@ -57,6 +57,15 @@
 > ranking entre estrategias**; lo único concluyente es **S7 en negativo** (PF 0,968 → descartada por
 > D-06). Añadidas las filas `F0-INFRA-0028` (retroactiva: la línea base de `bd17f60` no tenía fila)
 > y `F0-INFRA-0029`.
+> ✅ **T0.13 CERRADA 2026-08-12 (D-36 + D-37): el calendario de ventana está canonicalizado y es
+> consumible.** La medición cruda daba **11 periodos en 7 meses** — ruido de agrupamiento, no un
+> horario de bróker. Canonicalizado por la tupla **(DST Chile, DST Nueva York)**, derivada del
+> `utcoffset()` de `zoneinfo` sin fecha hardcodeada, quedan **4 periodos** con `cierre_ny` =
+> `02:00` · `02:00` · `03:00` · `03:15` — **dos valores estructurales**; los cortes de más son el
+> cambio de proyección de reloj del `2026-03-08` y el hueco del holdout sellado. `bordes_por_semana`
+> (23 semanas) se conserva **sin canonicalizar** para auditoría. Fila `F0-INFRA-0033`. 🟠 Residuo
+> declarado: desde el `2026-04-26` la mayoría de semanas mide `03:15` y no `03:00` (posible
+> corrimiento real, no jitter); **inmaterial** porque la ventana se consume a hora entera.
 > **Siguiente:** implementar el filtro de ventana NY sobre los dos sustratos → correr el desglose
 > mensual de S6/ST sobre 3,5 años de AVA → comparar contra Capitaria en el solape (A6 Pata B) →
 > resto de T0.6 → T0.7 (A6 Pata A) → T0.8 (freeze) → LBT/BL-0. **Objetivo declarado por el user
@@ -94,7 +103,7 @@
 | `[ ]` | T0.10 | Literatura formal — 7 áreas | Recolección: Sonnet · Memos: Opus | Cada área ANTES de cerrar su grilla |
 | `[ ]` | T0.11b | Análisis de las 28 transcripciones | Ver protocolo dedicado | **Protocolo exacto:** `research/fases/F0-preparacion/PROTOCOLO-REVISION-VIDEOS.md` |
 | `[x]` | T0.12 | Sellar el holdout | Controlador | ✅ **SELLADO 2026-08-12 — ver D-31 para el cuerpo completo y las consecuencias.** Los dos actos cerrados el mismo día: **acto 1** (Capitaria) = **`2026-05-12`→`2026-07-26`**, la propuesta del controlador **aceptada explícitamente por el user**; corta en el 26-jul para dejar fuera del sello los 16 días de la ventana de la 902 (`2026-07-27`→`2026-08-11`) que **A6 Pata A** necesita — el holdout protege contra sobreajuste de *selección* de estrategias y A6 Pata A no selecciona nada. **Acto 2** (AVA) = **año 2023 completo** (`2023-01-01`→`2023-12-31`), que es el ejemplo literal de D-01, año natural completo y no adyacente al acto 1; fechable solo ahora, porque hasta el cierre de B9 no había rango real contra el que fijarlo. Verificado en disco: 2023 sin un solo día hábil ausente (auditoría D-29 `04-resultados/T0.3-continuidad/continuidad-diaria-ava-2026-08-12.txt`). 🔴 **Desde este momento ambos tramos son intocables** (§A.14): ni abrir, ni muestrear, ni graficar, ni backtestear; UNA sola evaluación final autorizada por el user. **BL-0 (D-23) excluye el holdout** → ≈3,5 años efectivos de AVA de los 4,6 |
-| `[~]` | T0.13 | Modelado de la hora muerta desplazante | Sonnet · análisis Opus | 🟢 **RESUELTO ANALÍTICAMENTE 2026-08-12 (falta llevarlo a código).** Surgió al buscar cómo trasladar el gate de spread a AVA. **Hallazgo central: el "gate 0,50" de Capitaria es un RELOJ, no un spread.** Por hora de servidor, el estado estrecho está al 99-100 % dentro de una ventana y al 0-5 % fuera — es un interruptor, no una tendencia. **Ventana medida por semana:** `20:00→03:59` (05-ene→01-mar) · `19:00→02:59` (16-mar→30-mar) · `18:00→02:59` (13-abr→10-ago), con la **hora muerta siempre 1 h antes** de la apertura (19 · 18 · 17). Los dos saltos caen en las fechas exactas de los DST: semana del **`2026-03-09`** (EEUU arrancó el 08-mar) y del **`2026-04-06`** (Chile terminó el 05-abr). **Convertido a Nueva York las tres filas son el mismo horario: `18:00 → 02:00 ET`, todo el año** = apertura de la sesión electrónica de oro de CME Globex, y la hora muerta = su corte diario de mantenimiento 17:00-18:00 ET. **Relojes de servidor MEDIDOS con el corte de CME como ancla** (no inferidos), en 2022/2024/2026 y en ambas estaciones: **AVA = UTC fijo sin DST** (hora muerta 22 en enero, 21 en julio: se mueve solo con el DST de EEUU) · **Capitaria = hora de Chile con DST, UTC−3/−4** (hora muerta 19 en enero, 17 en julio: acumula los dos DST). ⚠️ El segundo ancla programado (apertura del domingo) **no llegó a correr** por un error de aritmética de día de la semana: la conclusión se apoya en un solo ancla, consistente en 4 muestras. **Pendiente:** llevar la regla a código como filtro de ventana NY aplicado a ambos sustratos, sustituyendo el gate de spread |
+| `[x]` | T0.13 | Modelado de la hora muerta desplazante | Sonnet · análisis Opus | ✅ **CERRADA 2026-08-12.** Llevada a código en tres pasos, los tres verificados por el controlador contra artefactos crudos (no contra el reporte del agente): (1) `scripts/research/ny_window.py` + 17 tests, filtro de ventana NY (`f537646`, **D-34**); (2) `scripts/research/ventana_calendario.py` + 15 tests, calendario de periodos (`bc19867`, **D-36**); (3) canonicalización del cierre en `scripts/research/medir_calendario_ventana.py` + 26 tests nuevos (**D-37**, fila `F0-INFRA-0033`). 🟢 **La canonicalización era imprescindible:** la medición cruda daba **11 periodos en 7 meses**, que es ruido y no un horario de bróker — jitter de ±15 min por cruzar el 50 % a resolución de 15 minutos, más la semana `2026-03-08` (DST de EEUU) con medición contaminada, que en D-34 salía al 63,5 %. Agrupando por la tupla **(DST Chile, DST Nueva York)**, derivada del `utcoffset()` de `zoneinfo` **sin fecha de transición hardcodeada**, quedan **4 periodos**: `2026-01-01→03-06` NY `18:00→02:00` · `2026-03-08→04-02` NY `18:00→02:00` · `2026-04-05→05-11` NY `18:00→03:00` · `2026-07-26→08-11` NY `18:00→03:15`. Son **dos valores estructurales** del cierre NY; los dos cortes de más son el cambio de proyección de reloj del `2026-03-08` (que NO mueve la ventana, solo su expresión en UTC y hora de servidor) y **el hueco del holdout sellado**, que fragmenta por diseño. 🔴 **Un error real detectado por el controlador y corregido antes de commitear:** la primera versión agrupaba solo por el DST de Chile y publicaba `UTC 07:00` para un periodo de 14 semanas de las cuales **5 medían `06:00`** — degradación silenciosa (§A.13) que `ventana_calendario.py` no habría detectado, porque solo consume `apertura_ny`/`cierre_ny`. 🟠 **Residuo declarado:** desde el `2026-04-26` la mayoría de semanas mide `03:15` y no `03:00` (el periodo 3 empata **exacto 3-3** y se resuelve por desempate a hora en punto); podría ser corrimiento real del cierre y no jitter. **Inmaterial para el backtest** porque `ventana_calendario._hora()` consume hora entera y ambos dan `3`; anotado por si A6 Pata B lo hace visible. `bordes_por_semana` (23 semanas) se conserva **sin canonicalizar** para auditoría. **Historial del análisis, se conserva:** 🟢 **RESUELTO ANALÍTICAMENTE 2026-08-12 (falta llevarlo a código).** Surgió al buscar cómo trasladar el gate de spread a AVA. **Hallazgo central: el "gate 0,50" de Capitaria es un RELOJ, no un spread.** Por hora de servidor, el estado estrecho está al 99-100 % dentro de una ventana y al 0-5 % fuera — es un interruptor, no una tendencia. **Ventana medida por semana:** `20:00→03:59` (05-ene→01-mar) · `19:00→02:59` (16-mar→30-mar) · `18:00→02:59` (13-abr→10-ago), con la **hora muerta siempre 1 h antes** de la apertura (19 · 18 · 17). Los dos saltos caen en las fechas exactas de los DST: semana del **`2026-03-09`** (EEUU arrancó el 08-mar) y del **`2026-04-06`** (Chile terminó el 05-abr). **Convertido a Nueva York las tres filas son el mismo horario: `18:00 → 02:00 ET`, todo el año** = apertura de la sesión electrónica de oro de CME Globex, y la hora muerta = su corte diario de mantenimiento 17:00-18:00 ET. **Relojes de servidor MEDIDOS con el corte de CME como ancla** (no inferidos), en 2022/2024/2026 y en ambas estaciones: **AVA = UTC fijo sin DST** (hora muerta 22 en enero, 21 en julio: se mueve solo con el DST de EEUU) · **Capitaria = hora de Chile con DST, UTC−3/−4** (hora muerta 19 en enero, 17 en julio: acumula los dos DST). ⚠️ El segundo ancla programado (apertura del domingo) **no llegó a correr** por un error de aritmética de día de la semana: la conclusión se apoya en un solo ancla, consistente en 4 muestras. **Pendiente:** llevar la regla a código como filtro de ventana NY aplicado a ambos sustratos, sustituyendo el gate de spread |
 
 **Criterio de cierre de Fase 0:** T0.3..T0.13 en `[x]`, motor congelado con SHA registrado abajo,
 A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
@@ -184,9 +193,38 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2c HECHO: cierre del calendario
+  CANONICALIZADO — T0.13 queda cerrada y el backtest largo está desbloqueado.** D-37 (ruling del
+  controlador, revocable por el user). Fila `F0-INFRA-0033`.
+  (a) **La clave de agrupamiento pasa a ser la tupla `(es_verano_chile, es_verano_ny)`**, ambos
+  componentes derivados del `utcoffset()` de `zoneinfo` — **sin ninguna fecha de transición
+  hardcodeada**, para que la regla siga siendo correcta si el script se re-corre en otro año.
+  **11 periodos → 4**, con `cierre_ny` `02:00 · 02:00 · 03:00 · 03:15`: dos valores estructurales.
+  (b) 🔴 **Un error real, detectado por el controlador leyendo el JSON crudo y corregido ANTES de
+  commitear.** La primera versión del agente agrupaba solo por el DST de Chile. Eso es correcto para
+  `cierre_ny`, pero mezcla en un mismo periodo semanas cuya **proyección** a UTC y a hora de
+  servidor difiere, porque el DST estadounidense cae en otra fecha: el periodo 1 publicaba
+  `UTC 23:00→07:00` para 14 semanas de las cuales **5 medían `06:00`** (y 6 discrepaban en la
+  apertura). Degradación silenciosa (§A.13) que **`ventana_calendario.py` nunca habría detectado**,
+  porque solo consume `apertura_ny`/`cierre_ny`. Con la tupla, los discrepantes caen a 2/10 y 1/4, y
+  el único que queda en el periodo 2 es **la propia semana contaminada `2026-03-08`**, absorbida por
+  moda dentro de su grupo en vez de fabricar un periodo propio — que era justo el objetivo.
+  (c) **Verificado por el controlador, re-corriendo todo en primer plano:** `tests/research`
+  **245 passed** (219 + 26 nuevos) + 4 deselected · `tests/analysis` **88 passed** · paridad D-22
+  **`4 passed`** · `test_ventana_calendario.py` **15 passed sin haberlo editado**. `git diff --stat`
+  **vacío** sobre `ny_window.py`, `ventana_calendario.py`, su test y `backtest.py` (R1-bis).
+  (d) ⚠️ **Incidencia de proceso, segunda vez la misma:** el agente volvió a lanzar la medición en
+  background pese a la prohibición escrita en el brief, y su proceso murió sin escribir el artefacto.
+  El controlador la relanzó en primer plano: **6 min 41 s**, holgadamente dentro del timeout de 10
+  minutos de una llamada en foreground. El background nunca fue necesario.
+  (e) 🟠 **Residuo declarado:** desde el `2026-04-26` la mayoría de semanas mide `03:15` y no
+  `03:00` — el periodo 3 empata **exacto 3-3** y se resuelve por desempate a hora en punto. Podría
+  ser corrimiento real del cierre, no jitter. **Inmaterial** para el backtest (hora entera → `3` en
+  ambos casos); anotado por si A6 Pata B lo hace visible.
+
 - **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2b HECHO: el calendario de ventana por
   periodos existe (`bc19867`), y trae un problema de sobre-fragmentación que hay que resolver antes
-  de usarlo.** Fila `F0-INFRA-0032`.
+  de usarlo.** Fila `F0-INFRA-0032`. ✅ **Resuelto el mismo día por D-37 — ver la entrada de arriba.**
   (a) **Verificado por el controlador:** `backtest.py` **intacto** y `ny_window.py` **intacto**
   (último commit suyo `f537646`, anterior — el agente respetó la orden de no tocarlo y construyó un
   módulo nuevo); `tests/research` **219 passed** (204+15) + 4 deselected; **paridad `4 passed` antes

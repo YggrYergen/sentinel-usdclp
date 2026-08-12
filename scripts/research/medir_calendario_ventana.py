@@ -241,6 +241,136 @@ def _edges_from_buckets(buckets: dict[str, list[int]]) -> tuple[str | None, str 
     return apertura, cierre, detalle
 
 
+def _es_horario_verano(fecha: date, tz: ZoneInfo) -> bool:
+    """True si el horario de verano (DST) de `tz` esta vigente en `fecha`
+    (evaluada a mediodia local, para no caer en la hora ambigua/inexistente
+    del propio cambio de hora), False si rige horario estandar.
+
+    La frontera se deriva PROGRAMATICAMENTE del offset UTC de `tz` (via
+    `zoneinfo`) -- NUNCA de una fecha de transicion hardcodeada. Se calcula
+    el offset ESTANDAR del anio de `fecha` como el MAS ATRASADO (mas
+    negativo) entre dos fechas de muestreo fijas -- 15 de enero y 15 de
+    julio -- y se compara el offset de `fecha` contra ese estandar. El
+    criterio `min(offset_ene, offset_jul)` da el offset estandar en
+    CUALQUIER hemisferio sin necesidad de saber cual es cual: en el
+    hemisferio sur (Chile) el estandar es julio (invierno austral) y el
+    verano es enero; en el hemisferio norte (Nueva York) es al reves --
+    estandar en enero (invierno boreal), verano en julio -- pero el minimo
+    de los dos offsets sigue siendo el estandar en ambos casos, porque DST
+    siempre ADELANTA el reloj (offset mas alto) respecto del estandar. Ver
+    test dedicado para Nueva York que verifica esto explicitamente, no lo da
+    por hecho. Generaliza sin cambios a cualquier anio en que este script se
+    vuelva a correr."""
+    anio = fecha.year
+    offset_ene = tz.utcoffset(datetime(anio, 1, 15, 12))
+    offset_jul = tz.utcoffset(datetime(anio, 7, 15, 12))
+    offset_estandar = min(offset_ene, offset_jul)
+    offset_actual = tz.utcoffset(datetime(fecha.year, fecha.month, fecha.day, 12))
+    return offset_actual != offset_estandar
+
+
+def es_verano_chile(fecha: date, tz: ZoneInfo) -> bool:
+    """Horario de verano de Chile (`SERVER_TZ`, `America/Santiago`) vigente
+    en `fecha`. Gobierna directamente `cierre_ny` (ver docstring de
+    `_clave_canonica_cierre`). Envoltorio de `_es_horario_verano` -- no
+    duplica la logica de muestreo de offset."""
+    return _es_horario_verano(fecha, tz)
+
+
+def es_verano_ny(fecha: date, tz: ZoneInfo) -> bool:
+    """Horario de verano de Nueva York (`NY_TZ`) vigente en `fecha`. Gobierna
+    la PROYECCION de la ventana (anclada a NY) sobre los relojes UTC y de
+    servidor -- ver docstring de `_clave_canonica_cierre`. Envoltorio de
+    `_es_horario_verano` -- no duplica la logica de muestreo de offset."""
+    return _es_horario_verano(fecha, tz)
+
+
+def _clave_canonica_cierre(fecha: date) -> tuple[bool, bool]:
+    """Clave CANONICA de agrupamiento de periodo: tupla `(verano_chile,
+    verano_ny)` en la fecha de la semana.
+
+    `cierre_ny` esta anclado al DST de CHILE (el servidor cuyo reloj de
+    pared decodifica los epochs, ver docstring del modulo) -- es estable
+    mientras `es_verano_chile` no cambie. Pero su PROYECCION a UTC y a hora
+    de servidor depende TAMBIEN del DST de NUEVA YORK, que desplaza esos dos
+    relojes +-1h de forma independiente del de Chile (el DST de EEUU y el de
+    Chile no coinciden en fecha). Agrupar solo por Chile mezclaria, dentro
+    de un mismo periodo, semanas cuyo `apertura_utc`/`cierre_utc`/
+    `apertura_srv`/`cierre_srv` real son distintos -- la moda publicaria
+    entonces un valor FALSO para la mitad del periodo (degradacion
+    silenciosa, charter SS A.13). La tupla evita eso sin fecha hardcodeada:
+    cada componente se deriva de `zoneinfo` via `_es_horario_verano`."""
+    return (es_verano_chile(fecha, SERVER_TZ), es_verano_ny(fecha, NY_TZ))
+
+
+def _agrupar_semanas_canonico(semanas_ordenadas: list[str]) -> list[list[str]]:
+    """Agrupa `semanas_ordenadas` (ISO `YYYY-MM-DD`, domingo de inicio de
+    semana, YA ordenadas cronologicamente) en rachas maximas de semanas
+    CONSECUTIVAS (salto de exactamente 7 dias, sin huecos de calendario) que
+    comparten la misma clave CANONICA de cierre: `_clave_canonica_cierre()`
+    de la fecha de la semana -- ver su docstring para por que es una tupla
+    (Chile, Nueva York) y no solo Chile.
+
+    Reemplaza la igualdad exacta del `cierre_ny` medido crudo (sujeto a
+    jitter de +-15 min por la resolucion de bucket, y a semanas de medicion
+    contaminada como la del cambio de horario de EEUU, `2026-03-08`) como
+    clave de agrupamiento de periodos: la clave aqui depende SOLO de la
+    fecha de la semana, nunca del valor medido, asi que el ruido de
+    medicion no fragmenta el calendario. El hueco de un tramo no medido
+    (p.ej. el holdout sellado de Capitaria) SI fragmenta, aunque ambos lados
+    compartan la misma clave canonica -- no se afirma continuidad sobre
+    territorio no medido."""
+    periodos: list[list[str]] = []
+    actual: list[str] = []
+    for wk in semanas_ordenadas:
+        wk_date = date.fromisoformat(wk)
+        if not actual:
+            actual = [wk]
+            continue
+        prev_date = date.fromisoformat(actual[-1])
+        contiguas = (wk_date - prev_date).days == 7
+        misma_clave = _clave_canonica_cierre(wk_date) == _clave_canonica_cierre(prev_date)
+        if contiguas and misma_clave:
+            actual.append(wk)
+        else:
+            periodos.append(actual)
+            actual = [wk]
+    if actual:
+        periodos.append(actual)
+    return periodos
+
+
+def _moda(valores: list[str | None]) -> tuple[str | None, int]:
+    """Valor mas frecuente de una lista (ignora None). Devuelve
+    `(moda, n_discrepantes)`: n_discrepantes = semanas cuyo valor NO es la
+    moda (jitter de medicion, declarado, no descartado). Combinada con
+    `_agrupar_semanas_canonico` (que ya no fragmenta el calendario por ruido
+    de agrupamiento), esta funcion es la que colapsa ese ruido DENTRO de
+    cada grupo canonico: si el grupo tiene 14 semanas y 11 miden `02:00`,
+    2 miden `02:15` (jitter) y 1 mide `03:00` (semana contaminada), la moda
+    del grupo es `02:00` con 3 discrepantes -- ni se descartan ni fragmentan
+    el periodo, quedan declarados en `n_semanas_bordes_discrepantes`.
+
+    Desempate en caso de empate de conteo (posible con grupos pequenos, p.ej.
+    un grupo de 6 semanas partido 3-3 entre `03:00` y `03:15`, caso real
+    medido en el tramo `2026-04-05 -> 2026-05-10`): se prefiere el valor
+    ALINEADO A LA HORA EN PUNTO (sufijo `:00`) sobre el valor con jitter de
+    15 min, porque la resolucion de medicion es de bloques de 15 min
+    alrededor de un borde real que, por diseno de esta medicion, siempre cae
+    en la hora en punto -- el jitter es siempre el desviado, nunca el borde
+    en si. Si ninguno de los empatados esta alineado a la hora (o ambos lo
+    estan), se desempata alfabeticamente por determinismo."""
+    limpios = [v for v in valores if v is not None]
+    if not limpios:
+        return None, len(valores)
+    conteo: dict[str, int] = defaultdict(int)
+    for v in limpios:
+        conteo[v] += 1
+    mejor = max(conteo.items(), key=lambda kv: (kv[1], kv[0].endswith(":00"), kv[0]))[0]
+    n_discrepantes = sum(1 for v in valores if v != mejor)
+    return mejor, n_discrepantes
+
+
 def _git_sha() -> str:
     return subprocess.run(
         ["git", "-C", str(ROOT), "rev-parse", "HEAD"],
@@ -295,65 +425,56 @@ def main() -> int:
             entry[f"cierre_{reloj}"] = cierre
         bordes_semana[wk] = entry
 
-    # ---- agrupacion en periodos contiguos ------------------------------------
+    # ---- agrupacion en periodos contiguos (canonicalizada) -------------------
     # Un periodo es una racha maxima de semanas CONSECUTIVAS (sin salto de
-    # calendario, es decir semanas contiguas domingo-a-domingo) con el MISMO
-    # `cierre_ny`. La apertura NO participa de la clave de agrupacion: D-34/D-36
-    # la establecen como el borde solido, "estable en todo el periodo... no se
-    # toca" (contexto del brief). El crossing de 50% a resolucion de 15 min SI
-    # detecta jitter de +-15min alrededor de esa apertura en algunas semanas
-    # (mismo fenomeno que documento D-34: "18:00 en 16 de 20 semanas, 18:15 en
-    # 3 parciales") -- ese jitter queda intacto y visible en `bordes_por_semana`
-    # (auditoria semana a semana), pero no fragmenta el calendario de periodos
-    # porque no es la variable que D-36 pide calendarizar. El hueco del holdout
-    # (2026-05-12 -> 2026-07-26, sin datos) rompe la contiguidad por
-    # construccion: no se afirma continuidad sobre territorio no medido.
-    def _cierre_key(wk: str) -> str | None:
-        return bordes_semana[wk]["cierre_ny"]
-
-    periodos: list[dict] = []
-    actual: list[str] = []
-    for wk in semanas_ordenadas:
-        if not actual:
-            actual = [wk]
-            continue
-        prev_wk = actual[-1]
-        prev_date = date.fromisoformat(prev_wk)
-        cur_date = date.fromisoformat(wk)
-        contiguas = (cur_date - prev_date).days == 7
-        if contiguas and _cierre_key(wk) == _cierre_key(prev_wk):
-            actual.append(wk)
-        else:
-            periodos.append(actual)
-            actual = [wk]
-    if actual:
-        periodos.append(actual)
-
-    def _moda(valores: list[str | None]) -> tuple[str | None, int]:
-        """Valor mas frecuente de una lista (ignora None). Devuelve
-        `(moda, n_discrepantes)`: n_discrepantes = semanas cuyo valor NO es la
-        moda (jitter de medicion, declarado, no descartado)."""
-        limpios = [v for v in valores if v is not None]
-        if not limpios:
-            return None, len(valores)
-        conteo: dict[str, int] = defaultdict(int)
-        for v in limpios:
-            conteo[v] += 1
-        mejor = max(conteo.items(), key=lambda kv: (kv[1], kv[0]))[0]
-        n_discrepantes = sum(1 for v in valores if v != mejor)
-        return mejor, n_discrepantes
+    # calendario, es decir semanas contiguas domingo-a-domingo) con la MISMA
+    # clave CANONICA de cierre: `_clave_canonica_cierre()` de la fecha de la
+    # semana -- la tupla (verano_chile, verano_ny), NO la igualdad exacta del
+    # `cierre_ny` medido crudo. Agrupar por el valor crudo produce ruido de
+    # agrupamiento (11 periodos medidos en 7 meses de 2026): jitter de +-15
+    # min de resolucion de bucket en semanas sueltas, y la semana
+    # `2026-03-08` (cambio de horario de EEUU), cuya medicion esta
+    # documentada como contaminada (D-34: 63.5% de tasa espectro-estrecho,
+    # muy por debajo de cualquier umbral limpio) y que aparece aislada
+    # midiendo `03:00` entre dos periodos `02:00`. Agrupar SOLO por Chile
+    # (que es lo unico que gobierna `cierre_ny`) no basta: la PROYECCION de
+    # ese cierre sobre UTC y hora de servidor tambien depende del DST de
+    # Nueva York (fechas de transicion distintas de las de Chile), asi que
+    # la clave es una tupla de los dos -- ver docstring de
+    # `_clave_canonica_cierre`. Ambos componentes se derivan solo de la
+    # fecha (via `zoneinfo`), nunca del valor medido, asi que el ruido de
+    # medicion no fragmenta el calendario; el jitter y la semana contaminada
+    # quedan dentro de su grupo correcto y son resueltos por moda mas abajo.
+    # La apertura NO participa de la clave de agrupacion: D-34/D-36 la
+    # establecen como el borde solido, "estable en todo el periodo... no se
+    # toca" (contexto del brief); su propio jitter de +-15min (D-34: "18:00
+    # en 16 de 20 semanas, 18:15 en 3 parciales") queda intacto y visible en
+    # `bordes_por_semana` (auditoria semana a semana), sin fragmentar el
+    # calendario de periodos. El hueco del holdout (2026-05-12 -> 2026-07-26,
+    # sin datos) SI rompe la contiguidad por construccion, aunque comparta
+    # clave canonica con el tramo anterior: no se afirma continuidad sobre
+    # territorio no medido.
+    periodos = _agrupar_semanas_canonico(semanas_ordenadas)
 
     calendario_periodos = []
     for semanas_periodo in periodos:
         wk0 = semanas_periodo[0]
         e0 = dict(bordes_semana[wk0])
         # Apertura canonicalizada a 18:00 ET (D-34/D-36: borde solido, no se
-        # toca). apertura_utc/apertura_srv y cierre_utc/cierre_srv: moda entre
-        # las semanas del periodo (mismo criterio, filtra el jitter de 15 min
-        # sin descartarlo -- ver n_semanas_bordes_discrepantes).
+        # toca). cierre_ny, apertura_utc/apertura_srv y cierre_utc/cierre_srv:
+        # moda entre las semanas del periodo (filtra el jitter de +-15 min y
+        # la semana contaminada 2026-03-08 sin descartarlos -- ver
+        # n_semanas_bordes_discrepantes). cierre_ny DEBE ir por moda igual que
+        # los demas campos: con el agrupamiento canonico por DST, un periodo
+        # ya no garantiza que todas sus semanas compartan el mismo cierre_ny
+        # crudo (esa es justo la fragmentacion de ruido que la
+        # canonicalizacion colapsa) -- tomar el valor crudo de wk0 sin moda
+        # filtrarlo dejaria pasar silenciosamente el jitter/contaminacion si
+        # la PRIMERA semana del periodo resulta ser una de las discrepantes
+        # (p.ej. 2025-12-28, cuyo cierre_ny crudo es '02:15').
         e0["apertura_ny"] = "18:00"
         n_discrep = {}
-        for campo in ("apertura_utc", "apertura_srv", "cierre_utc", "cierre_srv"):
+        for campo in ("cierre_ny", "apertura_utc", "apertura_srv", "cierre_utc", "cierre_srv"):
             moda, n_disc = _moda([bordes_semana[w][campo] for w in semanas_periodo])
             e0[campo] = moda
             n_discrep[campo] = n_disc

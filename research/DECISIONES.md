@@ -539,3 +539,42 @@ sustrato de AVA, donde no hay gate observable con el que verificarlo. Esa extrap
 **hipótesis declarada**, no un hecho medido, y así debe figurar en todo artefacto del backtest
 largo. La apertura (18:00 ET) es la parte sólida: coincide con la apertura de Globex para el oro,
 que es un ancla de mercado y no del bróker. **El cierre extrapolado es la parte frágil.**
+
+### D-37 · 2026-08-12 · El calendario se agrupa por la tupla (DST Chile, DST Nueva York)
+*(Procedencia: **ruling del controlador**, no instrucción del user — comunicado a él y
+**revocable por él**, mismo estatus que D-25. Cierra el pendiente que D-36 dejó abierto.)*
+
+**El problema.** Agrupar periodos por igualdad exacta del `cierre_ny` medido en crudo produce
+**11 periodos en 7 meses**. Eso no es un horario de bróker: es ruido de medición, por dos vías.
+- **Jitter de ±15 min** por cruzar el 50 % a resolución de 15 minutos: semanas sueltas miden
+  `02:15`/`03:15` donde el valor estructural es `02:00`/`03:00`.
+- **Una semana con medición contaminada:** `2026-03-08`, la del DST estadounidense, mide `03:00`
+  aislada entre semanas que miden `02:00` a ambos lados. En D-34 esa misma semana salía al
+  **63,5 %** de tasa estrecha, por debajo de cualquier umbral limpio.
+
+Aplicar esos 11 periodos habría **codificado ruido como señal**.
+
+**La regla.** La clave de agrupamiento es la tupla **`(es_verano_chile, es_verano_ny)`**, derivada
+en ambos componentes del `utcoffset()` de `zoneinfo` — **nunca de una fecha de transición
+hardcodeada**, para que la lógica siga siendo correcta si el script se re-corre en otro año.
+- El **DST de Chile** gobierna `cierre_ny`, que es el campo que consume el backtest.
+- El **DST de Nueva York** gobierna la **proyección** de la ventana sobre UTC y hora de servidor.
+  🔴 Omitirlo fue un error real, detectado por el controlador al verificar el JSON crudo: con clave
+  solo-Chile, el primer periodo publicaba `UTC 07:00` para 14 semanas de las cuales **5
+  contradecían ese valor** (`06:00` desde el DST estadounidense). Degradación silenciosa, §A.13.
+- Dentro de cada periodo, los bordes se resuelven por **moda**, con desempate a la **hora en
+  punto** frente al jitter de 15 min. Las semanas discrepantes no se descartan: se **declaran** en
+  `n_semanas_bordes_discrepantes`.
+- **`bordes_por_semana` se conserva SIN canonicalizar**, como registro crudo para auditoría.
+
+**Resultado: 4 periodos**, con `cierre_ny` = `02:00` · `02:00` · `03:00` · `03:15`. Siguen siendo
+**dos valores estructurales** del cierre NY, que es la señal que D-36 pedía. Los dos cortes de más
+no son cambios de ventana: uno es el cambio de proyección de reloj del `2026-03-08`, y el otro es
+**el hueco del holdout sellado** (`2026-05-12`→`2026-07-26`), que fragmenta por diseño — no se
+afirma continuidad sobre territorio no medido.
+
+🟠 **Residuo declarado, no resuelto.** El periodo 4 publica `03:15` (moda de 2 semanas sobre 3) y el
+periodo 3 resuelve un **empate exacto 3-3** entre `03:00` y `03:15`. Desde el `2026-04-26` la
+mayoría de semanas mide `03:15`: puede ser un **corrimiento real del cierre**, no jitter. Es
+**inmaterial para el backtest** —`ventana_calendario._hora()` consume hora entera y ambos dan `3`—
+pero queda anotado por si **A6 Pata B** lo hace visible.

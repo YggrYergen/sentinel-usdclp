@@ -1,6 +1,6 @@
 {
-  "generado": "2026-08-12T07:19:19Z",
-  "git_sha": "06e5d2eafe19e307d3d613ce01da1f65b00d44ed",
+  "generado": "2026-08-12T08:04:06Z",
+  "git_sha": "9fc6693cddfa83b8767e013f6807094115008e0c",
   "broker": "capitaria",
   "substrate_id": "capitaria-ticks-2026-preholdout-y-postholdout",
   "sustrato": "data/lake_ticks/XAUUSD/ (ticks reales Capitaria)",
@@ -31,149 +31,45 @@
   "periodos": [
     {
       "desde": "2026-01-01",
-      "hasta": "2026-01-02",
+      "hasta": "2026-03-06",
       "semana_desde": "2025-12-28",
-      "semana_hasta": "2025-12-28",
-      "apertura_ny": "18:00",
-      "cierre_ny": "02:15",
-      "apertura_utc": "23:00",
-      "cierre_utc": "07:15",
-      "apertura_srv": "20:00",
-      "cierre_srv": "04:15",
-      "n_ticks": 168969,
-      "semanas": [
-        "2025-12-28"
-      ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 1,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 47081,
-      "ticks_estrechos_fuera": 1769,
-      "pct_acierto": 96.3787
-    },
-    {
-      "desde": "2026-01-04",
-      "hasta": "2026-02-20",
-      "semana_desde": "2026-01-04",
-      "semana_hasta": "2026-02-15",
+      "semana_hasta": "2026-03-01",
       "apertura_ny": "18:00",
       "cierre_ny": "02:00",
       "apertura_utc": "23:00",
       "cierre_utc": "07:00",
       "apertura_srv": "20:00",
       "cierre_srv": "04:00",
-      "n_ticks": 7235907,
+      "n_ticks": 9496269,
       "semanas": [
+        "2025-12-28",
         "2026-01-04",
         "2026-01-11",
         "2026-01-18",
         "2026-01-25",
         "2026-02-01",
         "2026-02-08",
-        "2026-02-15"
-      ],
-      "n_semanas": 7,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 1,
-        "apertura_srv": 1,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 2349107,
-      "ticks_estrechos_fuera": 33573,
-      "pct_acierto": 98.591
-    },
-    {
-      "desde": "2026-02-22",
-      "hasta": "2026-02-27",
-      "semana_desde": "2026-02-22",
-      "semana_hasta": "2026-02-22",
-      "apertura_ny": "18:00",
-      "cierre_ny": "02:15",
-      "apertura_utc": "23:00",
-      "cierre_utc": "07:15",
-      "apertura_srv": "20:00",
-      "cierre_srv": "04:15",
-      "n_ticks": 917203,
-      "semanas": [
-        "2026-02-22"
-      ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 287802,
-      "ticks_estrechos_fuera": 9541,
-      "pct_acierto": 96.7912
-    },
-    {
-      "desde": "2026-03-01",
-      "hasta": "2026-03-06",
-      "semana_desde": "2026-03-01",
-      "semana_hasta": "2026-03-01",
-      "apertura_ny": "18:00",
-      "cierre_ny": "02:00",
-      "apertura_utc": "23:15",
-      "cierre_utc": "07:00",
-      "apertura_srv": "20:15",
-      "cierre_srv": "04:00",
-      "n_ticks": 1174190,
-      "semanas": [
+        "2026-02-15",
+        "2026-02-22",
         "2026-03-01"
       ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 0,
+      "n_semanas": 10,
+      "n_semanas_baja_cobertura": 1,
       "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
+        "cierre_ny": 2,
+        "apertura_utc": 2,
+        "apertura_srv": 2,
+        "cierre_utc": 2,
+        "cierre_srv": 2
       },
-      "ticks_estrechos_dentro": 242531,
-      "ticks_estrechos_fuera": 453,
-      "pct_acierto": 99.8136
+      "ticks_estrechos_dentro": 2926521,
+      "ticks_estrechos_fuera": 45336,
+      "pct_acierto": 98.4745
     },
     {
       "desde": "2026-03-08",
-      "hasta": "2026-03-13",
-      "semana_desde": "2026-03-08",
-      "semana_hasta": "2026-03-08",
-      "apertura_ny": "18:00",
-      "cierre_ny": "03:00",
-      "apertura_utc": "22:00",
-      "cierre_utc": "07:00",
-      "apertura_srv": "19:00",
-      "cierre_srv": "04:00",
-      "n_ticks": 1041138,
-      "semanas": [
-        "2026-03-08"
-      ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 321366,
-      "ticks_estrechos_fuera": 2973,
-      "pct_acierto": 99.0834
-    },
-    {
-      "desde": "2026-03-15",
       "hasta": "2026-04-02",
-      "semana_desde": "2026-03-15",
+      "semana_desde": "2026-03-08",
       "semana_hasta": "2026-03-29",
       "apertura_ny": "18:00",
       "cierre_ny": "02:00",
@@ -181,140 +77,63 @@
       "cierre_utc": "06:00",
       "apertura_srv": "19:00",
       "cierre_srv": "03:00",
-      "n_ticks": 6171000,
+      "n_ticks": 7212138,
       "semanas": [
+        "2026-03-08",
         "2026-03-15",
         "2026-03-22",
         "2026-03-29"
       ],
-      "n_semanas": 3,
+      "n_semanas": 4,
       "n_semanas_baja_cobertura": 0,
       "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 1,
         "apertura_utc": 1,
         "apertura_srv": 1,
-        "cierre_utc": 0,
-        "cierre_srv": 0
+        "cierre_utc": 1,
+        "cierre_srv": 1
       },
-      "ticks_estrechos_dentro": 1508604,
-      "ticks_estrechos_fuera": 21697,
-      "pct_acierto": 98.5822
+      "ticks_estrechos_dentro": 1803376,
+      "ticks_estrechos_fuera": 51264,
+      "pct_acierto": 97.2359
     },
     {
       "desde": "2026-04-05",
-      "hasta": "2026-04-24",
+      "hasta": "2026-05-11",
       "semana_desde": "2026-04-05",
-      "semana_hasta": "2026-04-19",
+      "semana_hasta": "2026-05-10",
       "apertura_ny": "18:00",
       "cierre_ny": "03:00",
-      "apertura_utc": "22:15",
+      "apertura_utc": "22:00",
       "cierre_utc": "07:00",
-      "apertura_srv": "18:15",
+      "apertura_srv": "18:00",
       "cierre_srv": "03:00",
-      "n_ticks": 6672268,
+      "n_ticks": 11529443,
       "semanas": [
         "2026-04-05",
         "2026-04-12",
-        "2026-04-19"
-      ],
-      "n_semanas": 3,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 1,
-        "apertura_srv": 1,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 1919121,
-      "ticks_estrechos_fuera": 157945,
-      "pct_acierto": 92.3958
-    },
-    {
-      "desde": "2026-04-26",
-      "hasta": "2026-05-11",
-      "semana_desde": "2026-04-26",
-      "semana_hasta": "2026-05-10",
-      "apertura_ny": "18:00",
-      "cierre_ny": "03:15",
-      "apertura_utc": "22:00",
-      "cierre_utc": "07:15",
-      "apertura_srv": "18:00",
-      "cierre_srv": "03:15",
-      "n_ticks": 4857175,
-      "semanas": [
+        "2026-04-19",
         "2026-04-26",
         "2026-05-03",
         "2026-05-10"
       ],
-      "n_semanas": 3,
+      "n_semanas": 6,
       "n_semanas_baja_cobertura": 1,
       "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
+        "cierre_ny": 3,
+        "apertura_utc": 2,
+        "apertura_srv": 2,
+        "cierre_utc": 3,
+        "cierre_srv": 3
       },
-      "ticks_estrechos_dentro": 1475901,
-      "ticks_estrechos_fuera": 45368,
-      "pct_acierto": 97.0178
+      "ticks_estrechos_dentro": 3395022,
+      "ticks_estrechos_fuera": 203313,
+      "pct_acierto": 94.3498
     },
     {
       "desde": "2026-07-26",
-      "hasta": "2026-07-31",
-      "semana_desde": "2026-07-26",
-      "semana_hasta": "2026-07-26",
-      "apertura_ny": "18:00",
-      "cierre_ny": "03:15",
-      "apertura_utc": "22:00",
-      "cierre_utc": "07:15",
-      "apertura_srv": "18:00",
-      "cierre_srv": "03:15",
-      "n_ticks": 2441215,
-      "semanas": [
-        "2026-07-26"
-      ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 773230,
-      "ticks_estrechos_fuera": 15614,
-      "pct_acierto": 98.0206
-    },
-    {
-      "desde": "2026-08-02",
-      "hasta": "2026-08-07",
-      "semana_desde": "2026-08-02",
-      "semana_hasta": "2026-08-02",
-      "apertura_ny": "18:00",
-      "cierre_ny": "03:00",
-      "apertura_utc": "22:00",
-      "cierre_utc": "07:00",
-      "apertura_srv": "18:00",
-      "cierre_srv": "03:00",
-      "n_ticks": 2336189,
-      "semanas": [
-        "2026-08-02"
-      ],
-      "n_semanas": 1,
-      "n_semanas_baja_cobertura": 0,
-      "n_semanas_bordes_discrepantes": {
-        "apertura_utc": 0,
-        "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
-      },
-      "ticks_estrechos_dentro": 799083,
-      "ticks_estrechos_fuera": 3830,
-      "pct_acierto": 99.523
-    },
-    {
-      "desde": "2026-08-09",
       "hasta": "2026-08-11",
-      "semana_desde": "2026-08-09",
+      "semana_desde": "2026-07-26",
       "semana_hasta": "2026-08-09",
       "apertura_ny": "18:00",
       "cierre_ny": "03:15",
@@ -322,21 +141,24 @@
       "cierre_utc": "07:15",
       "apertura_srv": "18:00",
       "cierre_srv": "03:15",
-      "n_ticks": 988799,
+      "n_ticks": 5766203,
       "semanas": [
+        "2026-07-26",
+        "2026-08-02",
         "2026-08-09"
       ],
-      "n_semanas": 1,
+      "n_semanas": 3,
       "n_semanas_baja_cobertura": 0,
       "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 1,
         "apertura_utc": 0,
         "apertura_srv": 0,
-        "cierre_utc": 0,
-        "cierre_srv": 0
+        "cierre_utc": 1,
+        "cierre_srv": 1
       },
-      "ticks_estrechos_dentro": 413741,
-      "ticks_estrechos_fuera": 8046,
-      "pct_acierto": 98.0924
+      "ticks_estrechos_dentro": 1986054,
+      "ticks_estrechos_fuera": 27490,
+      "pct_acierto": 98.6347
     }
   ],
   "bordes_por_semana": {
