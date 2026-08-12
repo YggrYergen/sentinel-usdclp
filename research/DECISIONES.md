@@ -328,3 +328,65 @@ D-29, artefacto `04-resultados/T0.3-continuidad/continuidad-diaria-ava-2026-08-1
 - A6 Pata A conserva su ventana íntegra (`2026-07-27`→`2026-08-11`), que es el objeto del sello.
 - Leer **solo `t_msc`** para auditorías de continuidad **no** constituye exploración del sustrato
   y sigue permitido; leer `bid`/`ask` de un tramo sellado, no.
+
+### D-32 · 2026-08-12 · Semántica de `maxDD` y `peak_margin` — qué miden y qué NO
+*(Procedencia: dos preguntas explícitas del user sobre la primera tabla de números reales de
+S6/S7/SuperTrend, con la orden de leerlo en el código y no deducirlo. Medido antes de propagar la
+tabla al backtest largo, precisamente para no multiplicar el error sobre 3,5 años.)*
+**Evidencia:** `04-resultados/T0.6-baseline/semantica_metricas.py` → `semantica-metricas.txt`.
+Filas LEDGER `F0-INFRA-0028` (linaje retroactivo de la línea base) y `F0-INFRA-0029` (esta
+auditoría). Leído en `backtest.py:391`, `:399-409`, `:412-435`.
+
+**1 · `maxDD` es pico-a-valle del P&L CERRADO, y el simulador NO impone margen.**
+Las dos hipótesis que el user planteaba como alternativas son **ambas ciertas a la vez**:
+- `backtest.py:423-427` ordena las posiciones **por `t_exit`**, acumula `net1 * lot` y toma el
+  máximo pico-a-valle. Es la curva de P&L realizado. **No hay saldo inicial, ni equity, ni
+  flotante de las posiciones abiertas.**
+- Grep sobre todo `scripts/analysis/realtick_bt/` de `equity`, `balance`, `margin_call`,
+  `free_margin`, `liquidat`, `capital`: **cero ocurrencias funcionales**. `margin1`
+  (`backtest.py:391`) se calcula y se **reporta**, pero ninguna apertura se rechaza por margen: no
+  hay margin call ni liquidación.
+🔴 **Consecuencia vinculante:** que S6 dé 73,8 MM de `maxDD` "sobre una cuenta de 50 MM" no es una
+imposibilidad aritmética — **es que en el simulador no existe la cuenta**. `maxDD` y `peak_margin`
+**NO son medidas de supervivencia** y quedan prohibidas como criterio para aprobar o descartar una
+config. Son descriptores de excursión y de capital comprometido, nada más.
+🔴 **Y el número subestima el riesgo, no lo exagera:** al excluir el flotante, `maxDD` es una
+**cota inferior** del drawdown de equity. El drawdown real exige el camino intra-posición
+(MFE/MAE) = **modificación de motor #11**, que aún no existe → **declarado NO EVALUABLE con la
+instrumentación actual**. Se evalúa cuando #11 esté implementada e instrumentada en BL-0 (D-23 b).
+
+**2 · S6 y S7 pican el mismo margen al céntimo porque abren las MISMAS posiciones.**
+No es un tope, ni agregación a nivel de cuenta, ni un error de contabilidad cruzada — las tres
+explicaciones que el user enumeró quedan descartadas por medición:
+- `peak_margin` se calcula **por estrategia** (`metrics()` se invoca por `sid`), nunca agregando.
+- Las **211 entradas de S6 están las 211 en S7**, idénticas en `(t_in_exec, entry_fill, side)`;
+  S7 tiene 28 entradas más. Confirma empíricamente lo que el plan §7.A5 suponía: **misma señal,
+  salidas distintas**. Ambas abren siempre **3 fichas F1/F2/F3 en el mismo instante y al mismo
+  precio** (211 y 239 instantes de apertura, todos de 3 fichas).
+- El pico cae en **ambas** en el mismo instante, `2026-02-26 00:15:00`, con las mismas 6 filas y
+  los mismos dos precios (5180,66 × 3 y 5187,58 × 3). De ahí la igualdad al céntimo.
+
+🔴 **3 · Hallazgo no buscado: la concurrencia de 6 es un artefacto del desempate.**
+`backtest.py:404` ordena los eventos por `(t, -delta)`, luego **a igual timestamp las aperturas
+cuentan antes que los cierres**. Un `stop_and_reverse` cierra 3 fichas y abre 3 **en el mismo
+segundo**, así que ese instante se contabiliza como 6 simultáneas. **El pico de S6 y S7 ocurre
+exclusivamente en uno de esos instantes de reverse** (23 y 12 instantes de solape
+respectivamente), luego el pico entero lo produce el doble conteo.
+- Margen **sostenido** (desempate contrario, cierres primero): **10.402.061,93** en ambas, con
+  **máximo 3 simultáneas** — que es exactamente la escalera de 3 fichas. ST: 1 simultánea,
+  3.438.629,09, **idéntico bajo los dos desempates** (no tiene reverses).
+- **ROM corregido:** S6 **238,34 %** (no 127,03) · S7 **−106,44 %** (no −56,73) · ST **1.199,74 %**
+  (sin cambio).
+- 🔴 **La cifra "≈7,8 simultáneas" registrada en la bitácora del TRACKER el 2026-08-12 es
+  incorrecta y queda anulada.** La concurrencia máxima medida es **3**, y es constante: la
+  escalera nunca sostiene más de 3 fichas.
+- **NO se corrige `backtest.py`** (R1-bis + motor congelado + instrucción explícita del user de no
+  editarlo). Ninguno de los dos desempates es "el correcto" en abstracto: con cuenta *hedging*, un
+  reverse ejecutado como dos órdenes sí retiene ambas patas un instante, así que el desempate del
+  harness es la lectura **peor-caso instantánea**. Lo que queda **prohibido** es usar ese pico como
+  denominador de ROM como si fuera capital sostenido — porque no lo es, y por eso el ROM del
+  harness infla S6/S7 al revés de lo que parecería (los infla *hacia abajo*: divide por un margen
+  que nunca se mantuvo).
+- **Ambas cifras se reportan siempre juntas** de aquí en adelante: `peak_margin` (instantáneo,
+  peor caso) y margen sostenido, con la concurrencia máxima real al lado. La divergencia entre
+  ambas es un descriptor de la mecánica de reverse, no ruido.

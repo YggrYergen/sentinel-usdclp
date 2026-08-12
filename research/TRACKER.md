@@ -44,6 +44,16 @@
 > no un spread** (99-100 % estrecho dentro de la ventana, 0-5 % fuera), y salta en las fechas
 > exactas de los dos DST (`2026-03-08` EEUU, `2026-04-05` Chile). Relojes de servidor **medidos**
 > vía el corte de CME: **Capitaria = hora de Chile con DST (UTC−3/−4); AVA = UTC fijo**.
+> ✅ **PASO 0 CERRADO 2026-08-12 (D-32): la primera tabla de números reales tiene su semántica
+> establecida.** `maxDD` es pico-a-valle del **P&L cerrado** y el simulador **no impone margen ni
+> margin call** → `maxDD` y `peak_margin` **NO miden supervivencia** y quedan **prohibidos** como
+> criterio de aprobación o descarte; el drawdown de equity es **NO EVALUABLE** hasta la mod de motor
+> **#11**. S6 y S7 pican idéntico porque **abren las mismas posiciones** (211/211 entradas comunes).
+> **Concurrencia real = 3, no 7,8** (los 19,5 MM son un pico instantáneo en el `reverse`; sostenido
+> **10,4 MM**; ROM corregido **S6 238,34 / S7 −106,44 / ST 1.199,74**). 🔴 **Esa tabla NO es un
+> ranking entre estrategias**; lo único concluyente es **S7 en negativo** (PF 0,968 → descartada por
+> D-06). Añadidas las filas `F0-INFRA-0028` (retroactiva: la línea base de `bd17f60` no tenía fila)
+> y `F0-INFRA-0029`.
 > **Siguiente:** implementar el filtro de ventana NY sobre los dos sustratos → correr el desglose
 > mensual de S6/ST sobre 3,5 años de AVA → comparar contra Capitaria en el solape (A6 Pata B) →
 > resto de T0.6 → T0.7 (A6 Pata A) → T0.8 (freeze) → LBT/BL-0. **Objetivo declarado por el user
@@ -170,6 +180,46 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Opus 5 controlador · **PASO 0 — la primera tabla de números reales queda con su
+  semántica establecida ANTES de propagarse a 3,5 años. Dos preguntas del user, tres hallazgos.**
+  Todo leído en el código y medido sobre los artefactos crudos, nunca deducido. Cuerpo completo en
+  **D-32**; artefacto `04-resultados/T0.6-baseline/semantica_metricas.py` →
+  `semantica-metricas.txt`; filas `F0-INFRA-0028` y `F0-INFRA-0029`.
+  (a) **`maxDD`: las dos hipótesis del user eran ciertas a la vez.** Es pico-a-valle del **P&L
+  cerrado** (`backtest.py:423-427`, ordenado por `t_exit`) **y** el simulador **no impone margen ni
+  margin call** — cero `equity`/`balance`/`margin_call`/`free_margin`/`liquidat`/`capital` en todo
+  `scripts/analysis/realtick_bt/`; `margin1` se calcula y se reporta, pero ninguna apertura se
+  rechaza. Los 73,8 MM sobre "una cuenta de 50 MM" no son imposibles: **en el simulador no existe
+  la cuenta.** 🔴 Y el número **subestima** el riesgo: al excluir el flotante es **cota inferior**
+  del drawdown de equity, que queda **NO EVALUABLE** hasta la modificación de motor **#11**
+  (MFE/MAE). `maxDD` y `peak_margin` quedan **prohibidos** como criterio de aprobación o descarte.
+  (b) **El margen idéntico al céntimo no es un tope, ni agregación a nivel de cuenta, ni un error de
+  contabilidad cruzada** — las tres explicaciones que el user enumeró quedan descartadas por
+  medición. `peak_margin` se calcula **por estrategia**, y **S6 y S7 abren las mismas posiciones**:
+  las **211 entradas de S6 están las 211 en S7** (S7 tiene 28 más), 3 fichas por instante al mismo
+  precio, y el pico cae en ambas en `2026-02-26 00:15:00` con las mismas 6 filas. Confirma
+  empíricamente el supuesto del plan §7.A5: **misma señal, distintas salidas.**
+  (c) 🔴 **Hallazgo no buscado, y corrige una cifra que yo mismo escribí ayer: la concurrencia de 6
+  es un artefacto del desempate.** `backtest.py:404` ordena por `(t, -delta)`, luego a igual
+  timestamp las **aperturas cuentan antes que los cierres**; un `stop_and_reverse` cierra 3 y abre 3
+  **en el mismo segundo**, y el pico de S6 y de S7 cae **exactamente** en uno de esos instantes (23
+  y 12 solapes). Margen **sostenido** = **10.402.061,93** en ambas, con **máximo 3 simultáneas** —
+  la escalera, constante. **ROM corregido: S6 238,34 % · S7 −106,44 % · ST 1.199,74 %** (ST idéntico
+  bajo los dos desempates: no tiene reverses). **La cifra "≈7,8 simultáneas" que escribí ayer queda
+  ANULADA.** `backtest.py` **no se corrige** (R1-bis + motor congelado + instrucción explícita del
+  user): con cuenta *hedging* el desempate del harness es la lectura peor-caso instantánea y es
+  defendible; lo prohibido es usarlo como denominador de ROM como si fuera capital sostenido.
+  (d) 🔴 **Tercer hallazgo, de gobierno: la línea base de `bd17f60` no tenía fila en el LEDGER.**
+  `baseline_golden.py` no es un runner y no escribe al registro, así que por la regla derivada de
+  **D-17** ninguno de esos números era citable — incluidos los que el user acaba de pedirme
+  interpretar. Corregido con la fila retroactiva `F0-INFRA-0028`, con `git_sha bd17f60` verificado
+  con `git show --stat` (los cuatro artefactos están en ese commit). **Lección de proceso: el
+  registro solo es automático cuando el ejecutor es el runner; todo driver ad-hoc lo deja huérfano
+  en silencio.**
+  (e) **Advertencia vinculante escrita junto a los números**, no solo en un memo: ver el bloque
+  🔴🔴 en la entrada de bitácora de abajo. **Lo único concluyente de esa tabla es S7 en negativo**
+  (PF 0,968), que por **D-06** basta para descartarla sin compararla con nada.
+
 - **2026-08-12** · Opus 5 controlador · **T0.6 Tarea 0 construida, y T0.13 resuelta por el camino.
   Primeros números reales de S6/ST del programa.** (a) **Linea base golden + puerta de paridad**
   (`bd17f60`): `scripts/research/baseline_golden.py` congela 1.503 posiciones de S6/S7/ST sobre
@@ -183,8 +233,31 @@ del user.
   veredictos — es la config del harness, no la VIVA):** ST +41.254.539 CLP / PF 1,457 / 153 pos ·
   S6 +24.792.629 / PF 1,068 / 633 pos · S7 −11.072.071 / PF 0,968 / 717 pos. 🟢 **`peak_margin`
   cuantifica la cuarentena §2.1:** ST pica 3,4 MM (≈1 posición a la vez, como en vivo), S6 y S7
-  pican 19,5 MM (**≈7,8 simultáneas**, la escalera del ladder) — el S6 del backtest **no es** el S6
-  de la 902. ROM: ST 1.199,7 % contra S6 127,0 %. (b) **Velas M15 de AVA** (`335f512`) derivadas de
+  pican 19,5 MM (~~**≈7,8 simultáneas**~~, la escalera del ladder) — el S6 del backtest **no es** el S6
+  de la 902. ROM: ST 1.199,7 % contra S6 127,0 %.
+  🔴🔴 **ADVERTENCIA VINCULANTE — VA PEGADA A ESTA TABLA DONDEQUIERA QUE APAREZCA (D-32,
+  2026-08-12). ESTA TABLA NO ES UN RANKING ENTRE ESTRATEGIAS Y NO DEBE LEERSE COMO TAL.**
+  (a) **`maxDD` no mide supervivencia.** Es pico-a-valle del **P&L cerrado** (`backtest.py:423-427`)
+  y el simulador **no impone margen ni margin call** (cero `equity`/`balance`/`margin_call` en todo
+  `realtick_bt`; `margin1` se reporta, nunca bloquea una apertura). Los 73,8 MM de S6 "sobre una
+  cuenta de 50 MM" no son imposibles: **en el simulador no existe la cuenta.** Además **excluye el
+  flotante**, luego es **cota inferior** del drawdown de equity — el drawdown real es NO EVALUABLE
+  hasta la modificación de motor #11 (MFE/MAE). 🔴 **`maxDD` y `peak_margin` quedan PROHIBIDOS como
+  criterio para aprobar o descartar cualquier config.**
+  (b) **El ROM de ST (1.199,7 %) frente al de S6 es casi enteramente artefacto de la concurrencia**,
+  no una medida de calidad relativa: una posición contra la escalera de 3 fichas. El S6 del backtest
+  no es el S6 de la 902, y **por eso mismo tampoco es comparable con el SuperTrend de este mismo
+  backtest**.
+  (c) 🔴 **Cifras corregidas por medición (D-32):** la concurrencia máxima real es **3**, no 7,8 —
+  el "≈7,8" queda **anulado**. Los 19,5 MM son el pico **instantáneo** en un `stop_and_reverse`
+  (`backtest.py:404` cuenta las aperturas antes que los cierres al mismo timestamp, y el pico de S6
+  y de S7 cae exactamente en uno de esos instantes). Margen **sostenido** = **10.402.061,93** en
+  ambas. **ROM corregido: S6 238,34 % · S7 −106,44 % · ST 1.199,74 %** (ST sin cambio, no tiene
+  reverses). S6 y S7 coinciden **al céntimo** porque **abren las mismas posiciones**: las 211
+  entradas de S6 están las 211 en S7, misma señal y distintas salidas.
+  (d) 🟢 **Lo único que es señal limpia en esta tabla es S7 en negativo** (neto −11,07 MM, PF 0,968):
+  por **D-2026-08-10-b / D-06** ("ganadora = neto positivo", no "mejor que S6/ST"), eso basta para
+  descartarla **sin compararla con nada**. Es el único uso legítimo de la tabla hoy. (b) **Velas M15 de AVA** (`335f512`) derivadas de
   los ticks, 85.101 velas, 2023 excluido **del fichero** (el sello no depende de la disciplina de
   quien corra después) y destino fuera del lago de ticks para no repetir la trampa del sidecar.
   (c) 🔴 **Dos hipótesis del orquestador REFUTADAS con datos, no con argumentos.** Primera: correr

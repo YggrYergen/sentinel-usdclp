@@ -1,0 +1,75 @@
+SEMANTICA DE maxDD Y peak_margin -- linea base golden T0.6 Tarea 0
+generado: 2026-08-12T05:49:21Z
+fuente  : D:\FOREX\research\fases\F0-preparacion\04-resultados\T0.6-baseline  (posiciones_*.json, commit bd17f60)
+lote=0.67  USDCLP=936.5  LEVERAGE=100.0  CONTRACT=100.0
+
+==============================================================================
+P1 -- QUE MIDE maxDD
+==============================================================================
+Codigo: backtest.py:423-427. Ordena las posiciones por t_exit, acumula
+net1*lot y toma el maximo pico-a-valle. Es la curva de P&L CERRADO.
+Grep sobre todo scripts/analysis/realtick_bt/ de: equity, balance,
+margin_call, free_margin, liquidat, capital, INITIAL -> CERO ocurrencias
+funcionales. No existe saldo de cuenta en el simulador.
+margin1 (backtest.py:391) se calcula pero solo se REPORTA: ninguna
+apertura se rechaza por margen, no hay margin call ni liquidacion.
+
+S6-K2P0                  n= 633  net=   24,792,629.42  maxdd_realizado=   73,803,766.92
+S7-TPNONE                n= 717  net=  -11,072,070.93  maxdd_realizado=   53,952,345.63
+SuperTrend-p14x3-M15     n= 153  net=   41,254,538.80  maxdd_realizado=   24,662,118.77
+
+Consecuencia medible: maxDD NO incluye el flotante de las posiciones
+abiertas, luego es una COTA INFERIOR del drawdown de equity, no una
+medida de supervivencia. Cuantificar el drawdown de equity real exige el
+camino intra-posicion (MFE/MAE), que es la modificacion de motor #11 y
+todavia no existe -> NO EVALUABLE con la instrumentacion actual.
+
+==============================================================================
+P2 -- POR QUE S6 Y S7 PICAN EL MISMO MARGEN
+==============================================================================
+
+S6-K2P0
+  desempate del harness (aperturas primero): peak=   19,516,812.09  max_simultaneas=6
+  desempate contrario   (cierres primero)  : peak=   10,402,061.93  max_simultaneas=3
+  instante del pico: 2026-02-26 00:15:00  (6 posiciones contadas)
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F1 reason=reverse
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F2 reason=reverse
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F3 reason=reverse
+    in=2026-02-26 00:15:00 out=2026-02-26 04:02:40 LONG  entry_fill= 5187.580 ficha=F1 reason=EXIT_SL_RAISED
+    in=2026-02-26 00:15:00 out=2026-02-26 04:02:40 LONG  entry_fill= 5187.580 ficha=F2 reason=EXIT_SL_RAISED
+    in=2026-02-26 00:15:00 out=2026-02-26 04:02:40 LONG  entry_fill= 5187.580 ficha=F3 reason=EXIT_SL_RAISED
+  fichas por instante de apertura: {3: 211}
+  instantes con cierre Y apertura simultaneos: 23
+
+S7-TPNONE
+  desempate del harness (aperturas primero): peak=   19,516,812.09  max_simultaneas=6
+  desempate contrario   (cierres primero)  : peak=   10,402,061.93  max_simultaneas=3
+  instante del pico: 2026-02-26 00:15:00  (6 posiciones contadas)
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F1 reason=reverse
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F2 reason=reverse
+    in=2026-02-25 23:30:00 out=2026-02-26 00:15:00 SHORT entry_fill= 5180.660 ficha=F3 reason=reverse
+    in=2026-02-26 00:15:00 out=2026-02-26 02:48:18 LONG  entry_fill= 5187.580 ficha=F1 reason=EXIT_SL_RAISED
+    in=2026-02-26 00:15:00 out=2026-02-26 02:48:18 LONG  entry_fill= 5187.580 ficha=F2 reason=EXIT_SL_RAISED
+    in=2026-02-26 00:15:00 out=2026-02-26 02:48:18 LONG  entry_fill= 5187.580 ficha=F3 reason=EXIT_SL_RAISED
+  fichas por instante de apertura: {3: 239}
+  instantes con cierre Y apertura simultaneos: 12
+
+SuperTrend-p14x3-M15
+  desempate del harness (aperturas primero): peak=    3,438,629.09  max_simultaneas=1
+  desempate contrario   (cierres primero)  : peak=    3,438,629.09  max_simultaneas=1
+  instante del pico: 2026-01-28 22:15:00  (1 posiciones contadas)
+    in=2026-01-28 22:15:00 out=2026-01-29 05:42:08 LONG  entry_fill= 5480.280 ficha=F1 reason=EXIT_STLINE
+  fichas por instante de apertura: {1: 153}
+  instantes con cierre Y apertura simultaneos: 0
+
+Entradas S6 vs S7 (clave = t_in_exec + entry_fill + side):
+  unicas S6=211  unicas S7=239  interseccion=211
+  solo en S6=0   solo en S7=28
+
+==============================================================================
+ROM RECALCULADO CON EL MARGEN SOSTENIDO (cierres primero)
+==============================================================================
+estrategia                            net   ROM harness   ROM sostenido
+S6-K2P0                     24,792,629.42       127.03%         238.34%
+S7-TPNONE                  -11,072,070.93       -56.73%        -106.44%
+SuperTrend-p14x3-M15        41,254,538.80      1199.74%        1199.74%
