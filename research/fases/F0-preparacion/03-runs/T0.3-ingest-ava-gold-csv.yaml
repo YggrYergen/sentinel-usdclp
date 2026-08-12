@@ -1,0 +1,62 @@
+# T0.3-ingest-ava-gold-csv -- ticks_csv_mt5 (research/protocolos/06-runners.md)
+#
+# Ingesta del historico de ticks del oro exportado a mano por el user desde el
+# terminal MT5 del broker AVA (NO via la API python MetaTrader5 -- B5 fue
+# RETIRADO por el user, D-20: "la ingesta AVA es CSV manual, no API MT5",
+# TRACKER.md fila T0.3). Cubre R6-AVA (TRACKER.md fila T0.3): descarga
+# real-tick >= 2 anios objetivo 4 -- este CSV trae 4,6 anios.
+#
+# La ingesta real NO ocurre al escribir este manifiesto: el controlador la
+# ejecuta con el runner (scripts/research/runner/runner.py) cuando decida
+# lanzarla; el fichero de origen es de 8,65 GB y no se toco en la
+# implementacion del task-type (solo se leyeron sus primeras ~50 lineas para
+# confirmar formato).
+#
+# Fichero origen (activo practicamente irreemplazable -- 8,65 GB de
+# exportacion manual del user; nunca se mueve, copia ni borra):
+#   D:\FOREX\MT5_Tester\GOLD_202201022301_202608102246.csv
+#   9.284.698.406 bytes, rango 2022-01-02 23:01 .. 2026-08-10 22:46 (4,6 anios)
+#   TAB-separado, cabecera <DATE> <TIME> <BID> <ASK> <LAST> <VOLUME> <FLAGS>.
+#   <LAST>/<VOLUME> vacios es normal en un feed spot/CFD (no defecto).
+#   .gitignore:73 (MT5_Tester*/) ya cubre este CSV -- no entra a git.
+#
+# 🔴 Lago SEPARADO, obligatorio (charter): destino = data/lake_ticks_ava/GOLD/,
+# JAMAS data/lake_ticks/XAUUSD/ (ese es el sustrato Capitaria que alimenta
+# A6). El task-type ticks_csv_mt5 aborta con TicksCsvDestinoError si destino
+# resuelve dentro de data/lake_ticks/ -- guarda en codigo, no solo en este
+# manifiesto. Simbolo del broker: GOLD (no XAUUSD) -- verificado
+# (04-resultados/T0.3-ava/especificacion-feed.md): trade_contract_size=100.0,
+# digits=2, point=0.01, identicos a Capitaria.
+#
+# 🔴 Timestamps: t_msc en el parquet de salida es la marca de <DATE>+<TIME>
+# del CSV, EXACTA, en el reloj de servidor de AVA, re-codificada a epoch-ms
+# zero-offset (calendar.timegm, misma convencion que el lago existente) --
+# CERO conversion de zona horaria. El desfase AVA/Capitaria esta sin medir y
+# no se aplica aqui; si se mide, va en un sidecar aparte, nunca sobre los
+# datos (ver docstring de tasks_ticks_csv.py).
+#
+# Validacion con aborto duro sobre cada fila antes de escribirla: ask<bid,
+# bid<=0 o ask<=0, timestamps no monotonos crecientes, numero de campos
+# distinto de 7 -- cualquiera de las cuatro aborta con TicksCsvValidationError
+# (numero de linea + fila ofensiva) y no deja fichero de salida a medias.
+#
+# Idempotencia: un mes cuyo <YYYYMM>.parquet final ya existe en destino se
+# salta (no se reprocesa); si la corrida anterior se corto a mitad de un mes
+# solo dejo un .tmp (nunca un final), ese mes se reprocesa desde cero sin
+# duplicar. Escritura seguro: .tmp -> integridad_ticks.validar_ticks -> si ya
+# existia un final se preserva como .bak-<timestamp> (nunca se borra) ->
+# rename.
+experimento: T0.3-ingest-ava-gold-csv
+area: INFRA
+etapa: F0
+hipotesis: "n/a"
+substrate_id: ava-gold-ticks-2022-2026
+engine_sha: "n/a"
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/T0.3-ingest-ava-gold-csv/
+  ledger: append
+corridas:
+  - run_key: F0-DATA-AVA-0001
+    tipo: ticks_csv_mt5
+    csv_path: MT5_Tester/GOLD_202201022301_202608102246.csv
+    destino: data/lake_ticks_ava/GOLD/
