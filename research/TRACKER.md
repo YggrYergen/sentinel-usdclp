@@ -193,6 +193,43 @@ del user.
 
 ## BITÁCORA (append-only · más reciente arriba)
 
+- **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 3a HECHO: el overlay de costes consume
+  la ventana PERIODIZADA — el backtest largo queda desbloqueado.** Filas `F0-INFRA-0034` y
+  `F0-DATA-AVA-0008` (retroactiva).
+  (a) 🔴 **Bloqueo encontrado por el controlador leyendo el código, no reportado por nadie:**
+  `cost_overlay.py` y `calibracion_costes_capitaria.py` estaban cableados a la ventana **fija** de
+  8 horas de D-34 (`18..23, 0, 1`) y `calibracion.json` cubría exactamente esas. Con la ventana
+  periodizada, el cierre `03:00` mete **la hora 2 de NY dentro de ventana** y `spread_calibrado`
+  **lanzaba `KeyError`**: el backtest largo habría reventado — o, si alguien capturase la
+  excepción, se habría saltado la hora 2 **en silencio**.
+  (b) **Arreglo:** el predicado pasa de `in_ny_window` (fijo) a `ventana_calendario.in_ventana`
+  (fechado), y las horas se derivan de `horas_calendario(calendario)` en vez de una tupla literal.
+  Horas cubiertas ahora **`[0,1,2,18,19,20,21,22,23]`** — la 2 y ninguna más (`03:15` canonicaliza
+  a hora entera `3`, y `hora < cierre` es estricto).
+  (c) 🟢 **El punto delicado quedó resuelto por construcción, no por conteo final:** la hora 2 se
+  calibra **solo** sobre ticks cuya fecha cae en un periodo de cierre `03:00`. Calibrarla sobre
+  todos sus ticks habría mezclado régimen estrecho y ancho e inflado el coste. El número lo
+  confirma: la hora 2 es la **más limpia** del conjunto (std `0,0074`, sin cola hacia `0,60`),
+  coherente con estar en pleno centro de la ventana donde aplica. La **hora 18** es la más sucia
+  (std `0,0386`, `p95 = 0,60`), consistente con el gap de apertura de mercado.
+  (d) **Aritmética que cuadra y valida el instrumento:** las 9 horas suman **10.528.975** ticks,
+  exactamente `n_ticks_dentro_ventana`, y la hora 2 (**739.530**) es exactamente el incremento
+  sobre el total de 8 horas (**9.789.445**). Como la apertura `18:00` es constante en los 4
+  periodos, el predicado fijo y el fechado **solo pueden diferir en la hora 2** — y difieren en
+  eso y nada más.
+  (e) **Verificado por el controlador** re-corriendo en primer plano: `tests/research`
+  **255 passed** (245 + 10) + 4 desel · `tests/analysis` **88** · paridad D-22 **`4 passed`** ·
+  `test_ventana_calendario.py` **15 passed sin editarlo**. `git diff --stat` **vacío** sobre
+  `backtest.py`, `ny_window.py`, `ventana_calendario.py` y su test (R1-bis).
+  (f) ⚠️ **Corrección del controlador:** el docstring de `cost_overlay.py` afirmaba que el módulo
+  no lee disco, y con `_hours_ventana_calendario` pasó a ser **falso**. Reescrito para declarar
+  las dos lecturas. Prosa desactualizada es deuda (§A.9).
+  (g) 🟢 **Fila retroactiva `F0-DATA-AVA-0008`:** `build_bars_ava.py` estaba commiteado
+  (`335f512`) **sin fila de LEDGER**, así que por D-17 las barras M15 de AVA **no eran citables** —
+  y son el sustrato del backtest largo. Verificadas leyendo el parquet: **85.101 barras**,
+  `2022-01-02` → `2026-08-12`, y **2023 con 0 barras**: el holdout acto 2 queda sellado **por
+  construcción del propio fichero**, no por la disciplina de quien corra el backtest.
+
 - **2026-08-12** · Sonnet 5 impl. + Opus 5 verif. · **PASO 2c HECHO: cierre del calendario
   CANONICALIZADO — T0.13 queda cerrada y el backtest largo está desbloqueado.** D-37 (ruling del
   controlador, revocable por el user). Fila `F0-INFRA-0033`.

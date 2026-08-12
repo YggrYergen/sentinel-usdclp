@@ -6,14 +6,29 @@ AVA con un modelo de COSTES calibrado sobre Capitaria -- el spread nativo de
 AVA (0.34-0.45) no se usa para veredictos porque es mas angosto que el de
 Capitaria (0.50-0.60) y sesgaria todo resultado a favor de AVA. Este script
 MIDE esa calibracion: la distribucion empirica del spread de Capitaria,
-restringida a la ventana operativa `18:00 -> 02:00` hora de Nueva York (D-34),
-para que `scripts/research/cost_overlay.py` pueda aplicarla despues a ticks de
-AVA. REPORT-ONLY (charter SS B): este script no interpreta ni concluye, solo
+restringida a la ventana operativa vigente en la fecha de CADA tick, segun el
+CALENDARIO DE PERIODOS de `scripts/research/ventana_calendario.py`
+(D-36/D-37 revocan el borde fijo `18:00 -> 02:00` ET de D-34; el cierre
+ahora es `02:00` o `03:00/03:15` ET segun el periodo), para que
+`scripts/research/cost_overlay.py` pueda aplicarla despues a ticks de AVA.
+REPORT-ONLY (charter SS B): este script no interpreta ni concluye, solo
 calcula y persiste numeros.
+
+🔴 La hora 2 NY entra en ventana SOLO en los periodos cuyo cierre es
+`03:00`/`03:15`, y queda fuera en los que cierran a `02:00`. El predicado de
+filtrado (`_ticks_en_ventana`) usa `ventana_calendario.in_ventana`, que
+resuelve el periodo vigente por la FECHA del tick, no un offset fijo -- para
+que la calibracion de la hora 2 no mezcle ticks de ambos regimenes (spread
+estrecho del periodo donde esa hora esta en ventana, spread ancho del
+periodo donde no lo esta).
 
 R1-bis (charter SS A.11): NO modifica `scripts/analysis/realtick_bt/backtest.py`.
 Reutiliza `bt.TICKDIR` para localizar los parquet de ticks; toda la logica de
 este fichero es nueva, en `scripts/research/`.
+
+🔴 NO modifica `scripts/research/ny_window.py` ni `scripts/research/ventana_calendario.py`:
+ambos siguen vigentes (`ny_window.py` para otros consumidores; `ventana_calendario.py`
+como fuente de verdad de la ventana periodizada que este script reutiliza).
 
 HOLDOUT SELLADO (charter SS A.14 + D-31, acto 1): Capitaria
 `2026-05-12 -> 2026-07-26` es intocable. Este script procesa DOS tramos
@@ -50,11 +65,21 @@ from scripts.research.cost_overlay import (  # noqa: E402
     assert_fuera_holdout_capitaria,
     CAPITARIA_HOLDOUT_FIN,
     CAPITARIA_HOLDOUT_INI,
+    horas_calendario,
 )
-from scripts.research.ny_window import in_ny_window, server_epoch_to_ny  # noqa: E402
+from scripts.research.ny_window import server_epoch_to_ny  # noqa: E402
+from scripts.research.ventana_calendario import cargar_calendario, in_ventana  # noqa: E402
 
 BROKER = "capitaria"
-HOURS_VENTANA = [18, 19, 20, 21, 22, 23, 0, 1]  # las 8 horas de la ventana NY
+# D-36/D-37 revocan el borde fijo 18:00->02:00 (D-34): la ventana operativa
+# es un calendario de periodos fechado, no una tupla literal de horas -- ver
+# `_ticks_en_ventana` (predicado `in_ventana`, fechado) y `main` (deriva las
+# horas a calibrar de `horas_calendario(calendario)`, no de una lista escrita
+# a mano).
+CALENDARIO_PATH = (
+    ROOT / "research" / "fases" / "F0-preparacion" / "04-resultados"
+    / "T0.13-ventana-ny" / "calendario-ventana.json"
+)
 RESOLUCION_HISTOGRAMA = 0.01
 
 # Dos tramos declarados de antemano que rodean el holdout por construccion.
@@ -108,6 +133,25 @@ def _load_segment(ini: float, fin: float) -> pd.DataFrame:
     return out.sort_values("t").reset_index(drop=True)
 
 
+def _ticks_en_ventana(
+    t: np.ndarray, broker: str, calendario: dict
+) -> tuple[np.ndarray, np.ndarray]:
+    """Devuelve `(dentro, horas_ny)` para un array de epochs `t` (convencion
+    `backtest.py`). `dentro[i]` es True si el tick `i` cae dentro de la
+    ventana operativa VIGENTE EN SU PROPIA FECHA, segun `calendario`
+    (`ventana_calendario.in_ventana`, D-36/D-37) -- sustituye el predicado
+    fijo `ny_window.in_ny_window` (D-34, revocado por D-36). El mismo valor
+    de hora (p.ej. la 2 NY) puede dar veredictos opuestos segun la fecha del
+    tick: dentro en los periodos que cierran a las 03:00/03:15, fuera en los
+    que cierran a las 02:00. Mezclar ambos regimenes al calibrar
+    contaminaria el numero con ticks de spread ancho (fuera de ventana) que
+    no corresponden a ninguna condicion real de operacion."""
+    dts_ny = [server_epoch_to_ny(float(x), broker) for x in t]
+    dentro = np.array([in_ventana(d, calendario) for d in dts_ny], dtype=bool)
+    horas = np.array([d.hour for d in dts_ny], dtype=int)
+    return dentro, horas
+
+
 def _stats(spread: np.ndarray) -> dict:
     if spread.size == 0:
         return {"n": 0}
@@ -132,16 +176,18 @@ def _git_sha() -> str:
 
 
 def main() -> int:
+    calendario = cargar_calendario(CALENDARIO_PATH)
+    horas_ventana = horas_calendario(calendario)
+
     seg1 = _load_segment(SEG1_INI, SEG1_FIN)
     seg2 = _load_segment(SEG2_INI, SEG2_FIN)
     df = pd.concat([seg1, seg2], ignore_index=True).sort_values("t").reset_index(drop=True)
     if df.empty:
         raise SystemExit("ningun tick cargado en ninguno de los dos tramos -- abortando")
 
-    dt_ny = df["t"].map(lambda t: server_epoch_to_ny(t, BROKER))
-    dentro = dt_ny.map(in_ny_window)
+    dentro, horas = _ticks_en_ventana(df["t"].to_numpy(), BROKER, calendario)
     ventana = df.loc[dentro].copy()
-    ventana["hora_ny"] = dt_ny.loc[dentro].map(lambda d: d.hour)
+    ventana["hora_ny"] = horas[dentro]
     ventana["mes"] = ventana["t"].map(lambda t: datetime.utcfromtimestamp(t).strftime("%Y-%m"))
 
     if ventana.empty:
@@ -159,7 +205,7 @@ def main() -> int:
     n_total = int(spread_r.size)
 
     por_hora = {}
-    for h in HOURS_VENTANA:
+    for h in horas_ventana:
         sub = spread[ventana["hora_ny"].to_numpy() == h]
         por_hora[str(h)] = _stats(sub)
 
@@ -184,7 +230,14 @@ def main() -> int:
             datetime.utcfromtimestamp(CAPITARIA_HOLDOUT_INI).strftime("%Y-%m-%d"),
             datetime.utcfromtimestamp(CAPITARIA_HOLDOUT_FIN).strftime("%Y-%m-%d"),
         ],
-        "ventana_ny": "18:00 -> 02:00 hora America/New_York (D-34)",
+        "ventana_ny": (
+            "calendario de periodos fechado (D-36/D-37), apertura 18:00 ET fija, "
+            "cierre 02:00/03:00/03:15 ET segun el periodo vigente en la fecha del tick"
+        ),
+        "calendario_usado": str(CALENDARIO_PATH),
+        "calendario_generado": calendario.get("generado"),
+        "calendario_git_sha": calendario.get("git_sha"),
+        "horas_cubiertas": list(horas_ventana),
         "resolucion_histograma": RESOLUCION_HISTOGRAMA,
         "n_ticks_totales_cargados": int(len(df)),
         "n_ticks_dentro_ventana": n_total,
@@ -205,7 +258,7 @@ def main() -> int:
     print(f"n_ticks_dentro_ventana: {n_total:,}")
     print(f"global: {resultado['global']}")
     print(f"bimodalidad 0.50/0.60: {resultado['bimodalidad_050_060']}")
-    for h in HOURS_VENTANA:
+    for h in horas_ventana:
         print(f"  hora {h:>2d} ET: {por_hora[str(h)]}")
     for mes in sorted(por_mes):
         print(f"  mes {mes}: {por_mes[mes]}")

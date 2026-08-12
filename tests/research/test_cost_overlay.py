@@ -19,22 +19,35 @@ import pytest
 from scripts.research.cost_overlay import (
     AVA_HOLDOUT_FIN,
     AVA_HOLDOUT_INI,
+    CALENDARIO_PATH,
     CAPITARIA_HOLDOUT_FIN,
     CAPITARIA_HOLDOUT_INI,
     aplicar_overlay,
     assert_fuera_holdout_ava,
     assert_fuera_holdout_capitaria,
     cargar_calibracion,
+    horas_calendario,
     overlay_arrays,
     spread_calibrado,
 )
+from scripts.research.ventana_calendario import cargar_calendario
+
+# D-36/D-37 revocan el borde fijo 18:00->02:00 (D-34) de HOURS_VENTANA: la
+# ventana operativa se deriva ahora del calendario de periodos, y ese
+# calendario tiene un periodo con cierre 03:00/03:15 -- la hora 2 NY pasa a
+# estar dentro de ventana. Verificado contra el artefacto real mas abajo
+# (test_horas_calendario_calendario_real_incluye_hora_2): la union es
+# exactamente las 8 horas historicas MAS la hora 2, ninguna otra.
+HORAS_VENTANA_TEST = (18, 19, 20, 21, 22, 23, 0, 1, 2)
 
 
 def _calib_tipica() -> dict:
     """Calibracion sintetica tipica de Capitaria (~0.50-0.60), con los tres
-    modos definidos para las 8 horas de la ventana NY."""
+    modos definidos para las 9 horas de la ventana NY periodizada (D-36/D-37):
+    las 8 horas historicas de D-34 mas la hora 2, que entra en ventana en los
+    periodos cuyo cierre es 03:00/03:15."""
     por_hora = {}
-    for h in (18, 19, 20, 21, 22, 23, 0, 1):
+    for h in HORAS_VENTANA_TEST:
         por_hora[str(h)] = {"mediana": 0.55, "media": 0.56, "p75": 0.60, "n": 1000}
     return {"por_hora": por_hora}
 
@@ -101,7 +114,19 @@ def test_cargar_calibracion_falla_duro_si_falta_por_hora(tmp_path):
 
 def test_cargar_calibracion_falla_duro_si_falta_una_hora(tmp_path):
     calib = _calib_tipica()
-    del calib["por_hora"]["23"]  # falta una de las 8 horas
+    del calib["por_hora"]["23"]  # falta una de las 9 horas de la ventana periodizada
+    p = tmp_path / "calib.json"
+    p.write_text(json.dumps(calib), encoding="utf-8")
+    with pytest.raises(KeyError):
+        cargar_calibracion(p)
+
+
+def test_cargar_calibracion_falla_duro_si_falta_la_hora_2(tmp_path):
+    """La hora 2 entra en ventana solo por el calendario periodizado
+    (D-36/D-37); si la calibracion no la cubre, cargar_calibracion debe
+    fallar duro igual que le falta cualquier otra hora de la ventana."""
+    calib = _calib_tipica()
+    del calib["por_hora"]["2"]
     p = tmp_path / "calib.json"
     p.write_text(json.dumps(calib), encoding="utf-8")
     with pytest.raises(KeyError):
@@ -135,6 +160,62 @@ def test_spread_calibrado_modo_invalido_es_error_duro():
     calib = _calib_tipica()
     with pytest.raises(ValueError):
         spread_calibrado(_dt_ny(20), calib, modo="promedio_inventado")
+
+
+def test_spread_calibrado_hora_2_ok_cuando_calibracion_la_cubre():
+    """La hora 2 NY esta dentro de ventana en el calendario periodizado
+    (D-36/D-37, cierre 03:00/03:15 en dos de los cuatro periodos) aunque
+    quedaba fuera del borde fijo 18:00->02:00 de D-34. Con una calibracion
+    que la cubre, spread_calibrado NO debe lanzar KeyError."""
+    calib = _calib_tipica()
+    assert spread_calibrado(_dt_ny(2), calib, modo="mediana") == pytest.approx(0.55)
+
+
+# --------------------------------------------------------- 3b. horas_calendario
+def _calendario_sintetico(cierres: list[str]) -> dict:
+    """Calendario minimo con un periodo por cada cierre en `cierres`, todos
+    con apertura 18:00, en fechas consecutivas no solapadas."""
+    periodos = []
+    anio = 2026
+    for i, cierre in enumerate(cierres):
+        mes = i + 1
+        periodos.append({
+            "desde": f"{anio}-{mes:02d}-01",
+            "hasta": f"{anio}-{mes:02d}-28",
+            "apertura_ny": "18:00",
+            "cierre_ny": cierre,
+            "n_semanas": 1,
+            "n_semanas_baja_cobertura": 0,
+        })
+    return {"periodos": periodos, "rango_medido": {"desde": "2026-01-01", "hasta": "2026-12-31"}}
+
+
+def test_horas_calendario_solo_cierres_02_no_incluye_hora_2():
+    calendario = _calendario_sintetico(["02:00", "02:00"])
+    assert horas_calendario(calendario) == (0, 1, 18, 19, 20, 21, 22, 23)
+
+
+def test_horas_calendario_con_cierre_03_incluye_hora_2_y_ninguna_mas():
+    calendario = _calendario_sintetico(["02:00", "03:00"])
+    horas = horas_calendario(calendario)
+    assert horas == (0, 1, 2, 18, 19, 20, 21, 22, 23)
+    assert 3 not in horas  # el cierre en si NUNCA entra (hora < cierre, estricto)
+
+
+def test_horas_calendario_cierre_0315_canonicaliza_a_hora_entera_3():
+    """'03:15' trunca a hora entera 3 (mismo criterio que
+    ventana_calendario._hora): anade la hora 2, no la 3."""
+    calendario = _calendario_sintetico(["03:15"])
+    assert horas_calendario(calendario) == (0, 1, 2, 18, 19, 20, 21, 22, 23)
+
+
+def test_horas_calendario_calendario_real_incluye_hora_2_y_ninguna_mas():
+    """Verificacion contra el artefacto real (no se da por buena la
+    hipotesis): T0.13-ventana-ny/calendario-ventana.json tiene 4 periodos con
+    cierre_ny en {02:00, 02:00, 03:00, 03:15} -- la union debe ser
+    exactamente las 8 horas historicas de D-34 mas la hora 2."""
+    calendario = cargar_calendario(CALENDARIO_PATH)
+    assert horas_calendario(calendario) == (0, 1, 2, 18, 19, 20, 21, 22, 23)
 
 
 # --------------------------------------------------------------- 4. tres modos

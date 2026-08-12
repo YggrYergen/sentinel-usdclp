@@ -16,10 +16,13 @@ El overlay SIEMPRE ENSANCHA (spread de Capitaria > spread nativo de AVA);
 invertir el sentido (estrechar) es exactamente el fallo que D-21 existe para
 impedir, porque haria a AVA salir aun mejor.
 
-Funciones puras, sin efectos de lado. Este modulo no lee disco ni escribe
-nada; `cargar_calibracion` es la unica que toca el sistema de ficheros, y
-solo para leer el JSON que produce
-`scripts/research/calibracion_costes_capitaria.py`.
+Funciones puras, sin efectos de lado, con DOS excepciones declaradas: el
+modulo no escribe nada nunca, y solo LEE disco en `cargar_calibracion` (el
+JSON que produce `scripts/research/calibracion_costes_capitaria.py`) y en
+`_hours_ventana_calendario` (el calendario de periodos de D-36/D-37, leido
+de `CALENDARIO_PATH` de forma perezosa y cacheada, una vez por proceso).
+La derivacion de horas en si -- `horas_calendario(calendario)` -- SI es
+pura: recibe el dict y no toca el sistema de ficheros.
 
 R1-bis (charter SS A.11): NO modifica `scripts/analysis/realtick_bt/backtest.py`.
 
@@ -33,11 +36,11 @@ from __future__ import annotations
 
 import calendar
 from datetime import datetime, timezone
+from functools import lru_cache
+from pathlib import Path
 from typing import Sequence
 
 import numpy as np
-
-from scripts.research.ny_window import in_ny_window
 
 # --------------------------------------------------------------------- HOLDOUT
 # D-31 acto 1: Capitaria 2026-05-12 -> 2026-07-26, intocable (charter SS A.14).
@@ -74,16 +77,61 @@ def assert_fuera_holdout_ava(ini: float, fin: float) -> None:
 
 
 # ------------------------------------------------------------------ CALIBRACION
-HOURS_VENTANA = (18, 19, 20, 21, 22, 23, 0, 1)  # las 8 horas de la ventana NY (D-34)
+# D-36/D-37 revocan el borde fijo 18:00->02:00 (D-34): la ventana operativa se
+# modela ahora como CALENDARIO DE PERIODOS (`ventana_calendario.py` +
+# `T0.13-ventana-ny/calendario-ventana.json`), y uno de esos periodos cierra a
+# las 03:00/03:15 ET -- la hora 2 NY entra en ventana en ese periodo (y en
+# ninguno de los otros tres). Las horas cubiertas por la calibracion ya NO son
+# una tupla literal: se DERIVAN del calendario (`horas_calendario`), para que
+# un futuro cambio de calendario no obligue a editar esta tupla a mano en dos
+# sitios (el bug exacto que produjo este modulo: T0.13 revoco D-34 y esta
+# tupla se quedo desincronizada).
+CALENDARIO_PATH = (
+    Path(r"D:\FOREX") / "research" / "fases" / "F0-preparacion" / "04-resultados"
+    / "T0.13-ventana-ny" / "calendario-ventana.json"
+)
 MODOS = ("mediana", "media", "p75")
+
+
+def horas_calendario(calendario: dict) -> tuple[int, ...]:
+    """Pura: horas NY (enteras, 0-23) que caen dentro de la ventana operativa
+    en ALGUN periodo de `calendario["periodos"]`, para cada `(apertura_ny,
+    cierre_ny)` la disyuncion `hora >= apertura or hora < cierre` (misma
+    regla que `ventana_calendario.in_ventana`, nunca un rango). No lee disco.
+
+    Cubre tambien toda fecha EXTRAPOLADA (D-36): `_periodo_extrapolado`
+    siempre devuelve uno de los periodos ya presentes en
+    `calendario["periodos"]` (el mas cercano en el "ano patron"), nunca
+    inventa un par (apertura, cierre) nuevo -- asi que la union sobre los
+    periodos medidos basta, no hace falta enumerar fechas extrapoladas."""
+    horas: set[int] = set()
+    for periodo in calendario["periodos"]:
+        apertura = int(periodo["apertura_ny"].split(":")[0])
+        cierre = int(periodo["cierre_ny"].split(":")[0])
+        for h in range(24):
+            if h >= apertura or h < cierre:
+                horas.add(h)
+    return tuple(sorted(horas))
+
+
+@lru_cache(maxsize=1)
+def _hours_ventana_calendario() -> tuple[int, ...]:
+    """Perezoso y cacheado (una sola lectura de disco por proceso, igual que
+    `cargar_calibracion`): deriva las horas cubiertas por la ventana
+    operativa del calendario de periodos vigente (D-36/D-37) leido de
+    `CALENDARIO_PATH`."""
+    from scripts.research.ventana_calendario import cargar_calendario
+
+    return horas_calendario(cargar_calendario(CALENDARIO_PATH))
 
 
 def cargar_calibracion(path) -> dict:
     """Carga el JSON de calibracion producido por
     `scripts/research/calibracion_costes_capitaria.py`. Falla duro (nunca un
     default silencioso) si el fichero no existe, no es JSON valido, le falta
-    la clave `por_hora`, le falta alguna de las 8 horas de la ventana NY, o a
-    alguna hora le falta alguno de los tres modos."""
+    la clave `por_hora`, le falta alguna de las horas de la ventana operativa
+    NY (calendario de periodos, D-36/D-37), o a alguna hora le falta alguno
+    de los tres modos."""
     import json
     from pathlib import Path
 
@@ -96,12 +144,13 @@ def cargar_calibracion(path) -> dict:
     if "por_hora" not in calib:
         raise KeyError(f"calibracion sin clave 'por_hora': {p}")
     por_hora = calib["por_hora"]
-    faltantes_hora = [h for h in HOURS_VENTANA if str(h) not in por_hora]
+    horas_ventana = _hours_ventana_calendario()
+    faltantes_hora = [h for h in horas_ventana if str(h) not in por_hora]
     if faltantes_hora:
         raise KeyError(
             f"calibracion incompleta: faltan las horas {faltantes_hora} en 'por_hora' ({p})"
         )
-    for h in HOURS_VENTANA:
+    for h in horas_ventana:
         entrada = por_hora[str(h)]
         faltantes_modo = [m for m in MODOS if m not in entrada]
         if faltantes_modo:
@@ -116,14 +165,15 @@ def spread_calibrado(dt_ny: datetime, calib: dict, modo: str = "mediana") -> flo
     segun `modo` (`{"mediana", "media", "p75"}`; `p75` es el modo
     conservador -- ensancha mas). Falla duro si `modo` no es uno de los tres,
     o si la hora de `dt_ny` no esta cubierta por la calibracion (fuera de la
-    ventana operativa NY, D-34)."""
+    ventana operativa NY del calendario de periodos, D-36/D-37)."""
     if modo not in MODOS:
         raise ValueError(f"modo desconocido: {modo!r}. Validos: {MODOS}")
     hora = dt_ny.hour
-    if hora not in HOURS_VENTANA:
+    horas_ventana = _hours_ventana_calendario()
+    if hora not in horas_ventana:
         raise KeyError(
-            f"hora {hora} fuera de la ventana operativa NY {HOURS_VENTANA} (D-34); "
-            "la calibracion no cubre esa hora."
+            f"hora {hora} fuera de la ventana operativa NY {horas_ventana} "
+            "(calendario de periodos, D-36/D-37); la calibracion no cubre esa hora."
         )
     return float(calib["por_hora"][str(hora)][modo])
 
@@ -158,16 +208,17 @@ def overlay_arrays(
 
     # Tabla de lookup hora -> spread calibrado (NaN donde la calibracion no
     # cubre esa hora), construida UNA vez, no por tick.
+    horas_ventana = _hours_ventana_calendario()
     lut = np.full(24, np.nan, dtype=float)
-    for h in HOURS_VENTANA:
+    for h in horas_ventana:
         lut[h] = float(calib["por_hora"][str(h)][modo])
 
     s = lut[horas]
     if np.isnan(s).any():
         malas = sorted(set(int(h) for h in horas[np.isnan(s)]))
         raise KeyError(
-            f"horas {malas} fuera de la ventana operativa NY {HOURS_VENTANA} (D-34); "
-            "la calibracion no cubre esas horas."
+            f"horas {malas} fuera de la ventana operativa NY {horas_ventana} "
+            "(calendario de periodos, D-36/D-37); la calibracion no cubre esas horas."
         )
 
     mid = (bids + asks) / 2.0
