@@ -55,20 +55,58 @@ buffered per calendar month in batches of `BATCH_SIZE` and flushed to a
 per-month `pyarrow.parquet.ParquetWriter` as they fill, so memory use is
 bounded by one batch at a time, never a whole month or the whole file.
 
+Forward-fill of bid/ask (correction round, 2026-08-11 -- the original spec's
+claim that every row carries both bid and ask was false: `<FLAGS>` is a bit
+field -- 2 = only BID changed this tick, 4 = only ASK changed, 6 = both --
+and the exporter writes the side that did NOT change as an EMPTY string.
+The real ingest aborted on line 6 of the real CSV for exactly this reason).
+When `<BID>` or `<ASK>` is empty, it is filled with the last non-empty value
+already seen for that same column in this run. This is NOT data cleaning:
+`copy_ticks_range` (the live MT5 API path `ticks_mt5` uses, and the path the
+existing `data/lake_ticks/XAUUSD/` lake was built from) already returns both
+sides populated with the last known value on every tick -- forward-filling
+here reconstructs exactly that behavior, so the AVA lake stays comparable to
+the Capitaria one. The decision to fill is made from the EMPTY FIELD alone,
+never from the `<FLAGS>` bit -- if the two ever disagreed, the data (the
+empty/non-empty field) must win over the label (the flags bit). `<FLAGS>`
+is recorded only as an audit metric (`flags_distribucion`, a value->count
+dict over every row scanned), never consulted for control flow.
+`<LAST>`/`<VOLUME>` are unaffected by any of this: still read and
+discarded, no forward-fill applied to them.
+
+Metrics returned (and appended to the LEDGER by the runner): besides
+`csv_path`/`csv_checksum_sha256`/`filas_leidas`/`filas_escritas`/
+`meses_generados`/`t_msc_min`/`t_msc_max`/`bytes_salida`/`ficheros_escritos`,
+this module also reports `ticks_bid_arrastrado` and `ticks_ask_arrastrado`
+(counts of forward-filled cells) and `flags_distribucion` (the observed
+`<FLAGS>` value->count dict), because the fill changes what is actually
+written to parquet and must stay auditable.
+
+Cold start: if a column is still empty the first time it is ever needed for
+fill (no non-empty value of that column has been seen yet in this run),
+there is nothing to carry forward -- this raises `TicksCsvValidationError`
+the same as any other validation failure (source line number + offending
+row), never a fill with zero, the other side, or an interpolation.
+
 Validation (hard abort, never a silent skip/clean -- charter SS A.13):
 before a row is ever buffered for writing, this module checks, in order:
-field count == 7, bid/ask parse as numbers, bid > 0 and ask > 0, ask >= bid,
-and t_msc non-decreasing versus the previous row (ties are fine -- multiple
-ticks can share a millisecond; only a value that goes backwards aborts,
-same convention `integridad_ticks.py` already uses for `n_no_monotonicos`).
-Any failure raises `TicksCsvValidationError` naming the source line number
-and the offending raw row, and -- because validation happens BEFORE a row
-ever reaches a parquet writer -- also closes and deletes every `.tmp`
-parquet writer opened during this run before re-raising, so no half-written
-output file survives an abort. A `.tmp` left over from a PRIOR, separately
-interrupted run is likewise never treated as data: it is silently
-overwritten (never appended to) the next time that month is (re)processed,
-which is what makes resumption non-duplicating.
+field count == 7, forward-fill (or cold-start abort) of empty bid/ask,
+non-empty bid/ask parse as numbers, bid > 0 and ask > 0 (evaluated on the
+ALREADY-FILLED values), ask >= bid (likewise on filled values), and t_msc
+non-decreasing versus the previous row (ties are fine -- multiple ticks can
+share a millisecond; only a value that goes backwards aborts, same
+convention `integridad_ticks.py` already uses for `n_no_monotonicos`). Fill
+happens before these four checks specifically so a value that only becomes
+invalid after being carried forward (e.g. a stale ask that ends up below a
+fresh bid) is still caught. Any failure raises `TicksCsvValidationError`
+naming the source line number and the offending raw row, and -- because
+validation happens BEFORE a row ever reaches a parquet writer -- also
+closes and deletes every `.tmp` parquet writer opened during this run
+before re-raising, so no half-written output file survives an abort. A
+`.tmp` left over from a PRIOR, separately interrupted run is likewise never
+treated as data: it is silently overwritten (never appended to) the next
+time that month is (re)processed, which is what makes resumption
+non-duplicating.
 
 Idempotency (`destino/<YYYYMM>.parquet` already exists -> month skipped
 entirely, not re-read into a writer -- but every row is still scanned and
@@ -242,6 +280,11 @@ def ticks_csv_mt5(params: dict, out_dir: Path) -> dict:
     t_msc_min_global: int | None = None
     t_msc_max_global: int | None = None
     prev_t_msc: int | None = None
+    ticks_bid_arrastrado = 0
+    ticks_ask_arrastrado = 0
+    flags_distribucion: dict[str, int] = {}
+    last_bid: float | None = None
+    last_ask: float | None = None
 
     def _tmp_path_for(key: str) -> Path:
         return destino / f"{key}.parquet.tmp"
@@ -289,14 +332,46 @@ def ticks_csv_mt5(params: dict, out_dir: Path) -> dict:
                     f"encontraron {len(row)}: {row!r}"
                 )
 
-            date_str, time_str, bid_str, ask_str, _last_str, _vol_str, _flags_str = row
+            date_str, time_str, bid_str, ask_str, _last_str, _vol_str, flags_str = row
             filas_leidas += 1
+            flags_distribucion[flags_str] = flags_distribucion.get(flags_str, 0) + 1
 
-            try:
-                bid = float(bid_str)
-                ask = float(ask_str)
-            except ValueError as exc:
-                _cleanup_and_abort(f"{csv_path}:{line_no}: bid/ask no numerico: {row!r} ({exc})")
+            # arrastre del ultimo valor conocido: <FLAGS> es un bitfield
+            # (2=solo cambio bid, 4=solo cambio ask, 6=ambos) y el exportador
+            # de MT5 deja vacio el lado que no cambio en ese tick. La
+            # decision de arrastrar se toma del campo vacio, NUNCA de
+            # <FLAGS> (auditado arriba, jamas consultado para control de
+            # flujo). Corre ANTES de las 4 validaciones de mas abajo.
+            if bid_str == "":
+                if last_bid is None:
+                    _cleanup_and_abort(
+                        f"{csv_path}:{line_no}: bid vacio y aun no hay ningun valor "
+                        f"previo de bid para arrastrar (arranque en frio): {row!r}"
+                    )
+                bid = last_bid
+                ticks_bid_arrastrado += 1
+            else:
+                try:
+                    bid = float(bid_str)
+                except ValueError as exc:
+                    _cleanup_and_abort(f"{csv_path}:{line_no}: bid no numerico: {row!r} ({exc})")
+
+            if ask_str == "":
+                if last_ask is None:
+                    _cleanup_and_abort(
+                        f"{csv_path}:{line_no}: ask vacio y aun no hay ningun valor "
+                        f"previo de ask para arrastrar (arranque en frio): {row!r}"
+                    )
+                ask = last_ask
+                ticks_ask_arrastrado += 1
+            else:
+                try:
+                    ask = float(ask_str)
+                except ValueError as exc:
+                    _cleanup_and_abort(f"{csv_path}:{line_no}: ask no numerico: {row!r} ({exc})")
+
+            last_bid = bid
+            last_ask = ask
 
             if bid <= 0 or ask <= 0:
                 _cleanup_and_abort(
@@ -371,6 +446,9 @@ def ticks_csv_mt5(params: dict, out_dir: Path) -> dict:
         "bytes_salida": bytes_salida,
         "ficheros_escritos": sorted(ficheros_escritos),
         "meses": meses,
+        "ticks_bid_arrastrado": ticks_bid_arrastrado,
+        "ticks_ask_arrastrado": ticks_ask_arrastrado,
+        "flags_distribucion": flags_distribucion,
     }
 
 

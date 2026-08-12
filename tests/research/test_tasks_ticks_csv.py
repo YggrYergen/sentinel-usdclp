@@ -350,6 +350,142 @@ def test_metricas_completas(tmp_path):
 
 
 # ---------------------------------------------------------------------------
+# arrastre del ultimo valor conocido (forward-fill) -- ronda de correccion:
+# <FLAGS> es un campo de bits (2=solo cambio BID, 4=solo cambio ASK, 6=ambos)
+# y el exportador de MT5 deja VACIO el lado que no cambio en ese tick. Esto
+# reproduce lo que copy_ticks_range ya hace por su cuenta (ambos lados
+# siempre poblados con el ultimo conocido), para que el lago AVA sea
+# comparable con el de Capitaria, construido por esa via.
+# ---------------------------------------------------------------------------
+
+def test_ask_vacio_arrastra_el_ultimo_ask_conocido(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "1829.89", flags="6"),
+        _row("2022.01.02", "23:01:00.361", "1829.57", "", flags="2"),  # solo cambio bid
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    metrics = tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    df = pd.read_parquet(destino / "202201.parquet")
+    assert len(df) == 2
+    assert df["bid"].tolist() == [1829.55, 1829.57]
+    assert df["ask"].tolist() == [1829.89, 1829.89]  # arrastrado exacto
+    assert metrics["ticks_ask_arrastrado"] == 1
+    assert metrics["ticks_bid_arrastrado"] == 0
+
+
+def test_bid_vacio_arrastra_el_ultimo_bid_conocido(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "1829.89", flags="6"),
+        _row("2022.01.02", "23:01:00.361", "", "1829.95", flags="4"),  # solo cambio ask
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    metrics = tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    df = pd.read_parquet(destino / "202201.parquet")
+    assert len(df) == 2
+    assert df["bid"].tolist() == [1829.55, 1829.55]  # arrastrado exacto
+    assert df["ask"].tolist() == [1829.89, 1829.95]
+    assert metrics["ticks_bid_arrastrado"] == 1
+    assert metrics["ticks_ask_arrastrado"] == 0
+
+
+def test_ambos_vacios_arrastran_los_dos(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "1829.89", flags="6"),
+        _row("2022.01.02", "23:01:00.361", "", "", flags="0"),  # ninguno cambio (raro, pero posible)
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    metrics = tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    df = pd.read_parquet(destino / "202201.parquet")
+    assert len(df) == 2
+    assert df["bid"].tolist() == [1829.55, 1829.55]
+    assert df["ask"].tolist() == [1829.89, 1829.89]
+    assert metrics["ticks_bid_arrastrado"] == 1
+    assert metrics["ticks_ask_arrastrado"] == 1
+
+
+def test_vacio_en_primera_fila_sin_valor_previo_aborta_con_linea(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "", flags="2"),  # primera fila, ask vacio
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    with pytest.raises(tasks_ticks_csv.TicksCsvValidationError, match="2"):
+        tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    assert not destino.exists() or list(destino.glob("*")) == []
+
+
+def test_bid_vacio_en_primera_fila_sin_valor_previo_aborta(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "", "1829.89", flags="4"),  # primera fila, bid vacio
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    with pytest.raises(tasks_ticks_csv.TicksCsvValidationError, match="2"):
+        tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    assert not destino.exists() or list(destino.glob("*")) == []
+
+
+def test_arrastre_precede_a_la_validacion_ask_arrastrado_queda_bajo_bid_nuevo(tmp_path):
+    # ask arrastrado (1830.10) queda por debajo del bid NUEVO (1830.20) --
+    # el aborto por ask<bid debe ocurrir usando el valor YA arrastrado,
+    # confirmando que el arrastre corre antes de las validaciones.
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1830.00", "1830.10", flags="6"),
+        _row("2022.01.02", "23:01:00.361", "1830.20", "", flags="2"),
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    with pytest.raises(tasks_ticks_csv.TicksCsvValidationError, match="ask < bid"):
+        tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    assert not destino.exists() or list(destino.glob("*")) == []
+
+
+def test_metricas_de_arrastre_y_distribucion_de_flags(tmp_path):
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "1829.89", flags="6"),
+        _row("2022.01.02", "23:01:00.200", "1829.57", "", flags="2"),
+        _row("2022.01.02", "23:01:00.300", "", "1829.95", flags="4"),
+        _row("2022.01.02", "23:01:00.400", "1829.60", "1829.99", flags="6"),
+        _row("2022.01.02", "23:01:00.500", "1829.62", "", flags="2"),
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    metrics = tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    assert metrics["ticks_bid_arrastrado"] == 1
+    assert metrics["ticks_ask_arrastrado"] == 2
+    assert metrics["flags_distribucion"] == {"6": 2, "2": 2, "4": 1}
+    assert metrics["filas_leidas"] == 5
+    assert metrics["filas_escritas"] == 5
+
+
+def test_flags_no_decide_el_arrastre_solo_el_campo_vacio(tmp_path):
+    # FLAGS dice 6 (ambos cambiaron) pero el campo ask viene vacio de todas
+    # formas -- debe arrastrarse igual, por el campo vacio, no por el bit.
+    csv_path = write_csv(tmp_path / "gold.csv", [
+        _row("2022.01.02", "23:01:00.106", "1829.55", "1829.89", flags="6"),
+        _row("2022.01.02", "23:01:00.361", "1829.57", "", flags="6"),  # flags dice "ambos" pero ask vacio
+    ])
+    destino = tmp_path / "lake_ticks_ava" / "GOLD"
+
+    metrics = tasks_ticks_csv.ticks_csv_mt5(base_params(csv_path, destino), tmp_path / "out")
+
+    df = pd.read_parquet(destino / "202201.parquet")
+    assert df["ask"].tolist() == [1829.89, 1829.89]
+    assert metrics["ticks_ask_arrastrado"] == 1
+    assert metrics["flags_distribucion"] == {"6": 2}
+
+
+# ---------------------------------------------------------------------------
 # registrado en el registry del runner via una linea de import en runner.py
 # ---------------------------------------------------------------------------
 
