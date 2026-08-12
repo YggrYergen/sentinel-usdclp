@@ -390,3 +390,46 @@ respectivamente), luego el pico entero lo produce el doble conteo.
 - **Ambas cifras se reportan siempre juntas** de aquí en adelante: `peak_margin` (instantáneo,
   peor caso) y margen sostenido, con la concurrencia máxima real al lado. La divergencia entre
   ambas es un descriptor de la mecánica de reverse, no ruido.
+
+### D-33 · 2026-08-12 · B11 se cierra por EXCLUSIÓN, no por reparación
+*(Procedencia: instrucción explícita del user, 2026-08-12: "¿no podemos mejor simplemente dejar
+fuera los huecos para poder avanzar más rápido?". Constituye **reducción de alcance autorizada por
+escrito** en el sentido del charter §A.13 — el único que puede autorizarla es el user, y lo hizo.)*
+
+**Qué se elimina del alcance de B11.** Sus puntos (1) y (3) tal como estaban escritos: clasificar
+los huecos contra un calendario de festivos (festivo declarado vs corte de feed), y rellenarlos
+desde Capitaria en el tramo de solape. **Ninguno de los dos se hará.**
+
+**Qué se conserva, porque es condición de posibilidad de lo anterior.** Localizar los huecos: no se
+puede excluir lo que no se ha ubicado. Es la parte barata (solo `t_msc`) y quedó hecha el mismo
+día — artefacto `04-resultados/T0.3-continuidad/huecos_intradia_ava.py` →
+`huecos-intradia-ava-2026-08-12.txt` + **`exclusiones-ava.json`**, que es la lista de intervalos
+consumible por el backtest largo. Fila LEDGER `F0-DATA-AVA-0007`.
+
+**Política que sustituye a la reparación.** Todo intervalo de `exclusiones-ava.json` se declara
+**no evaluable** y se excluye del backtest largo. No se rellena, no se interpola, no se estima.
+
+🔴 **Condición vinculante que hace honesta la exclusión — la tabla mensual lleva columna de
+cobertura.** Excluir horas sin declararlo convertiría un mes mutilado en un mes aparentemente
+normal con menos operaciones, y el desglose mensual de BL-0 es precisamente una comparación entre
+meses. **Todo mes con horas excluidas reporta cuántas**, y ningún mes por debajo de un umbral de
+cobertura declarado de antemano entra en comparaciones mes-a-mes sin la marca. Medido:
+`2026-01` pierde **29,1 h de ventana operativa** (≈17 % del mes) y `2026-02` **14,0 h** (≈9 %); el
+resto de meses afectados está en torno al 5 %. Sin esta columna, la exclusión sería exactamente el
+tipo de degradación silenciosa que §A.13 prohíbe.
+
+**Lo que la medición cambió respecto a lo que se temía.** El problema es **cuatro veces menor** de
+lo que sugería el agregado, porque el sistema solo opera en la ventana `18:00→02:00` NY (T0.13):
+de **344,1 h** de hueco total, solo **97,7 h caen dentro de la ventana**; las otras **246,4 h están
+en la zona muerta y no afectan a ningún backtest**. Y el **holdout queda prácticamente intacto**:
+sus 2 huecos (15,3 h) aportan **0,1 h** dentro de la ventana.
+
+🔴 **Corrección de un número ya registrado.** La bitácora del 2026-08-12 registraba **53 huecos /
+306,9 h**. Lo correcto es **56 / 344,1 h**. La diferencia son exactamente **3 huecos que cruzan
+frontera de mes** (`2024-12-31→2025-01-01` 25,0 h · `2025-12-31→2026-01-01` 7,5 h ·
+`2026-06-30→2026-07-01` 4,6 h): el barrido anterior procesaba cada parquet mensual de forma
+aislada y no encadenaba el último tick de un mes con el primero del siguiente. 53 + 3 = 56 y
+306,9 + 37,1 = 344,0 ≈ 344,1 — la discrepancia queda **completamente explicada**, y sirvió de
+validación del instrumento nuevo. El tercero de esos huecos es el **artefacto de reloj ya declarado**
+en B9 (julio arranca a las 04:00 porque `copy_ticks_range` interpreta datetimes naive en el reloj
+del host), no un corte del feed.
