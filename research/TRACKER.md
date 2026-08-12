@@ -33,10 +33,23 @@
 > ✅ **T0.12 SELLADO (D-31):** acto 1 Capitaria `2026-05-12`→`2026-07-26` (propuesta del controlador
 > **aceptada por el user** el 2026-08-12); acto 2 AVA **año 2023 completo**. Holdout intocable
 > desde ya (§A.14); BL-0 lo excluye.
-> **Siguiente:** **T0.6** (12 mods de motor, plan §4.1 — pole largo del camino crítico, no necesita
-> terminal MT5) → T0.7 (A6) → T0.8 (freeze) → LBT/BL-0. **Objetivo declarado por el user
+> ✅ **T0.6 Tarea 0 HECHA (commit `bd17f60`): la puerta de paridad de D-22 ya existe.** Línea base
+> golden de S6/S7/SuperTrend congelada sobre Capitaria pre-holdout (`2026-01-01`→`2026-05-11`,
+> 8.334 velas, 1.503 posiciones) + `tests/research/test_baseline_parity.py`. Determinismo
+> confirmado por hash; el test **verificado por mutación** (deriva de 1e-7 en 1 de 633 posiciones →
+> rojo, nombrando estrategia/índice/clave). **Correr ANTES y DESPUÉS de cada una de las 12 mods.**
+> ✅ **T0.13 RESUELTA de facto (commit pendiente de esta sesión): la ventana operativa es
+> `18:00 → 02:00 hora de Nueva York`, todo el año** — apertura de CME Globex para el oro, precedida
+> del corte diario de mantenimiento. Medido: el "gate de spread 0,50" de Capitaria **es un reloj,
+> no un spread** (99-100 % estrecho dentro de la ventana, 0-5 % fuera), y salta en las fechas
+> exactas de los dos DST (`2026-03-08` EEUU, `2026-04-05` Chile). Relojes de servidor **medidos**
+> vía el corte de CME: **Capitaria = hora de Chile con DST (UTC−3/−4); AVA = UTC fijo**.
+> **Siguiente:** implementar el filtro de ventana NY sobre los dos sustratos → correr el desglose
+> mensual de S6/ST sobre 3,5 años de AVA → comparar contra Capitaria en el solape (A6 Pata B) →
+> resto de T0.6 → T0.7 (A6 Pata A) → T0.8 (freeze) → LBT/BL-0. **Objetivo declarado por el user
 > (2026-08-12): ver S6 y SuperTrend en backtest largo cuanto antes, con la paridad AVA ↔ Capitaria
-> ↔ posiciones reales confirmada primero** — o sea, A6 es el gate y no se salta.
+> ↔ posiciones reales confirmada primero** — A6 es el gate y no se salta. 🔴 **El filtro horario NO
+> se quita** (instrucción explícita del user: el edge aparecía solo en esa franja acotada).
 > 🔴 **Deuda de robustez detectada y NO resuelta** (ver B10): el predicado de completitud de
 > `ticks_mt5` es ciego a agujeros en la cabeza del mes, y no hay guarda anti-destrucción. Esta
 > corrida se protegió con `tolerancia_horas: 1` y verificación manual, no por diseño.
@@ -68,7 +81,7 @@
 | `[ ]` | T0.10 | Literatura formal — 7 áreas | Recolección: Sonnet · Memos: Opus | Cada área ANTES de cerrar su grilla |
 | `[ ]` | T0.11b | Análisis de las 28 transcripciones | Ver protocolo dedicado | **Protocolo exacto:** `research/fases/F0-preparacion/PROTOCOLO-REVISION-VIDEOS.md` |
 | `[x]` | T0.12 | Sellar el holdout | Controlador | ✅ **SELLADO 2026-08-12 — ver D-31 para el cuerpo completo y las consecuencias.** Los dos actos cerrados el mismo día: **acto 1** (Capitaria) = **`2026-05-12`→`2026-07-26`**, la propuesta del controlador **aceptada explícitamente por el user**; corta en el 26-jul para dejar fuera del sello los 16 días de la ventana de la 902 (`2026-07-27`→`2026-08-11`) que **A6 Pata A** necesita — el holdout protege contra sobreajuste de *selección* de estrategias y A6 Pata A no selecciona nada. **Acto 2** (AVA) = **año 2023 completo** (`2023-01-01`→`2023-12-31`), que es el ejemplo literal de D-01, año natural completo y no adyacente al acto 1; fechable solo ahora, porque hasta el cierre de B9 no había rango real contra el que fijarlo. Verificado en disco: 2023 sin un solo día hábil ausente (auditoría D-29 `04-resultados/T0.3-continuidad/continuidad-diaria-ava-2026-08-12.txt`). 🔴 **Desde este momento ambos tramos son intocables** (§A.14): ni abrir, ni muestrear, ni graficar, ni backtestear; UNA sola evaluación final autorizada por el user. **BL-0 (D-23) excluye el holdout** → ≈3,5 años efectivos de AVA de los 4,6 |
-| `[ ]` | T0.13 | Modelado de la hora muerta desplazante | Sonnet · análisis Opus | 3 fuentes: ticks AVA, ticks Capitaria (7 m), historiales MT5 (~3 meses en suma) |
+| `[~]` | T0.13 | Modelado de la hora muerta desplazante | Sonnet · análisis Opus | 🟢 **RESUELTO ANALÍTICAMENTE 2026-08-12 (falta llevarlo a código).** Surgió al buscar cómo trasladar el gate de spread a AVA. **Hallazgo central: el "gate 0,50" de Capitaria es un RELOJ, no un spread.** Por hora de servidor, el estado estrecho está al 99-100 % dentro de una ventana y al 0-5 % fuera — es un interruptor, no una tendencia. **Ventana medida por semana:** `20:00→03:59` (05-ene→01-mar) · `19:00→02:59` (16-mar→30-mar) · `18:00→02:59` (13-abr→10-ago), con la **hora muerta siempre 1 h antes** de la apertura (19 · 18 · 17). Los dos saltos caen en las fechas exactas de los DST: semana del **`2026-03-09`** (EEUU arrancó el 08-mar) y del **`2026-04-06`** (Chile terminó el 05-abr). **Convertido a Nueva York las tres filas son el mismo horario: `18:00 → 02:00 ET`, todo el año** = apertura de la sesión electrónica de oro de CME Globex, y la hora muerta = su corte diario de mantenimiento 17:00-18:00 ET. **Relojes de servidor MEDIDOS con el corte de CME como ancla** (no inferidos), en 2022/2024/2026 y en ambas estaciones: **AVA = UTC fijo sin DST** (hora muerta 22 en enero, 21 en julio: se mueve solo con el DST de EEUU) · **Capitaria = hora de Chile con DST, UTC−3/−4** (hora muerta 19 en enero, 17 en julio: acumula los dos DST). ⚠️ El segundo ancla programado (apertura del domingo) **no llegó a correr** por un error de aritmética de día de la semana: la conclusión se apoya en un solo ancla, consistente en 4 muestras. **Pendiente:** llevar la regla a código como filtro de ventana NY aplicado a ambos sustratos, sustituyendo el gate de spread |
 
 **Criterio de cierre de Fase 0:** T0.3..T0.13 en `[x]`, motor congelado con SHA registrado abajo,
 A6 verde y firmada por Opus, holdout sellado con constancia en `DECISIONES.md`.
@@ -156,6 +169,39 @@ del user.
 ---
 
 ## BITÁCORA (append-only · más reciente arriba)
+
+- **2026-08-12** · Opus 5 controlador · **T0.6 Tarea 0 construida, y T0.13 resuelta por el camino.
+  Primeros números reales de S6/ST del programa.** (a) **Linea base golden + puerta de paridad**
+  (`bd17f60`): `scripts/research/baseline_golden.py` congela 1.503 posiciones de S6/S7/ST sobre
+  Capitaria pre-holdout. R1-bis intacto — no toca `backtest.py` ni las estrategias; solo filtra la
+  lista de barras antes de `build_all()`, que ya la recibe como argumento. Doble guarda de holdout:
+  corta en `2026-05-12` **y** aborta si alguna posición resuelta cayera dentro del sello.
+  Determinismo probado con hashes SHA-256 en dos corridas. El test se **verificó por mutación** (una
+  deriva de 1e-7 en 1 de 633 posiciones lo pone rojo y nombra estrategia, índice y clave; S7 y ST
+  siguen verdes): un test que solo se ha visto pasar no está verificado. `tests/research` 164
+  passed, sin cambios. **Resultados (lot 0,67, ticks reales, holdout excluido, DESCRIPTIVOS y NO
+  veredictos — es la config del harness, no la VIVA):** ST +41.254.539 CLP / PF 1,457 / 153 pos ·
+  S6 +24.792.629 / PF 1,068 / 633 pos · S7 −11.072.071 / PF 0,968 / 717 pos. 🟢 **`peak_margin`
+  cuantifica la cuarentena §2.1:** ST pica 3,4 MM (≈1 posición a la vez, como en vivo), S6 y S7
+  pican 19,5 MM (**≈7,8 simultáneas**, la escalera del ladder) — el S6 del backtest **no es** el S6
+  de la 902. ROM: ST 1.199,7 % contra S6 127,0 %. (b) **Velas M15 de AVA** (`335f512`) derivadas de
+  los ticks, 85.101 velas, 2023 excluido **del fichero** (el sello no depende de la disciplina de
+  quien corra después) y destino fuera del lago de ticks para no repetir la trampa del sidecar.
+  (c) 🔴 **Dos hipótesis del orquestador REFUTADAS con datos, no con argumentos.** Primera: correr
+  el harness tal cual sobre AVA daría ~0 posiciones en 2022 y 2024 — el gate `abs(sp−0.5)<=0.05`
+  solo lo pasa el 0,047 % / 0,430 % de los ticks de esos años, y el desglose mensual habría
+  parecido decir "las estrategias dejaron de funcionar" cuando la puerta no se abrió nunca.
+  Segunda, propuesta por el user y por el controlador: que el gate fuera un filtro de
+  liquidez/volumen. **Es al revés y es monótono:** el estado que deja operar tiene volumen mediano
+  2.496 contra 3.336 del que no (0,75×), y por deciles de volumen el % en estado estrecho baja
+  62,6 → 13,9 sin una sola inversión. Capitaria **ensancha** el spread cuando hay actividad. Solape
+  con un umbral de volumen equivalente: 23,2 % — demasiado flojo para sustituir nada. Va a
+  `NEGATIVOS.md`. (d) 🟢 **Lo que sí resultó ser: T0.13.** Ver la fila T0.13 — la ventana es
+  `18:00→02:00 ET` todo el año (CME Globex), los saltos caen en los DST exactos, y los relojes de
+  servidor quedaron **medidos** con el corte de CME como ancla: AVA = UTC fijo, Capitaria = Chile
+  con DST. (e) **Instrucción del user registrada:** el filtro horario **no se quita** — el edge
+  aparecía exclusivamente en esa franja acotada. La propuesta previa del controlador de correr "sin
+  gate" queda **retirada**.
 
 - **2026-08-12** · Opus 5 controlador · **B9 CERRADO y holdout SELLADO en la misma sesión. La
   pregunta que D-30 mandaba responder leyendo el código tenía la respuesta buena: no había que
