@@ -103,13 +103,31 @@ tabla como verdad de neto.
 
 ## 4 · Discrepancias abiertas
 
-1. **150 aperturas vs «152 posiciones».** En la ventana canónica `deals_raw` da 150 `IN` y 151
-   `OUT`. La cifra de 152 viene de sesiones anteriores. Diferencia menor, pero **el denominador de
-   A6 no debe heredarse sin re-derivarlo** — ya hubo un error de denominador antes.
-2. **Zona horaria de `deals_raw.time`.** Los filtros de este inventario usan hora local naive. Los
-   recuentos reproducen exactamente los de la sesión anterior (118/21/11/1), lo que valida la
-   ventana de facto, pero la convención no está declarada. Los relojes de MT5 son hora de servidor
-   (UTC−4).
+1. ✅ **RESUELTA (2026-08-13) — son 152 aperturas, y el error era del controlador.** La cifra de 150
+   que apareció en la primera versión de este inventario venía de un filtro de ventana construido
+   con `datetime(...).timestamp()`, que aplica el offset **local** (−4 h) al pasar de calendario a
+   epoch. Como los epochs de `deals_raw` codifican el reloj de **servidor verbatim**, la ventana
+   quedaba desplazada 4 horas y perdía 2 aperturas del borde. Con la conversión correcta
+   (`calendar.timegm`): **152 `IN` / 151 `OUT`**, neto idéntico (+15.203.111,33). Confirmado
+   independientemente por T0.6-B.
+
+   > **Gotcha, en las dos direcciones.** La regla conocida cubre epoch → datetime
+   > (`utcfromtimestamp`, nunca `fromtimestamp`). Falta su simétrica: **datetime → epoch se hace
+   > con `calendar.timegm`, nunca con `.timestamp()`**. El controlador cometió exactamente el error
+   > que había escrito como gotcha en los briefs, en el sentido inverso.
+
+2. ✅ **RESUELTA — convención de reloj declarada.** `deals_raw.time` es un epoch que codifica el
+   reloj del **servidor (UTC−4)** verbatim, y el reloj del servidor **coincide con la hora local de
+   Chile**. Conversiones válidas: `datetime.utcfromtimestamp()` para leer, `calendar.timegm()` para
+   escribir. Ninguna otra.
+
+3. ✅ **RESUELTA — concurrencia máxima = 1 posición por estrategia.** Medido sobre la línea temporal
+   real de aperturas y cierres: S6-K2P0 máximo **1** bajo cualquier convención de desempate;
+   SuperTrend máximo **1** si en un empate de segundo el cierre precede a la apertura, que es la
+   lectura físicamente correcta (el reconciliador abre porque ve la posición ya desaparecida). El
+   único candidato a «2» es un par cierre→apertura en el **mismo segundo**, es decir una
+   re-entrada. **Las re-entradas son secuenciales, nunca concurrentes.** Reparto: 84 posiciones de
+   S6 + 68 de SuperTrend = 152.
 3. **`deals_watcher_local.log` arranca sobre la cuenta 2883016567**, retirada en el commit
    `17258cd`. Cubre desde 2026-07-15, antes de la ventana. Sin explotar.
 
