@@ -14,8 +14,23 @@ El ejecutor vivo aplicaba un clamp al SL antes de enviarlo al broker
   => level = |ref - clamped| en cada evento de clamp. Debe salir constante.
 
 Este script NO decide ni interpreta: calcula level_i por evento, verifica
-signo y necesidad, y reporta objetivamente. `data/analysis/p_cap/` es la
-unica fuente que lee; no toca `data/lake_*`, no usa red, no usa MT5.
+signo y necesidad, y reporta objetivamente.
+
+RONDA DE CORRECCION 1 (2026-08-13) -- el log del ejecutor NUNCA trae `ref`
+para los eventos de clamp (medido: 0/122 usables via la formula del brief
+original; ver la seccion "via log" del reporte y del artefacto, que se
+conserva intacta -- registro aditivo). Se anade una segunda via,
+independiente: inversion contra el lago de ticks reales de Capitaria
+(`data/lake_ticks/XAUUSD/<YYYYMM>.parquet`, columnas `t_msc`,`bid`,`ask`).
+Para cada `L` candidato en una rejilla, se comprueba si el `ref` que ese `L`
+implica (`clamped + L` para long, `clamped - L` para short -- misma
+aritmetica del clamp de `ciclos.py`, ver arriba) cayo dentro del rango real
+de bid/ask observado en una ventana de ticks alrededor del instante del
+evento. El resultado es la curva completa `L -> n_consistentes`, nunca un
+unico numero elegido por el script.
+
+Esta via SI toca `data/lake_ticks/XAUUSD/*.parquet` (solo lectura, via
+pandas). Sigue sin usar red ni MT5, y sigue sin escribir en `data/lake_*`.
 """
 from __future__ import annotations
 
@@ -29,6 +44,9 @@ from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import numpy as np
+import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[3]
 
@@ -63,6 +81,29 @@ STRATEGY_TO_CONFIG = {
 CONFIG_TO_STRATEGY = {v: k for k, v in STRATEGY_TO_CONFIG.items()}
 
 SIDE_TO_LS = {"BUY": "L", "SELL": "S"}
+
+# ---------------------------------------------------------------------------
+# Via ticks (ronda de correccion 1)
+# ---------------------------------------------------------------------------
+
+DEFAULT_TICKDIR = ROOT / "data/lake_ticks/XAUUSD"
+
+# Rejilla de L candidatos, en unidades de precio del oro (2 decimales).
+L_GRID_MIN = 0.00
+L_GRID_MAX = 2.00
+L_GRID_STEP = 0.01
+
+# Ventanas de sensibilidad para la familia SL_CLAMPED OPEN (tiene `ms`, el
+# controlador pidio ver ademas del default +/-1s las dos vecinas +/-0.25s y
+# +/-3s).
+OPEN_HALF_WINDOWS_SEC = (0.25, 1.00, 3.00)
+OPEN_DEFAULT_HALF_WINDOW_SEC = 1.00
+
+# La familia SL_CLAMPED (MODIFY) solo trae epoch entero (sin `ms`): menor
+# resolucion temporal. +/-1s es el minimo declarado por el controlador; no
+# se hace barrido de sensibilidad para esta familia (una sola ventana,
+# declarada como de menor resolucion que la de OPEN).
+MODIFY_HALF_WINDOW_SEC = 1.00
 
 
 # ---------------------------------------------------------------------------
@@ -211,6 +252,170 @@ def procesar_familia(eventos: list[dict]) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Via ticks: nucleo puro (testeado sin I/O)
+# ---------------------------------------------------------------------------
+
+
+def grid_L(lo: float = L_GRID_MIN, hi: float = L_GRID_MAX, step: float = L_GRID_STEP) -> list[float]:
+    """Rejilla de L candidatos [lo, hi] en pasos de `step`, redondeados a 2
+    decimales (precio del oro)."""
+    n = round((hi - lo) / step)
+    return [round(lo + i * step, 2) for i in range(n + 1)]
+
+
+def ref_implicado(side: str, clamped: float, L: float) -> float | None:
+    """El `ref` que un `L` candidato implica, dado `clamped`, invirtiendo la
+    aritmetica del clamp de ciclos.py:
+      long:  clamped = ref - L  =>  ref = clamped + L
+      short: clamped = ref + L  =>  ref = clamped - L
+    """
+    if side == "L":
+        return clamped + L
+    if side == "S":
+        return clamped - L
+    return None
+
+
+def es_consistente_con_ticks(
+    side: str,
+    clamped: float,
+    L: float,
+    bid_min: float,
+    bid_max: float,
+    ask_min: float,
+    ask_max: float,
+) -> bool:
+    """Un `L` candidato es consistente con un evento si el `ref` que implica
+    cayo dentro del rango de precios realmente observado en la ventana de
+    ticks alrededor del evento -- bid para long (ref=bid en ciclos.py), ask
+    para short (ref=ask)."""
+    ref = ref_implicado(side, clamped, L)
+    if ref is None:
+        return False
+    if side == "L":
+        return bid_min <= ref <= bid_max
+    return ask_min <= ref <= ask_max
+
+
+def barrer_consistencia(eventos_ticks: list[dict], l_grid: list[float] | None = None) -> dict[str, int]:
+    """Para cada `L` de la rejilla, cuenta cuantos eventos son consistentes.
+    `eventos_ticks`: dicts con side, clamped, bid_min, bid_max, ask_min,
+    ask_max. Devuelve la CURVA COMPLETA {f"{L:.2f}": n_consistentes} --
+    nunca colapsa al maximo ni elige un L."""
+    if l_grid is None:
+        l_grid = grid_L()
+    curva: dict[str, int] = {}
+    for L in l_grid:
+        n = sum(
+            1
+            for ev in eventos_ticks
+            if es_consistente_con_ticks(
+                ev["side"], ev["clamped"], L,
+                ev["bid_min"], ev["bid_max"], ev["ask_min"], ev["ask_max"],
+            )
+        )
+        curva[f"{L:.2f}"] = n
+    return curva
+
+
+def resumen_curva(curva: dict[str, int], n_evaluable: int) -> dict:
+    """Maximo de la curva, si es unico, top-5 puntos, y la fraccion que
+    representa sobre los eventos evaluables. No decide un `L` "correcto";
+    solo describe la curva."""
+    if not curva:
+        return {
+            "max_n": None, "fraccion_max": None,
+            "L_ganador_unico": None, "L_empatados_en_max": [],
+            "top5": [],
+        }
+    max_n = max(curva.values())
+    empatados = sorted((L for L, n in curva.items() if n == max_n), key=float)
+    top5 = sorted(curva.items(), key=lambda kv: (-kv[1], float(kv[0])))[:5]
+    return {
+        "max_n": max_n,
+        "fraccion_max": (max_n / n_evaluable) if n_evaluable else None,
+        "L_ganador_unico": empatados[0] if len(empatados) == 1 else None,
+        "L_empatados_en_max": empatados,
+        "top5": [{"L": L, "n": n} for L, n in top5],
+    }
+
+
+class TickWindowLoader:
+    """Carga bajo demanda de `data/lake_ticks/XAUUSD/<YYYYMM>.parquet`
+    (columnas t_msc, bid, ask), y consulta ventanas [t_center-hw, t_center+hw]
+    por busqueda binaria sobre arrays numpy ordenados por tiempo.
+
+    Reimplementacion propia, independiente, de solo lectura -- NO reutiliza
+    la clase `Ticks` de scripts/analysis/realtick_bt/backtest.py (que
+    tambien esta disponible para este uso, "importar si, editar jamas", per
+    instruccion del controlador). Se opto por esta via para no arrastrar la
+    cadena de imports pesada de backtest.py (sentinel_engine.*) en un script
+    que solo necesita consultas de ventana estrecha alrededor de un evento
+    puntual; se declara aqui explicitamente, tal como pidio el controlador.
+
+    CLOCK CONVENTION: los epochs son hora de SERVIDOR (UTC-4) verbatim,
+    igual que en ciclos.py / backtest.py -- `datetime.utcfromtimestamp()`,
+    nunca `datetime.fromtimestamp()`.
+    """
+
+    def __init__(self, tickdir: Path = DEFAULT_TICKDIR) -> None:
+        self._tickdir = tickdir
+        self._cache: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray] | None] = {}
+
+    def _load_month(self, ym: str):
+        if ym not in self._cache:
+            p = self._tickdir / f"{ym}.parquet"
+            if not p.exists():
+                self._cache[ym] = None
+            else:
+                df = pd.read_parquet(p, columns=["t_msc", "bid", "ask"])
+                t_sec = df["t_msc"].to_numpy(dtype=np.float64) / 1000.0
+                self._cache[ym] = (
+                    t_sec,
+                    df["bid"].to_numpy(dtype=np.float64),
+                    df["ask"].to_numpy(dtype=np.float64),
+                )
+        return self._cache[ym]
+
+    @staticmethod
+    def _ym(t_sec: float) -> str:
+        d = datetime.utcfromtimestamp(t_sec)
+        return f"{d.year}{d.month:02d}"
+
+    @staticmethod
+    def _shift(ym: str, k: int) -> str:
+        y, m = int(ym[:4]), int(ym[4:]) + k
+        if m == 0:
+            y, m = y - 1, 12
+        elif m == 13:
+            y, m = y + 1, 1
+        return f"{y}{m:02d}"
+
+    def window(self, t_center: float, half_window_s: float) -> tuple[np.ndarray, np.ndarray]:
+        """(bid, ask) arrays con t en [t_center - hw, t_center + hw]."""
+        t0, t1 = t_center - half_window_s, t_center + half_window_s
+        yms = sorted({
+            self._shift(self._ym(t0), -1), self._ym(t0),
+            self._ym(t1), self._shift(self._ym(t1), 1),
+        })
+        bids: list[np.ndarray] = []
+        asks: list[np.ndarray] = []
+        for ym in yms:
+            loaded = self._load_month(ym)
+            if loaded is None:
+                continue
+            t_sec, bid, ask = loaded
+            lo = int(np.searchsorted(t_sec, t0, "left"))
+            hi = int(np.searchsorted(t_sec, t1, "right"))
+            if hi > lo:
+                bids.append(bid[lo:hi])
+                asks.append(ask[lo:hi])
+        if not bids:
+            return np.array([]), np.array([])
+        return np.concatenate(bids), np.concatenate(asks)
+
+
+# ---------------------------------------------------------------------------
 # Carga y emparejamiento (I/O)
 # ---------------------------------------------------------------------------
 
@@ -334,6 +539,150 @@ def construir_eventos_familia(
     }
 
 
+def construir_eventos_ticks_open(
+    json_events: list[dict],
+    verdad: list[dict],
+    loader: TickWindowLoader,
+    half_window_s: float,
+) -> tuple[list[dict], dict]:
+    """Familia SL_CLAMPED OPEN (87, via JSON, con `ms`): centro = epoch +
+    ms/1000. side por (config,ficha,epoch) -> strategy_id -> posicion mas
+    cercana (emparejar_side_open, mismo criterio que la via log)."""
+    eventos_ticks: list[dict] = []
+    n_sin_side = 0
+    n_sin_ticks = 0
+    for e in json_events:
+        row_like = {"config": e.get("config"), "ficha": e.get("ficha"), "epoch": e.get("epoch")}
+        side, position_id, _delta = emparejar_side_open(row_like, verdad)
+        if side is None:
+            n_sin_side += 1
+            continue
+        t_center = e["epoch"] + e.get("ms", 0) / 1000.0
+        bid, ask = loader.window(t_center, half_window_s)
+        if len(bid) == 0 or len(ask) == 0:
+            n_sin_ticks += 1
+            continue
+        eventos_ticks.append(
+            {
+                "epoch": e["epoch"],
+                "ms": e.get("ms"),
+                "config": e.get("config"),
+                "ficha": e.get("ficha"),
+                "side": side,
+                "position_id_emparejado": position_id,
+                "clamped": float(e["clamped"]),
+                "desired": float(e.get("desired")) if e.get("desired") is not None else None,
+                "bid_min": float(bid.min()),
+                "bid_max": float(bid.max()),
+                "ask_min": float(ask.min()),
+                "ask_max": float(ask.max()),
+                "n_ticks_ventana": int(len(bid)),
+            }
+        )
+    return eventos_ticks, {
+        "n_total": len(json_events),
+        "n_sin_side": n_sin_side,
+        "n_sin_ticks_en_ventana": n_sin_ticks,
+        "n_evaluable": len(eventos_ticks),
+    }
+
+
+def construir_eventos_ticks_modify(
+    eventos_csv_family: list[dict],
+    loader: TickWindowLoader,
+    half_window_s: float,
+) -> tuple[list[dict], dict]:
+    """Familia SL_CLAMPED (35, via CSV, sin `ms`): centro = epoch (entero).
+    side ya viene emparejado en `eventos_csv_family` (via ticket ==
+    position_id, `construir_eventos_familia`)."""
+    eventos_ticks: list[dict] = []
+    n_sin_side = 0
+    n_sin_ticks = 0
+    for e in eventos_csv_family:
+        if e.get("side") is None:
+            n_sin_side += 1
+            continue
+        if e.get("clamped") is None or e.get("epoch") is None:
+            n_sin_ticks += 1
+            continue
+        t_center = float(e["epoch"])
+        bid, ask = loader.window(t_center, half_window_s)
+        if len(bid) == 0 or len(ask) == 0:
+            n_sin_ticks += 1
+            continue
+        eventos_ticks.append(
+            {
+                "epoch": e["epoch"],
+                "ticket": e.get("ticket"),
+                "side": e["side"],
+                "position_id_emparejado": e.get("position_id_emparejado"),
+                "clamped": float(e["clamped"]),
+                "bid_min": float(bid.min()),
+                "bid_max": float(bid.max()),
+                "ask_min": float(ask.min()),
+                "ask_max": float(ask.max()),
+                "n_ticks_ventana": int(len(bid)),
+            }
+        )
+    return eventos_ticks, {
+        "n_total": len(eventos_csv_family),
+        "n_sin_side": n_sin_side,
+        "n_sin_ticks_en_ventana": n_sin_ticks,
+        "n_evaluable": len(eventos_ticks),
+    }
+
+
+def construir_reporte_via_ticks(
+    eventos_open_json: list[dict],
+    eventos_modify_csv: list[dict],
+    verdad: list[dict],
+    tickdir: Path = DEFAULT_TICKDIR,
+) -> dict:
+    """Orquesta la via de inversion contra ticks para ambas familias.
+    OPEN: barrido de sensibilidad en 3 ventanas (+/-0.25s, +/-1s, +/-3s).
+    MODIFY: una sola ventana (+/-1s, minimo declarado -- sin `ms`)."""
+    loader = TickWindowLoader(tickdir)
+    l_grid = grid_L()
+
+    resultado_open: dict[str, dict] = {}
+    for hw in OPEN_HALF_WINDOWS_SEC:
+        eventos_ticks, stats = construir_eventos_ticks_open(eventos_open_json, verdad, loader, hw)
+        curva = barrer_consistencia(eventos_ticks, l_grid)
+        resultado_open[f"{hw:.2f}"] = {
+            "half_window_s": hw,
+            **stats,
+            "curva": curva,
+            "resumen": resumen_curva(curva, stats["n_evaluable"]),
+        }
+
+    eventos_ticks_mod, stats_mod = construir_eventos_ticks_modify(
+        eventos_modify_csv, loader, MODIFY_HALF_WINDOW_SEC
+    )
+    curva_mod = barrer_consistencia(eventos_ticks_mod, l_grid)
+    resultado_modify = {
+        f"{MODIFY_HALF_WINDOW_SEC:.2f}": {
+            "half_window_s": MODIFY_HALF_WINDOW_SEC,
+            **stats_mod,
+            "curva": curva_mod,
+            "resumen": resumen_curva(curva_mod, stats_mod["n_evaluable"]),
+            "nota_resolucion": (
+                "epoch entero, sin ms (menor resolucion temporal que la familia "
+                "SL_CLAMPED OPEN); ventana minima declarada +/-1s, sin barrido de "
+                "sensibilidad adicional."
+            ),
+        }
+    }
+
+    return {
+        "fuente_ticks": "data/lake_ticks/XAUUSD/<YYYYMM>.parquet (t_msc, bid, ask), leido "
+        "directamente con pandas.read_parquet en TickWindowLoader (reimplementacion propia, "
+        "no reutiliza scripts/analysis/realtick_bt/backtest.py:Ticks).",
+        "grid_L": {"min": L_GRID_MIN, "max": L_GRID_MAX, "step": L_GRID_STEP},
+        "SL_CLAMPED OPEN": {"ventanas": resultado_open},
+        "SL_CLAMPED": {"ventanas": resultado_modify},
+    }
+
+
 # ---------------------------------------------------------------------------
 # Orquestacion + artefactos
 # ---------------------------------------------------------------------------
@@ -373,6 +722,8 @@ def construir_reporte(
     eventos_csv: Path,
     sl_clamped_open_json: Path,
     verdad_terreno_csv: Path,
+    tickdir: Path = DEFAULT_TICKDIR,
+    incluir_via_ticks: bool = True,
 ) -> dict:
     filas_csv = cargar_eventos_csv(eventos_csv)
     verdad = cargar_verdad_terreno(verdad_terreno_csv)
@@ -396,6 +747,10 @@ def construir_reporte(
         "n_csv_sl_clamped_open": familia_open["n"],
         "coincide": len(json_87) == familia_open["n"],
     }
+
+    via_ticks = None
+    if incluir_via_ticks:
+        via_ticks = construir_reporte_via_ticks(json_87, eventos_modify, verdad, tickdir)
 
     reporte = {
         "lineage": {
@@ -423,6 +778,7 @@ def construir_reporte(
             "SL_CLAMPED": familia_modify,
             "TOTAL": familia_total,
         },
+        "via_ticks": via_ticks,
     }
     return reporte
 
@@ -539,6 +895,57 @@ def _md_familia(nombre: str, familia: dict, stats_side: dict) -> list[str]:
     return lines
 
 
+def _md_ventana_ticks(nombre_familia: str, hw_key: str, v: dict) -> list[str]:
+    lines = [f"### Ventana +/-{v['half_window_s']}s", ""]
+    lines.append(f"- eventos fuente: {v['n_total']}")
+    lines.append(f"- sin side emparejado: {v['n_sin_side']}")
+    lines.append(f"- sin ticks en la ventana: {v['n_sin_ticks_en_ventana']}")
+    lines.append(f"- evaluables: {v['n_evaluable']}")
+    if v.get("nota_resolucion"):
+        lines.append(f"- nota de resolucion: {v['nota_resolucion']}")
+    lines.append("")
+    r = v["resumen"]
+    if r["max_n"] is None:
+        lines.append("Sin eventos evaluables -- no hay curva que reportar.")
+    else:
+        lines.append(f"- max_n consistentes: {r['max_n']} de {v['n_evaluable']} "
+                      f"(fraccion: {_fmt_num(r['fraccion_max'])})")
+        lines.append(f"- L ganador unico: {r['L_ganador_unico'] if r['L_ganador_unico'] else 'n/a (empate)'}")
+        lines.append(f"- L empatados en el maximo: {r['L_empatados_en_max']}")
+        lines.append("")
+        lines.append("Top-5 puntos de la curva (L, n_consistentes):")
+        lines.append("")
+        lines.append("| L | n_consistentes |")
+        lines.append("|---|---|")
+        for item in r["top5"]:
+            lines.append(f"| {item['L']} | {item['n']} |")
+        lines.append("")
+        lines.append("Curva completa `L -> n_consistentes` (rejilla 0.00-2.00, paso 0.01): "
+                      "ver capa maquina (`stops_level_derivado.json`, "
+                      f"`via_ticks.{nombre_familia!r}.ventanas[{hw_key!r}].curva`).")
+    lines.append("")
+    return lines
+
+
+def _md_via_ticks(via_ticks: dict | None) -> list[str]:
+    lines = ["## Via ticks (ronda de correccion 1 -- inversion contra ticks reales)", ""]
+    if via_ticks is None:
+        lines.append("No se ejecuto (via_ticks=None).")
+        lines.append("")
+        return lines
+    lines.append(f"- fuente de ticks: {via_ticks['fuente_ticks']}")
+    g = via_ticks["grid_L"]
+    lines.append(f"- rejilla de L: [{g['min']}, {g['max']}], paso {g['step']}")
+    lines.append("")
+    for nombre in ("SL_CLAMPED OPEN", "SL_CLAMPED"):
+        lines.append(f"### Familia `{nombre}`")
+        lines.append("")
+        ventanas = via_ticks[nombre]["ventanas"]
+        for hw_key in sorted(ventanas.keys(), key=float):
+            lines.extend(_md_ventana_ticks(nombre, hw_key, ventanas[hw_key]))
+    return lines
+
+
 def escribir_md(reporte: dict, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     lin = reporte["lineage"]
@@ -578,6 +985,9 @@ def escribir_md(reporte: dict, path: Path) -> None:
         )
         lines.extend(_md_familia(nombre, reporte["familias"][nombre], stats_side))
 
+    lines.append("")
+    lines.extend(_md_via_ticks(reporte.get("via_ticks")))
+
     with open(path, "w", encoding="utf-8") as fh:
         fh.write("\n".join(lines))
         fh.write("\n")
@@ -588,12 +998,16 @@ def main() -> None:
     ap.add_argument("--eventos-csv", type=Path, default=DEFAULT_EVENTOS_CSV)
     ap.add_argument("--sl-clamped-open-json", type=Path, default=DEFAULT_SL_CLAMPED_OPEN_JSON)
     ap.add_argument("--verdad-terreno-csv", type=Path, default=DEFAULT_VERDAD_TERRENO_CSV)
+    ap.add_argument("--tickdir", type=Path, default=DEFAULT_TICKDIR)
     ap.add_argument("--out-json", type=Path, default=DEFAULT_OUT_JSON)
     ap.add_argument("--out-md", type=Path, default=DEFAULT_OUT_MD)
+    ap.add_argument("--sin-via-ticks", action="store_true",
+                     help="omite la via de inversion contra ticks (mas rapido; solo la via log).")
     args = ap.parse_args()
 
     reporte = construir_reporte(
-        args.eventos_csv, args.sl_clamped_open_json, args.verdad_terreno_csv
+        args.eventos_csv, args.sl_clamped_open_json, args.verdad_terreno_csv,
+        tickdir=args.tickdir, incluir_via_ticks=not args.sin_via_ticks,
     )
     escribir_json(reporte, args.out_json)
     escribir_md(reporte, args.out_md)
@@ -604,6 +1018,14 @@ def main() -> None:
     print(f"SL_CLAMPED: n={reporte['familias']['SL_CLAMPED']['n']}, "
           f"usable={reporte['familias']['SL_CLAMPED']['n_usable']}")
     print(f"TOTAL: n={total['n']}, usable={total['n_usable']}")
+    if reporte.get("via_ticks"):
+        for nombre in ("SL_CLAMPED OPEN", "SL_CLAMPED"):
+            ventanas = reporte["via_ticks"][nombre]["ventanas"]
+            for hw_key, v in sorted(ventanas.items(), key=lambda kv: float(kv[0])):
+                r = v["resumen"]
+                print(f"via_ticks[{nombre} +/-{hw_key}s]: evaluable={v['n_evaluable']} "
+                      f"max_n={r['max_n']} L_ganador={r['L_ganador_unico']} "
+                      f"empatados={r['L_empatados_en_max']}")
     print(f"JSON escrito: {args.out_json}")
     print(f"MD escrito: {args.out_md}")
 

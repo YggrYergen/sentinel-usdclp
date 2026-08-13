@@ -12,12 +12,26 @@ Los 4 casos minimos exigidos por el brief (Sec. 4), uno por funcion de test:
      elige uno.
   4. Un evento sin `ref` se cuenta como descartado y no entra en el conjunto
      de niveles.
+
+RONDA DE CORRECCION 1 -- via nueva de derivacion por inversion contra ticks
+(el log no trae `ref`; se prueba, para cada `L` candidato en una rejilla, si
+el `ref` implicado por `clamped` y `L` cayo dentro del rango real de
+bid/ask observado en una ventana de ticks alrededor del evento). Casos
+minimos exigidos por el controlador:
+  5. Un evento sintetico cuyo `ref` implicado cae fuera del rango de ticks
+     se cuenta como NO consistente.
+  6. `barrer_consistencia` devuelve la curva entera (todos los puntos de la
+     rejilla), no colapsada a su maximo.
 """
 from __future__ import annotations
 
 from scripts.analysis.p_cap.derivar_stops_level import (
+    barrer_consistencia,
+    es_consistente_con_ticks,
+    grid_L,
     nivel_desde_ref_clamped,
     procesar_familia,
+    ref_implicado,
     verificar_necesidad,
     verificar_signo,
 )
@@ -103,3 +117,79 @@ def test_evento_sin_ref_se_descarta_y_no_entra_en_niveles():
     # solo el nivel del evento usable entra en el conjunto
     assert resultado["resumen_niveles"]["n"] == 1
     assert resultado["resumen_niveles"]["valores"] == {"0.50000": 1}
+
+
+# --------------------------------------------------------------------------
+# Via ticks (ronda de correccion 1)
+# --------------------------------------------------------------------------
+
+
+def test_ref_implicado_long_y_short():
+    # long: clamped = ref - L  =>  ref implicado = clamped + L
+    assert ref_implicado(side="L", clamped=3999.50, L=0.50) == 4000.00
+    # short: clamped = ref + L  =>  ref implicado = clamped - L
+    assert ref_implicado(side="S", clamped=4000.50, L=0.50) == 4000.00
+
+
+def test_evento_con_ref_implicado_fuera_de_rango_no_es_consistente():
+    # long, clamped=3999.50, L=0.50 -> ref implicado = 4000.00, pero el bid
+    # nunca estuvo ahi en la ventana (rango observado 3990.00-3995.00).
+    assert (
+        es_consistente_con_ticks(
+            side="L", clamped=3999.50, L=0.50,
+            bid_min=3990.00, bid_max=3995.00, ask_min=3990.50, ask_max=3995.50,
+        )
+        is False
+    )
+    # el mismo evento SI es consistente si el rango observado si cubre 4000.00
+    assert (
+        es_consistente_con_ticks(
+            side="L", clamped=3999.50, L=0.50,
+            bid_min=3999.00, bid_max=4000.50, ask_min=3999.50, ask_max=4001.00,
+        )
+        is True
+    )
+
+
+def test_evento_con_ref_implicado_fuera_de_rango_short_no_es_consistente():
+    # short, clamped=4000.50, L=0.50 -> ref implicado = 4000.00; el ask
+    # observado nunca toco ese valor.
+    assert (
+        es_consistente_con_ticks(
+            side="S", clamped=4000.50, L=0.50,
+            bid_min=4000.00, bid_max=4005.00, ask_min=4005.50, ask_max=4010.00,
+        )
+        is False
+    )
+
+
+def test_barrer_consistencia_devuelve_la_curva_entera_no_colapsada():
+    eventos_ticks = [
+        {
+            "side": "L", "clamped": 3999.50,
+            "bid_min": 3999.90, "bid_max": 4000.10,
+            "ask_min": 4000.40, "ask_max": 4000.60,
+        },
+        {
+            "side": "S", "clamped": 4000.50,
+            "bid_min": 3999.40, "bid_max": 3999.60,
+            "ask_min": 3999.90, "ask_max": 4000.10,
+        },
+    ]
+    rejilla = [0.10, 0.50, 1.00]
+    curva = barrer_consistencia(eventos_ticks, l_grid=rejilla)
+    # la curva trae TODOS los puntos de la rejilla, no solo el mejor
+    assert set(curva.keys()) == {"0.10", "0.50", "1.00"}
+    # L=0.50 -> ambos eventos consistentes (ref implicado cae en su rango)
+    assert curva["0.50"] == 2
+    # L=0.10 -> ningun ref implicado cae en rango (los rangos son estrechos
+    # alrededor del valor real generado con L=0.50)
+    assert curva["0.10"] == 0
+
+
+def test_grid_L_cubre_0_a_2_en_pasos_de_0_01():
+    g = grid_L()
+    assert g[0] == 0.00
+    assert g[-1] == 2.00
+    assert len(g) == 201
+    assert g[50] == 0.50
