@@ -190,8 +190,36 @@ qué artefacto exacto debe existir para declararla hecha · qué decisiones del 
 12. **Replay con inyección de eventos**: cierres manuales inyectados como salidas forzadas en su
     timestamp (sin esto, A6 diverge en cascada tras el primer cierre manual).
 
-Protocolo por modificación: spec cerrada (Opus) → test rojo → implementación mínima → verde →
-suite golden → commit scoped. Tras la ÚLTIMA: A6 completo → freeze.
+~~Protocolo por modificación: spec cerrada (Opus) → test rojo → implementación mínima → verde →
+suite golden → commit scoped. Tras la ÚLTIMA: A6 completo → freeze.~~
+
+🔴 **SUPERSEDED por D-47 (2026-08-13, instrucción del user) — VÍA RÁPIDA.** Las 12 se implementan
+con subagentes **Sonnet 5 high effort**, lo más rápido posible, y el grueso del testeo y la
+depuración se **batchea al final**. Cuerpo completo y razones en `research/DECISIONES.md` §D-47.
+
+**Se relaja:** spec cerrada por mod → **una spec por grupo** de mods afines · TDD completo →
+**smoke test breve sólo donde la mod tenga lógica no obvia** · revisión por tarea → **batcheada al
+cierre del lote** · fidelidad empírica A6 tras cada mod → **una sola A6 al final**.
+
+🔴 **NO se relaja: la puerta de paridad golden se corre tras CADA modificación.**
+`pytest tests/research/test_baseline_parity.py -q **-m slow**` → **4 passed en 2,01 s**. Doce mods
+son **24 segundos**: la puerta nunca fue el cuello de botella, y es lo que hace viable depurar al
+final — sin ella, una regresión deja 12 sospechosos y sus interacciones; con ella, el culpable se
+nombra en el acto. Es el **cable trampa de R1-bis**.
+⚠️ **Sin `-m slow` devuelve `4 deselected in 0.03s`** — un verde que no probó nada.
+
+**Triaje.** Vía rápida: mods **1, 3, 4, 5, 6, 7, 8, 9** (puramente aditivas).
+Vía normal (spec propia + TDD): **#2** (assert del ratchet), **#10** (overlay entre sustratos),
+**#11** (camino caliente de cada posición), **#12** (flujo del replay).
+
+**Intacto:** R1-bis sin excepción, el freeze por SHA tras A6, y la obligación de declarar
+**no corrido** todo test que no se haya corrido.
+
+**Destino y banco de pruebas.** El objetivo es el **motor corregido/extendido** que replique cómo
+operan las estrategias en el mercado real, **validado en ventanas de SOLAPE** —`2026-01`→`2026-08`,
+el único tramo con ticks AVA + ticks Capitaria + posiciones reales— con autorización del user para
+**descargar los datos que falten** (attach-only, read-only, guard ejercido).
+🔴 **El motor faulty (`b113eb7`) NO se corrige**: se replica verbatim y es el patrón de medida.
 
 ### §4.2 · T0.7 — A6: Fidelidad del motor (diseño cerrado)
 
