@@ -36,3 +36,26 @@ Formato: `<fecha> · <experimento> · <qué se probó> · <resultado> · <eviden
 |---|---|
 | Todo resultado de **TOKATA** (steps de SAR, ladder F1/F2/F3, PF 2,82 / 4,56, etc.) | El motor de esa época se determinó faulty (Model=1 open-prices-only + look-ahead same-bar + SL inválido bajo el mínimo del bróker). Sirven como **dirección y recomendación**, jamás como evidencia. Todo se re-corre bajo el motor honesto |
 | Cifras en prosa de `b1-wait-curve.md`, `b1-robustness.md`, `long-backtest-queue.md` | Prosa anterior a la regeneración de sus JSON. **Leer siempre el JSON**, nunca la prosa |
+
+### N-xx · 2026-08-13 · El harness importa `live_configs_20.py` del working tree, no del commit congelado — INOCUO
+*(Procedencia: dato reportado sin evaluar por T0.6-A; verificado por el controlador.)*
+
+`backtest.py:41` hace `from sentinel_engine.strategies.live_configs_20 import _GOLIVE_M15`, es decir
+lee el módulo del **working tree**, no el de `b113eb7`. Ese fichero difiere entre ambos en **225
+líneas** de diff, lo que abría la sospecha de que el harness estuviera simulando una estrategia
+distinta de la que corrió en vivo.
+
+**Refutado con medición.** Comparadas las kwargs efectivas clave a clave:
+
+```
+S6-K2P0:    21 claves, 0 DIFERENCIAS
+S7-TPNONE:  22 claves, 0 DIFERENCIAS
+```
+
+(Método: extraer `git show b113eb7:sentinel_engine/strategies/live_configs_20.py`, importar ambos
+módulos por separado y comparar `{c["id"]: c["kwargs"] for c in _GOLIVE_M15}`.)
+
+El diff de 225 líneas no toca las kwargs de las estrategias que el harness consume. **No es una
+divergencia.** Nótese que esto es sobre el `_GOLIVE_M15` **base**; el roster vivo `tomachine`
+aplica encima `_tomachine_copy("S6-K2P0", 0.67, active_fichas=1)`, y esa sí es una divergencia real
+— pero ya está catalogada como **D3**, no es ésta.
