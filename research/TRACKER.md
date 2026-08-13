@@ -15,6 +15,44 @@
 
 ## 🔴 ESTADO EN UNA LÍNEA (actualizar SIEMPRE)
 
+> **2026-08-13 (noche) · FASE 0 · T0.7 — P-CAP MEDIDO DOS VECES. NO PASA, pero el diagnóstico ya
+> nombra sus dos causas.** Cinco componentes verdes y commiteados (A `7205f0c` · B `017fa04`+
+> `b0e6902` · C `364f82f` · D `d63df80`+`5c6360f`+`85a7332`+`f2f812d` · E `1100c27`+`5bfdab4`).
+> `pytest tests/analysis -q` → **183 passed**; `tests/live` → **207 passed**; 0 failed. R1-bis intacto.
+> 🔴 **P-CAP: 0 de 135 casan los 6 campos de D-45.** Pero **6 casan 5 de 6** y 18 casan 4.
+> **Progresión medida de los dos arreglos de hoy** (`si` sobre las emparejadas evaluables):
+> | campo | D-45 estricto | +D-46 truncado | +reloj reconstruido |
+> |---|---:|---:|---:|
+> | `precio_open` | 7 | 7 | **16** |
+> | `t_open` | 7 | 7 | **17** |
+> | `t_close` | **0** | **72** | **76** |
+> | `precio_close` | 4 | 4 | **7** |
+> | `razon_cierre` | 126 | 126 | **128** |
+> | `resultado` | 130 | 130 | **131** |
+> ✅ **D-46 actuó exactamente donde se predijo y en ningún otro sitio** (`t_close` 0→72): aquel cero
+> era artefacto de **resolución**, no de fidelidad — la verdad de terreno sólo tiene segundo entero.
+> ✅ **El reloj reconstruido movió todo lo demás: la mediana de |Δ t_open| cae de 9,00 s a 1,23 s.**
+> 🔴 **Pero la predicción falsable NO se cumplió del todo:** `precio_open` saltó de 7 a **16**, no «a
+> la mayoría». **La fase era una causa real, no la única.**
+> 🔴 **Autocorrección del controlador:** «cuando el instante coincide, el precio coincide exacto» era
+> cierto sobre 7 posiciones (5 exactas, 71 %) y **deja de serlo** sobre 35 (8 exactas, **23 %**). El
+> bloque de 7 era muestra auto-seleccionada.
+> 🟡 **Hipótesis del residuo, NO medición: el FILL DEL BRÓKER.** Mediana de |Δ precio| entre las 35
+> alineadas al segundo = **0,04**. La réplica abre al `ask`/`bid` del tick; MT5 ejecutó **a mercado
+> con tolerancia `deviation`**. Si se confirma hay **techo estructural** y la bit-identidad sobre
+> precio es tan inalcanzable como lo era sobre instante. Refuerzo: de las 16 con `precio_open`
+> exacto, **sólo 1** tiene `precio_close` exacto. **Falsable:** comparar `precio_open` de la réplica
+> contra el `ask` del tick vigente en el instante del fill real.
+> ⚠️ **Sensibilidad a la cadencia medida:** con 15,0 s en vez de 15,77 s el total de posiciones pasa
+> de **157 a 167**. No es indiferente; 15,77 s es la mediana medida en T0.6-A/B, no una elección libre.
+> **Memo Opus (leerlo antes de tocar nada):**
+> `research/fases/F0-preparacion/05-analisis/2026-08-13-memo-P-CAP-primera-corrida.md` + su ADDENDUM.
+> **Decisiones nuevas de hoy: D-46** (instante truncado al segundo; fase antes que cola del p90) y
+> **D-47** (vía rápida para las 12 mods de T0.6).
+>
+> ---
+> **Estado previo (2026-08-13, tarde), vigente en lo que no contradiga lo anterior:**
+
 > **2026-08-13 (tarde) · FASE 0 — LA RÉPLICA CORRIÓ LA VENTANA 902 ENTERA. Falta el veredicto.**
 > Los cinco componentes están construidos, verdes y commiteados: A `estado_por_barra` (`7205f0c`),
 > B `ciclos` (`017fa04`+`b0e6902`), C `config_faulty` (`364f82f`), **D `llamador`
