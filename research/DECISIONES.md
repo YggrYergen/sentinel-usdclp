@@ -885,3 +885,63 @@ hipoteca el calendario.
 **precio de entrada, instante de entrada, instante y precio de salida, razón de cierre y resultado**.
 El SL de entrada queda fuera del criterio de paso y dentro del reporte. Anotado en
 `research/BACKLOG.md` para su revisión posterior.
+
+### D-46 · 2026-08-13 · El instante se compara TRUNCADO AL SEGUNDO, y se ataca primero la fase de los ciclos
+*(Procedencia: decisión explícita del user, 2026-08-13, ante la escalada del controlador tras la
+primera corrida extremo a extremo de P-CAP. **Aditivo:** corrige la operacionalización de D-45 sin
+tocar su espíritu. Nada se elimina.)*
+
+**El hecho que fuerza la decisión.** D-45 fijó bit-identidad sobre seis campos, dos de ellos
+instantes. Medido al comparar: **la verdad de terreno tiene resolución de SEGUNDO ENTERO** —
+`2883016902_deals_raw.csv` sólo trae la columna `time`, **no existe `time_msc`**, y los 152
+`t_close_epoch` son enteros sin excepción— mientras **la réplica tiene resolución de TICK**
+(`1785268336.309`). Un número con fracción no puede igualar a un entero salvo que el tick caiga
+exactamente en el borde del segundo, ~1 vez de cada 1.000.
+
+⇒ `t_close` marcó **0 de 137, y habría marcado 0 aunque la réplica fuera perfecta**. Ese cero no
+medía fidelidad: medía que se comparaban dos relojes de distinta precisión. **Defecto en cómo se
+operacionalizó D-45, no en la réplica** — mismo error de clase que el `SPREAD_GATE_SKIP` de D-43 y
+que el «7 %» de los cierres manuales: usar una medida sin comprobar qué mide.
+
+**LO DECIDIDO — 1 · El instante se compara truncado al segundo:**
+
+```
+criterio anterior:  1785268336.309 == 1785268336   ->  NUNCA
+criterio D-46:      floor(1785268336.309) == 1785268336   ->  SÍ
+```
+
+🔴 **No relaja el criterio: exige el mismo segundo exacto.** Es la máxima exigencia que la fuente
+permite —usa toda la precisión que existe— y no inventa una tolerancia arbitraria. El instante
+**sigue dentro** del criterio de paso; no se degrada a métrica informativa como el SL de entrada.
+Se aplica a los dos campos de instante, entrada y salida.
+
+**LO DECIDIDO — 2 · Se ataca primero la fase de los ciclos; la cola del p90 después, si sigue
+abierta.** El user: *«ciclos primero, si no se ha resuelto cola p90»*.
+
+**La medición que sostiene esa prioridad:** de las 7 posiciones donde la réplica abrió dentro de 1 s
+del instante real, **5 tienen Δ de precio exactamente 0,00** y las 7 están dentro de 0,17. **Cuando
+el instante coincide, el precio coincide exacto.** La réplica decide bien; lo que diverge es
+**cuándo mira**. La mediana de |Δ t_open| es **9,0 s** sobre un ciclo de 15 s — el desfase medio
+esperable entre dos relojes de sondeo de fase independiente.
+
+**La corrección:** alimentar el bucle de ciclos con los **instantes reales** que el ejecutor dejó en
+`eventos_ejecutor_902.csv` (1.710 filas con epoch), en vez de la rejilla sintética de 15,0 s. La
+cadencia real medida fue **15,77 s de mediana** (T0.6-A Q6), irregular porque cada ciclo hacía
+trabajo real.
+
+🔴 **Por qué esto NO es ajustar la réplica a su respuesta, y dónde está la línea.** Los instantes de
+sondeo son un **insumo** del sistema real, exactamente igual que el flujo de ticks: replicar un
+motor asíncrono sin replicar cuándo despertaba es como replicarlo sin darle los precios. Lo que **sí
+sería** ajustar —y queda **prohibido**— es tocar umbrales, gates, `stops_level` o la ventana hasta
+que los números cuadren. **Un insumo se copia; un parámetro se ajusta.**
+
+**Predicción falsable, que es lo que hace útil a la propuesta:** si la fase es la causa dominante,
+el bloque de las 7 posiciones debe extenderse al grueso de las 137 y `precio_open` debe saltar de 7
+bit-idénticas a la mayoría. **Si no ocurre, la hipótesis está mal y hay una segunda causa que
+buscar** — y entonces se pasa a la cola del p90 (|Δ t_open| p90 = 6.295 s frente a mediana de 9 s;
+la fase no explica esa cola y el sospechoso es el gate horario).
+
+**Estado que esta decisión NO cambia:** P-CAP **no ha pasado**. Lo que sí se reproduce ya es la
+razón de cierre (92 %), el resultado (95 %) y el precio de apertura dentro de 1 USD (85 %); pero
+sólo el **46 %** de las aperturas cae dentro de 20 centavos, y eso no basta para proyectar 4,7 años.
+Evidencia: `research/fases/F0-preparacion/05-analisis/2026-08-13-memo-P-CAP-primera-corrida.md`.
