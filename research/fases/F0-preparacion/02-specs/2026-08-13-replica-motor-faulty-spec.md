@@ -354,6 +354,81 @@ Quien lo construya **no debe asumir** la equivalencia: debe medirla y reportar l
 
 ---
 
+## §3-ter · ADDENDUM 2026-08-13 — La cuestión abierta de §3-bis, MEDIDA Y CERRADA
+
+*(Interpretación del controlador (Opus) sobre la medición de
+`research/fases/F0-preparacion/04-resultados/T0.7-p-cap/mapeo_motivos_cierre.json`,
+producida por `scripts/analysis/p_cap/mapeo_motivos_cierre.py`. **Aditivo.**)*
+
+### Los 9 cierres que faltaban eran un tipo de evento que nadie había contado
+
+🟢 **Los 21 `EXPERT` se explican exactamente, sin residuo:**
+
+```
+3 SENT CLOSE  +  8 FALLBACK_CLOSE_INVALID_SL  +  10 SAME_BAR_EXIT_FALLBACK  =  21
+```
+
+§3-bis buscaba los 9 que faltaban entre `3 + 9 = 12`. La respuesta es **`SAME_BAR_EXIT_FALLBACK`**,
+un tipo de acción del reconciliador ausente del enum del spec. Cuadra al contar dos detalles que
+sólo aparecen al medir: uno de los 9 `FALLBACK` cayó sobre una posición cuyo `reason` es `SL`
+(ver abajo), y uno de los 11 `SAME_BAR` está **fuera** de la ventana canónica.
+
+### Los 129 cierres sin evento de log NO son un hueco: son la firma esperada
+
+118 `SL` + 11 `CLIENT_manual` + 1 `TP` no aparecen en el log del ejecutor **porque no los ejecutó el
+ejecutor**. `SL` y `TP` son stops server-side que dispara el bróker; los manuales los hizo un
+operador humano desde otro terminal. El log sólo registra lo que el ejecutor **envió**. La ausencia
+de evento es precisamente la prueba de que el cierre fue server-side, no una laguna del dato.
+
+⇒ **Regla para el comparador:** un cierre de la réplica con `motivo_cierre = "SL"` debe casar con un
+`reason = SL` real **que no tenga evento de log**. Exigirle evento sería exigir lo contrario de lo
+que significa.
+
+### 🔴 La equivalencia NO es una biyección
+
+El `FALLBACK_CLOSE_INVALID_SL` del ticket `55279610` ancla por ticket a una posición cuyo
+`reason_name` medido es **`SL`**, con 10 s de desfase. Mecanismo: **carrera** entre el cierre a
+mercado que manda el ejecutor y el stop server-side del bróker. Si el stop salta primero, MT5
+registra `SL` aunque el ejecutor creyera estar cerrando él.
+
+⇒ `FALLBACK_CLOSE_INVALID_SL` de la réplica **puede casar legítimamente con `SL` de MT5**. Un
+comparador que exija correspondencia uno-a-uno marcaría aquí un fallo de paridad falso.
+
+### `ACTIONS_SUMMARY:SAME_BAR_EXIT_FALLBACK` no es un evento aparte
+
+Medido por epoch, no por nombre: 11 contra 11, emparejan 1-a-1, offset 0 s en 10 pares y 1 s en el
+restante. Es la línea de resumen del mismo evento. Contarlo como candidato independiente habría
+duplicado 11 cierres.
+
+### Tabla de equivalencia medida — estado actual
+
+| `motivo_cierre` de la réplica | `reason` de MT5 | n en la ventana | Nota |
+|---|---|---|---|
+| `SL` | `SL` | 118 | server-side; **sin** evento de log, por diseño |
+| `CLOSE_RECONCILER` | `EXPERT` | 3 | `SENT CLOSE` |
+| `FALLBACK_CLOSE_INVALID_SL` | `EXPERT` | 8 | |
+| `FALLBACK_CLOSE_INVALID_SL` | `SL` | 1 | carrera con el stop server-side |
+| **(SIN MODELAR)** | `EXPERT` | **10** | `SAME_BAR_EXIT_FALLBACK` — ver §3-quater |
+| **(SIN MODELAR)** | `TP` | **1** | ver §3-quater |
+| (no modelable) | `CLIENT_manual` | 11 | humano; excluido del criterio de paso (D-43) |
+| `FIN_VENTANA` | — | 0 | artefacto del harness, sin equivalente real |
+
+### 🔴 §3-quater · Dos caminos de cierre que la réplica NO modela
+
+La medición destapa dos huecos **dentro del criterio de paso de P-CAP** (D-45 incluye la razón de
+cierre), así que **P-CAP no puede pasar mientras sigan abiertos**:
+
+1. **`SAME_BAR_EXIT_FALLBACK` — 10 de los 21 cierres `EXPERT`.** `ciclos.py` no tiene motivo
+   equivalente, y su algoritmo (§3) no contempla que el sim entre y salga dentro de la misma barra.
+2. **`TP` — 1 cierre** (`position_id 55268071`, SuperTrend BUY, 2026-08-03 21:11:55 → 08-04 03:33:18,
+   +1.155.646 CLP). La réplica no tiene camino de take-profit.
+
+Ambos están **en investigación** contra el motor congelado; el resultado irá a
+`04-resultados/T0.7-p-cap/huecos-cierre-no-modelados.md`. **Hasta entonces el Componente D no se
+despacha**, porque un llamador escrito contra un enum incompleto habría que rehacerlo.
+
+---
+
 ## §4-bis · ADDENDUM 2026-08-13 — Componente D, el LLAMADOR de P-CAP
 
 *(Añadido por el controlador (Opus 5) al retomar la sesión. **Aditivo:** no invalida nada anterior.
