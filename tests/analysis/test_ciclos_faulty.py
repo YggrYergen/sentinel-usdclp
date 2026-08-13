@@ -206,3 +206,68 @@ def test_close_reconciler_cuando_estado_deja_de_desear():
     assert pos["motivo_cierre"] == "CLOSE_RECONCILER"
     assert pos["t_close"] == 1800.0
     assert any(e["tipo"] == "CLOSE" for e in eventos)
+
+
+# ---------------------------------------------------------------- test 3-bis
+def test_fallback_close_invalid_sl_long():
+    """§3-bis: posición viva long, llega un ciclo con un SL nuevo del estado
+    ya CRUZADO respecto del precio actual (nuevo_sl_deseado >= bid) ->
+    FALLBACK_CLOSE_INVALID_SL, cierre a mercado EN ESE TICK, motivo_cierre
+    == "FALLBACK_CLOSE_INVALID_SL" (no "SL", no "CLOSE_RECONCILER")."""
+    bar_times = np.array([0.0, 900.0])
+    estados = [
+        _estado_long(sl=1990.0),   # barra 0: abre con sl=1990 (legal, bid=2000)
+        _estado_long(sl=1992.0),   # barra 1: sl nuevo distinto, ahora >= bid=1985
+    ]
+    t0, t1 = 900.0, 1801.0  # cycle_sec grande: solo toca t=900 y t=1800
+
+    ticks = FakeTicks(
+        ts=[900.0, 1800.0],
+        bid=[2000.0, 1985.0],   # el precio cae por debajo del sl nuevo deseado
+        ask=[2000.30, 1985.30],
+    )
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, cycle_sec=900.0
+    )
+
+    assert len(posiciones) == 1
+    pos = posiciones[0]
+    assert pos["motivo_cierre"] == "FALLBACK_CLOSE_INVALID_SL"
+    assert pos["motivo_cierre"] != "SL"
+    assert pos["motivo_cierre"] != "CLOSE_RECONCILER"
+    assert pos["t_close"] == 1800.0
+    assert pos["precio_close"] == 1985.0
+    assert any(e["tipo"] == "FALLBACK_CLOSE_INVALID_SL" for e in eventos)
+    assert not any(e["tipo"] == "MODIFY" for e in eventos)
+
+
+def test_fallback_close_invalid_sl_short():
+    """§3-bis, dirección short: SL nuevo del estado ya CRUZADO respecto del
+    precio actual (nuevo_sl_deseado <= ask) -> FALLBACK_CLOSE_INVALID_SL."""
+    bar_times = np.array([0.0, 900.0])
+    estados = [
+        {"F1": {"side": "S", "sl": 2010.0, "entry": 2000.0}},  # abre, ask=2000, legal
+        {"F1": {"side": "S", "sl": 2005.0, "entry": 2000.0}},  # sl nuevo, ahora <= ask=2015
+    ]
+    t0, t1 = 900.0, 1801.0
+
+    ticks = FakeTicks(
+        ts=[900.0, 1800.0],
+        bid=[1999.70, 2014.70],
+        ask=[2000.0, 2015.0],   # el precio sube por encima del sl nuevo deseado
+    )
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, cycle_sec=900.0
+    )
+
+    assert len(posiciones) == 1
+    pos = posiciones[0]
+    assert pos["motivo_cierre"] == "FALLBACK_CLOSE_INVALID_SL"
+    assert pos["motivo_cierre"] != "SL"
+    assert pos["motivo_cierre"] != "CLOSE_RECONCILER"
+    assert pos["t_close"] == 1800.0
+    assert pos["precio_close"] == 2015.0
+    assert any(e["tipo"] == "FALLBACK_CLOSE_INVALID_SL" for e in eventos)
+    assert not any(e["tipo"] == "MODIFY" for e in eventos)

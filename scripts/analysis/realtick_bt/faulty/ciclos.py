@@ -187,19 +187,22 @@ def correr_ciclos(
                             tick_bid, tick_ask, stops_level,
                         )
                         if status == "crossed":
-                            # FALLBACK_CLOSE_INVALID_SL: cerrar a mercado en
-                            # este tick. `motivo_cierre` no tiene un valor
-                            # propio en el enum del spec §3 ({"SL",
-                            # "CLOSE_RECONCILER", "FIN_VENTANA"}); se usa
-                            # "SL" porque semánticamente el nuevo stop ya
-                            # está invalidado por el precio, igual que un
-                            # stop-out.
+                            # FALLBACK_CLOSE_INVALID_SL: el SL nuevo ya está
+                            # cruzado al intentar un MODIFY, así que el
+                            # ejecutor cierra a mercado en vez de mandar un
+                            # MODIFY inválido. Spec §3-bis: NO se colapsa en
+                            # "SL" -- un SL lo ejecuta el bróker contra un
+                            # stop server-side; esto es una orden de cierre a
+                            # mercado que manda el ejecutor. Son eventos
+                            # distintos, con distinto `reason` en MT5, y la
+                            # razón de cierre está dentro del criterio de
+                            # paso de P-CAP (D-45).
                             precio_close = (
                                 tick_bid if posicion_viva["side"] == "L" else tick_ask
                             )
                             posicion_viva["t_close"] = t
                             posicion_viva["precio_close"] = precio_close
-                            posicion_viva["motivo_cierre"] = "SL"
+                            posicion_viva["motivo_cierre"] = "FALLBACK_CLOSE_INVALID_SL"
                             posiciones.append(posicion_viva)
                             eventos.append(
                                 {"t": t, "tipo": "FALLBACK_CLOSE_INVALID_SL",
