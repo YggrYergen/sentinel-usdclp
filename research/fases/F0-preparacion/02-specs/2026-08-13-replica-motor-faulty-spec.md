@@ -306,3 +306,48 @@ working tree.** El working tree evoluciona con la investigación; el motor fault
 basta con que **el llamador** las tome de `config_faulty.kwargs_de(...)` en vez de `_GOLIVE_M15`.
 La corrección vive en el llamador, que aún no existe. Queda anotado aquí para que quien lo escriba
 no repita el error.
+
+---
+
+## §3-bis · ADDENDUM 2026-08-13 — `motivo_cierre` de `FALLBACK_CLOSE_INVALID_SL`
+
+*(Añadido por el controlador resolviendo una escalada correcta del implementador del Componente B,
+que detectó que el enum de §3 no cubría este caso y lo señaló en vez de inventar. **Aditivo.**)*
+
+### El hueco
+
+§3 define `motivo_cierre ∈ {"SL", "CLOSE_RECONCILER", "FIN_VENTANA"}`, pero el paso 4 del algoritmo
+puede cerrar una posición por `FALLBACK_CLOSE_INVALID_SL` — el SL nuevo ya está cruzado al intentar
+un `MODIFY`, así que el ejecutor cierra a mercado en vez de mandar un `MODIFY` inválido. No hay
+valor para eso.
+
+### La resolución
+
+🔴 **`FALLBACK_CLOSE_INVALID_SL` recibe su propio valor.** El enum pasa a ser:
+
+```
+motivo_cierre ∈ {"SL", "CLOSE_RECONCILER", "FALLBACK_CLOSE_INVALID_SL", "FIN_VENTANA"}
+```
+
+**No se colapsa en `"SL"`.** Razón: un `SL` lo ejecuta el **bróker** contra un stop server-side; un
+fallback es una **orden de cierre a mercado que manda el ejecutor**. Son eventos distintos, dejan
+`reason` distinto en el historial de MT5, y la **razón de cierre está dentro del criterio de paso de
+P-CAP** (D-45). Colapsarlos rompería exactamente la comparación que el hito mide.
+
+### 🟡 Cuestión abierta que esto destapa — NO resolver por conjetura
+
+El mapeo de los motivos de la réplica a los `reason` de MT5 del historial real **no cuadra todavía**,
+y hay que resolverlo con datos antes de construir el comparador:
+
+- Historial real de la ventana canónica: **118 SL · 21 EXPERT · 11 manuales · 1 TP**.
+- Log del ejecutor en la misma ventana: **3** acciones `CLOSE` y **9** `FALLBACK_CLOSE_INVALID_SL`.
+
+3 + 9 = 12, contra **21** cierres con `reason=EXPERT`. **Faltan 9 por explicar.** Hipótesis que
+habrá que discriminar con el dato, sin elegir ninguna ahora: cierres por `stop_and_reverse`, cierres
+emitidos fuera de las acciones contabilizadas, o un desfase entre lo que el log tabula y lo que el
+bróker registra.
+
+**Consecuencia operativa:** la tabla de equivalencia `motivo_cierre` ↔ `reason` de MT5 **queda sin
+fijar** en este spec. Se determina empíricamente al construir el comparador de P-CAP, cruzando
+`data/analysis/p_cap/verdad_terreno_902.csv` con `data/analysis/p_cap/eventos_ejecutor_902.csv`.
+Quien lo construya **no debe asumir** la equivalencia: debe medirla y reportar los residuos.
