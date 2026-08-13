@@ -945,3 +945,91 @@ la fase no explica esa cola y el sospechoso es el gate horario).
 razón de cierre (92 %), el resultado (95 %) y el precio de apertura dentro de 1 USD (85 %); pero
 sólo el **46 %** de las aperturas cae dentro de 20 centavos, y eso no basta para proyectar 4,7 años.
 Evidencia: `research/fases/F0-preparacion/05-analisis/2026-08-13-memo-P-CAP-primera-corrida.md`.
+
+### D-47 · 2026-08-13 · Las 12 modificaciones de motor se implementan en VÍA RÁPIDA, y el objetivo es el motor corregido validado en solape
+*(Procedencia: instrucción explícita del user, 2026-08-13. **Aditivo y correctivo**: modifica el
+protocolo por modificación del plan §4.1 y una condición de **D-22**, que era decisión del propio
+user. Nada se elimina; D-22 sigue vigente en todo lo demás, y R1-bis intacto sin excepción.)*
+
+## El objetivo, en los términos del user
+
+Construir el **motor corregido / extendido** que replique correctamente el mercado real **en cuanto
+a cómo operan las estrategias**. No es un fin académico: es la condición para que cualquier mejora
+posterior se mida sobre algo que no miente.
+
+**La validación se hace en ventanas de SOLAPE**, y el user autoriza **descargar los datos que
+falten** para poder construirlas. El solape rico es `2026-01` → `2026-08`, el único tramo donde
+coexisten los tres sustratos: ticks de AVA, ticks de Capitaria y **posiciones reales** de la 902.
+⚠️ Toda descarga sigue bajo charter §A.12: **attach-only**, terminal abierto por el user, cuentas
+reales **read-only**, guard de identidad ejercido en esa sesión.
+
+🔴 **No confundir los dos motores.** El **faulty** (`b113eb7`) se replica **verbatim** para P-CAP y
+P-AVA — es el patrón de medida y no se corrige. El **corregido/extendido** es el destino, y es donde
+viven las 12 mods y las correcciones de D-44 (D2 reintento, D7 trailing en vivo). Mezclarlos
+destruye el par medible.
+
+## LO DECIDIDO — vía rápida de implementación
+
+Las 12 se implementan con **subagentes Sonnet 5 high effort**, **lo más rápido posible**, con
+**tests breves sólo donde se requieran** en vez de suites completas en cada etapa, y el grueso del
+**testeo y depuración se batchea al final** del lote.
+
+**Se relaja, respecto al plan §4.1 y al protocolo 01:**
+- ❌ Spec cerrada individual por modificación → **una spec por grupo** de modificaciones afines.
+- ❌ Ciclo TDD completo (rojo → mínimo → verde) en cada mod → **smoke test breve** sólo donde la mod
+  tenga lógica no obvia; donde sea cableado o estructura nueva, ninguno.
+- ❌ Revisión por tarea → **revisión batcheada** al cierre del lote.
+- ❌ Fidelidad empírica A6 tras cada mod → **una sola A6 al final**. *(Ésta es la cara: una corrida
+  P-CAP cuesta ~350 s más comparación; doce serían más de una hora sólo en esperar.)*
+
+## 🔴 LO QUE NO SE RELAJA, y por qué cuesta 2 segundos
+
+**La puerta de paridad golden se corre tras CADA modificación.** Sin excepción.
+
+**El número que lo justifica:** `pytest tests/research/test_baseline_parity.py -q -m slow` →
+**4 passed en 2,01 s**. Dos segundos. Doce modificaciones son **24 segundos** en total. La puerta de
+paridad **no era el cuello de botella** — lo eran la spec por mod, el TDD completo y la A6 empírica,
+que es justo lo que esta decisión batchea.
+
+**Y es lo que hace VIABLE la estrategia del user.** «Implementar los 12 y depurar después» sólo
+funciona si, cuando algo se rompe, se sabe **cuál** lo rompió. Sin la puerta por mod hay 12
+sospechosos y sus interacciones; con ella, el culpable se nombra en el acto y por 2 segundos.
+Es el **cable trampa de R1-bis**: 11 de las 12 mods son aditivas por construcción (módulo nuevo,
+cfg deep-copiada, banda mágica nueva), así que la paridad debe aguantar trivialmente — y si salta,
+lo que ha ocurrido es que alguien tocó un original, que es exactamente el fallo más caro posible.
+
+⚠️ **TRAMPA ya medida (TRACKER 2026-08-12): sin `-m slow` el comando devuelve `4 deselected in
+0.03s`** — un verde que no ejecutó nada. **El flag es obligatorio y el brief debe exigir la salida
+real pegada.**
+
+## Triaje: qué mod va por vía rápida y cuál no
+
+**Vía rápida** — las puramente aditivas, que construyen al lado sin tocar semántica existente:
+mods **1, 3, 4, 5, 6, 7, 8, 9**.
+
+**Vía normal (spec propia + TDD)** — las que tocan un camino compartido o cambian una semántica, que
+es donde un cambio de comportamiento se esconde en silencio:
+- **#2 ratchet** — lleva un `assert` de «NUNCA extiende el SL inicial»; un assert mal puesto es un
+  fallo silencioso de gestión de riesgo.
+- **#10 adaptador AVA + overlay de costes** — es el que traduce entre sustratos; un error aquí
+  contamina toda comparación AVA↔Capitaria. Además D-38-adenda-2 lo deja pendiente de re-derivar.
+- **#11 instrumentación de camino** — toca el camino caliente de cada posición; es el candidato
+  natural a alterar comportamiento mientras «sólo observa».
+- **#12 inyección de eventos** — modifica el flujo del replay, y sin él A6 diverge en cascada tras
+  el primer cierre manual.
+
+## Lo que sigue intacto
+
+**R1-bis, sin excepción** (charter §A.11): S6/S7/SuperTrend vivos **byte-idénticos**; todo sobre
+copias; quien crea que hay que tocar un original **PARA y escala**. Esta decisión acelera el
+proceso, **no** afloja la protección de lo vivo.
+**El freeze por SHA** tras A6 (T0.8) sigue siendo obligatorio.
+**La honestidad de reporte**: los tests que no se corran se declaran **no corridos**, jamás se
+insinúa cobertura que no existe.
+
+## El riesgo que esta decisión acepta, declarado
+
+Batchear la depuración concentra el riesgo al final: si al correr la A6 única aparecen varias
+regresiones funcionales a la vez, desenredarlas cuesta más que haberlas encontrado por separado.
+**Se acepta a cambio de velocidad, y con la puerta de paridad como red.** Si la A6 final destapa un
+enredo, el coste es re-abrir el lote — no se degrada el criterio de A6 para que pase.
