@@ -379,3 +379,103 @@ def test_correr_p_cap_instantes_none_por_defecto_preserva_comportamiento(tmp_pat
     )
     assert "posiciones_por_estrategia" in metricas
     assert (out_dir / "posiciones_replica.csv").exists()
+
+
+# ------------------------------------------------- D-46 RULING: reloj reconstruido
+# El controlador corrigió el encargo original tras ver la medición de cobertura:
+# los instantes del log NO son la lista de ciclos (el log registra EVENTOS, no
+# ciclos -- todo evento deja rastro, así que un hueco significa "miró y no
+# hizo nada", no "no miró"). Se reconstruye el RELOJ: cada epoch real es un
+# ANCLA de fase; entre dos anclas el reloj avanza por su cuenta a la cadencia
+# medida, y se RE-ANCLA al llegar a la siguiente -- el último paso de relleno
+# antes de una ancla es más corto que la cadencia (correcto, no un defecto).
+# La réplica sigue libre de decidir QUÉ hacer en cada ciclo (ancla o
+# relleno); sólo hereda CUÁNDO mira.
+
+
+def test_construir_instantes_sin_anclas_es_rejilla_pura():
+    """Sin ninguna ancla dentro de [t0, t1), t0 se convierte en la única
+    ancla (arranque del reloj) y el resto es relleno puro a `cadencia` --
+    debe coincidir exactamente con la rejilla sintética de siempre."""
+    instantes, es_ancla = L.construir_instantes_ancla_relleno(
+        anclas=[], t0=900.0, t1=960.0, cadencia=15.0
+    )
+    assert instantes == [900.0, 915.0, 930.0, 945.0]
+    assert es_ancla == [True, False, False, False]
+
+
+def test_construir_instantes_reancla_en_cada_epoch_real():
+    """Con anclas=[900, 940] (t0=900 coincide con la primera ancla) y
+    cadencia=15: 900 -> 915 -> 930 (relleno, el siguiente paso a 945 se
+    pasaría de la ancla 940) -> 940 (RE-ANCLA, paso corto de 10s, no 15) ->
+    955 -> 970 (relleno hasta t1=980)."""
+    instantes, es_ancla = L.construir_instantes_ancla_relleno(
+        anclas=[900.0, 940.0], t0=900.0, t1=980.0, cadencia=15.0
+    )
+    assert instantes == [900.0, 915.0, 930.0, 940.0, 955.0, 970.0]
+    assert es_ancla == [True, False, False, True, False, False]
+    # el paso de re-ancla (930 -> 940) es más corto que la cadencia (10 < 15)
+    assert instantes[3] - instantes[2] == 10.0
+
+
+def test_construir_instantes_anclas_fuera_de_ventana_se_descartan_t0_siempre_ancla():
+    """Anclas < t0 o >= t1 se ignoran; t0 sigue siendo la ancla de arranque
+    aunque no venga del log."""
+    instantes, es_ancla = L.construir_instantes_ancla_relleno(
+        anclas=[500.0, 900.0, 2000.0], t0=900.0, t1=1000.0, cadencia=15.0
+    )
+    assert instantes[0] == 900.0
+    assert es_ancla[0] is True
+    assert all(t0_ <= i < 1000.0 for i, t0_ in [(i, 900.0) for i in instantes])
+    assert 2000.0 not in instantes
+    # una sola ancla real (900) -- el resto es relleno puro hasta t1=1000
+    assert sum(es_ancla) == 1
+
+
+def test_construir_instantes_cuenta_anclas_y_relleno_es_exhaustiva():
+    """Todo elemento de `instantes` es o ancla o relleno, nunca ambos ni
+    ninguno -- invariante básico de las dos listas paralelas."""
+    instantes, es_ancla = L.construir_instantes_ancla_relleno(
+        anclas=[905.0, 933.0, 950.0], t0=900.0, t1=1000.0, cadencia=15.77
+    )
+    assert len(instantes) == len(es_ancla)
+    assert instantes == sorted(instantes)
+    # las 3 anclas reales + t0 (arranque, no coincide con ninguna ancla real
+    # porque la primera es 905 != 900) deben aparecer con es_ancla=True
+    anclas_en_salida = [i for i, a in zip(instantes, es_ancla) if a]
+    assert anclas_en_salida == [900.0, 905.0, 933.0, 950.0]
+
+
+def test_correr_p_cap_reloj_reconstruido_reenvia_instantes_y_anota_metadatos(tmp_path):
+    """`correr_p_cap_reloj_reconstruido` debe: 1) construir los instantes a
+    partir de un CSV de eventos con columna `epoch`, 2) correr `correr_p_cap`
+    con esos instantes, 3) anotar en las métricas devueltas (y en el JSON en
+    disco) cuántas anclas y cuánto relleno se usaron."""
+    bars = L.load_bars_nativas(L.BARS_NATIVAS)
+    bar_times = np.array([b["t"] for b in bars], dtype=float)
+    t0 = bar_times[13740] + 900.0
+    t1 = bar_times[13760] + 900.0
+
+    eventos_csv = tmp_path / "eventos_fake.csv"
+    # dos anclas reales dentro del tramo, cadencia de relleno de sobra
+    anclas_reales = [t0, t0 + 47.0]
+    pd.DataFrame({"epoch": anclas_reales}).to_csv(eventos_csv, index=False)
+
+    out_dir = tmp_path / "replica"
+    metricas = L.correr_p_cap_reloj_reconstruido(
+        cadencia_relleno=15.77,
+        eventos_path=eventos_csv,
+        t0=t0, t1=t1,
+        bars_path=L.BARS_NATIVAS, ticks_root=L.LAKE_TICKS_CAPITARIA,
+        stops_level=0.50, out_dir=out_dir,
+    )
+    assert "reloj_reconstruido" in metricas
+    rr = metricas["reloj_reconstruido"]
+    assert rr["cadencia_relleno"] == 15.77
+    assert rr["n_anclas_usadas"] == 2
+    assert rr["n_relleno"] >= 0
+    assert rr["n_instantes_total"] == rr["n_anclas_usadas"] + rr["n_relleno"]
+
+    with open(out_dir / "metricas_p_cap.json", encoding="utf-8") as f:
+        m_disco = json.load(f)
+    assert m_disco["reloj_reconstruido"] == rr

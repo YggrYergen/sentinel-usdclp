@@ -67,6 +67,7 @@ ROOT = Path(__file__).resolve().parents[4]  # .../faulty/../../../../ -> D:\FORE
 BARS_NATIVAS = ROOT / "data" / "lake_bars_capitaria" / "XAUUSD_M15_nativas.parquet"
 LAKE_TICKS_CAPITARIA = ROOT / "data" / "lake_ticks" / "XAUUSD"
 OUT_DIR = ROOT / "data" / "analysis" / "p_cap" / "replica"
+EVENTOS_EJECUTOR_902 = ROOT / "data" / "analysis" / "p_cap" / "eventos_ejecutor_902.csv"
 
 BAR_SEC = 900
 
@@ -442,10 +443,120 @@ def correr_p_cap(
     return metricas
 
 
+# --------------------------------------------------------- D-46, RULING: reloj
+def construir_instantes_ancla_relleno(
+    anclas: Sequence[float], t0: float, t1: float, cadencia: float,
+) -> tuple[list[float], list[bool]]:
+    """D-46, RULING del controlador (2026-08-13, tras ver la medición de
+    cobertura de la primera pasada de este brief): los instantes reales del
+    log NO son la lista de ciclos -- son ANCLAS de fase. El log de
+    `eventos_ejecutor_902.csv` registra EVENTOS, no ciclos, y en este
+    ejecutor toda acción deja rastro (SENT OPEN, MODIFY, CLOSE...), así que
+    un hueco en el log significa "el ejecutor miró y no hizo nada", no "no
+    miró". Alimentar el bucle SÓLO con los epochs del log impediría a la
+    réplica actuar en los instantes en que la realidad no actuó -- eso ya no
+    sería copiar un insumo (el reloj), sería filtrarle la respuesta (la
+    decisión), justo la línea que D-46 prohíbe cruzar.
+
+    Reconstruye el reloj: cada ancla (epoch real, filtrado a `[t0, t1)`) fija
+    la fase; entre dos anclas consecutivas el reloj avanza por su cuenta a
+    `cadencia` desde la última ancla, y se RE-ANCLA al llegar a la
+    siguiente -- el último paso de relleno antes de una ancla es más corto
+    que `cadencia` por construcción (correcto, no un defecto: es la
+    diferencia real entre "cuándo tocaba mirar" y "cuándo hubo algo que
+    loguear"). `t0` es siempre la ancla de arranque del reloj (coincide con
+    la conexión del ejecutor -- en los datos reales, la primera fila del log
+    cae exactamente en `t0`); si ninguna ancla real coincide con `t0`, se
+    añade igualmente como ancla de arranque. Después de la última ancla,
+    sigue rellenando hasta `t1` (mismo tope que el bucle de `correr_ciclos`,
+    que nunca alcanza `t1`: `while`/`for` con corte en `t < t1`).
+
+    Los huecos de fin de semana (hasta 2,62 días medidos) NO reciben
+    tratamiento especial: se rellenan igual que cualquier otro hueco, y
+    `correr_ciclos` ya salta en O(1) por ciclo los instantes sin tick
+    (`ticks.first_at(t) is None -> continue`), así que el coste de rellenar
+    un hueco de mercado cerrado es el mismo por ciclo que cualquier otro.
+
+    Devuelve `(instantes, es_ancla)`: dos listas paralelas, mismo orden y
+    longitud; `es_ancla[i]` es True si `instantes[i]` vino directamente del
+    log, False si es un paso de relleno."""
+    anclas_v = sorted({float(a) for a in anclas if t0 <= float(a) < t1})
+    if not anclas_v or anclas_v[0] > t0:
+        anclas_v = [t0] + anclas_v
+
+    instantes: list[float] = []
+    es_ancla: list[bool] = []
+    for i, ancla in enumerate(anclas_v):
+        instantes.append(ancla)
+        es_ancla.append(True)
+        limite = anclas_v[i + 1] if i + 1 < len(anclas_v) else t1
+        t = ancla + cadencia
+        while t < limite:
+            instantes.append(t)
+            es_ancla.append(False)
+            t += cadencia
+
+    return instantes, es_ancla
+
+
+def correr_p_cap_reloj_reconstruido(
+    *,
+    cadencia_relleno: float,  # SIN default (D.2): el script de entrada lo aporta
+    eventos_path: str | Path = EVENTOS_EJECUTOR_902,
+    t0: float = VENTANA_902[0],
+    t1: float = VENTANA_902[1],
+    **kwargs: Any,
+) -> dict:
+    """D-46 RULING: construye la lista de instantes reconstruyendo el reloj
+    del ejecutor (`construir_instantes_ancla_relleno`, anclas = epochs de
+    `eventos_path`, columna `epoch`) y corre `correr_p_cap` con ella.
+
+    `**kwargs` se reenvía tal cual a `correr_p_cap` (`stops_level`,
+    `bars_path`, `ticks_root`, `window`, `max_spread_open`, `out_dir`, ...).
+    No acepta `instantes` (la construye esta función) ni `cycle_sec` (no se
+    usa: `correr_ciclos` lo ignora cuando `instantes` no es None).
+
+    Añade a las métricas devueltas -- y reescribe `metricas_p_cap.json` con
+    ellas -- la clave `reloj_reconstruido`: cadencia usada, ruta del log de
+    anclas, y el desglose ancla/relleno/total de instantes generados."""
+    if "instantes" in kwargs or "cycle_sec" in kwargs:
+        raise TypeError(
+            "correr_p_cap_reloj_reconstruido no acepta 'instantes' ni "
+            "'cycle_sec': la lista de instantes la construye esta función "
+            "a partir de eventos_path + cadencia_relleno."
+        )
+
+    df_eventos = pd.read_csv(eventos_path)
+    anclas = df_eventos["epoch"].dropna().astype(float).to_numpy()
+    instantes, es_ancla = construir_instantes_ancla_relleno(anclas, t0, t1, cadencia_relleno)
+    n_anclas_usadas = int(sum(es_ancla))
+    n_relleno = int(len(es_ancla) - n_anclas_usadas)
+
+    metricas = correr_p_cap(t0=t0, t1=t1, instantes=instantes, **kwargs)
+    metricas["reloj_reconstruido"] = {
+        "cadencia_relleno": cadencia_relleno,
+        "eventos_path": str(eventos_path),
+        "n_anclas_en_log": int(len(anclas)),
+        "n_anclas_usadas": n_anclas_usadas,
+        "n_relleno": n_relleno,
+        "n_instantes_total": len(instantes),
+    }
+
+    out_dir = Path(kwargs.get("out_dir", OUT_DIR))
+    with open(out_dir / "metricas_p_cap.json", "w", encoding="utf-8") as f:
+        json.dump(metricas, f, indent=2, ensure_ascii=False)
+
+    return metricas
+
+
 if __name__ == "__main__":
     # stops_level=0.50: derivado 2026-08-13 por inversión contra el lago de
     # ticks (research/fases/F0-preparacion/04-resultados/T0.7-p-cap/
     # stops_level_derivado.{json,md}). Default SÓLO aquí, en el script de
     # entrada -- NUNCA como default de correr_p_cap() (D.2).
-    resultado = correr_p_cap(stops_level=0.50)
+    #
+    # cadencia_relleno=15.77: mediana real medida de la cadencia del
+    # ejecutor vivo (T0.6-A Q6 / T0.6-B Q11), D-46. Default SÓLO aquí, NUNCA
+    # en correr_p_cap_reloj_reconstruido() (mismo patrón D.2 que stops_level).
+    resultado = correr_p_cap_reloj_reconstruido(cadencia_relleno=15.77, stops_level=0.50)
     print(json.dumps(resultado, indent=2, ensure_ascii=False))
