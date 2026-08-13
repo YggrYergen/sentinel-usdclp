@@ -11,9 +11,9 @@ Sin conclusiones ni veredicto (charter §A.4/§A.13) -- el memo de interpretaci�
 
 ## Criterio de paso -- 6 campos (D-45, D-46)
 
-Denominador evaluable: **140** (emparejadas: 135, sin pareja real: 5).
+Denominador evaluable: **140** (emparejadas: 137, sin pareja real: 3).
 
-Casan los 6 campos: **0**. No casan: **135**.
+Casan los 6 campos: **0**. No casan: **137**.
 
 ### Por campo (sobre las emparejadas evaluables)
 
@@ -21,21 +21,21 @@ Casan los 6 campos: **0**. No casan: **135**.
 
 | campo | si | no | no_evaluable |
 |---|---|---|---|
-| precio_open | 16 | 119 | 0 |
-| t_open | 17 | 118 | 0 |
-| t_close | 76 | 59 | 0 |
-| precio_close | 7 | 128 | 0 |
-| razon_cierre | 128 | 6 | 1 |
-| resultado | 131 | 4 | 0 |
+| precio_open | 7 | 130 | 0 |
+| t_open | 7 | 130 | 0 |
+| t_close | 72 | 65 | 0 |
+| precio_close | 4 | 133 | 0 |
+| razon_cierre | 126 | 11 | 0 |
+| resultado | 130 | 7 | 0 |
 
 ### Distribución de |delta| (campos numéricos, emparejadas evaluables)
 
 | campo | n | min | p50 | p90 | max |
 |---|---|---|---|---|---|
-| precio_open | 135 | 0.0000 | 0.1400 | 5.7660 | 42.5000 |
-| t_open | 135 | 0.0000 | 1.2300 | 6324.2481 | 179395.7101 |
-| t_close | 135 | 0.0000 | 0.7890 | 459.4138 | 84099.6090 |
-| precio_close | 135 | 0.0000 | 0.0900 | 0.5420 | 44.2800 |
+| precio_open | 137 | 0.0000 | 0.2300 | 3.9340 | 21.0500 |
+| t_open | 137 | 0.0000 | 9.0000 | 6295.6000 | 179389.0000 |
+| t_close | 137 | 0.0260 | 0.9500 | 185.1184 | 330310.0000 |
+| precio_close | 137 | 0.0000 | 0.1000 | 0.8380 | 11.0100 |
 
 ## Excluidos del criterio de paso
 
@@ -51,11 +51,11 @@ Profit CLIENT_manual: 28,416,355.78 CLP.
 
 | evaluable | no_evaluable | coincide |
 |---|---|---|
-| 61 | 74 | 7 |
+| 61 | 76 | 4 |
 
 ## Residuos del emparejamiento 1-a-1
 
-Réplica sin pareja: **10** ({'SAR::S6-K2P0': 5, 'SuperTrend::SuperTrend-p14x3-M15': 5}). Real sin pareja (evaluables): **5**.
+Réplica sin pareja: **9** ({'SAR::S6-K2P0': 6, 'SuperTrend::SuperTrend-p14x3-M15': 3}). Real sin pareja (evaluables): **4**.
 
 ## Divergencia conocida -- primera orden
 
@@ -73,4 +73,4 @@ Posiciones marcadas: 1.
 
 | run_id | area | experimento | config_hash | substrate_id | engine_sha | git_sha | etapa | generador | timestamp |
 |---|---|---|---|---|---|---|---|---|---|
-| T0.7-P-CAP-comparador-20260813T212629Z | F0 | T0.7-P-CAP | 4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9 | posiciones_replica.csv + verdad_terreno_902.csv | b113eb7 | f2f812dd7cd81d5c4f90802cfa0dea2ce83457cd | F0 | scripts/analysis/realtick_bt/faulty/comparador.py | 2026-08-13T21:26:29.056547Z |
+| T0.7-P-CAP-comparador-20260813T205406Z | F0 | T0.7-P-CAP | 4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9 | posiciones_replica.csv + verdad_terreno_902.csv | b113eb7 | be51d0a882cb3ff91f0d11c68800d731e31c5feb | F0 | scripts/analysis/realtick_bt/faulty/comparador.py | 2026-08-13T20:54:06.107088Z |

@@ -18,74 +18,72 @@
   },
   "criterio_de_paso_6_campos": {
     "denominador_evaluable": 140,
-    "n_emparejadas": 135,
-    "n_sin_pareja_real": 5,
+    "n_emparejadas": 137,
+    "n_sin_pareja_real": 3,
     "position_id_sin_pareja_real": [
-      55333600.0,
+      55293817.0,
       55317670.0,
-      55318544.0,
-      55318552.0,
       55321392.0
     ],
     "casa_los_6_campos": 0,
-    "no_casa_los_6_campos": 135,
+    "no_casa_los_6_campos": 137,
     "por_campo": {
       "precio_open": {
-        "si": 16,
-        "no": 119,
+        "si": 7,
+        "no": 130,
         "no_evaluable": 0,
         "delta_abs_stats": {
-          "n": 135,
+          "n": 137,
           "min": 0.0,
-          "p50": 0.13999999999987267,
-          "p90": 5.7660000000002665,
-          "max": 42.5
+          "p50": 0.2300000000000182,
+          "p90": 3.9340000000001094,
+          "max": 21.050000000000182
         }
       },
       "t_open": {
-        "si": 17,
-        "no": 118,
+        "si": 7,
+        "no": 130,
         "no_evaluable": 0,
         "delta_abs_stats": {
-          "n": 135,
+          "n": 137,
           "min": 0.0,
-          "p50": 1.2300000190734863,
-          "p90": 6324.2480607032785,
-          "max": 179395.71005296707
+          "p50": 9.0,
+          "p90": 6295.6,
+          "max": 179389.0
         }
       },
       "t_close": {
-        "si": 76,
-        "no": 59,
+        "si": 72,
+        "no": 65,
         "no_evaluable": 0,
         "delta_abs_stats": {
-          "n": 135,
-          "min": 0.0,
-          "p50": 0.7890000343322754,
-          "p90": 459.41380004882853,
-          "max": 84099.60899996758
+          "n": 137,
+          "min": 0.026000022888183594,
+          "p50": 0.9500000476837158,
+          "p90": 185.11840000152594,
+          "max": 330310.0
         }
       },
       "precio_close": {
-        "si": 7,
-        "no": 128,
+        "si": 4,
+        "no": 133,
         "no_evaluable": 0,
         "delta_abs_stats": {
-          "n": 135,
+          "n": 137,
           "min": 0.0,
-          "p50": 0.09000000000014552,
-          "p90": 0.5420000000003716,
-          "max": 44.2800000000002
+          "p50": 0.09999999999990905,
+          "p90": 0.8380000000003748,
+          "max": 11.010000000000218
         }
       },
       "razon_cierre": {
-        "si": 128,
-        "no": 6,
-        "no_evaluable": 1
+        "si": 126,
+        "no": 11,
+        "no_evaluable": 0
       },
       "resultado": {
-        "si": 131,
-        "no": 4,
+        "si": 130,
+        "no": 7,
         "no_evaluable": 0
       }
     }
@@ -100,16 +98,16 @@
   },
   "sl_de_entrada_no_gating": {
     "n_evaluable": 61,
-    "n_no_evaluable": 74,
-    "n_coincide": 7
+    "n_no_evaluable": 76,
+    "n_coincide": 4
   },
   "residuos_1_a_1": {
-    "replica_sin_pareja_total": 10,
+    "replica_sin_pareja_total": 9,
     "replica_sin_pareja_por_estrategia": {
-      "SAR::S6-K2P0": 5,
-      "SuperTrend::SuperTrend-p14x3-M15": 5
+      "SAR::S6-K2P0": 6,
+      "SuperTrend::SuperTrend-p14x3-M15": 3
     },
-    "real_sin_pareja_total": 5
+    "real_sin_pareja_total": 4
   },
   "divergencia_conocida_primera_orden": {
     "descripcion": "primera orden real: retcode=10027 (AutoTrading deshabilitado), reabre 60s despues (D.6). No se cuenta como fallo generico de paridad de instante de entrada; se reporta con su propio delta.",
@@ -127,15 +125,15 @@
     "SL|SL": 117
   },
   "lineage": {
-    "run_id": "T0.7-P-CAP-comparador-20260813T212629Z",
+    "run_id": "T0.7-P-CAP-comparador-20260813T205406Z",
     "area": "F0",
     "experimento": "T0.7-P-CAP",
     "config_hash": "4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9",
     "substrate_id": "posiciones_replica.csv + verdad_terreno_902.csv",
     "engine_sha": "b113eb7",
-    "git_sha": "f2f812dd7cd81d5c4f90802cfa0dea2ce83457cd",
+    "git_sha": "be51d0a882cb3ff91f0d11c68800d731e31c5feb",
     "etapa": "F0",
     "generador": "scripts/analysis/realtick_bt/faulty/comparador.py",
-    "timestamp": "2026-08-13T21:26:29.056547Z"
+    "timestamp": "2026-08-13T20:54:06.107088Z"
   }
 }
