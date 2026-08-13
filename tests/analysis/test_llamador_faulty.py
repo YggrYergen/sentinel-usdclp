@@ -298,3 +298,84 @@ def test_correr_p_cap_tramo_corto_escribe_artefactos_con_esquema_d5(tmp_path):
     assert m["lineage"]["substrate_id"] == "capitaria-ticks + XAUUSD_M15_nativas"
     assert m["lineage"]["experimento"] == "T0.7-P-CAP"
     assert "tiempo_calculo_seg" in m
+
+
+# --------------------------------------------------------- D-46: instantes
+# `_correr_estrategia` / `correr_p_cap` aceptan un parámetro opcional
+# `instantes` (aditivo, D-46) que se reenvía a `correr_ciclos`. No decide
+# CÓMO derivar la lista de instantes reales (eso está bloqueado, escalado al
+# controlador) -- sólo prueba que el cableado reenvía lo que se le pase.
+
+
+def test_correr_estrategia_instantes_none_equivale_a_no_pasarlo():
+    idx_desde, idx_hasta = 13740, 13760
+    bars = L.load_bars_nativas(L.BARS_NATIVAS)
+    bar_times = np.array([b["t"] for b in bars], dtype=float)
+    ticks = L._TicksCapitaria(L.LAKE_TICKS_CAPITARIA)
+    t0 = bar_times[idx_desde] + 900.0
+    t1 = bar_times[idx_hasta] + 900.0
+
+    kwargs_comunes = dict(
+        config_id="S6-K2P0", strategy_id=L.STRATEGY_ID_DE_CONFIG["S6-K2P0"],
+        bars=bars, bar_times=bar_times, ticks=ticks,
+        t0=t0, t1=t1, window=10_000, stops_level=0.50,
+        max_spread_open=0.50, cycle_sec=15.0,
+        idx_desde=idx_desde, idx_hasta=idx_hasta,
+    )
+
+    sin_param = L._correr_estrategia(**kwargs_comunes)
+    con_none = L._correr_estrategia(**kwargs_comunes, instantes=None)
+    assert sin_param == con_none
+
+
+def test_correr_estrategia_instantes_reenviado_a_correr_ciclos():
+    """El parámetro `instantes` de `_correr_estrategia` debe llegar intacto a
+    `correr_ciclos`: pasar la rejilla sintética reconstruida a mano como
+    `instantes` debe dar el MISMO resultado que no pasar nada (instantes=None,
+    que usa esa misma rejilla internamente) -- prueba de cableado, no
+    redecide cómo derivar la lista real."""
+    idx_desde, idx_hasta = 13740, 13760
+    bars = L.load_bars_nativas(L.BARS_NATIVAS)
+    bar_times = np.array([b["t"] for b in bars], dtype=float)
+    ticks = L._TicksCapitaria(L.LAKE_TICKS_CAPITARIA)
+    t0 = bar_times[idx_desde] + 900.0
+    t1 = bar_times[idx_hasta] + 900.0
+    cycle_sec = 15.0
+
+    rejilla = []
+    t = t0
+    while t < t1:
+        rejilla.append(t)
+        t += cycle_sec
+
+    kwargs_comunes = dict(
+        config_id="S6-K2P0", strategy_id=L.STRATEGY_ID_DE_CONFIG["S6-K2P0"],
+        bars=bars, bar_times=bar_times, ticks=ticks,
+        t0=t0, t1=t1, window=10_000, stops_level=0.50,
+        max_spread_open=0.50, cycle_sec=cycle_sec,
+        idx_desde=idx_desde, idx_hasta=idx_hasta,
+    )
+
+    con_rejilla_explicita = L._correr_estrategia(**kwargs_comunes, instantes=rejilla)
+    con_none = L._correr_estrategia(**kwargs_comunes, instantes=None)
+    assert con_rejilla_explicita == con_none
+    # y el tramo elegido produce señal real (mismo tramo que los tests de
+    # cableado de arriba)
+    assert len(con_none[1]) > 0
+
+
+def test_correr_p_cap_instantes_none_por_defecto_preserva_comportamiento(tmp_path):
+    """`correr_p_cap` sin `instantes` (ni pasarlo) debe seguir escribiendo los
+    mismos artefactos que antes de D-46 -- ninguna regresión de contrato."""
+    bars = L.load_bars_nativas(L.BARS_NATIVAS)
+    bar_times = np.array([b["t"] for b in bars], dtype=float)
+    t0 = bar_times[13740] + 900.0
+    t1 = bar_times[13760] + 900.0
+
+    out_dir = tmp_path / "replica"
+    metricas = L.correr_p_cap(
+        bars_path=L.BARS_NATIVAS, ticks_root=L.LAKE_TICKS_CAPITARIA,
+        t0=t0, t1=t1, stops_level=0.50, out_dir=out_dir,
+    )
+    assert "posiciones_por_estrategia" in metricas
+    assert (out_dir / "posiciones_replica.csv").exists()

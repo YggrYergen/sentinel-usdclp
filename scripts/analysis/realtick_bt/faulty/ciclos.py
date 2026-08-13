@@ -27,11 +27,34 @@ sale de `estado[ficha]["sl"]` (posiblemente clampado), nunca de "entry".
 Re-entrada (D4): no se codifica, emerge. Si el SL cierra la posición y el
 ciclo siguiente ve que el sim la sigue deseando, el paso de apertura (3) la
 reabre sola -- no hay ninguna rama especial de "reabrir" en este código.
+
+D-46 -- instantes reales en vez de la rejilla sintética
+---------------------------------------------------------
+`correr_ciclos` sintetizaba su propia rejilla de ciclos (t0, t0+15, t0+30,
+...), pero el ejecutor vivo tuvo cadencia irregular (mediana 15,77 s, no
+15,0 s exactos) porque cada ciclo hacía trabajo real. D-46
+(`research/DECISIONES.md`) decidió alimentar el bucle con los instantes REALES
+que el ejecutor dejó registrados, en vez de la rejilla sintética.
+
+El parámetro opcional `instantes` es ADITIVO: cuando es `None` (default), el
+comportamiento es BYTE-IDÉNTICO al de antes de D-46 (rejilla `t += cycle_sec`).
+Cuando se pasa una secuencia de epochs, sustituye la rejilla: el bucle mira el
+mercado exactamente en esos instantes, ordenados, deduplicados y filtrados a
+`[t0, t1)`.
+
+El paso 6 (barrido del SL entre ciclos) también cambia con `instantes`: en vez
+de barrer siempre `ticks.range(t, t + cycle_sec)`, barre hasta el PRÓXIMO
+instante de la secuencia (`t1` para el último). Con instantes irregulares el
+intervalo entre ciclos ya no es constante -- barrer un intervalo fijo de 15 s
+dejaría huecos (cruces de SL entre ciclos separados > 15 s no detectados hasta
+el ciclo siguiente) o solapes (mismo tick barrido dos veces). Ver brief
+`.superpowers/sdd/2026-08-13-replica-motor-faulty-spec/f-fase-ciclos-brief.md`
+§2.2.
 """
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 
@@ -71,6 +94,29 @@ def _clamp_or_cross(
         return "legal", desired_sl
 
 
+def _pasos(t0: float, t1: float, cycle_sec: float, instantes: Sequence[float] | None):
+    """Genera pares (t, t_siguiente) para el bucle de `correr_ciclos`.
+
+    D-46: si `instantes` es None, reproduce EXACTAMENTE la rejilla sintética
+    de siempre (t0, t0+cycle_sec, ...), con t_siguiente = t + cycle_sec --
+    byte-idéntico al comportamiento anterior a D-46.
+
+    Si `instantes` trae una secuencia, se ordena, deduplica y filtra a
+    `[t0, t1)`, y se itera sobre ella; t_siguiente es el próximo instante de
+    la secuencia, o t1 para el último (no hay "ciclo siguiente" que barrer
+    hasta él salvo el fin de la ventana)."""
+    if instantes is None:
+        t = t0
+        while t < t1:
+            yield t, t + cycle_sec
+            t += cycle_sec
+    else:
+        tiempos = sorted({float(x) for x in instantes if t0 <= float(x) < t1})
+        for i, t in enumerate(tiempos):
+            t_siguiente = tiempos[i + 1] if i + 1 < len(tiempos) else t1
+            yield t, t_siguiente
+
+
 def correr_ciclos(
     estados: list[dict | None],
     bar_times: np.ndarray,
@@ -82,10 +128,15 @@ def correr_ciclos(
     blocked_open_window: tuple = ((18, 0), (18, 45)),
     stops_level: float = 0.0,
     cycle_sec: float = CYCLE_SEC,
+    instantes: Sequence[float] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Reproduce el bucle del ejecutor vivo. Devuelve (posiciones, eventos).
 
     Ver spec §3 para el algoritmo por ciclo, en orden exacto.
+
+    `instantes` (D-46, aditivo): secuencia opcional de epochs reales que
+    sustituye la rejilla sintética de `cycle_sec`. `None` (default) preserva
+    el comportamiento anterior byte-idéntico -- ver `_pasos()`.
     """
     bar_times_arr = np.asarray(bar_times, dtype=float)
     bar_closes = bar_times_arr + BAR_SEC
@@ -99,19 +150,16 @@ def correr_ciclos(
     last_bid: float | None = None
     last_ask: float | None = None
 
-    t = t0
-    while t < t1:
+    for t, t_siguiente in _pasos(t0, t1, cycle_sec, instantes):
         # --- paso 1: barra vigente -------------------------------------
         idx = int(np.searchsorted(bar_closes, t, side="right")) - 1
         if idx < 0:
-            t += cycle_sec
             continue
         estado = estados[idx] if idx < len(estados) else None
 
         # --- paso 2: tick vigente ---------------------------------------
         tick = ticks.first_at(t)
         if tick is None:
-            t += cycle_sec
             continue
         _tick_ts, tick_bid, tick_ask = tick
         last_bid, last_ask = tick_bid, tick_ask
@@ -246,8 +294,11 @@ def correr_ciclos(
                     posicion_viva = None
 
         # --- paso 6: barrido del SL entre este ciclo y el siguiente ---------
+        # D-46: hasta t_siguiente (próximo instante real, o t1 para el
+        # último), NO t + cycle_sec -- con instantes irregulares el intervalo
+        # entre ciclos no es constante (ver `_pasos()`).
         if posicion_viva is not None:
-            ts_r, bid_r, ask_r = ticks.range(t, t + cycle_sec)
+            ts_r, bid_r, ask_r = ticks.range(t, t_siguiente)
             for j in range(len(ts_r)):
                 if posicion_viva["side"] == "L":
                     crossed = bid_r[j] <= posicion_viva["sl_vivo"]
@@ -267,8 +318,6 @@ def correr_ciclos(
                     )
                     posicion_viva = None
                     break
-
-        t += cycle_sec
 
     # --- fin de ventana: cerrar toda posición aún abierta -------------------
     if posicion_viva is not None:

@@ -50,7 +50,7 @@ import subprocess
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Sequence
 
 import numpy as np
 import pandas as pd
@@ -233,11 +233,17 @@ def _correr_estrategia(
     cycle_sec: float,
     idx_desde: int,
     idx_hasta: int,
+    instantes: Sequence[float] | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Corre A + B para UNA estrategia (§D.3 -- las dos corren por separado,
     llamadas independientes a `correr_ciclos`). `config_id` es el id del
     roster tomachine ('S6-K2P0' | 'SuperTrend-p14x3-M15'); `strategy_id` es
-    la grafía del comparador que se estampa en cada posición/evento."""
+    la grafía del comparador que se estampa en cada posición/evento.
+
+    `instantes` (D-46, aditivo): reenviado tal cual a `correr_ciclos`. `None`
+    (default) preserva la rejilla sintética de `cycle_sec`, byte-idéntico al
+    comportamiento anterior a D-46. Este módulo NO decide cómo derivar la
+    lista de instantes reales -- sólo la reenvía si se le pasa."""
     if config_id == "SuperTrend-p14x3-M15":
         # SuperTrend no usa simular_variant -- D.3, §5 trampa.
         estados = estado_por_barra_supertrend(
@@ -255,6 +261,7 @@ def _correr_estrategia(
         max_spread_open=max_spread_open,
         stops_level=stops_level,
         cycle_sec=cycle_sec,
+        instantes=instantes,
     )
     for p in posiciones:
         p["strategy_id"] = strategy_id
@@ -335,11 +342,18 @@ def correr_p_cap(
     cycle_sec: float = 15.0,
     max_spread_open: float = 0.50,
     out_dir: str | Path = OUT_DIR,
+    instantes: Sequence[float] | None = None,
 ) -> dict:
     """Corre la réplica del motor faulty sobre las 2 estrategias del roster
     tomachine (§D.3: llamadas independientes a `correr_ciclos`, una por
     estrategia). Devuelve un dict de métricas y escribe los 3 artefactos de
-    D.5 en `out_dir`."""
+    D.5 en `out_dir`.
+
+    `instantes` (D-46, aditivo): secuencia opcional de epochs reales que
+    sustituye la rejilla sintética de `cycle_sec` en las DOS estrategias
+    (reenviada tal cual a `_correr_estrategia` -> `correr_ciclos`). `None`
+    (default) preserva el comportamiento anterior byte-idéntico. Este
+    módulo NO decide cómo derivar esa lista -- ver D-46 y el brief F."""
     t_inicio_total = time.perf_counter()
 
     bars = load_bars_nativas(bars_path)
@@ -359,6 +373,7 @@ def correr_p_cap(
             t0=t0, t1=t1, window=window, stops_level=stops_level,
             max_spread_open=max_spread_open, cycle_sec=cycle_sec,
             idx_desde=idx_desde, idx_hasta=idx_hasta,
+            instantes=instantes,
         )
         tiempos_calculo[config_id] = time.perf_counter() - t_ini
         todas_posiciones.extend(posiciones)

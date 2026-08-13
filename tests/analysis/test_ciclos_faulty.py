@@ -271,3 +271,124 @@ def test_fallback_close_invalid_sl_short():
     assert pos["precio_close"] == 2015.0
     assert any(e["tipo"] == "FALLBACK_CLOSE_INVALID_SL" for e in eventos)
     assert not any(e["tipo"] == "MODIFY" for e in eventos)
+
+
+# ------------------------------------------------------------- D-46: instantes
+# Brief F (D-46): `correr_ciclos` acepta un parámetro opcional `instantes`
+# que, cuando se pasa, sustituye la rejilla sintética de `t += cycle_sec` por
+# la secuencia de instantes reales del ejecutor. Cuando es None, byte-idéntico
+# al comportamiento anterior (ver los 9 tests de arriba, que no lo pasan).
+
+
+def test_instantes_none_preserva_comportamiento_por_defecto():
+    """Pasar instantes=None explícito debe ser indistinguible de no pasarlo
+    -- mismo caso que test 5 (sweep de SL dentro de un ciclo de 15 s)."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1990.0)]
+    t0, t1 = 900.0, 915.0
+
+    ticks = FakeTicks(ts=[900.0, 905.0], bid=[2000.0, 1990.0], ask=[2000.30, 1990.30])
+
+    sin_param = correr_ciclos(estados, bar_times, ticks, t0, t1)
+    con_none = correr_ciclos(estados, bar_times, ticks, t0, t1, instantes=None)
+    assert sin_param == con_none
+
+
+def test_instantes_reales_sustituye_rejilla_sintetica():
+    """Con instantes=[900, 920, 950] (irregular, no múltiplos de 15) el bucle
+    debe mirar el mercado EXACTAMENTE en esos instantes -- no en la rejilla
+    900, 915, 930, 945. Ticks colocados en los instantes irregulares deben
+    ser los que abren la posición."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]  # SL lejos: abre sin gate
+    t0, t1 = 900.0, 960.0
+
+    # tick SOLO en el instante irregular 920 (nada en la rejilla de 915)
+    ticks = FakeTicks(ts=[900.0, 920.0, 950.0], bid=[0.0, 2000.0, 2000.0],
+                       ask=[0.0, 2000.30, 2000.30])
+    # a t=900 el tick es (0.0, 0.30): spread absurdo -> SPREAD_GATE_SKIP,
+    # así que la apertura real sólo puede pasar en t=920 o t=950.
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, instantes=[900.0, 920.0, 950.0]
+    )
+    assert len(posiciones) == 1
+    assert posiciones[0]["t_open"] == 920.0
+    # nunca miró en la rejilla sintética 915/930/945/960
+    tiempos_mirados = {e["t"] for e in eventos}
+    assert 915.0 not in tiempos_mirados
+    assert 930.0 not in tiempos_mirados
+    assert 945.0 not in tiempos_mirados
+
+
+def test_paso6_barre_hasta_el_instante_siguiente_no_t_mas_cycle_sec():
+    """Con instantes irregulares, el barrido del SL (paso 6) debe cubrir
+    hasta el PRÓXIMO instante del ejecutor, no t + cycle_sec. Cruce de SL a
+    t=930, con instantes=[900, 940] (separados 40 s): con la rejilla vieja
+    (t+15=915) el cruce a 930 quedaría fuera del barrido y no se detectaría
+    hasta el ciclo siguiente (940) -- mal, según el brief. Con el barrido
+    correcto (hasta 940) debe cerrarse EN EL TICK del cruce, t=930."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1990.0)]
+    t0, t1 = 900.0, 950.0
+
+    ticks = FakeTicks(
+        ts=[900.0, 930.0, 940.0],
+        bid=[2000.0, 1990.0, 1990.0],
+        ask=[2000.30, 1990.30, 1990.30],
+    )
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, instantes=[900.0, 940.0]
+    )
+    assert len(posiciones) == 1
+    pos = posiciones[0]
+    assert pos["motivo_cierre"] == "SL"
+    assert pos["t_close"] == 930.0
+    assert pos["precio_close"] == 1990.0
+
+
+def test_paso6_ultimo_instante_barre_hasta_t1():
+    """Para el ÚLTIMO instante de la lista (sin instante siguiente), el
+    barrido del paso 6 debe cubrir hasta t1 (fin de ventana), no quedarse
+    cojo. Cruce de SL a t=930 con instantes=[900] y t1=950 debe detectarse."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1990.0)]
+    t0, t1 = 900.0, 950.0
+
+    ticks = FakeTicks(
+        ts=[900.0, 930.0],
+        bid=[2000.0, 1990.0],
+        ask=[2000.30, 1990.30],
+    )
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, instantes=[900.0]
+    )
+    assert len(posiciones) == 1
+    pos = posiciones[0]
+    assert pos["motivo_cierre"] == "SL"
+    assert pos["t_close"] == 930.0
+
+
+def test_instantes_se_ordenan_y_deduplican_y_se_filtran_a_ventana():
+    """instantes fuera de [t0, t1) se ignoran; duplicados y desorden no deben
+    romper ni repetir ciclos."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]
+    t0, t1 = 900.0, 950.0
+
+    ticks = FakeTicks(ts=[920.0], bid=[2000.0], ask=[2000.30])
+
+    # 800 y 960 están fuera de [900, 950); 920 duplicado; orden invertido
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1,
+        instantes=[960.0, 920.0, 800.0, 920.0],
+    )
+    # único ciclo real ejecutado: t=920 (800/960 fuera de ventana, 920 no
+    # duplicado). El único evento con t < t1 debe ser el de ese ciclo -- el
+    # cierre de FIN_VENTANA a t=t1=950 es aparte, del bloque post-bucle.
+    tiempos_mirados_en_bucle = [e["t"] for e in eventos if e["t"] < t1]
+    assert tiempos_mirados_en_bucle == [920.0]
+    assert len(posiciones) == 1
+    assert posiciones[0]["t_open"] == 920.0
