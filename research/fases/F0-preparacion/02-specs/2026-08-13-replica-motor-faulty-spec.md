@@ -456,9 +456,105 @@ cierre), así que **P-CAP no puede pasar mientras sigan abiertos**:
 2. **`TP` — 1 cierre** (`position_id 55268071`, SuperTrend BUY, 2026-08-03 21:11:55 → 08-04 03:33:18,
    +1.155.646 CLP). La réplica no tiene camino de take-profit.
 
-Ambos están **en investigación** contra el motor congelado; el resultado irá a
-`04-resultados/T0.7-p-cap/huecos-cierre-no-modelados.md`. **Hasta entonces el Componente D no se
-despacha**, porque un llamador escrito contra un enum incompleto habría que rehacerlo.
+~~Ambos están **en investigación** contra el motor congelado~~ ✅ **INVESTIGADOS Y RESUELTOS el
+2026-08-13** — ver §3-quinquies. Evidencia:
+`04-resultados/T0.7-p-cap/huecos-cierre-no-modelados.md`.
+
+---
+
+## §3-quinquies · ADDENDUM 2026-08-13 — Los dos huecos, resueltos
+
+*(Interpretación del controlador (Opus) sobre el documento
+`04-resultados/T0.7-p-cap/huecos-cierre-no-modelados.md`, que audita `b113eb7` con cita
+`file:line`. **Aditivo.** Deroga el bloqueo que §3-quater ponía al Componente D.)*
+
+### Hueco 1 · `SAME_BAR_EXIT_FALLBACK` es una diferencia de ETIQUETA, no de comportamiento
+
+🟢 **`ciclos.py` NO se modifica. `CLOSE_RECONCILER` ya cubre estos 10 cierres.**
+
+La condición real, verificada en `b113eb7:reconciler.py:202-224`, es la conjunción de tres hechos:
+hay posición viva para la ficha, el sim ya no la desea al cierre de la barra recién cerrada, **y**
+`last_bar_exits[tag]` no es `None` — es decir, el sim registró que la salida ocurrió **dentro** de
+esa barra. Si el tercero falla, es un `CLOSE` huérfano ordinario. O sea: **las dos ramas se
+distinguen sólo por de qué barra viene la salida.**
+
+**Lo que hace el ejecutor con una y con otra es idéntico**, y esto es lo que cierra el asunto:
+
+- Entran por la **misma rama** de `execute_action` (`run_live_20.py:652`), construyen el **mismo
+  `req`** (`:662-667`), con el **mismo `comment`** — `f"{config}:{ficha}:close"` (`:666`).
+- Cierran **a mercado al tick vigente**: `price = tick.bid if is_long else tick.ask` (`:661`).
+  🔴 **No cierran al `sim_fill`** — éste sólo alimenta un contador contable (`same_bar_cost`,
+  `:687-696`).
+- Ninguna pasa por el gate de spread: ese bloque está condicionado a `if a.kind == "OPEN"` (`:580`).
+- **Dejan exactamente la misma huella en MT5**: `reason = 3` (`EXPERT`) y el mismo `comment`.
+  Verificado empíricamente sobre los 10 casos reales, no sólo leyendo el código.
+
+⇒ **Desde fuera del ejecutor son indistinguibles.** El único sitio donde existe la distinción es la
+línea de log local, que nunca viajó al bróker.
+
+**Y la réplica reproduce el instante y el precio por construcción.** Cuando el sim sale dentro de la
+barra `i`, el `estado` al cierre de `i` ya no contiene la ficha; el paso 5 de `ciclos.py` dispara
+`CLOSE_RECONCILER` a mercado en el tick de ese ciclo — el mismo ciclo y el mismo precio en que el
+ejecutor vivo mandaba su cierre. Coinciden **precio, instante y `reason` de MT5**, que son
+justamente los campos del criterio de paso de D-45.
+
+**Dato que desmonta la lectura intuitiva del nombre:** «same bar» se refiere a **la salida**, no a la
+vida entera de la posición. Las 10 duraciones van de **16 s a 25.598 s** (≈7 h): 7 caen dentro de una
+barra M15 y 3 la superan de largo. Quien lea «same bar» como «abrió y cerró en la misma vela» diseña
+mal el modelo.
+
+**Residuo declarado, sin efecto sobre P-CAP:** la réplica no lleva el contador `same_bar_cost` (el
+gap `sim_fill` vs `live_fill`, entre −28,44 y +568,91 USD en los 10 casos). Es **contabilidad
+interna del ejecutor**, no ejecución: no movió ni un fill. Si alguna vez se quiere cuantificar el
+«same-bar optimism by design», el dato está en la columna `gap_usd` del log.
+
+**Nota de alcance:** SuperTrend **no puede** producir este camino —
+`supertrend_always_in_target` fija `"last_bar_exits": {}` en sus tres rutas de retorno
+(`b113eb7:live_configs_20.py:324,332,338`). Los 10 casos son todos `S6-K2P0`, ficha `F1`, y los 10
+con `motivo = EXIT_INITSL`.
+
+### Hueco 2 · El `TP` no lo puso el motor — se excluye del criterio de paso
+
+🔴 **El ejecutor congelado no envía take-profit en ningún punto.** Los **4 únicos** `order_send` de
+todo `b113eb7` están en `run_live_20.py:677, 737, 755, 793`, y **ninguno de sus `req` lleva clave
+`"tp"`**; el único `TRADE_ACTION_SLTP` (`:752-754`) modifica exclusivamente `sl`. El `Action` del
+reconciliador no tiene campo `tp` ni un `kind` relacionado. Y las kwargs congeladas de
+`SuperTrend-p14x3-M15` son literalmente `{"symbol": "XAUUSD"}` (`live_configs_20.py:341-351`).
+
+**Lo que sí dice el dato:** el deal `OUT` de la posición `55268071` lleva `reason = 5` y
+`comment = '[tp 4065.91]'` — formato **nativo de MT5** para un cierre disparado por un TP
+server-side, no generado por este repo. Y no encaja con el patrón de los cierres que sí manda el
+ejecutor (`{config}:{ficha}:close`, `reason = 3`).
+
+⇒ **Alguien o algo ajeno al motor adjuntó ese TP a la posición.** Cómo y cuándo es **no evaluable**:
+no existe en el repo ningún histórico de órdenes de la 902 (`find data/analysis -iname "*order*"` sin
+resultados) y `positions.csv` no tiene columnas `sl`/`tp`.
+
+**Ruling:** ese cierre entra en la **misma categoría que los 11 manuales** — intervención externa al
+motor, **no reproducible y excluida del criterio de paso**, contada y declarada aparte. La cuenta
+tuvo un operador humano cerrando posiciones a mano en esa misma ventana (D-43), así que un TP puesto
+a mano en el terminal es la explicación más económica; **se registra como hipótesis, no como
+medición**, y es una pregunta que sólo el user puede contestar.
+
+⚠️ **Consecuencia sobre el denominador:** el criterio de paso de P-CAP se evalúa sobre
+**140 cierres** (151 − 11 manuales), no 139: el `TP` sale, pero el `FALLBACK_CLOSE_INVALID_SL` que
+MT5 registró como `SL` sigue dentro. Declarar el denominador es obligatorio en el reporte.
+
+### Tabla de equivalencia — versión final para el comparador
+
+| `motivo_cierre` de la réplica | `reason` de MT5 | n | Estado |
+|---|---|---|---|
+| `SL` | `SL` | 118 | ✅ evaluable · sin evento de log, por diseño |
+| `CLOSE_RECONCILER` | `EXPERT` | **13** | ✅ evaluable · 3 `SENT CLOSE` + **10 `SAME_BAR_EXIT_FALLBACK`** |
+| `FALLBACK_CLOSE_INVALID_SL` | `EXPERT` | 8 | ✅ evaluable |
+| `FALLBACK_CLOSE_INVALID_SL` | `SL` | 1 | ✅ evaluable · carrera con el stop server-side |
+| — | `CLIENT_manual` | 11 | ⛔ excluido · humano (D-43) |
+| — | `TP` | 1 | ⛔ excluido · TP externo al motor, origen no evaluable |
+| `FIN_VENTANA` | — | 0 | artefacto del harness |
+
+Suma evaluable: **140**. `EXPERT`: 13 + 8 = 21 ✅. `SL`: 118 + 1 = 119 ✅.
+
+🟢 **El Componente D queda DESBLOQUEADO.** El enum de `ciclos.py` es suficiente y no se toca.
 
 ---
 
