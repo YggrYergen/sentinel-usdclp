@@ -399,6 +399,31 @@ para que ese cambio sea de una línea. **No cablees la ruta.**
 (`scripts/analysis/a6_pata_a/barras_nativas_vs_derivadas.py`, attach-only, solo lectura) si no lo
 encuentra. Nunca caer en silencio a las derivadas.
 
+⚠️ **Cuidado con el nombre «sustrato».** En la réplica hay dos, y hacen trabajos distintos:
+los **ticks** mandan en la ejecución (fills, gate de spread, barrido del SL entre ciclos) y siguen
+siendo real-tick, que es lo que protege el charter §A.6; las **barras** mandan sólo en la señal
+(EMA / SAR / ATR / SuperTrend), que es la entrada del sim. Este ruling decide **únicamente** lo
+segundo. §A.6 no se relaja en nada: prohíbe que las barras decidan un cierre, y el Componente B
+sigue cerrando contra ticks.
+
+**Las derivadas no son «el sustrato original»: son una reconstrucción nuestra** de las velas del
+bróker, buena pero no idéntica (B12: 4-5 % de velas con `h`/`l`/`c` distinto fuera de la ventana,
+9 con desvío >0,10; volumen 6 % sistemático). Usarlas sería introducir la divergencia, no evitarla.
+
+#### Residuos declarados de este ruling — no verificables con lo que hay
+
+1. 🟠 **Las nativas se descargaron el 2026-08-12**, días después de la corrida viva. Un bróker puede
+   revisar o rellenar historial: tenemos la versión de HOY de sus velas, no la que el motor leyó el
+   `2026-07-27`. **No es falsable con los artefactos disponibles** y se declara como tal; si P-CAP
+   fallara la paridad de señal en velas aisladas, ésta es la primera hipótesis a considerar.
+2. 🟠 **`recorte_profundidad_detectado: True`** — el bróker no entrega historia ilimitada: dio
+   14.808 velas desde `2025-12-24`. Alcanza para las 10.000 de cada vela de la ventana, pero **una
+   ventana más profunda no es reconstruible**.
+
+🟢 **Lo que sí quedó comprobado:** las nativas salen del servidor **`Capitaria-All`**, el mismo de la
+902 (`Capitaria Latam SpA` es la razón social, no el servidor — `CUENTAS.md`, corregido el
+2026-08-12 tras inducir a un informe de A6 a concluir una discordancia de servidor inexistente).
+
 ### D.2 · Contrato
 
 ```python
