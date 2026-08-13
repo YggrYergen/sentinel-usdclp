@@ -240,3 +240,69 @@ Con estados sintéticos y un stream de ticks sintético, cada uno su test:
 - [ ] `pytest tests/analysis -q` sin regresiones, **en foreground** (pegar salida real)
 - [ ] Commit acotado **sólo** a las rutas propias
 - [ ] Ningún fichero vivo modificado: `git status --short` limpio fuera de las rutas propias
+
+---
+
+## §2-bis · ADDENDUM 2026-08-13 — La config DEBE venir del commit congelado, no del working tree
+
+*(Añadido por el controlador tras una bandera correcta levantada por el implementador del
+Componente A. **Aditivo:** no invalida nada de lo anterior.)*
+
+### El problema
+
+El Componente A quedó implementado consumiendo las kwargs de `_GOLIVE_M15`, según decía §2. Eso es
+el **roster base**, y le falta lo que el vivo aplicaba encima. Medido:
+
+| | Working tree | `b113eb7` (lo que realmente corrió) |
+|---|---|---|
+| `CONFIGS_TOMACHINE` | **4 configs**: S6-K2P0, S7-TPNONE, SuperTrend, TK-BW2-fix2atr | **2 configs**: S6-K2P0, SuperTrend |
+| Procedencia | "trader selection **2026-07-22**" | "trader selection **2026-07-27**" |
+| `volume` / `max_volume` | `None` / `None` | **0.67** / **0.67** |
+| `active_fichas` en S6-K2P0 | **ausente** ⇒ default del motor = **3** | **1** |
+
+Una réplica alimentada con el roster del working tree simularía **4 estrategias con 3 fichas cada
+una**. Es exactamente la divergencia **D3**, reintroducida por la puerta de atrás.
+
+⚠️ Nótese que esto **no contradice** el negativo ya registrado en `NEGATIVOS.md`: allí se verificó
+que las kwargs **base** de `_GOLIVE_M15["S6-K2P0"]` son byte-idénticas entre ambas versiones —y lo
+son—. Lo que difiere es el **override del roster tomachine** que se aplica encima. Dos cosas
+distintas; ambas mediciones son correctas.
+
+### La regla
+
+🔴 **La réplica del motor faulty toma su configuración del commit congelado `b113eb7`, jamás del
+working tree.** El working tree evoluciona con la investigación; el motor faulty no.
+
+### Componente C — `config_faulty`
+
+**Fichero nuevo:** `scripts/analysis/realtick_bt/faulty/config_faulty.py`
+**Fichero nuevo (vendored):** `scripts/analysis/realtick_bt/faulty/_vendored_live_configs_20_b113eb7.py`
+**Test nuevo:** `tests/analysis/test_config_faulty.py`
+
+1. **Vendorizar** el módulo congelado, byte a byte:
+   `git show b113eb7:sentinel_engine/strategies/live_configs_20.py > <ruta vendored>`
+   Sin editarlo. Ni una línea, ni el encoding, ni los finales de línea.
+2. `config_faulty.py` expone:
+   ```python
+   def configs_tomachine() -> list[dict]:
+       """Los 2 configs del roster tomachine tal como corrieron en la 902, desde b113eb7."""
+   def kwargs_de(config_id: str) -> dict:
+       """kwargs efectivas de 'S6-K2P0' o 'SuperTrend-p14x3-M15', con el override del roster."""
+   ```
+   Importa del módulo vendorizado, **nunca** de `sentinel_engine.strategies.live_configs_20`.
+3. **Test anti-deriva (el que da valor a todo esto):**
+   `git hash-object <ruta vendored>` debe ser **igual** a `git rev-parse b113eb7:sentinel_engine/strategies/live_configs_20.py`.
+   Si alguien edita el vendorizado, el test se pone rojo. Es la garantía de que la copia no se
+   despega del motor que replica.
+4. **Tests de contenido**, todos con aserción exacta:
+   - `configs_tomachine()` devuelve **exactamente 2** configs, con ids `S6-K2P0` y `SuperTrend-p14x3-M15`.
+   - `kwargs_de("S6-K2P0")["active_fichas"] == 1`.
+   - `volume == 0.67` y `max_volume == 0.67` en ambos.
+   - `SuperTrend-p14x3-M15` lleva `engine == "supertrend_always_in"` y **no** lleva `active_fichas`.
+
+### Consecuencia sobre el Componente A
+
+**No hay que reescribirlo.** `estado_por_barra(bars, kwargs, ...)` recibe las kwargs como parámetro:
+basta con que **el llamador** las tome de `config_faulty.kwargs_de(...)` en vez de `_GOLIVE_M15`.
+La corrección vive en el llamador, que aún no existe. Queda anotado aquí para que quien lo escriba
+no repita el error.
