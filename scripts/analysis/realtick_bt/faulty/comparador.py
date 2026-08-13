@@ -10,7 +10,13 @@ verdad de terreno de la cuenta 902, posición a posición. El criterio de paso
 de P-CAP, fijado por D-45, es bit-identidad sobre SEIS campos: precio de
 entrada, instante de entrada, instante de salida, precio de salida, razón de
 cierre y resultado. El SL de entrada se mide y reporta, SIN poder de
-bloqueo (E.1).
+bloqueo (E.1). D-46 corrige cómo se operacionalizan los DOS campos de
+instante (entrada y salida): se comparan TRUNCADOS AL SEGUNDO (floor), no en
+bit-identidad estricta sobre el valor crudo -- la verdad de terreno sólo
+tiene resolución de segundo entero (no existe `time_msc`) mientras la
+réplica tiene resolución de tick; ver `_mismo_segundo`. Sigue siendo
+criterio de paso con poder de bloqueo, no se degrada a métrica informativa;
+los otros cuatro campos no cambian.
 
 R1-bis / D.5: este módulo NO importa `sentinel_engine/**`, `backtest.py` ni
 los componentes A/B/C/D -- sólo LEE los artefactos CSV/JSON que ya
@@ -115,7 +121,9 @@ _EVENTO_LOG_A_MOTIVO_REPLICA = {
 REASON_EXCLUIDOS_DEL_CRITERIO = {"CLIENT_manual", "TP"}
 
 _EPS_PRECIO = 1e-6
-_EPS_TIEMPO = 1e-6
+# D-46: los instantes ya NO se comparan con epsilon de punto flotante --
+# se truncan al segundo (`_mismo_segundo`, floor). No queda ningún uso de
+# un epsilon de tiempo; se retira para no sugerir que sigue vigente.
 
 
 # --------------------------------------------------------------- guardas §3
@@ -245,6 +253,37 @@ def _cerca(a: float, b: float, eps: float) -> bool:
     if (isinstance(a, float) and math.isnan(a)) or (isinstance(b, float) and math.isnan(b)):
         return False
     return abs(float(a) - float(b)) < eps
+
+
+def _mismo_segundo(a: float, b: float) -> bool:
+    """D-46 (research/DECISIONES.md): compara dos instantes TRUNCADOS AL
+    SEGUNDO -- floor(a) == floor(b), no bit-identidad estricta sobre el
+    valor crudo.
+
+    Por qué: la verdad de terreno (`verdad_terreno_902.csv`, derivada de
+    `deals_raw.csv`) tiene resolución de SEGUNDO ENTERO -- MT5 no expone
+    `time_msc` en los deals de esta cuenta -- mientras la réplica
+    (`posiciones_replica.csv`) cierra en instantes de resolución de TICK
+    (p.ej. `1785268336.309`). Comparar ambos con `==` estricto sólo podía
+    casar si el tick caía exactamente en el borde del segundo (~1 de cada
+    1.000); D-45 medía, con ese criterio, que se comparaban dos relojes de
+    distinta precisión, no la fidelidad de la réplica.
+
+    `floor`, NO `round`: el instante real es el segundo en que MT5 registró
+    el deal, y un tick en `...336.9` sigue perteneciendo al segundo `336`,
+    no al `337`. Esto NO introduce una tolerancia de +-1 s -- sigue
+    exigiendo el mismo segundo exacto, la máxima precisión que la fuente
+    permite: dos instantes que truncan a segundos distintos (p.ej.
+    `...336.999` vs `...337.001`, separados por 2 ms) NO casan.
+
+    Trunca cada instante POR SU LADO, nunca el delta entre ambos --
+    `floor(delta)` con delta negativo redondea para el lado equivocado
+    (`floor(-0.3) == -1`, no `0`)."""
+    if a is None or b is None:
+        return False
+    if (isinstance(a, float) and math.isnan(a)) or (isinstance(b, float) and math.isnan(b)):
+        return False
+    return math.floor(float(a)) == math.floor(float(b))
 
 
 # ------------------------------------------------------- emparejamiento 1-a-1
@@ -448,8 +487,11 @@ def _completar_pareja_replica(fila: dict[str, Any], rep_row: pd.Series, equivale
     fila["delta_precio_close"] = float(fila["real_precio_close"]) - float(rep_row["precio_close"])
 
     fila["coincide_precio_open"] = _cerca(fila["real_precio_open"], rep_row["precio_open"], _EPS_PRECIO)
-    fila["coincide_t_open"] = _cerca(fila["real_t_open_epoch"], rep_row["t_open"], _EPS_TIEMPO)
-    fila["coincide_t_close"] = _cerca(fila["real_t_close_epoch"], rep_row["t_close"], _EPS_TIEMPO)
+    # D-46: los instantes se comparan TRUNCADOS AL SEGUNDO (floor), no en
+    # bit-identidad estricta -- ver docstring de `_mismo_segundo`. Se aplica
+    # a los dos campos de instante, entrada y salida.
+    fila["coincide_t_open"] = _mismo_segundo(fila["real_t_open_epoch"], rep_row["t_open"])
+    fila["coincide_t_close"] = _mismo_segundo(fila["real_t_close_epoch"], rep_row["t_close"])
     fila["coincide_precio_close"] = _cerca(fila["real_precio_close"], rep_row["precio_close"], _EPS_PRECIO)
 
     coincide_razon, no_evaluable_razon = evaluar_razon_cierre(
@@ -584,11 +626,14 @@ def resumen_agregado(
         no_evaluable = int(vals.isna().sum())
         salida: dict[str, Any] = {"si": si, "no": no, "no_evaluable": no_evaluable}
         if delta_col is not None:
-            # bit-identidad (D-45) es "coincide" == delta exactamente 0 (con
-            # eps de punto flotante); esa cuenta binaria puede quedar 0/N sin
-            # que eso signifique que la réplica está lejos -- se publica
-            # también la distribución del |delta| para dar contexto sin
-            # decidir un umbral de paso (eso es de Opus, §9 del spec).
+            # precio_open/precio_close: "coincide" == delta exactamente 0
+            # (D-45, con eps de punto flotante). t_open/t_close: "coincide"
+            # == mismo segundo tras floor (D-46), no delta==0 -- ver
+            # `_mismo_segundo`. En los dos casos la cuenta binaria puede
+            # quedar 0/N sin que eso signifique que la réplica está lejos --
+            # se publica también la distribución del |delta| crudo (sin
+            # truncar) como contexto, sin decidir un umbral de paso (eso es
+            # de Opus, §9 del spec).
             abs_delta = emparejadas_evaluables[delta_col].abs().dropna()
             if len(abs_delta):
                 salida["delta_abs_stats"] = {
@@ -762,7 +807,7 @@ def _escribir_md(resultado: dict[str, Any], path: Path) -> None:
             ],
         ),
         "",
-        "## Criterio de paso -- 6 campos (D-45)",
+        "## Criterio de paso -- 6 campos (D-45, D-46)",
         "",
         f"Denominador evaluable: **{c['denominador_evaluable']}** "
         f"(emparejadas: {c['n_emparejadas']}, sin pareja real: {c['n_sin_pareja_real']}).",
@@ -771,9 +816,12 @@ def _escribir_md(resultado: dict[str, Any], path: Path) -> None:
         "",
         "### Por campo (sobre las emparejadas evaluables)",
         "",
-        "'si'/'no' es bit-identidad estricta (delta==0, D-45). Para los 4 "
-        "campos numéricos se añade la distribución de |delta| como "
-        "contexto -- no decide ningún umbral de paso.",
+        "'si'/'no' es bit-identidad estricta (delta==0, D-45) para "
+        "precio_open/precio_close/razon_cierre/resultado; para t_open/"
+        "t_close es mismo segundo tras truncar -- floor, no round (D-46). "
+        "Para los 4 campos numéricos se añade la distribución de |delta| "
+        "crudo (sin truncar) como contexto -- no decide ningún umbral de "
+        "paso.",
         "",
         _md_tabla(
             ["campo", "si", "no", "no_evaluable"],

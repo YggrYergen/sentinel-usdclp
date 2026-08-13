@@ -208,6 +208,91 @@ def test_reporte_publica_los_dos_denominadores_sin_mezclarlos():
     assert d["posiciones"]["valor"] != d["barras_senal"]["total"]
 
 
+# --------------------------------------------- 6. instante truncado al segundo (D-46)
+# D-46: la verdad de terreno tiene resolución de SEGUNDO ENTERO (no existe
+# time_msc en los deals de MT5) y la réplica resolución de TICK -- comparar
+# ambos con bit-identidad estricta (delta==0) nunca podía casar salvo que el
+# tick cayera justo en el borde del segundo. La corrección: truncar (floor,
+# NO round) cada instante a su segundo y comparar los enteros resultantes.
+# No introduce tolerancia de +-1s: dos instantes que truncan a segundos
+# distintos NO casan, aunque estén separados por fracciones de segundo cerca
+# de un borde.
+def test_mismo_segundo_floor_no_redondea():
+    """Caso 1 del brief §5: floor(1785268336.309) == 1785268336 -> casa. Y
+    .9 sigue perteneciendo al segundo 336 -- floor, no round (round(336.9)
+    daría 337 y rompería el caso)."""
+    assert C._mismo_segundo(1785268336.309, 1785268336) is True
+    assert C._mismo_segundo(1785268336.9, 1785268336) is True
+
+
+def test_mismo_segundo_no_cuela_tolerancia_de_1s():
+    """Caso 2 del brief §5 -- blindaje contra el error más fácil de cometer
+    aquí: floor(1785268337.001) = 1785268337 != 1785268336. Un segundo
+    entero de diferencia NO casa; truncar no es aceptar deltas < 1 s."""
+    assert C._mismo_segundo(1785268337.001, 1785268336) is False
+
+
+def _comparacion_de_un_par(
+    *, real_t_close_epoch, replica_t_close, real_t_open_epoch=100.0, replica_t_open=100.0,
+):
+    """Arma verdad/réplica de una sola posición emparejada, con t_open fijo
+    en 100.0 (entero) en ambos lados por defecto -- cada test de este bloque
+    aísla el campo bajo prueba variando sólo t_close (o, en el test dedicado,
+    t_open)."""
+    verdad = pd.DataFrame([
+        {"position_id": 1, "strategy_id": "SAR::S6-K2P0", "side": "SELL",
+         "t_open_epoch": real_t_open_epoch, "t_open_servidor": "x", "precio_open": 4000.0,
+         "t_close_epoch": real_t_close_epoch, "t_close_servidor": "y", "precio_close": 3990.0,
+         "reason_name": "SL", "profit": 500.0, "volume": 0.67},
+    ])
+    replica = pd.DataFrame([
+        {"strategy_id": "SAR::S6-K2P0", "side": "S", "t_open": replica_t_open,
+         "t_open_servidor": "x", "precio_open": 4000.0, "sl_open_deseado": 3990.0,
+         "sl_open_enviado": 3990.0, "clamp_aplicado": False, "t_close": replica_t_close,
+         "t_close_servidor": "y", "precio_close": 3990.0, "motivo_cierre": "SL"},
+    ])
+    sl_enviado = pd.DataFrame(
+        [{"position_id": 1, "sl_status": "NO_LOGUEADO", "sl_clamped_enviado": np.nan}]
+    ).set_index("position_id")
+    equivalencia, _ = C.cargar_equivalencia(C.MAPEO_MOTIVOS_JSON)
+    comparacion = C.construir_comparacion(verdad, replica, sl_enviado, equivalencia)
+    return comparacion.iloc[0]
+
+
+def test_t_close_trunca_al_segundo_mismo_segundo_casa():
+    """Caso 1 del brief §5, a través del pipeline completo (no sólo el
+    helper): real entero, réplica con fracción de tick en el mismo
+    segundo -> `coincide_t_close` True."""
+    fila = _comparacion_de_un_par(real_t_close_epoch=1785268336, replica_t_close=1785268336.309)
+    assert bool(fila["coincide_t_close"]) is True
+
+
+def test_t_close_un_segundo_de_diferencia_no_casa_pese_a_truncar():
+    """Caso 2 del brief §5, a través del pipeline: un segundo entero de
+    diferencia NO casa aunque ambos lados se trunquen."""
+    fila = _comparacion_de_un_par(real_t_close_epoch=1785268336, replica_t_close=1785268337.001)
+    assert bool(fila["coincide_t_close"]) is False
+
+
+def test_t_close_replica_0_3s_antes_cruza_el_borde_del_segundo_no_casa():
+    """Caso 3 del brief §5: la réplica cierra 0,3 s ANTES que el real,
+    cruzando el borde de segundo -> truncan a segundos distintos -> no casa.
+    Blinda que floor() opera sobre cada instante por separado, no sobre el
+    delta (floor de un delta negativo redondearía para el lado
+    equivocado -- ver guarda de negativos en el brief §2)."""
+    fila = _comparacion_de_un_par(real_t_close_epoch=1785268336, replica_t_close=1785268335.7)
+    assert bool(fila["coincide_t_close"]) is False
+
+
+def test_t_open_tambien_trunca_al_segundo():
+    """D-46 se aplica a los DOS campos de instante, no sólo a t_close."""
+    fila = _comparacion_de_un_par(
+        real_t_open_epoch=1785268336, replica_t_open=1785268336.309,
+        real_t_close_epoch=200, replica_t_close=200.0,
+    )
+    assert bool(fila["coincide_t_open"]) is True
+
+
 # ------------------------------------------------------- artefactos reales
 def test_metricas_p_cap_json_real_no_es_la_corrida_truncada():
     """Repite el guard sobre el artefacto real en disco (data/analysis/...),

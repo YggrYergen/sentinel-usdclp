@@ -53,8 +53,8 @@
         }
       },
       "t_close": {
-        "si": 72,
-        "no": 65,
+        "si": 0,
+        "no": 137,
         "no_evaluable": 0,
         "delta_abs_stats": {
           "n": 137,
@@ -125,15 +125,15 @@
     "SL|SL": 117
   },
   "lineage": {
-    "run_id": "T0.7-P-CAP-comparador-20260813T205406Z",
+    "run_id": "T0.7-P-CAP-comparador-20260813T203345Z",
     "area": "F0",
     "experimento": "T0.7-P-CAP",
     "config_hash": "4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9",
     "substrate_id": "posiciones_replica.csv + verdad_terreno_902.csv",
     "engine_sha": "b113eb7",
-    "git_sha": "be51d0a882cb3ff91f0d11c68800d731e31c5feb",
+    "git_sha": "5d9f728aa56b44576125f60a8c5065e7be0ead91",
     "etapa": "F0",
     "generador": "scripts/analysis/realtick_bt/faulty/comparador.py",
-    "timestamp": "2026-08-13T20:54:06.107088Z"
+    "timestamp": "2026-08-13T20:33:45.614082Z"
   }
 }
