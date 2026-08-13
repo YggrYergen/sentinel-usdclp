@@ -1,0 +1,127 @@
+{
+  "lineage": {
+    "run_id": "T0.7-p-cap-stops-level-20260813T192101Z",
+    "area": "F0",
+    "experimento": "T0.7-P-CAP-stops-level",
+    "git_sha": "be106a5ec3f1bb3363dc812d43b11185eea40989",
+    "engine_sha": "b113eb7",
+    "etapa": "F0",
+    "generador": "scripts/analysis/p_cap/derivar_stops_level.py",
+    "timestamp": "2026-08-13T19:21:01.888205+00:00"
+  },
+  "fuentes": {
+    "eventos_csv": "data/analysis/p_cap/eventos_ejecutor_902.csv",
+    "sl_clamped_open_json": "data/analysis/p_cap/sl_clamped_open_events.json",
+    "verdad_terreno_csv": "data/analysis/p_cap/verdad_terreno_902.csv"
+  },
+  "cuadre_json_87": {
+    "n_json_sl_clamped_open_events": 87,
+    "n_csv_sl_clamped_open": 87,
+    "coincide": true
+  },
+  "emparejamiento_side": {
+    "SL_CLAMPED OPEN": {
+      "n_side_emparejado": 85,
+      "n_side_no_emparejado": 2
+    },
+    "SL_CLAMPED": {
+      "n_side_emparejado": 33,
+      "n_side_no_emparejado": 2
+    }
+  },
+  "familias": {
+    "SL_CLAMPED OPEN": {
+      "n": 87,
+      "n_usable": 0,
+      "n_descartados": 87,
+      "motivos_descartados": {
+        "ref_ausente": 87
+      },
+      "resumen_niveles": {
+        "n": 0,
+        "valores": {},
+        "min": null,
+        "max": null,
+        "mediana": null,
+        "moda": null,
+        "es_constante": null
+      },
+      "desglose_side": {},
+      "desglose_config": {},
+      "discrepancias": [],
+      "verificacion_signo": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "fails": []
+      },
+      "verificacion_necesidad": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "n_no_evaluable": 0,
+        "fails": []
+      }
+    },
+    "SL_CLAMPED": {
+      "n": 35,
+      "n_usable": 0,
+      "n_descartados": 35,
+      "motivos_descartados": {
+        "ref_ausente": 35
+      },
+      "resumen_niveles": {
+        "n": 0,
+        "valores": {},
+        "min": null,
+        "max": null,
+        "mediana": null,
+        "moda": null,
+        "es_constante": null
+      },
+      "desglose_side": {},
+      "desglose_config": {},
+      "discrepancias": [],
+      "verificacion_signo": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "fails": []
+      },
+      "verificacion_necesidad": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "n_no_evaluable": 0,
+        "fails": []
+      }
+    },
+    "TOTAL": {
+      "n": 122,
+      "n_usable": 0,
+      "n_descartados": 122,
+      "motivos_descartados": {
+        "ref_ausente": 122
+      },
+      "resumen_niveles": {
+        "n": 0,
+        "valores": {},
+        "min": null,
+        "max": null,
+        "mediana": null,
+        "moda": null,
+        "es_constante": null
+      },
+      "desglose_side": {},
+      "desglose_config": {},
+      "discrepancias": [],
+      "verificacion_signo": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "fails": []
+      },
+      "verificacion_necesidad": {
+        "n_ok": 0,
+        "n_fail": 0,
+        "n_no_evaluable": 0,
+        "fails": []
+      }
+    }
+  }
+}
