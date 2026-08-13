@@ -124,6 +124,20 @@ Formato: `<fecha> · <quién> · <observación> · <origen: ruta o experimento>`
   controlador. Decidir si se mueve a un directorio de derivados o si se fija el patrón de glob en
   todos los lectores · `data/lake_ticks/XAUUSD/_bars_M15.parquet`
 
+- **2026-08-13** · Opus5 (controlador) · 🟠 **DEFERIDA POR DECISION DEL USER (D-45): la
+  verificacion dura del SL de entrada en P-CAP.** El log del ejecutor imprime `[SENT OPEN]` **sin
+  el SL**; solo aparece cuando hubo clamp, asi que el SL realmente enviado es recuperable en
+  **61 de 152 aperturas** y las otras **91 son NO EVALUABLES** (T0.6-B). Lo que hubieramos
+  preferido y **no hacemos ahora**: exigir que el SL derivado por la replica case en esas 61 como
+  **condicion de paso** de P-CAP, y aceptarlo como validacion indirecta de las 91 restantes. El
+  user lo prefiere explicitamente por ser mas exigente y por ser el motor faulty el mas
+  representativo para proyectar el comportamiento live, **pero** la investigacion completa pesa
+  mas que un backtest puntual y no se bloquea el cronograma en un debug profundo. **Lo que si se
+  hace ahora:** la comparacion sobre las 61 se **mide y se reporta** como metrica informativa, sin
+  poder de bloqueo. Revisar al terminar el plan, o antes si alguna etapa lo requiere o se
+  beneficiaria en gran medida · `research/fases/F0-preparacion/04-resultados/T0.6-B-verdad-terreno-902.md`
+  + spec de la replica
+
 ## Promovidas a tarea (con enmienda)
 
 _(ninguna todavía)_

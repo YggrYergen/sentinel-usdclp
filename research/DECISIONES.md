@@ -855,3 +855,33 @@ no haber sido constante en 4 años.
 recién entonces corregir/extender). Debe quedar registrado de forma que **sobreviva a los cambios de
 sesión** y se integre **sin destruir información previa ni otros pasos ya detallados**: sólo
 extender y corregir. **Prohibido eliminar.**
+
+### D-45 · 2026-08-13 · La verificación dura del SL de entrada en P-CAP se DEFIERE, y se anota lo que se prefería
+*(Procedencia: decisión explícita del user, 2026-08-13, ante la disyuntiva planteada por el
+controlador tras T0.6-B.)*
+
+**El hecho que fuerza la decisión.** El log del ejecutor imprime `[SENT OPEN]` **sin el SL**; el SL
+sólo queda escrito cuando hubo un clamp. Por eso el SL realmente enviado es recuperable en
+**61 de 152 aperturas**, y las otras **91 son NO EVALUABLES** (T0.6-B, pregunta 10). No es un fallo
+de la extracción: el dato no existe en la fuente.
+
+**Lo que el user prefiere** —y se registra como tal, no como lo que se hará ahora— es la opción
+exigente: que el SL derivado por la réplica **case en esas 61 como condición de paso** de P-CAP, y
+aceptar ese acierto como validación indirecta de las 91 restantes. Su razón: los resultados del
+backtest largo con el motor faulty son **los más representativos para proyectar cómo están
+funcionando hoy las estrategias en vivo**, así que conviene la vara más alta.
+
+**Lo que se hace, y por qué.** Queda **diferida**. Pesa más completar la investigación entera cuanto
+antes que apurar un backtest puntual, y no se compromete el cronograma a un debug profundo si el SL
+no casa a la primera. Se revisa **al terminar el plan**, o antes si alguna etapa lo requiere o se
+beneficiaría en gran medida.
+
+**Matiz del controlador, aceptado dentro de la misma decisión:** la comparación sobre las 61
+aperturas con dato **sí se mide y se reporta** en P-CAP como métrica informativa — el dato ya está
+extraído y medirlo es barato—, pero **sin poder de bloqueo**. Así no se pierde la señal y no se
+hipoteca el calendario.
+
+**Consecuencia sobre el criterio de paso de P-CAP:** la paridad bit-idéntica se declara sobre
+**precio de entrada, instante de entrada, instante y precio de salida, razón de cierre y resultado**.
+El SL de entrada queda fuera del criterio de paso y dentro del reporte. Anotado en
+`research/BACKLOG.md` para su revisión posterior.
