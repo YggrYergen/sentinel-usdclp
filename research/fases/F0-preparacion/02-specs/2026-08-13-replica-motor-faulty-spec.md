@@ -351,3 +351,185 @@ bróker registra.
 fijar** en este spec. Se determina empíricamente al construir el comparador de P-CAP, cruzando
 `data/analysis/p_cap/verdad_terreno_902.csv` con `data/analysis/p_cap/eventos_ejecutor_902.csv`.
 Quien lo construya **no debe asumir** la equivalencia: debe medirla y reportar los residuos.
+
+---
+
+## §4-bis · ADDENDUM 2026-08-13 — Componente D, el LLAMADOR de P-CAP
+
+*(Añadido por el controlador (Opus 5) al retomar la sesión. **Aditivo:** no invalida nada anterior.
+Cierra el hueco que el spec dejaba explícito — «la corrección vive en el llamador, que aún no
+existe», §2-bis.)*
+
+### D.0 · Qué es
+
+El fichero que **une A + B + C** y produce, sobre ticks de Capitaria y la ventana en que operó la
+902, la línea de posiciones y eventos que el comparador enfrentará a la verdad de terreno.
+
+**Fichero nuevo:** `scripts/analysis/realtick_bt/faulty/llamador.py`
+**Test nuevo:** `tests/analysis/test_llamador_faulty.py`
+
+### D.1 · Sustrato de barras — RULING, con la medición que lo sostiene
+
+🔴 **Se usan las barras M15 NATIVAS del bróker: `data/lake_bars_capitaria/XAUUSD_M15_nativas.parquet`**
+(14.808 velas, `2025-12-24 03:00` → `2026-08-12 08:15` hora de servidor), **no** las derivadas de
+ticks (`XAUUSD_M15.parquet`).
+
+**Razón:** el ejecutor vivo pedía las velas al bróker con `copy_rates`; consumió barras nativas.
+Replicar con barras derivadas introduce una divergencia de sustrato en la entrada del sim.
+
+**Lo que la medición ya dice** (`data/analysis/a6_pata_a/barras_nativas_vs_derivadas.json`,
+producido el 2026-08-12, atado a `F0-DATA` de A6 Pata A):
+
+- **Dentro de la ventana viva (946 velas): `o`, `h`, `l`, `c` coinciden al 100 %, `max diff = 0.0`.**
+  Los candidatos crudos coinciden igualmente: S6 **120/120**, ST **24/24**, cero discordantes.
+- **Fuera de la ventana** las dos series sí divergen (S6: 70 candidatos sólo en nativas sobre el
+  tramo completo). Y eso importa aquí, porque **la ventana rodante de 10.000 velas alcanza meses
+  hacia atrás** y EMA / SAR / ATR son recursivos: una diferencia en la cola se propaga hasta el
+  presente. Por eso la elección no es indiferente aunque el tramo evaluado sea idéntico.
+- **Profundidad suficiente, verificada:** de las 14.808 nativas, **13.741 son anteriores** al primer
+  epoch de la ventana ⇒ toda vela de la ventana tiene sus 10.000 previas dentro del fichero. El
+  corte `bars[max(0, i+1-window) : i+1]` nunca se queda corto.
+
+**Coste si el ruling es erróneo:** habría que re-correr P-CAP con el otro sustrato. La corrida es de
+minutos, no de horas, y el llamador debe aceptar la ruta de barras **como parámetro** precisamente
+para que ese cambio sea de una línea. **No cablees la ruta.**
+
+⚠️ El fichero de nativas **no está en git** (vive bajo `data/`, ignorado). El llamador debe
+**fallar ruidosamente** con un mensaje que diga qué script lo regenera
+(`scripts/analysis/a6_pata_a/barras_nativas_vs_derivadas.py`, attach-only, solo lectura) si no lo
+encuentra. Nunca caer en silencio a las derivadas.
+
+### D.2 · Contrato
+
+```python
+VENTANA_902 = (1785178349, 1785409304)   # epoch servidor: conexión del ejecutor -> último cierre
+
+def correr_p_cap(
+    *,
+    bars_path: str | Path = BARS_NATIVAS,
+    ticks_root: str | Path = LAKE_TICKS_CAPITARIA,
+    t0: float = VENTANA_902[0],
+    t1: float = VENTANA_902[1],
+    stops_level: float,                  # SIN default: lo aporta el llamador de arriba
+    window: int = 10_000,
+    cycle_sec: float = 15.0,
+    max_spread_open: float = 0.50,
+    out_dir: str | Path = OUT_DIR,
+) -> dict:
+    """Corre la réplica del motor faulty sobre las 2 estrategias del roster tomachine.
+
+    Devuelve un dict de métricas y escribe los artefactos de D.5.
+    """
+```
+
+`stops_level` **no lleva default**. Un default silencioso (`0.0`) produciría una corrida
+plausible y falsa; que el parámetro sea obligatorio convierte el olvido en `TypeError`.
+
+### D.3 · Las dos estrategias corren por separado — RULING
+
+El ejecutor vivo reconciliaba **las 2 configs dentro del mismo bucle de 15 s**. La réplica llama a
+`correr_ciclos` **una vez por estrategia**, de forma independiente.
+
+**Por qué es equivalente y no una simplificación:** el estado deseado de cada config se calcula sólo
+con sus propias kwargs y las mismas velas; las gates (spread, hora) son globales y dependen del tick,
+no de la otra estrategia; y la concurrencia es **1 posición por estrategia** (`active_fichas=1` en
+S6, mono-ficha por construcción en ST), sin cupo compartido ni restricción de margen en el sim. No
+existe ningún canal por el que una config pueda alterar la decisión de la otra.
+
+**Lo único que sí las acopla en la realidad —y que la réplica NO modela— es el margen de la cuenta.**
+Queda **declarado no modelado**, coherente con D-32 (el simulador no impone margen ni margin call).
+
+- `S6-K2P0` ⇒ `estado_por_barra(bars, kwargs=config_faulty.kwargs_de("S6-K2P0"), window=…)`
+- `SuperTrend-p14x3-M15` ⇒ `estado_por_barra_supertrend(bars, window=…)`
+
+🔴 **Las kwargs salen SIEMPRE de `config_faulty`** (§2-bis). Está **prohibido** importar
+`_GOLIVE_M15`, `CONFIGS_TOMACHINE` o cualquier símbolo de
+`sentinel_engine.strategies.live_configs_20` en este fichero. El test debe comprobarlo
+(`grep` sobre el AST o sobre el fuente: cero `import` de ese módulo).
+
+### D.4 · Acotado del cálculo
+
+`estado_por_barra` es O(n²). Calcular las 14.808 velas sería tirar el 90 % del trabajo.
+
+- `idx_desde` = índice de la **última vela cerrada antes de `t0`** (la que el primer ciclo verá).
+- `idx_hasta` = índice de la **última vela cuyo cierre `<= t1`**.
+- Las velas fuera de `[idx_desde, idx_hasta]` quedan `None`, **y el bucle de ciclos jamás debe
+  leerlas**. Si `correr_ciclos` recibe `estados[i] is None` para una `i` que sí necesita, eso es un
+  **error de acotado y debe reventar**, no tratarse como «sin ficha deseada». Escribe ese test.
+
+Coste esperado: ~1.070 velas × 10.000 = ~10,7 M pasos de barra **por estrategia**. Mide el tiempo y
+regístralo — es el número que justifica (o no) construir la Fase 2.
+
+### D.5 · Artefactos de salida
+
+Directorio: `data/analysis/p_cap/replica/` (bajo `data/`, fuera de git — correcto: son datos).
+
+- `posiciones_replica.csv` — una fila por posición, con las columnas de §3 más
+  `strategy_id` (`SAR::S6-K2P0` / `SuperTrend::SuperTrend-p14x3-M15`, **la misma grafía que
+  `verdad_terreno_902.csv`**, para que el comparador empareje sin traducir) y `t_open_servidor` /
+  `t_close_servidor` en texto (`utcfromtimestamp`, §6).
+- `eventos_replica.csv` — una fila por evento, columnas de §3 más `strategy_id`.
+- `metricas_p_cap.json` — conteos por tipo de evento, nº de posiciones por estrategia, tiempo de
+  cálculo, y **los tags de lineage del charter §A.9** con `engine_sha = "b113eb7"`,
+  `substrate_id = "capitaria-ticks + XAUUSD_M15_nativas"`, `experimento = "T0.7-P-CAP"`.
+
+**El llamador NO compara nada contra la verdad de terreno.** Eso es el Componente E. Un llamador que
+se entere del resultado esperado es un llamador que puede acabar ajustándose a él.
+
+### D.6 · Lo que este addendum declara COMO DIVERGENCIA CONOCIDA, no como fallo
+
+Medido en el log del ejecutor: la primera orden se envía a `2026-07-27 18:52:30` y vuelve con
+**`retcode=10027`** (AutoTrading deshabilitado en el cliente). La posición real no se abre hasta
+`18:53:30`, **60 s más tarde**, tras reintentos.
+
+La réplica no modela retcodes del terminal: abrirá en el primer ciclo válido. Ese desfase de ~60 s
+en la **primera** posición es **artefacto del entorno, no del motor**, y el comparador debe
+reportarlo como tal en vez de contarlo como fallo de paridad. 🔴 **Está prohibido mover `t0` para
+hacerlo cuadrar** — eso sería ajustar la réplica al resultado.
+
+### D.7 · Definición de HECHO
+
+La de §7, más: `metricas_p_cap.json` existe y sus conteos de eventos son **no vacíos** para las dos
+estrategias. Una corrida que produce cero posiciones es un fallo, no un resultado.
+
+---
+
+## §5-bis · ADDENDUM 2026-08-13 — Componente E, el COMPARADOR de P-CAP
+
+*(Añadido por el controlador (Opus 5). **Aditivo.**)*
+
+**Fichero nuevo:** `scripts/analysis/realtick_bt/faulty/comparador.py`
+**Test nuevo:** `tests/analysis/test_comparador_faulty.py`
+
+### E.1 · Qué mide, exactamente
+
+El criterio de paso de P-CAP, fijado por **D-45**: bit-identidad sobre **precio de entrada, instante
+de entrada, instante de salida, precio de salida, razón de cierre y resultado**. El **SL de entrada
+queda fuera del criterio** y dentro del reporte (61 de 152 aperturas tienen el dato; las otras 91 son
+no evaluables porque el log no lo imprime).
+
+### E.2 · Reglas duras
+
+1. **La tabla de equivalencia `motivo_cierre` ↔ `reason` NO se inventa.** Se consume del artefacto
+   medido `research/fases/F0-preparacion/04-resultados/T0.7-p-cap/mapeo_motivos_cierre.json`. Si un
+   motivo no está en esa tabla, la comparación de esa posición se marca **`NO_EVALUABLE`**, jamás se
+   fuerza a la categoría más parecida.
+2. **El denominador de A6 son barras-señal — 49 S6 / 42 ST —, nunca las 152 posiciones** (§6). Las
+   152 son re-entradas secuenciales de una misma señal. El comparador reporta **ambos** cortes y
+   etiqueta cuál es cuál.
+3. **Emparejamiento 1-a-1**, sin reutilizar una posición real para dos de la réplica.
+4. **Los 11 cierres manuales (`reason_name = CLIENT_manual`) no son reproducibles por el motor** y se
+   excluyen del criterio de paso, **declarándolo**. Por D-43 son además el dato más caro del
+   programa: aportan +28.416.356 CLP de un neto de +15.203.111. El comparador los cuenta aparte y
+   **nunca** los promedia con el resto.
+5. Toda cifra monetaria se reporta en CLP y **también normalizada por lote** (charter §A.1); el lote
+   vivo fue 0,67, que no es el lote de investigación.
+
+### E.3 · Salida
+
+- `data/analysis/p_cap/comparacion_p_cap.csv` — una fila por posición real, con su pareja de la
+  réplica o `SIN_PAREJA`, y el delta de cada campo del criterio.
+- `research/fases/F0-preparacion/04-resultados/T0.7-p-cap/p_cap_resultado.json` — los conteos
+  agregados, con lineage §A.9.
+- **El memo de interpretación lo escribe Opus** (`05-analisis/`), nunca el implementador
+  (charter §B). El comparador entrega números; el veredicto de P-CAP es de Opus.
