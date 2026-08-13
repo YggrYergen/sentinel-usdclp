@@ -630,8 +630,25 @@ bróker, buena pero no idéntica (B12: 4-5 % de velas con `h`/`l`/`c` distinto f
 
 ### D.2 · Contrato
 
+🔴 **ERRATA CORREGIDA 2026-08-13 — el `t1` publicado abajo estaba MAL y llegó a correrse.**
+Decía `1785409304`, que es `2026-07-30 11:01:44`: **2,67 días de los 14,5** que dura la ventana.
+Error del controlador al transcribir (dígitos transpuestos de `1786410904`). El implementador
+implementó el spec fielmente; el defecto era del spec.
+
+El valor correcto es **`1786431669` = `2026-08-11 07:01:09`**, el **último cierre real** de
+`verdad_terreno_902.csv` — no `1786410904` (`01:15:04`), que es la última **apertura** y es el borde
+con el que se define la *ventana canónica* para filtrar eventos. **Son dos cosas distintas y
+confundirlas trunca la simulación:** para reproducir todos los cierres hay que simular hasta el
+último cierre, no hasta la última apertura.
+
+🟢 **Lo que la corrida truncada sí dejó medido, y no es poco:** sobre su tramo real
+(`2026-07-27 18:53:30` → `2026-07-30 11:01:44`), la réplica abrió **36 posiciones de S6 contra 36
+reales — coincidencia exacta en conteo** — y **12 de SuperTrend contra 10** (2 de más). No es
+prueba de bit-identidad (eso lo dice el comparador, campo a campo), pero es la primera evidencia
+cuantitativa de que el montaje A+B+C funciona.
+
 ```python
-VENTANA_902 = (1785178349, 1785409304)   # epoch servidor: conexión del ejecutor -> último cierre
+VENTANA_902 = (1785178349, 1786431669)   # epoch servidor: conexión del ejecutor -> último cierre real
 
 def correr_p_cap(
     *,
