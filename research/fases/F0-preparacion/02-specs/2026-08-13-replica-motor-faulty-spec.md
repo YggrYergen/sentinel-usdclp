@@ -200,9 +200,42 @@ Con estados sintéticos y un stream de ticks sintético, cada uno su test:
 | lote | 0.67 con `max_volume` override | `live_configs_20.py:568-569`, `:560` |
 | `MAX_FICHAS_PER_CONFIG` | **código muerto** — definido, nunca referenciado | T0.6-A Q13 |
 
-**`stops_level` está sin determinar** y hay que derivarlo: de los eventos `SL_CLAMPED` del log
+~~**`stops_level` está sin determinar** y hay que derivarlo: de los eventos `SL_CLAMPED` del log
 (`data/analysis/p_cap/sl_clamped_open_events.json`, 87 eventos) se despeja
-`level = |ref - clamped|`. **Comprobar que sale constante**; si no lo es, reportarlo y PARAR.
+`level = |ref - clamped|`. **Comprobar que sale constante**; si no lo es, reportarlo y PARAR.~~
+
+✅ **RESUELTO 2026-08-13: `stops_level = 0.50`** (50 puntos con `point = 0.01`).
+Artefactos: `04-resultados/T0.7-p-cap/stops_level_derivado.{json,md}`, generador
+`scripts/analysis/p_cap/derivar_stops_level.py`.
+
+🔴 **El método que este spec proponía no era ejecutable, y eso quedó medido antes de corregirlo:**
+el log **nunca escribe `ref`** — la línea cruda es
+`[SL_CLAMPED OPEN] config=... ficha=... desired=... clamped=... gap=...`, y las columnas `ref`/`bid`
+del CSV están vacías en las **122** filas de clamp (`n_usable = 0/122`). Ese negativo se conserva en
+el artefacto, no se borró.
+
+**Vía que sí funcionó — inversión contra el lago de ticks.** El `ref` del ejecutor era el bid/ask
+del tick que acababa de leer, y esos ticks están en `data/lake_ticks/XAUUSD/`. Se barrió `L` de 0,00
+a 2,00 en pasos de 0,01 comprobando, para cada candidato, que el `ref` implicado
+(`clamped + L` si **long**, `clamped − L` si **short**) fuera un precio realmente presente en los
+ticks alrededor del evento. Resultado — **máximo único, sin empates, en las cuatro mediciones**:
+
+| familia · ventana | evaluables | en el máximo | fracción |
+|---|---|---|---|
+| `SL_CLAMPED OPEN` ±0,25 s | 76 | 34 | 44,7 % |
+| `SL_CLAMPED OPEN` ±1,00 s | 85 | 83 | 97,6 % |
+| `SL_CLAMPED OPEN` ±3,00 s | 85 | 85 | **100 %** |
+| `SL_CLAMPED` (MODIFY) ±1,00 s | 31 | 27 | 87,1 % |
+
+La fracción baja de ±0,25 s **no debilita el resultado**: esa ventana es más estrecha que el jitter
+real de llegada de ticks (p90 del desfase = 0,442 s), así que a menudo no contiene el tick que el
+ejecutor leyó. Lo decisivo es la **forma** de la curva — al ensanchar la ventana la consistencia
+sube monótona hasta el 100 % y el argmax no se mueve de `0.50`. Un `L` no constante se
+emborronaría al ensanchar, no se afilaría. Los clamps de apertura (87) y los de modificación (35)
+dan el **mismo** valor, que es una confirmación independiente.
+
+🔴 **No re-derivar ni ajustar este número.** Si P-CAP fallara la paridad justo en las 87 aperturas
+con clamp, eso es señal para escalar, no para tocar `stops_level`.
 
 ## 5 · Qué reutilizar, no reescribir
 
