@@ -15,6 +15,56 @@
 
 ## 🔴 ESTADO EN UNA LÍNEA (actualizar SIEMPRE)
 
+> **2026-08-13 (tarde) · FASE 0 — LA RÉPLICA CORRIÓ LA VENTANA 902 ENTERA. Falta el veredicto.**
+> Los cinco componentes están construidos, verdes y commiteados: A `estado_por_barra` (`7205f0c`),
+> B `ciclos` (`017fa04`+`b0e6902`), C `config_faulty` (`364f82f`), **D `llamador`
+> (`d63df80`+`5c6360f`)** y **E `comparador` (en curso)**. `pytest tests/analysis -q` → **148 passed,
+> 0 failed**, foreground. R1-bis intacto.
+> 🟢 **PRIMERA CORRIDA EXTREMO A EXTREMO, 970 velas, 350 s** (coste **lineal**, no cuadrático: la
+> ventana rodante es fija de 10.000). Conteo de posiciones **réplica vs real**:
+> **SuperTrend 67 vs 67 — exacto** · **S6 90 vs 84 (+6)**. 🔴 **Conteo NO es paridad**: que salgan 67
+> y 67 no dice que sean las mismas, ni al mismo precio, ni por el mismo motivo. El veredicto de
+> P-CAP lo da el comparador campo a campo sobre los 6 campos de D-45, y el memo lo escribe Opus.
+> Las 6 de más de S6 **no se investigan por agregado** (Ruling P-14): las localiza el comparador.
+> ✅ **`stops_level` RESUELTO = 0.50** (50 puntos con `point=0.01`). El método que el spec proponía
+> **no era ejecutable** — el log nunca escribe `ref` (`n_usable = 0/122`), negativo que se conserva.
+> Derivado por **inversión contra el lago de ticks**: barrido de `L` comprobando que el `ref`
+> implicado existiera de verdad en los ticks. Máximo **único, sin empates, en las 4 mediciones**;
+> 100 % de consistencia a ±3 s, 97,6 % a ±1 s, y **mismo valor en OPEN (87) y MODIFY (35)**.
+> ✅ **La cuestión abierta de §3-bis, CERRADA.** Los 21 cierres `EXPERT` cuadran exacto:
+> **3 `SENT CLOSE` + 8 `FALLBACK_CLOSE_INVALID_SL` + 10 `SAME_BAR_EXIT_FALLBACK`**. Los «9 que
+> faltaban» eran ese tercer evento, que nadie había censado.
+> 🟢 **Los 129 cierres sin evento de log NO son un hueco: son la firma esperada.** SL y TP son stops
+> **server-side** del bróker y los 11 manuales los hizo un humano; el log sólo registra lo que el
+> ejecutor **envió**. Exigirles evento sería exigir lo contrario de lo que significan.
+> 🔴 **La equivalencia `motivo_cierre` ↔ `reason` NO es biyectiva:** un `FALLBACK_CLOSE_INVALID_SL`
+> cayó sobre una posición que MT5 registró como `SL`, a 10 s — **carrera** entre el cierre a mercado
+> del ejecutor y el stop server-side. Un comparador que exija biyección daría un falso fallo.
+> ✅ **`SAME_BAR_EXIT_FALLBACK` es diferencia de ETIQUETA, no de comportamiento** — `ciclos.py` NO se
+> modificó. Auditado sobre `b113eb7`: misma rama del ejecutor (`run_live_20.py:652`), mismo `req`,
+> mismo `comment`, cierra **a mercado al tick vigente** (`:661`) y **no** al `sim_fill`, no pasa por
+> el gate de spread (`:580` lo condiciona a `OPEN`), y deja **idéntica huella en MT5** (`reason=3`).
+> «Same bar» se refiere a **la salida**, no a la vida de la posición: las 10 duran de 16 s a 7 h.
+> 🟡 **El único cierre `TP` no lo puso el motor.** Los **4 únicos** `order_send` de `b113eb7` no
+> llevan clave `"tp"`. El deal trae `comment='[tp 4065.91]'`, formato nativo de MT5. **Origen no
+> evaluable** (no hay histórico de órdenes de la 902 en el repo). Excluido del criterio de paso, en
+> la misma categoría que los 11 manuales. **Pregunta abierta para el user.**
+> **Denominador de P-CAP declarado: 140 cierres evaluables** (151 − 11 manuales). No 139: el `TP`
+> sale, pero el `FALLBACK` que MT5 registró como `SL` sigue dentro.
+> 🔴 **Errata del controlador, corregida y declarada:** el `t1` de `VENTANA_902` se publicó como
+> `1785409304` (= `2026-07-30 11:01`) en vez de `1786431669` (= `2026-08-11 07:01:09`), y **se
+> corrió truncada a 2,67 días de los 14,5**. Dígitos transpuestos. Hay **dos bordes distintos** al
+> final de la ventana y confundirlos trunca en silencio: `01:15:04` es la última **apertura** (define
+> la ventana canónica para filtrar eventos), `07:01:09` es el último **cierre** (define hasta dónde
+> simular). El test que debía atraparlo era **tautológico** —recalculaba la fórmula con el mismo
+> `t0`/`t1`— y ahora hay uno que ata `VENTANA_902[1]` a `verdad_terreno_902.csv`.
+> **Spec vivo:** `research/fases/F0-preparacion/02-specs/2026-08-13-replica-motor-faulty-spec.md`
+> (§2-bis, §3-bis, **§3-ter**, **§3-quinquies**, **§4-bis**, **§5-bis**).
+> **Ledger de sesión con los 14 rulings:** `.superpowers/sdd/2026-08-13-replica-motor-faulty-spec/progress.md`.
+>
+> ---
+> **Estado previo (2026-08-13, mañana), vigente en lo que no contradiga lo anterior:**
+
 > **2026-08-13 · FASE 0, EJECUTANDO — la RÉPLICA DEL MOTOR FAULTY está construida y verde.**
 > El motor que operó la 902 quedó preservado como ref inmutable (tag `engine-faulty-tomachine-902`
 > → `b113eb7`, en `refs/m2/*`), documentado en `research/motores/`, con la entrega de máquina 2
