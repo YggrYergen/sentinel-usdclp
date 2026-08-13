@@ -137,3 +137,96 @@ cifra, que es exactamente lo que el charter §A.13 pide de él.
 - **No** que la Fase 2 (la copia rápida del motor) esté justificada o no por coste. Ahora hay número
   real —**350 s** por ventana de dos semanas, escalando **lineal**— pero esa decisión depende de que
   la Fase 1 sea fiel primero.
+
+---
+
+# ADDENDUM — Segunda corrida: reloj reconstruido + criterio D-46
+
+**2026-08-13, misma sesión.** Aditivo: nada de lo anterior se retira.
+Corridas: réplica con reloj ancla+relleno (`f2f812d`), comparador con instante truncado
+(`5bfdab4`). Artefactos previos conservados como `.criterio-estricto` y `.rejilla-sintetica`.
+
+## A · Qué hizo cada cambio, por separado
+
+| campo | D-45 estricto + rejilla | **+ D-46 truncado** | **+ reloj reconstruido** |
+|---|---:|---:|---:|
+| `precio_open` | 7 | 7 | **16** |
+| `t_open` | 7 | 7 | **17** |
+| `t_close` | **0** | **72** | **76** |
+| `precio_close` | 4 | 4 | **7** |
+| `razon_cierre` | 126 | 126 | **128** |
+| `resultado` | 130 | 130 | **131** |
+| SL de entrada | 4 | 4 | **7** |
+
+**D-46 actuó exactamente donde se predijo y en ningún otro sitio:** movió `t_close` de 0 a 72 y no
+tocó nada más. Confirma que aquel cero era un artefacto de resolución, no de fidelidad.
+
+**El reloj reconstruido movió TODO lo demás**, y el número que lo dice mejor no está en la tabla:
+**la mediana de |Δ t_open| cae de 9,00 s a 1,23 s.** Siete veces mejor. La hipótesis de fase era
+correcta.
+
+## B · Pero la predicción falsable NO se cumplió del todo, y eso importa
+
+Predije que `precio_open` saltaría «de 7 a la mayoría de las 137». Saltó **de 7 a 16**. Sigue
+habiendo **0 posiciones que casen los 6 campos**, aunque ahora **6 casan 5 de 6** y 18 casan 4.
+
+⇒ **La fase era una causa real pero no la única.** Corregirla no basta.
+
+## C · Dónde está el residuo — la medición que lo localiza
+
+Comparando el mismo test antes y después:
+
+| | posiciones con \|Δ t_open\| < 1 s | de ésas, precio exacto |
+|---|---:|---:|
+| rejilla sintética | 7 | **5 (71 %)** |
+| reloj reconstruido | **35** | **8 (23 %)** |
+
+**El bloque de 7 con el que argumenté §2 era una muestra auto-seleccionada.** Al alinear cinco veces
+más posiciones en el tiempo, la concordancia de precio **se debilita**: de 71 % a 23 %. Entre las 35
+alineadas la mediana de |Δ precio| es **0,04** — cuatro centavos.
+
+🔴 **Corrijo mi propia lectura de §2.** «Cuando el instante coincide, el precio coincide exacto» era
+cierto en 7 casos y **deja de serlo** con 35. La afirmación era demasiado fuerte para la muestra que
+tenía.
+
+## D · La hipótesis que queda, y por qué apunta a un techo estructural
+
+Cuatro centavos de mediana, en posiciones alineadas al segundo, con la **razón de cierre y el
+resultado acertando en 16 de 16** entre las que tienen precio de apertura exacto.
+
+La explicación más económica es el **fill del bróker**. La réplica abre al `ask`/`bid` del tick de
+**nuestro** lago; el ejecutor real mandó `price = tick.ask` pero MT5 ejecutó **a mercado con
+tolerancia `deviation`**. El precio de llenado real **no es** la cotización del instante, y esa
+diferencia no es reproducible desde los ticks: es ruido de ejecución del bróker.
+
+**Si esto se confirma, hay un techo estructural a P-CAP** y la bit-identidad sobre precio es
+inalcanzable por la misma razón que lo era sobre instante — se está comparando contra algo que la
+fuente no contiene. **Es hipótesis, no medición.** Se falsa comparando `precio_open` de la réplica
+contra el `ask` del tick vigente en el instante del fill real: si la réplica acierta el tick pero no
+el fill, el techo es del bróker.
+
+Refuerzo: entre las 16 con `precio_open` exacto, **sólo 1 tiene `precio_close` exacto**. Los cierres
+son más difíciles que las aperturas, coherente con que muchos los ejecuta el stop server-side, donde
+el precio de llenado lo pone el bróker sin que el ejecutor lo proponga siquiera.
+
+## E · Lo que esto cambia para el programa
+
+1. **La fase se queda.** Aunque no cerrara P-CAP, 9,00 s → 1,23 s es una mejora real y barata, y el
+   coste de corrida no se movió (350 s → 356 s).
+2. **La siguiente causa a atacar ya no es la cola del p90 por defecto.** El fill del bróker es ahora
+   el sospechoso principal del residuo *central*; la cola del p90 (|Δ t_open| p90 sigue en ~6.300 s)
+   es un fenómeno **distinto** y afecta a menos posiciones. **Ambos siguen abiertos y la elección es
+   del user**, que ya expresó preferencia por la cola del p90 si la fase no bastaba.
+3. **El criterio de paso vuelve a estar en cuestión, y esta vez sobre el precio.** Si el techo es el
+   fill, «bit-idéntico sobre precio» no es alcanzable y habrá que decidir con qué se sustituye — con
+   el mismo cuidado con que D-46 resolvió el instante: sin inventar tolerancias, midiendo primero
+   qué precisión contiene realmente la fuente.
+4. **Sensibilidad medida a la cadencia:** con 15,0 s en vez de 15,77 s el total de posiciones pasa de
+   157 a 167. **No es indiferente**, y el valor 15,77 s no es una elección libre: es la mediana
+   medida en T0.6-A/B. Anotado por si alguna vez se toca.
+
+## F · Honestidad sobre el estado
+
+**P-CAP sigue sin pasar: 0 de 135 en los 6 campos.** Lo que hay es un diagnóstico mucho mejor que
+por la mañana, dos causas identificadas —una corregida, otra localizada— y un candidato serio a
+techo estructural. Nada de esto autoriza todavía a usar la réplica para el backtest largo.
