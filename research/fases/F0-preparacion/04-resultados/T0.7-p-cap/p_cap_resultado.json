@@ -1,0 +1,139 @@
+{
+  "denominadores": {
+    "posiciones": {
+      "valor": 140,
+      "formula": "152 posiciones reales en ventana VENTANA_902 - 11 CLIENT_manual - 1 TP",
+      "detalle_por_estrategia": {
+        "SAR::S6-K2P0": 81,
+        "SuperTrend::SuperTrend-p14x3-M15": 59
+      }
+    },
+    "barras_senal": {
+      "S6": 49,
+      "ST": 42,
+      "total": 91,
+      "fuente": "research/fases/F0-preparacion/02-specs/2026-08-13-replica-motor-faulty-spec.md §6 y §E.2.2 -- citado verbatim, no recomputado por este comparador"
+    },
+    "nota": "Dos denominadores distintos, NUNCA se mezclan (regla dura 7 / E.2.2): 'posiciones' cuenta re-entradas secuenciales de una misma señal; 'barras_senal' cuenta candidatos de A6 a nivel de vela. El corte por barra-señal es citado del spec, no recomputado por este comparador."
+  },
+  "criterio_de_paso_6_campos": {
+    "denominador_evaluable": 140,
+    "n_emparejadas": 137,
+    "n_sin_pareja_real": 3,
+    "position_id_sin_pareja_real": [
+      55293817.0,
+      55317670.0,
+      55321392.0
+    ],
+    "casa_los_6_campos": 0,
+    "no_casa_los_6_campos": 137,
+    "por_campo": {
+      "precio_open": {
+        "si": 7,
+        "no": 130,
+        "no_evaluable": 0,
+        "delta_abs_stats": {
+          "n": 137,
+          "min": 0.0,
+          "p50": 0.2300000000000182,
+          "p90": 3.9340000000001094,
+          "max": 21.050000000000182
+        }
+      },
+      "t_open": {
+        "si": 7,
+        "no": 130,
+        "no_evaluable": 0,
+        "delta_abs_stats": {
+          "n": 137,
+          "min": 0.0,
+          "p50": 9.0,
+          "p90": 6295.6,
+          "max": 179389.0
+        }
+      },
+      "t_close": {
+        "si": 0,
+        "no": 137,
+        "no_evaluable": 0,
+        "delta_abs_stats": {
+          "n": 137,
+          "min": 0.026000022888183594,
+          "p50": 0.9500000476837158,
+          "p90": 185.11840000152594,
+          "max": 330310.0
+        }
+      },
+      "precio_close": {
+        "si": 4,
+        "no": 133,
+        "no_evaluable": 0,
+        "delta_abs_stats": {
+          "n": 137,
+          "min": 0.0,
+          "p50": 0.09999999999990905,
+          "p90": 0.8380000000003748,
+          "max": 11.010000000000218
+        }
+      },
+      "razon_cierre": {
+        "si": 126,
+        "no": 11,
+        "no_evaluable": 0
+      },
+      "resultado": {
+        "si": 130,
+        "no": 7,
+        "no_evaluable": 0
+      }
+    }
+  },
+  "excluidos_del_criterio": {
+    "total": 12,
+    "por_categoria": {
+      "CLIENT_manual": 11,
+      "TP": 1
+    },
+    "profit_clp_client_manual": 28416355.779999997
+  },
+  "sl_de_entrada_no_gating": {
+    "n_evaluable": 61,
+    "n_no_evaluable": 76,
+    "n_coincide": 4
+  },
+  "residuos_1_a_1": {
+    "replica_sin_pareja_total": 9,
+    "replica_sin_pareja_por_estrategia": {
+      "SAR::S6-K2P0": 6,
+      "SuperTrend::SuperTrend-p14x3-M15": 3
+    },
+    "real_sin_pareja_total": 4
+  },
+  "divergencia_conocida_primera_orden": {
+    "descripcion": "primera orden real: retcode=10027 (AutoTrading deshabilitado), reabre 60s despues (D.6). No se cuenta como fallo generico de paridad de instante de entrada; se reporta con su propio delta.",
+    "n_posiciones_marcadas": 1
+  },
+  "monetario_clp": {
+    "neto_152_posiciones_clp": 16146299.809999999,
+    "neto_152_posiciones_clp_por_lote": 24098954.9402985,
+    "lote_vivo": 0.67
+  },
+  "equivalencia_motivo_reason_referencia": {
+    "CLOSE_RECONCILER|EXPERT": 13,
+    "FALLBACK_CLOSE_INVALID_SL|EXPERT": 8,
+    "FALLBACK_CLOSE_INVALID_SL|SL": 1,
+    "SL|SL": 117
+  },
+  "lineage": {
+    "run_id": "T0.7-P-CAP-comparador-20260813T203345Z",
+    "area": "F0",
+    "experimento": "T0.7-P-CAP",
+    "config_hash": "4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9",
+    "substrate_id": "posiciones_replica.csv + verdad_terreno_902.csv",
+    "engine_sha": "b113eb7",
+    "git_sha": "5d9f728aa56b44576125f60a8c5065e7be0ead91",
+    "etapa": "F0",
+    "generador": "scripts/analysis/realtick_bt/faulty/comparador.py",
+    "timestamp": "2026-08-13T20:33:45.614082Z"
+  }
+}
