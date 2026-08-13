@@ -70,8 +70,14 @@ OUT_DIR = ROOT / "data" / "analysis" / "p_cap" / "replica"
 
 BAR_SEC = 900
 
-# epoch servidor: conexión del ejecutor -> último cierre (D.2, verbatim)
-VENTANA_902 = (1785178349.0, 1785409304.0)
+# epoch servidor: conexión del ejecutor -> último cierre REAL (D.2, verbatim,
+# corregido tras RONDA DE CORRECCIÓN 1 -- el spec traía t1=1785409304
+# (2026-07-30 11:01:44, dígitos transpuestos de 1786410904 al transcribir),
+# que truncaba la ventana a 2,67 de sus 14,5 dias. t1=1786431669
+# (2026-08-11 07:01:09) es el ultimo t_close_epoch real de
+# verdad_terreno_902.csv -- NO confundir con 1786410904 (01:15:04), que es
+# la ultima APERTURA / borde de la ventana canonica, no el ultimo cierre.
+VENTANA_902 = (1785178349.0, 1786431669.0)
 
 ENGINE_SHA = "b113eb7"
 SUBSTRATE_ID = "capitaria-ticks + XAUUSD_M15_nativas"

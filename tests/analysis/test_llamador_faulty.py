@@ -67,6 +67,36 @@ def test_grafia_strategy_id_coincide_con_verdad_de_terreno():
     )
 
 
+def test_ventana_902_t1_es_el_ultimo_cierre_real_de_verdad_de_terreno():
+    """RONDA DE CORRECCIÓN 1 (2026-08-13): añadido tras el hallazgo de que
+    VENTANA_902[1] traía un t1 con dígitos transpuestos (1785409304 en vez
+    de 1786431669), que truncaba la ventana a 2,67 de sus 14,5 días (250
+    velas en vez de 970) SIN que ningún test lo detectara.
+
+    `test_idx_desde_idx_hasta_ventana_902_valores_medidos` (más abajo) NO
+    podía atrapar ese error: compara `idx_desde_idx_hasta(bar_times, t0, t1)`
+    contra una fórmula recalculada con el MISMO `t0`/`t1` que trae
+    `L.VENTANA_902` -- es una prueba de que la función implementa bien la
+    fórmula de acotado, no de que `VENTANA_902` sea la ventana correcta. Con
+    el t1 malo, esa comparación pasaba igual de verde que con el t1 bueno
+    (ambos lados usan el mismo t1 erróneo): un acotado que no distingue 250
+    velas de 970 no estaba midiendo si LA VENTANA es correcta.
+
+    Este test sí lo hace: ata `VENTANA_902[1]` a una fuente de verdad
+    independiente del propio código de `llamador.py` -- el último
+    `t_close_epoch` real de `verdad_terreno_902.csv` (D.2: "último cierre").
+    Si alguien vuelve a transcribir mal el epoch, este test revienta antes
+    de correr nada.
+
+    `VENTANA_902[0]` (t0, conexión del ejecutor) NO se valida aquí: no es
+    derivable de `verdad_terreno_902.csv` -- la primera posición real abre
+    ~60 s DESPUÉS de t0 por el retcode=10027 documentado en D.6, así que
+    "primer t_open_epoch menos t0" no es una identidad, es un desfase
+    conocido y declarado, no chequeable por igualdad."""
+    verdad = pd.read_csv(_REPO_ROOT / "data" / "analysis" / "p_cap" / "verdad_terreno_902.csv")
+    assert L.VENTANA_902[1] == verdad["t_close_epoch"].max()
+
+
 # --------------------------------------------------------- 1. acotado y carga
 def test_load_bars_nativas_falla_ruidosamente_si_no_existe(tmp_path):
     """D.1: si el fichero de nativas no existe, reventar con un mensaje que
@@ -88,8 +118,16 @@ def test_load_bars_nativas_mismo_esquema_que_backtest_load_bars():
 def test_idx_desde_idx_hasta_ventana_902_valores_medidos():
     """Pin de los valores reales medidos independientemente contra
     XAUUSD_M15_nativas.parquet para VENTANA_902 (idx_desde=13740,
-    idx_hasta=13989, 250 velas) -- no tautológico: la fórmula de este test se
-    escribe fresca, no se reutiliza el código de idx_desde_idx_hasta."""
+    idx_hasta=14709, 970 velas) -- no tautológico: la fórmula de este test se
+    escribe fresca, no se reutiliza el código de idx_desde_idx_hasta.
+
+    RONDA DE CORRECCIÓN 1 (2026-08-13): VENTANA_902[1] pasó de 1785409304
+    (t1 erróneo, dígitos transpuestos -- truncaba la ventana a 2,67 de sus
+    14,5 días, 250 velas) a 1786431669 (último t_close_epoch real de
+    verdad_terreno_902.csv, 970 velas). Este test pinea el valor CORRECTO
+    contra `L.VENTANA_902` -- si la constante volviera a desviarse, este test
+    lo distingue (250 != 970), que es justo lo que un pin de acotado debe
+    hacer."""
     df = pd.read_parquet(L.BARS_NATIVAS)
     bar_times = df["t"].to_numpy(dtype=float)
     bar_closes = bar_times + 900.0
@@ -100,7 +138,7 @@ def test_idx_desde_idx_hasta_ventana_902_valores_medidos():
     idx_desde, idx_hasta = L.idx_desde_idx_hasta(bar_times, t0, t1)
     assert (idx_desde, idx_hasta) == (idx_desde_esperado, idx_hasta_esperado)
     assert idx_desde == 13740
-    assert idx_hasta == 13989
+    assert idx_hasta == 14709
 
     # boundary: bar_closes[idx_desde] <= t0, y (si existe) bar_closes[idx_desde+1] > t0
     assert bar_closes[idx_desde] <= t0
