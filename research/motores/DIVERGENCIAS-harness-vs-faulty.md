@@ -19,6 +19,41 @@ de un artefacto del harness.
 
 ---
 
+> ## 🔴 ENMIENDA 2026-08-13 — leer antes que el resto (D-44)
+>
+> Este documento se **extiende y corrige**, nunca se recorta. Lo de abajo sigue vigente salvo lo
+> que esta enmienda contradiga explícitamente.
+>
+> **1 · RETRACTADO: la «ventana de Londres».** Una versión anterior de este análisis observó que
+> los cierres manuales caían entre las 03:00 y 10:00 de servidor y concluyó que ésa era la franja
+> propicia. **Es falso.** La hora de los cierres manuales **no tiene valor métrico**: un operador
+> se conectó a monitorear **al azar**. Las posiciones ganadoras se abrieron mucho antes y sólo
+> lograron sobrevivir hasta que alguien miró. Es **ruido de disponibilidad humana**, no señal de
+> mercado.
+>
+> **2 · Husos.** El reloj del servidor **coincide con la hora local de Chile** (primera apertura
+> diaria 18:45 servidor = 18:45 local, confirmado por el user y por `deals_raw`). **18:00 local es
+> la apertura del mercado ASIÁTICO**, no Londres. La franja operada fue **18:00 → 03:00 ≈ 9 h ≈
+> 37 % del día**.
+>
+> **3 · El objetivo a extrapolar** no es una hora concreta: es que las estrategias abran en el
+> **~40 % del día con mayor volatilidad y volumen**. Cuál es ese 40 % en cada época **se mide sobre
+> los ticks**; el offset del servidor de AVA no está verificado y puede no haber sido constante en
+> 4 años.
+>
+> **4 · Correcciones por entrada** (detalle completo en D-44 de `research/DECISIONES.md`):
+>
+> | # | Enmienda |
+> |---|---|
+> | **D2** | El reintento indefinido va en el **motor corregido**, con refresco **ideal 1 s / aceptable 2–4 s**, y **sin degradar la velocidad de los backtests**. |
+> | **D3** | Redacción corregida: no es «una ficha por posición» sino **una POSICIÓN por ESTRATEGIA**. |
+> | **D4** | Las re-entradas **se preservan y comentan** (el plan las explorará). Para P-CAP/P-AVA se reproduce **lo que el dato diga que pasó**, no lo que se recuerde. **Verificar contra `deals_raw`.** |
+> | **D6** | Para P-CAP/P-AVA la ventana 18:00–18:45 se reproduce **verbatim**. |
+> | **D7** | En el **motor corregido**, el trailing debe seguir precio e indicadores **en vivo, sin lag de cierre de vela**. |
+> | **D8** | 🟡 La re-entrada inmediata tras cierre por SL queda **INDETERMINADA**: puede ser motivo de pérdida, de utilidad, o ruido. No se asume signo. Pendiente de estudio formal. |
+
+---
+
 ## Resumen
 
 | # | Divergencia | Efecto | Muerde en |

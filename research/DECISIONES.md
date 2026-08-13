@@ -796,3 +796,62 @@ variables con una sola medición, y el overlay absorbía el error del motor.
 Decidirlo ahora hornea la contaminación en el modelo de costes. Se re-deriva después, con el motor
 ya fiel y con la ventana viva —donde existen **ambos** feeds a la vez— como base empírica del
 traspaso, en vez de por extrapolación.
+
+### D-44 · 2026-08-13 · Correcciones del user sobre el catálogo de divergencias y la franja horaria
+*(Procedencia: instrucciones explícitas del user, 2026-08-13. **Aditivo**: corrige y extiende
+D-39…D-43 y el catálogo `research/motores/DIVERGENCIAS-harness-vs-faulty.md`. Nada se elimina.)*
+
+**🔴 RETRACTADO — la «ventana de Londres» era una mala interpretación del orquestador.**
+La sesión previa observó que los cierres manuales caían entre las 03:00 y las 10:00 de servidor y
+concluyó que esa franja era la propicia. **Es falso, y el user aporta el dato que lo refuta:** la
+hora de los cierres manuales **no tiene valor métrico**: un operador se conectó a monitorear **al
+azar** a esas horas. Las posiciones que ganaron dinero **se abrieron mucho antes** y simplemente
+lograron sobrevivir hasta que alguien miró la pantalla. Las posiciones abiertas requieren
+supervisión constante, que no existió. **La distribución horaria de los cierres manuales es ruido
+de disponibilidad humana, no señal de mercado.** No usarla para nada. Queda como confusor muerto.
+
+**Corrección de husos.** El reloj del servidor **coincide con la hora local de Chile**: la primera
+apertura de cada día cae a las **18:45 servidor = 18:45 local**, confirmado experiencialmente por el
+user y por `deals_raw`. Lo que estaba mal era la atribución de mercado: **18:00 local es la apertura
+del mercado ASIÁTICO**, no Londres (error de usuario, reconocido y corregido). La franja que el bot
+operó fue **18:00 → 03:00 ≈ 9 h ≈ 37 % del día**.
+
+**El objetivo real a extrapolar** no es «Londres» ni una hora concreta: es que las estrategias
+abran posiciones en el **~40 % del día con mayor volatilidad y volumen**. Esa es la filosofía que se
+transfiere al motor corregido sobre AVA. Cuál es ese 40 % en cada época **se mide sobre los ticks**,
+no se deduce de tablas de husos horarios — el offset del servidor de AVA no está verificado y puede
+no haber sido constante en 4 años.
+
+**Correcciones al catálogo de divergencias, por entrada:**
+
+- **D1** — confirmada. Se preserva y se etiqueta donde corresponda para no perderla dentro de la
+  ejecución del plan.
+- **D2** — el reintento indefinido va en el **motor corregido/extendido**, no como fin en sí mismo.
+  Objetivo: que el sistema alcance a **reaccionar a variaciones grandes e inesperadas**. Tasa de
+  refresco **ideal 1 s, aceptable 2–4 s**. Restricción dura: **no debe degradar la velocidad de los
+  backtests** — correr volúmenes grandes tiene que seguir siendo eficiente sin perder calidad ni
+  paridad.
+- **D3** — 🔴 **redacción corregida**: no es «una ficha por posición», es **una POSICIÓN por
+  ESTRATEGIA**.
+- **D4** — las re-entradas **se preservan y se comentan**: el plan de investigación las explorará
+  más adelante. Pero para P-CAP y P-AVA **se reproduce lo que realmente ocurrió** en el historial de
+  S6 y ST, **derivado del dato, no de la percepción** — el propio user marca su recuerdo («creo que
+  era sólo una posición por estrategia») como posiblemente equivocado. **Verificar contra
+  `deals_raw`, no asumir.**
+- **D5** — aceptada como conjetura natural.
+- **D6** — correcta. Para P-CAP/P-AVA la ventana bloqueada 18:00–18:45 se reproduce **verbatim**.
+- **D7** — se preserva tal cual para P-CAP/P-AVA. Para el **motor corregido** el objetivo es que el
+  trailing siga el precio y sus indicadores **en vivo**: si una estrategia debe apretar el stop ante
+  una variación, que pueda hacerlo a la velocidad correcta, **sin el lag de esperar el cierre de
+  vela**.
+- **D8** — lo importante es corregir que cierre una entrada recién abierta con un SL incorrecto.
+  🟡 **Cuestión abierta, anotada como tal:** la re-entrada inmediata tras un cierre por SL **no ha
+  sido trabajada formalmente**. Puede ser **motivo de pérdida, motivo de utilidad, o ruido sin
+  dirección clara de beneficio**. Queda **INDETERMINADA** y pendiente de estudio; no se asume signo.
+- **D9** — confirmada.
+- **D10** — confirmada.
+
+**Sobre el plan:** aceptado tal como se presentó (réplica → P-CAP → P-AVA → corrida sin manuales →
+recién entonces corregir/extender). Debe quedar registrado de forma que **sobreviva a los cambios de
+sesión** y se integre **sin destruir información previa ni otros pasos ya detallados**: sólo
+extender y corregir. **Prohibido eliminar.**
