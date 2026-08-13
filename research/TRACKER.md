@@ -15,6 +15,27 @@
 
 ## 🔴 ESTADO EN UNA LÍNEA (actualizar SIEMPRE)
 
+> **2026-08-13 · FASE 0, EJECUTANDO — la RÉPLICA DEL MOTOR FAULTY está construida y verde.**
+> El motor que operó la 902 quedó preservado como ref inmutable (tag `engine-faulty-tomachine-902`
+> → `b113eb7`, en `refs/m2/*`), documentado en `research/motores/`, con la entrega de máquina 2
+> (468 MB) movida a `data/entregas/2026-08-12-maquina2-tomachine-902/` y verificada por MD5.
+> Los **tres componentes de la réplica están commiteados y verdes**: A `estado_por_barra`
+> (`7205f0c`), B `ciclos` (`017fa04` + `b0e6902`), C `config_faulty` vendorizada (`364f82f`).
+> **`pytest tests/analysis -q` → 121 passed**, foreground. Hash anti-deriva del vendorizado idéntico
+> en disco, en `b113eb7` y en `HEAD`. **R1-bis intacto: cero ficheros vivos modificados en toda la
+> sesión** (`git diff c70dcb2..HEAD -- sentinel_engine/ backtest.py` vacío).
+> ⏳ **Falta el LLAMADOR y el COMPARADOR**: nadie ha corrido todavía la réplica extremo a extremo
+> contra la ventana 902. P-CAP y P-AVA siguen **sin medir**.
+> 🔴 **El llamador DEBE tomar la config de `config_faulty`, no de `_GOLIVE_M15` ni del roster
+> `tomachine` del working tree** (spec §2-bis): el del working tree tiene 4 configs, sin `volume` y
+> **sin `active_fichas=1`** — usarlo reintroduce D3 en silencio.
+> 🟡 **Abierto y sin resolver por conjetura:** la equivalencia `motivo_cierre` ↔ `reason` de MT5.
+> El historial tiene **21 cierres `EXPERT`** pero el log sólo tabula **3 `CLOSE` + 9 `FALLBACK`**.
+> Faltan 9 por explicar; se mide al construir el comparador (spec §3-bis).
+
+> ---
+> **Estado previo (2026-08-12), vigente en lo que no contradiga lo anterior:**
+
 > **2026-08-12 · FASE 0 (Preparación), EJECUTANDO.** Cerradas y verificadas contra artefactos
 > crudos: T0.1, T0.0, T0.11a, T0.2, T0.9-min, T0.3a/T0.3b/T0.4a/T0.5a (tooling), **T0.3**,
 > **T0.4** (top-up Capitaria, +2.584.669 ticks de julio recuperados), **T0.5** (304 deals / 152
@@ -198,6 +219,23 @@ del user.
 ---
 
 ## BITÁCORA (append-only · más reciente arriba)
+
+- **2026-08-13** · Opus 5 (controlador) + 5 subagentes Sonnet · **Sesión de preservación y réplica
+  del motor faulty.** Preservado `b113eb7` como tag inmutable en `refs/m2/*`; entrega de máquina 2
+  (468 MB, 1.271 ficheros) movida a `data/entregas/` y verificada por MD5. Escritas D-39 a D-45
+  (D-39 se citaba desde sesiones previas pero **nunca se había escrito**: el ledger terminaba en
+  D-38). Catálogo de 10 divergencias harness-vs-vivo + spec cerrado de la réplica con dos addenda.
+  Tres componentes implementados por TDD y verdes (121 passed).
+  **Hallazgos que cambian conclusiones previas:** (a) los 11 cierres manuales aportan +28,4 M CLP
+  sobre un neto de +15,2 M — sin ellos la cuenta **pierde 13,2 M** y SuperTrend hace −16,2 M; el
+  «7 %» era conteo, no magnitud; (b) el gate de spread del harness es una **banda** `[0,45;0,55]` y
+  el del vivo un **cap** `≤0,50` — indistinguibles en Capitaria, pero la banda admite **0,0-0,2 %**
+  de los ticks de AVA entre 2022-01 y 2024-11, o sea 35 de 56 meses en blanco; (c) el roster
+  `tomachine` del working tree **no es el que corrió** (4 configs, sin `active_fichas=1`).
+  **Retractado:** la «ventana de Londres» (D-44) — la hora de los cierres manuales es ruido de
+  disponibilidad humana, no señal de mercado. **Errores propios corregidos:** `SPREAD_GATE_SKIP`
+  leído como censo cuando es contador por ciclo; y ventana construida con `.timestamp()` en vez de
+  `calendar.timegm()`, corrida 4 h, que costó 2 aperturas de borde (son **152**, no 150).
 
 - **2026-08-12** · Sonnet 5 (investigador) + verificación del controlador · 🔴 **HIPÓTESIS DEL
   CONTROLADOR REFUTADA, y aparecen DOS divergencias de config que la sustituyen.**
