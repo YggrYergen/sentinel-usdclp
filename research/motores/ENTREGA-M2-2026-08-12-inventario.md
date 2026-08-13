@@ -3,13 +3,18 @@
 Recibida 2026-08-12. Generada en la máquina que operó la DEMO **2883016902**, en modo
 estrictamente de solo lectura (ningún fichero de su repo fue modificado).
 
-**Ubicación actual:** `C:\Users\tomas\Downloads\M2_ENTREGA\M2_ENTREGA\` · **468 MB**
+**Ubicación:** `D:\FOREX\data\entregas\2026-08-12-maquina2-tomachine-902\` · **468 MB**
+(1.271 ficheros). Fuera de git por la regla `data/*` del `.gitignore`, que es lo correcto: son
+datos, no código.
 
-> 🔴 **Riesgo de custodia.** Sólo el `.bundle` está a salvo: sus objetos ya viven dentro de nuestro
-> repo (tag `engine-faulty-tomachine-902`). **Todo lo demás existe únicamente en `Downloads`** — y
-> ahí está la `research.db` cuyos `deals_raw` dieron vuelta la conclusión sobre los cierres
-> manuales (D-43), más los 70 MB de audit log que son la verdad de terreno de A6. Downloads es una
-> carpeta volátil. **Pendiente: mover a una ruta durable.** No se ha hecho por iniciativa propia.
+Copiada desde `C:\Users\tomas\Downloads\M2_ENTREGA\M2_ENTREGA\` el 2026-08-13 y **verificada por
+MD5** en las tres piezas críticas (`repo-completo.bundle`, `repo/data/research.db`,
+`logs_ejecutor/audit_ventana_*.log`). El original de `Downloads` **no se ha borrado** — esa decisión
+es del user.
+
+Junto a los datos quedan las tres versiones vigentes del análisis, para que la carpeta se explique
+sola sin depender del repo: `ANALISIS-DE-CONTENIDOS.md` (copia de este fichero),
+`DIVERGENCIAS-harness-vs-faulty.md` y `MOTOR-FAULTY-descriptor.md`.
 
 ---
 
