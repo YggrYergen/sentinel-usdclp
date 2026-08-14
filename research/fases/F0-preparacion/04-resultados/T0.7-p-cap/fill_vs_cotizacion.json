@@ -1,0 +1,1149 @@
+{
+  "lineage": {
+    "run_id": "F0-A6-FILL-0001",
+    "area": "T0.7",
+    "experimento": "fill_vs_cotizacion",
+    "substrate_id": "capitaria_ticks_XAUUSD_202607_202608",
+    "git_sha": "3e15070505756f0dd68bd5710fd774898295f5f6",
+    "etapa": "medicion",
+    "generador": "scripts/analysis/realtick_bt/faulty/fill_vs_cotizacion.py",
+    "timestamp": "2026-08-14T00:21:59.944748+00:00"
+  },
+  "agregados": {
+    "global": {
+      "n_eventos": 304,
+      "n_ticks_segundo_cero": 17,
+      "n_vigente_no_evaluable": 0,
+      "n_ticks_1_cero": 4,
+      "n_ticks_2_cero": 2,
+      "n_ticks_5_cero": 0,
+      "n_ticks_30_cero": 0,
+      "dist_min_segundo": {
+        "p50": 0.0,
+        "p90": 0.05400000000008765,
+        "max": 0.5399999999999636,
+        "n_evaluable": 287
+      },
+      "dist_min_1": {
+        "p50": 0.0,
+        "p90": 0.04999999999936335,
+        "max": 0.5300000000002001,
+        "n_evaluable": 300
+      },
+      "dist_min_2": {
+        "p50": 0.0,
+        "p90": 0.03999999999996362,
+        "max": 0.4800000000000182,
+        "n_evaluable": 302
+      },
+      "dist_min_5": {
+        "p50": 0.0,
+        "p90": 0.01999999999998181,
+        "max": 0.4800000000000182,
+        "n_evaluable": 304
+      },
+      "dist_min_30": {
+        "p50": 0.0,
+        "p90": 0.010000000000218279,
+        "max": 0.13000000000010914,
+        "n_evaluable": 304
+      },
+      "hit_exacto_segundo": {
+        "pct": 53.289473684210535,
+        "n_true": 162,
+        "n": 304
+      },
+      "hit_exacto_vigente": {
+        "pct": 19.078947368421055,
+        "n_true": 58,
+        "n": 304
+      },
+      "hit_exacto_segundo_lado_opuesto": {
+        "pct": 0.6578947368421052,
+        "n_true": 2,
+        "n": 304
+      },
+      "hit_exacto_1": {
+        "pct": 65.13157894736842,
+        "n_true": 198,
+        "n": 304
+      },
+      "hit_exacto_2": {
+        "pct": 68.75,
+        "n_true": 209,
+        "n": 304
+      },
+      "hit_exacto_5": {
+        "pct": 73.02631578947368,
+        "n_true": 222,
+        "n": 304
+      },
+      "hit_exacto_30": {
+        "pct": 84.86842105263158,
+        "n_true": 258,
+        "n": 304
+      },
+      "dentro_rango_segundo": {
+        "pct": 86.8421052631579,
+        "n_true": 264,
+        "n": 304
+      },
+      "dentro_rango_1": {
+        "pct": 98.68421052631578,
+        "n_true": 300,
+        "n": 304
+      },
+      "dentro_rango_2": {
+        "pct": 99.3421052631579,
+        "n_true": 302,
+        "n": 304
+      },
+      "dentro_rango_5": {
+        "pct": 100.0,
+        "n_true": 304,
+        "n": 304
+      },
+      "dentro_rango_30": {
+        "pct": 100.0,
+        "n_true": 304,
+        "n": 304
+      }
+    },
+    "por_evento": {
+      "OPEN": {
+        "n_eventos": 152,
+        "n_ticks_segundo_cero": 14,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 3,
+        "n_ticks_2_cero": 2,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.010000000000218279,
+          "max": 0.1499999999996362,
+          "n_evaluable": 138
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 149
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 150
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 152
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 152
+        },
+        "hit_exacto_segundo": {
+          "pct": 78.94736842105263,
+          "n_true": 120,
+          "n": 152
+        },
+        "hit_exacto_vigente": {
+          "pct": 31.57894736842105,
+          "n_true": 48,
+          "n": 152
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.6578947368421052,
+          "n_true": 1,
+          "n": 152
+        },
+        "hit_exacto_1": {
+          "pct": 98.02631578947368,
+          "n_true": 149,
+          "n": 152
+        },
+        "hit_exacto_2": {
+          "pct": 98.68421052631578,
+          "n_true": 150,
+          "n": 152
+        },
+        "hit_exacto_5": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        },
+        "hit_exacto_30": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        },
+        "dentro_rango_segundo": {
+          "pct": 82.89473684210526,
+          "n_true": 126,
+          "n": 152
+        },
+        "dentro_rango_1": {
+          "pct": 98.02631578947368,
+          "n_true": 149,
+          "n": 152
+        },
+        "dentro_rango_2": {
+          "pct": 98.68421052631578,
+          "n_true": 150,
+          "n": 152
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        }
+      },
+      "CLOSE": {
+        "n_eventos": 152,
+        "n_ticks_segundo_cero": 3,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 1,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.019999999999527063,
+          "p90": 0.08400000000028775,
+          "max": 0.5399999999999636,
+          "n_evaluable": 149
+        },
+        "dist_min_1": {
+          "p50": 0.010000000000218279,
+          "p90": 0.07999999999992724,
+          "max": 0.5300000000002001,
+          "n_evaluable": 151
+        },
+        "dist_min_2": {
+          "p50": 0.010000000000218279,
+          "p90": 0.0600000000003547,
+          "max": 0.4800000000000182,
+          "n_evaluable": 152
+        },
+        "dist_min_5": {
+          "p50": 0.009999999999763531,
+          "p90": 0.0500000000001819,
+          "max": 0.4800000000000182,
+          "n_evaluable": 152
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.019999999999527063,
+          "max": 0.13000000000010914,
+          "n_evaluable": 152
+        },
+        "hit_exacto_segundo": {
+          "pct": 27.631578947368425,
+          "n_true": 42,
+          "n": 152
+        },
+        "hit_exacto_vigente": {
+          "pct": 6.578947368421052,
+          "n_true": 10,
+          "n": 152
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.6578947368421052,
+          "n_true": 1,
+          "n": 152
+        },
+        "hit_exacto_1": {
+          "pct": 32.23684210526316,
+          "n_true": 49,
+          "n": 152
+        },
+        "hit_exacto_2": {
+          "pct": 38.81578947368421,
+          "n_true": 59,
+          "n": 152
+        },
+        "hit_exacto_5": {
+          "pct": 46.05263157894737,
+          "n_true": 70,
+          "n": 152
+        },
+        "hit_exacto_30": {
+          "pct": 69.73684210526315,
+          "n_true": 106,
+          "n": 152
+        },
+        "dentro_rango_segundo": {
+          "pct": 90.78947368421053,
+          "n_true": 138,
+          "n": 152
+        },
+        "dentro_rango_1": {
+          "pct": 99.3421052631579,
+          "n_true": 151,
+          "n": 152
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 152,
+          "n": 152
+        }
+      }
+    },
+    "por_reason_close": {
+      "SL": {
+        "n_eventos": 119,
+        "n_ticks_segundo_cero": 0,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 0,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.020000000000436557,
+          "p90": 0.1000000000003638,
+          "max": 0.5399999999999636,
+          "n_evaluable": 119
+        },
+        "dist_min_1": {
+          "p50": 0.020000000000436557,
+          "p90": 0.1,
+          "max": 0.5300000000002001,
+          "n_evaluable": 119
+        },
+        "dist_min_2": {
+          "p50": 0.010000000000218279,
+          "p90": 0.0800000000000182,
+          "max": 0.4800000000000182,
+          "n_evaluable": 119
+        },
+        "dist_min_5": {
+          "p50": 0.010000000000218279,
+          "p90": 0.05200000000022558,
+          "max": 0.4800000000000182,
+          "n_evaluable": 119
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.01999999999998181,
+          "max": 0.13000000000010914,
+          "n_evaluable": 119
+        },
+        "hit_exacto_segundo": {
+          "pct": 15.126050420168067,
+          "n_true": 18,
+          "n": 119
+        },
+        "hit_exacto_vigente": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 119
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.8403361344537815,
+          "n_true": 1,
+          "n": 119
+        },
+        "hit_exacto_1": {
+          "pct": 15.126050420168067,
+          "n_true": 18,
+          "n": 119
+        },
+        "hit_exacto_2": {
+          "pct": 22.689075630252102,
+          "n_true": 27,
+          "n": 119
+        },
+        "hit_exacto_5": {
+          "pct": 31.932773109243694,
+          "n_true": 38,
+          "n": 119
+        },
+        "hit_exacto_30": {
+          "pct": 62.18487394957983,
+          "n_true": 74,
+          "n": 119
+        },
+        "dentro_rango_segundo": {
+          "pct": 94.11764705882352,
+          "n_true": 112,
+          "n": 119
+        },
+        "dentro_rango_1": {
+          "pct": 100.0,
+          "n_true": 119,
+          "n": 119
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 119,
+          "n": 119
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 119,
+          "n": 119
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 119,
+          "n": 119
+        }
+      },
+      "EXPERT": {
+        "n_eventos": 21,
+        "n_ticks_segundo_cero": 3,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 1,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.01999999999998181,
+          "max": 0.03000000000020009,
+          "n_evaluable": 18
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 20
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 21
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 21
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 21
+        },
+        "hit_exacto_segundo": {
+          "pct": 66.66666666666666,
+          "n_true": 14,
+          "n": 21
+        },
+        "hit_exacto_vigente": {
+          "pct": 33.33333333333333,
+          "n_true": 7,
+          "n": 21
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 21
+        },
+        "hit_exacto_1": {
+          "pct": 95.23809523809523,
+          "n_true": 20,
+          "n": 21
+        },
+        "hit_exacto_2": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        },
+        "hit_exacto_5": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        },
+        "hit_exacto_30": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        },
+        "dentro_rango_segundo": {
+          "pct": 66.66666666666666,
+          "n_true": 14,
+          "n": 21
+        },
+        "dentro_rango_1": {
+          "pct": 95.23809523809523,
+          "n_true": 20,
+          "n": 21
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 21,
+          "n": 21
+        }
+      },
+      "CLIENT_manual": {
+        "n_eventos": 11,
+        "n_ticks_segundo_cero": 0,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 0,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.010000000000218279,
+          "n_evaluable": 11
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 11
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 11
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 11
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "n_evaluable": 11
+        },
+        "hit_exacto_segundo": {
+          "pct": 90.9090909090909,
+          "n_true": 10,
+          "n": 11
+        },
+        "hit_exacto_vigente": {
+          "pct": 27.27272727272727,
+          "n_true": 3,
+          "n": 11
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 11
+        },
+        "hit_exacto_1": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "hit_exacto_2": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "hit_exacto_5": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "hit_exacto_30": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "dentro_rango_segundo": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "dentro_rango_1": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 11,
+          "n": 11
+        }
+      },
+      "TP": {
+        "n_eventos": 1,
+        "n_ticks_segundo_cero": 0,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 0,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.01999999999998181,
+          "p90": 0.01999999999998181,
+          "max": 0.01999999999998181,
+          "n_evaluable": 1
+        },
+        "dist_min_1": {
+          "p50": 0.01999999999998181,
+          "p90": 0.01999999999998181,
+          "max": 0.01999999999998181,
+          "n_evaluable": 1
+        },
+        "dist_min_2": {
+          "p50": 0.01999999999998181,
+          "p90": 0.01999999999998181,
+          "max": 0.01999999999998181,
+          "n_evaluable": 1
+        },
+        "dist_min_5": {
+          "p50": 0.01999999999998181,
+          "p90": 0.01999999999998181,
+          "max": 0.01999999999998181,
+          "n_evaluable": 1
+        },
+        "dist_min_30": {
+          "p50": 0.009999999999763531,
+          "p90": 0.009999999999763531,
+          "max": 0.009999999999763531,
+          "n_evaluable": 1
+        },
+        "hit_exacto_segundo": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_vigente": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_1": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_2": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_5": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "hit_exacto_30": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 1
+        },
+        "dentro_rango_segundo": {
+          "pct": 100.0,
+          "n_true": 1,
+          "n": 1
+        },
+        "dentro_rango_1": {
+          "pct": 100.0,
+          "n_true": 1,
+          "n": 1
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 1,
+          "n": 1
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 1,
+          "n": 1
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 1,
+          "n": 1
+        }
+      }
+    },
+    "por_estrategia": {
+      "SAR::S6-K2P0": {
+        "n_eventos": 168,
+        "n_ticks_segundo_cero": 12,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 3,
+        "n_ticks_2_cero": 1,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.0500000000001819,
+          "max": 0.1499999999996362,
+          "n_evaluable": 156
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.03999999999996362,
+          "max": 0.13999999999941792,
+          "n_evaluable": 165
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.03999999999996362,
+          "max": 0.09999999999990905,
+          "n_evaluable": 167
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.01999999999998181,
+          "max": 0.09999999999990905,
+          "n_evaluable": 168
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.009999999999445208,
+          "max": 0.0500000000001819,
+          "n_evaluable": 168
+        },
+        "hit_exacto_segundo": {
+          "pct": 54.761904761904766,
+          "n_true": 92,
+          "n": 168
+        },
+        "hit_exacto_vigente": {
+          "pct": 20.238095238095237,
+          "n_true": 34,
+          "n": 168
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 1.1904761904761905,
+          "n_true": 2,
+          "n": 168
+        },
+        "hit_exacto_1": {
+          "pct": 68.45238095238095,
+          "n_true": 115,
+          "n": 168
+        },
+        "hit_exacto_2": {
+          "pct": 73.21428571428571,
+          "n_true": 123,
+          "n": 168
+        },
+        "hit_exacto_5": {
+          "pct": 77.38095238095238,
+          "n_true": 130,
+          "n": 168
+        },
+        "hit_exacto_30": {
+          "pct": 88.09523809523809,
+          "n_true": 148,
+          "n": 168
+        },
+        "dentro_rango_segundo": {
+          "pct": 85.11904761904762,
+          "n_true": 143,
+          "n": 168
+        },
+        "dentro_rango_1": {
+          "pct": 98.21428571428571,
+          "n_true": 165,
+          "n": 168
+        },
+        "dentro_rango_2": {
+          "pct": 99.40476190476191,
+          "n_true": 167,
+          "n": 168
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 168,
+          "n": 168
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 168,
+          "n": 168
+        }
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "n_eventos": 136,
+        "n_ticks_segundo_cero": 5,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 1,
+        "n_ticks_2_cero": 1,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.07000000000016371,
+          "max": 0.5399999999999636,
+          "n_evaluable": 131
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.0560000000000401,
+          "max": 0.5300000000002001,
+          "n_evaluable": 135
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.046000000000094673,
+          "max": 0.4800000000000182,
+          "n_evaluable": 135
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.020000000000209184,
+          "max": 0.4800000000000182,
+          "n_evaluable": 136
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.010000000000218279,
+          "max": 0.13000000000010914,
+          "n_evaluable": 136
+        },
+        "hit_exacto_segundo": {
+          "pct": 51.470588235294116,
+          "n_true": 70,
+          "n": 136
+        },
+        "hit_exacto_vigente": {
+          "pct": 17.647058823529413,
+          "n_true": 24,
+          "n": 136
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.0,
+          "n_true": 0,
+          "n": 136
+        },
+        "hit_exacto_1": {
+          "pct": 61.029411764705884,
+          "n_true": 83,
+          "n": 136
+        },
+        "hit_exacto_2": {
+          "pct": 63.23529411764706,
+          "n_true": 86,
+          "n": 136
+        },
+        "hit_exacto_5": {
+          "pct": 67.64705882352942,
+          "n_true": 92,
+          "n": 136
+        },
+        "hit_exacto_30": {
+          "pct": 80.88235294117648,
+          "n_true": 110,
+          "n": 136
+        },
+        "dentro_rango_segundo": {
+          "pct": 88.97058823529412,
+          "n_true": 121,
+          "n": 136
+        },
+        "dentro_rango_1": {
+          "pct": 99.26470588235294,
+          "n_true": 135,
+          "n": 136
+        },
+        "dentro_rango_2": {
+          "pct": 99.26470588235294,
+          "n_true": 135,
+          "n": 136
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 136,
+          "n": 136
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 136,
+          "n": 136
+        }
+      }
+    },
+    "por_side": {
+      "BUY": {
+        "n_eventos": 164,
+        "n_ticks_segundo_cero": 4,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 2,
+        "n_ticks_2_cero": 2,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.06999999999975444,
+          "max": 0.4099999999998545,
+          "n_evaluable": 160
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.0500000000001819,
+          "max": 0.3000000000001819,
+          "n_evaluable": 162
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.03999999999996362,
+          "max": 0.3000000000001819,
+          "n_evaluable": 162
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.020000000000300132,
+          "max": 0.3000000000001819,
+          "n_evaluable": 164
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.010000000000218279,
+          "max": 0.13000000000010914,
+          "n_evaluable": 164
+        },
+        "hit_exacto_segundo": {
+          "pct": 57.3170731707317,
+          "n_true": 94,
+          "n": 164
+        },
+        "hit_exacto_vigente": {
+          "pct": 14.02439024390244,
+          "n_true": 23,
+          "n": 164
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.6097560975609756,
+          "n_true": 1,
+          "n": 164
+        },
+        "hit_exacto_1": {
+          "pct": 65.2439024390244,
+          "n_true": 107,
+          "n": 164
+        },
+        "hit_exacto_2": {
+          "pct": 69.51219512195121,
+          "n_true": 114,
+          "n": 164
+        },
+        "hit_exacto_5": {
+          "pct": 73.78048780487805,
+          "n_true": 121,
+          "n": 164
+        },
+        "hit_exacto_30": {
+          "pct": 84.7560975609756,
+          "n_true": 139,
+          "n": 164
+        },
+        "dentro_rango_segundo": {
+          "pct": 90.85365853658537,
+          "n_true": 149,
+          "n": 164
+        },
+        "dentro_rango_1": {
+          "pct": 98.78048780487805,
+          "n_true": 162,
+          "n": 164
+        },
+        "dentro_rango_2": {
+          "pct": 98.78048780487805,
+          "n_true": 162,
+          "n": 164
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 164,
+          "n": 164
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 164,
+          "n": 164
+        }
+      },
+      "SELL": {
+        "n_eventos": 140,
+        "n_ticks_segundo_cero": 13,
+        "n_vigente_no_evaluable": 0,
+        "n_ticks_1_cero": 2,
+        "n_ticks_2_cero": 0,
+        "n_ticks_5_cero": 0,
+        "n_ticks_30_cero": 0,
+        "dist_min_segundo": {
+          "p50": 0.0,
+          "p90": 0.0500000000001819,
+          "max": 0.5399999999999636,
+          "n_evaluable": 127
+        },
+        "dist_min_1": {
+          "p50": 0.0,
+          "p90": 0.03999999999996362,
+          "max": 0.5300000000002001,
+          "n_evaluable": 138
+        },
+        "dist_min_2": {
+          "p50": 0.0,
+          "p90": 0.0310000000005858,
+          "max": 0.4800000000000182,
+          "n_evaluable": 140
+        },
+        "dist_min_5": {
+          "p50": 0.0,
+          "p90": 0.01999999999998181,
+          "max": 0.4800000000000182,
+          "n_evaluable": 140
+        },
+        "dist_min_30": {
+          "p50": 0.0,
+          "p90": 0.009999999999763531,
+          "max": 0.06000000000040018,
+          "n_evaluable": 140
+        },
+        "hit_exacto_segundo": {
+          "pct": 48.57142857142857,
+          "n_true": 68,
+          "n": 140
+        },
+        "hit_exacto_vigente": {
+          "pct": 25.0,
+          "n_true": 35,
+          "n": 140
+        },
+        "hit_exacto_segundo_lado_opuesto": {
+          "pct": 0.7142857142857143,
+          "n_true": 1,
+          "n": 140
+        },
+        "hit_exacto_1": {
+          "pct": 65.0,
+          "n_true": 91,
+          "n": 140
+        },
+        "hit_exacto_2": {
+          "pct": 67.85714285714286,
+          "n_true": 95,
+          "n": 140
+        },
+        "hit_exacto_5": {
+          "pct": 72.14285714285714,
+          "n_true": 101,
+          "n": 140
+        },
+        "hit_exacto_30": {
+          "pct": 85.0,
+          "n_true": 119,
+          "n": 140
+        },
+        "dentro_rango_segundo": {
+          "pct": 82.14285714285714,
+          "n_true": 115,
+          "n": 140
+        },
+        "dentro_rango_1": {
+          "pct": 98.57142857142858,
+          "n_true": 138,
+          "n": 140
+        },
+        "dentro_rango_2": {
+          "pct": 100.0,
+          "n_true": 140,
+          "n": 140
+        },
+        "dentro_rango_5": {
+          "pct": 100.0,
+          "n_true": 140,
+          "n": 140
+        },
+        "dentro_rango_30": {
+          "pct": 100.0,
+          "n_true": 140,
+          "n": 140
+        }
+      }
+    },
+    "delta_vigente_signo_por_side_evento": {
+      "BUY|OPEN": {
+        "n_total": 82,
+        "n_evaluable": 82,
+        "n_no_evaluable": 0,
+        "mediana_con_signo": 0.0,
+        "n_positivo": 40,
+        "n_cero": 19,
+        "n_negativo": 23
+      },
+      "BUY|CLOSE": {
+        "n_total": 82,
+        "n_evaluable": 82,
+        "n_no_evaluable": 0,
+        "mediana_con_signo": -0.18000000000006366,
+        "n_positivo": 8,
+        "n_cero": 4,
+        "n_negativo": 70
+      },
+      "SELL|OPEN": {
+        "n_total": 70,
+        "n_evaluable": 70,
+        "n_no_evaluable": 0,
+        "mediana_con_signo": 0.0,
+        "n_positivo": 17,
+        "n_cero": 29,
+        "n_negativo": 24
+      },
+      "SELL|CLOSE": {
+        "n_total": 70,
+        "n_evaluable": 70,
+        "n_no_evaluable": 0,
+        "mediana_con_signo": 0.17999999999960892,
+        "n_positivo": 57,
+        "n_cero": 6,
+        "n_negativo": 7
+      }
+    }
+  }
+}
