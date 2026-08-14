@@ -1,0 +1,125 @@
+{
+  "estratificacion_delta_t_open": {
+    "n_emparejadas": 147,
+    "por_tramo": {
+      "<1 s": {
+        "n": 42,
+        "pct": 28.5714
+      },
+      "1-16 s": {
+        "n": 57,
+        "pct": 38.7755
+      },
+      "16-60 s": {
+        "n": 9,
+        "pct": 6.1224
+      },
+      "1-15 min": {
+        "n": 19,
+        "pct": 12.9252
+      },
+      "15-60 min": {
+        "n": 0,
+        "pct": 0.0
+      },
+      "1-6 h": {
+        "n": 16,
+        "pct": 10.8844
+      },
+      ">6 h": {
+        "n": 4,
+        "pct": 2.7211
+      }
+    },
+    "percentiles_global": {
+      "p50": 1.2300000190734863,
+      "p75": 61.0,
+      "p90": 6357.500054359436,
+      "p95": 8381.530999994275,
+      "p99": 71579.92500025741,
+      "max": 179395.71005296707,
+      "n": 147
+    },
+    "percentiles_por_estrategia": {
+      "SAR::S6-K2P0": {
+        "p50": 1.2300000190734863,
+        "p75": 60.88499999046326,
+        "p90": 6258.5200487136835,
+        "p95": 6368.684034538269,
+        "p99": 57164.84835454932,
+        "max": 66564.0,
+        "n": 83
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "p50": 1.2300000190734863,
+        "p75": 89.25,
+        "p90": 6358.739059686661,
+        "p95": 8418.765499997138,
+        "p99": 114163.64521989797,
+        "max": 179395.71005296707,
+        "n": 64
+      }
+    },
+    "percentiles_por_side": {
+      "BUY": {
+        "p50": 1.2300000190734863,
+        "p75": 165.69249999523163,
+        "p90": 6362.408052825927,
+        "p95": 14234.349999999975,
+        "p99": 99667.63081255,
+        "max": 179395.71005296707,
+        "n": 78
+      },
+      "SELL": {
+        "p50": 1.2300000190734863,
+        "p75": 46.769999980926514,
+        "p90": 1278.3539999962004,
+        "p95": 6358.87405500412,
+        "p99": 23412.361982249895,
+        "max": 55101.61994457245,
+        "n": 69
+      }
+    }
+  },
+  "n_cola_gt_60s": 39,
+  "n_sin_pareja": 15,
+  "conteo_tipo_dominante_intervalo_cola": {
+    "OPEN_SKIPPED_SL_CROSSED": 16,
+    "MODIFY": 10,
+    "OPEN": 6,
+    "CLOSE": 4,
+    "SPREAD_GATE_SKIP": 3
+  },
+  "blocked_open_window": {
+    "inicio": "18:00",
+    "fin": "18:45"
+  },
+  "verificacion_epoch_servidor": [
+    {
+      "epoch": 1785178410.0,
+      "t_open_servidor_csv": "2026-07-27 18:53:30",
+      "calculado": "2026-07-27 18:53:30",
+      "coincide": true
+    },
+    {
+      "epoch": 1785178410.0,
+      "t_open_servidor_csv": "2026-07-27 18:53:30",
+      "calculado": "2026-07-27 18:53:30",
+      "coincide": true
+    },
+    {
+      "epoch": 1785264307.0,
+      "t_open_servidor_csv": "2026-07-28 18:45:07",
+      "calculado": "2026-07-28 18:45:07",
+      "coincide": true
+    }
+  ],
+  "run_id": "F0-A6-COLA-0001",
+  "area": "T0.7",
+  "experimento": "censo_cola_t_open",
+  "substrate_id": "p_cap_reloj_reconstruido",
+  "git_sha": "3e15070505756f0dd68bd5710fd774898295f5f6",
+  "etapa": "medicion",
+  "generador": "scripts/analysis/realtick_bt/faulty/censo_cola_t_open.py",
+  "timestamp": "2026-08-14T00:15:50.077784Z"
+}

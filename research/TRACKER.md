@@ -15,6 +15,62 @@
 
 ## 🔴 ESTADO EN UNA LÍNEA (actualizar SIEMPRE)
 
+> **2026-08-13 (madrugada del 14) · FASE 0 · T0.7 — LAS DOS CAUSAS DEL RESIDUO ESTÁN MEDIDAS.
+> Una es techo estructural; la otra no, y el sospechoso que teníamos era el equivocado.**
+> Dos corridas nuevas, ambas con suite verde (`pytest tests/analysis -q` → **214 passed, 0 failed**;
+> commit `50ff2b8`): **`F0-A6-FILL-0001`** y **`F0-A6-COLA-0001`**.
+> 🟢 **APERTURAS — la hipótesis del fill del bróker queda FALSADA.** El precio real de llenado **sí
+> está en el lago**: casa exacto con alguna cotización del **mismo segundo** en **120/152 (78,9 %)**,
+> **98,0 %** a ±1 s y **100 % a ±5 s**; `dist_min` p50 = **0,000**. Control de lado invertido 0,7 %,
+> así que la convención BUY→ask / SELL→bid es correcta. **No hay techo en apertura: el residuo de
+> cuatro centavos es NUESTRO.** Localizado: el tick **vigente** acierta sólo el **31,6 %** frente al
+> 78,9 % de *algún* tick del segundo ⇒ la réplica elige mal **cuál** tick dentro del segundo.
+> 🔴 **CIERRES — la hipótesis se CONFIRMA y queda localizada en los stops server-side.** De los
+> **119 cierres `SL`**, **0 (CERO) coinciden con la cotización vigente**; sólo el 15,1 % casa con
+> alguna del segundo, pero el **94,1 % cae DENTRO del rango** sin igualar a ninguna: se ejecutó en un
+> punto **que el feed nunca publicó**. Firma sistemática y **siempre en contra**: mediana de
+> `precio_real − cotización` = **−0,18 al cerrar largos** (70 de 82 negativos) y **+0,18 al cerrar
+> cortos** (57 de 70 positivos), mientras las **aperturas tienen mediana 0,00 en ambos lados**.
+> **Contraste interno decisivo:** los 21 cierres `EXPERT` (los que mandó el ejecutor a mercado) casan
+> con `dist_min` p50 = **0,000** y máx 0,03. **El techo no es del bróker en general: es de los stops.**
+> 🟠 **Residuo declarado, NO medido:** a ±30 s el 62 % de los `SL` sí casa exacto — compatible con
+> deslizamiento real **y** con que MT5 registre el llenado al **nivel del SL**. Se distingue
+> comparando los 119 `precio_close` contra el SL vigente (recuperable sólo en 61/152, D-45).
+> 🔴 **COLA DEL p90 — el sospechoso del memo (gate horario) queda REFUTADO.** De las **39** posiciones
+> con |Δ t_open| > 60 s, **1 sola** tiene algún `TIME_GATE_SKIP`, y **39/39** abren fuera de
+> `blocked_open_window` tanto en real como en réplica. Distribución **bimodal** con hueco exacto:
+> 42 (<1 s) · 57 (1-16 s) · 9 (16-60 s) · 19 (1-15 min) · **0 (15-60 min)** · 16 (1-6 h) · 4 (>6 h).
+> 🟢 **Causa dominante identificada: EL BORDE DEL DÍA.** Nueve posiciones en **siete días distintos**
+> repiten el patrón: la réplica abre a las **16:59**, la realidad a las **18:45 exactas** (= fin de
+> `blocked_open_window`). Las 16:59 caen inmediatamente antes del **corte de mantenimiento
+> 17:00-17:45** que midió T0.13 y declaró `F0-DATA-CAP-0001`. La divergencia **máxima** del censo es
+> la misma firma con fin de semana: réplica `2026-07-31 16:55`, realidad `2026-08-02 18:45`
+> (**179.396 s**). ⇒ **la réplica opera en la hora muerta y el fin de semana, donde el vivo no podía.**
+> 🟡 **Hipótesis marcada, NO medida:** el mecanismo sería el gate de spread (T0.13: el «gate 0,50» es
+> **un reloj, no un spread**). Falsable viendo qué spread veía la réplica en esos 9 instantes.
+> **Segunda población de la cola:** **16 de 39** tienen `OPEN_SKIPPED_SL_CROSSED` como evento
+> dominante, 14 con la réplica **tarde** y desvíos de precio pequeños (±0,9).
+> 🔴 **CONSECUENCIA SOBRE EL CRITERIO DE D-45, pendiente de decisión del user:** `precio_open` sigue
+> **exigible** (el dato existe al 100 % en ±5 s; que case en 16/137 es defecto de la réplica);
+> `precio_close` es **inalcanzable para los 119 `SL`** y necesita re-especificación, con el mismo
+> cuidado con que D-46 resolvió el instante; los 21 `EXPERT` sí son exigibles.
+> ⚠️ **Limitación del sustrato, declarada:** en `eventos_ejecutor_902.csv` la columna que identifica
+> la estrategia sólo está poblada para algunos tipos de evento (`SENT MODIFY`, `SENT CLOSE`,
+> `SL_CLAMPED`, `FALLBACK_CLOSE_INVALID_SL` **no** la traen), así que el censo del log real no está
+> filtrado por estrategia mientras que el de la réplica sí.
+> 🟢 **Hipótesis del user sobre el operador, MEDIDA contra los deals crudos:** **cero** posiciones
+> abiertas por un humano — las 152 llevan magic de estrategia y `reason=EXPERT`; el único deal de
+> entrada con magic 0 es el **depósito inicial de 50 MM CLP** (`BALANCE`, `2026-07-27 17:00:17`).
+> **Once** cierres `reason=CLIENT` con magic 0 sobre posiciones de estrategia = cierres a mano, ya
+> excluidos del denominador (verificado en `comparacion_p_cap.csv`). Diez de los once son ganadores
+> y dos ocurren en el mismo segundo (`2026-08-10 22:35:24`). En esta exportación los 118 `SL` y el
+> `TP` **sí conservan** el magic de la estrategia.
+> **Memo con la interpretación completa: ADDENDUM II de**
+> `research/fases/F0-preparacion/05-analisis/2026-08-13-memo-P-CAP-primera-corrida.md`.
+>
+> ---
+> **Estado previo (2026-08-13, noche), vigente en lo que no contradiga lo anterior:**
+
 > **2026-08-13 (noche) · FASE 0 · T0.7 — P-CAP MEDIDO DOS VECES. NO PASA, pero el diagnóstico ya
 > nombra sus dos causas.** Cinco componentes verdes y commiteados (A `7205f0c` · B `017fa04`+
 > `b0e6902` · C `364f82f` · D `d63df80`+`5c6360f`+`85a7332`+`f2f812d` · E `1100c27`+`5bfdab4`).

@@ -230,3 +230,153 @@ el precio de llenado lo pone el bróker sin que el ejecutor lo proponga siquiera
 **P-CAP sigue sin pasar: 0 de 135 en los 6 campos.** Lo que hay es un diagnóstico mucho mejor que
 por la mañana, dos causas identificadas —una corregida, otra localizada— y un candidato serio a
 techo estructural. Nada de esto autoriza todavía a usar la réplica para el backtest largo.
+
+---
+
+# ADDENDUM II — Las dos causas, medidas
+
+**2026-08-13, sesión de noche.** Aditivo: nada de lo anterior se retira, y lo que se corrige se
+dice por su nombre. Insumos: `F0-A6-FILL-0001`
+(`04-resultados/T0.7-p-cap/fill_vs_cotizacion.{csv,json,md}`, 304 eventos) y `F0-A6-COLA-0001`
+(`04-resultados/T0.7-p-cap/censo_cola_t_open.{csv,json,md}` + `censo_sin_pareja.csv`).
+Ambas mediciones con suite verde: `pytest tests/analysis -q` → **214 passed, 0 failed**.
+
+## G · Cómo se hizo falsable la hipótesis del fill, y por qué la propuesta del §D era insuficiente
+
+El §D proponía comparar `precio_open` de la réplica contra «el `ask` del tick vigente en el instante
+del fill real». Esa prueba **no habría podido concluir**, y el defecto es el mismo que D-46 tuvo que
+corregir en el instante: la verdad de terreno **sólo tiene resolución de segundo entero**, así que
+«el tick vigente en el instante del fill» es una entidad que la fuente no determina. Dentro de un
+segundo de sesión activa hay decenas de ticks.
+
+La prueba que sí decide compara el precio real contra **el conjunto completo de cotizaciones de ese
+segundo**, y después contra ventanas de ±1, ±2, ±5 y ±30 s. Y no involucra a la réplica en absoluto:
+enfrenta **verdad de terreno contra lago de ticks**. Lleva dos controles: el **lado invertido**
+(bid donde tocaba ask), que acierta el 0,7 % y confirma que la convención BUY→ask / SELL→bid está
+bien puesta; y la separación **por motivo de cierre**, porque un stop server-side y un cierre a
+mercado enviado por el ejecutor son mecanismos distintos y promediarlos habría escondido la
+respuesta.
+
+## H · La hipótesis no era una: eran dos, y dan resultados opuestos
+
+### H.1 · Aperturas — **FALSADA**
+
+| medida | valor |
+|---|---:|
+| `precio_open` real = alguna cotización del **mismo segundo** | **120 / 152 · 78,9 %** |
+| ídem, ventana ±1 s | 149 / 152 · 98,0 % |
+| ídem, ventana ±5 s | **152 / 152 · 100 %** |
+| `dist_min` dentro del segundo | p50 **0,000** · p90 0,010 · max 0,150 (n=138) |
+| control de lado invertido | 1 / 152 · 0,7 % |
+
+El precio al que MT5 llenó **está en nuestro lago**. No hubo ejecución fuera de la cotización
+publicada. **No hay techo estructural en apertura**, y el residuo de cuatro centavos del §C **no es
+del bróker: es nuestro.**
+
+Dónde está exactamente: el **tick vigente** —el último anterior al segundo entero— acierta sólo el
+**31,6 %**, mientras que *algún* tick de ese segundo acierta el 78,9 %. El llenado ocurrió dentro
+del segundo, no en su borde. La réplica elige mal **cuál** tick, dentro de un segundo que la fuente
+no sabe subdividir.
+
+🔴 **Corrijo el §D.** Escribí que «el precio de llenado real no es la cotización del instante, y esa
+diferencia no es reproducible desde los ticks». Para las aperturas eso es **falso**, y la predicción
+que yo mismo dejé escrita es la que lo demuestra.
+
+### H.2 · Cierres — **CONFIRMADA, y localizada**
+
+| medida | todos los cierres | de ellos, `SL` (119) | `EXPERT` (21) |
+|---|---:|---:|---:|
+| = alguna cotización del mismo segundo | 27,6 % | **15,1 %** | — |
+| = cotización **vigente** | 6,6 % | **0 / 119 · 0,0 %** | 7 / 21 |
+| **dentro del rango** del segundo | 90,8 % | 94,1 % | — |
+| dentro del rango a ±1 s | — | **100 %** | — |
+| `dist_min` dentro del segundo | p50 0,020 | p50 0,020 · max 0,540 | p50 **0,000** · max 0,030 |
+
+**Cero de ciento diecinueve.** Ningún cierre por stop coincide con la cotización vigente. Y el
+precio **está dentro del rango del segundo en el 94 % de los casos sin igualar a ninguna cotización
+publicada**: se ejecutó en un punto que el feed nunca publicó. Eso es, por definición, un precio que
+ninguna réplica puede derivar de los ticks.
+
+El signo lo confirma y descarta que sea ruido simétrico:
+
+| | mediana de `precio_real − cotización vigente` | reparto |
+|---|---:|---|
+| BUY · apertura | 0,00 | 40 + / 19 = / 23 − |
+| SELL · apertura | 0,00 | 17 + / 29 = / 24 − |
+| **BUY · cierre** | **−0,18** | 8 + / 4 = / **70 −** |
+| **SELL · cierre** | **+0,18** | **57 +** / 6 = / 7 − |
+
+Un largo cierra 0,18 **por debajo** del bid; un corto, 0,18 **por encima** del ask. Mismo tamaño,
+signo invertido según el lado, **siempre en contra**. Es deslizamiento de ejecución del stop.
+Las aperturas, en cambio, tienen mediana 0,00 en ambos lados: ahí no hay sesgo.
+
+El contraste interno es la prueba más limpia: los **21 cierres `EXPERT`** —los que el ejecutor mandó
+a mercado— tienen `dist_min` p50 = **0,000** y máximo 0,03. El techo **no es del bróker en general:
+es de los stops server-side**, que son 119 de 152 posiciones.
+
+**Residuo declarado, no resuelto:** a ±30 s el 62 % de los `SL` sí casa exacto. Que el precio
+aparezca cotizado segundos después es compatible tanto con deslizamiento real como con que MT5
+registre el llenado al **nivel del SL** en vez de al mercado. Las dos producen la misma firma de
+signo. Se distinguen comparando los 119 `precio_close` contra el nivel de SL vigente en cada
+posición — **no medido**, y hay que recordar que el SL enviado sólo es recuperable en 61 de 152
+aperturas (D-45).
+
+## I · La cola del p90 — el sospechoso del §6 queda falsado
+
+El §6 escribió que «el sospechoso natural es el gate horario». **No lo era.** De las **39** posiciones
+de la cola (|Δ t_open| > 60 s), **una sola** tiene algún `TIME_GATE_SKIP` en su intervalo, y las
+**39 de 39** abren fuera de `blocked_open_window` tanto en la realidad como en la réplica.
+
+La distribución es **bimodal**, y el hueco es el dato: 42 posiciones bajo 1 s · 57 entre 1 y 16 s ·
+9 hasta un minuto · 19 entre 1 y 15 min · **0 entre 15 y 60 min** · 16 entre 1 y 6 h · 4 por encima.
+Nada en medio de 15 a 60 minutos. No es una cola de ruido: son dos poblaciones pegadas.
+
+**La causa dominante es el borde del día.** Nueve posiciones, en siete días distintos, repiten el
+mismo patrón casi al segundo:
+
+| día | réplica abre | realidad abre |
+|---|---|---|
+| 2026-07-28 | 16:59:08 | 18:45:07 |
+| 2026-07-29 | 16:59:01 | 18:45:06 |
+| 2026-07-30 | 16:59:10 | 18:45:00 |
+| 2026-08-03 | 16:59:04 | 18:45:14 |
+| 2026-08-04 | 16:59:03 | 18:45:03 |
+| 2026-08-10 | 16:59:13 | 18:45:11 |
+
+La realidad abre a las **18:45 exactas** = el final de `blocked_open_window = 18:00–18:45`: el
+sistema vivo tenía la señal lista y la ventana lo retuvo hasta el segundo en que expiró. La réplica
+entra a las **16:59**, inmediatamente antes del corte diario de mantenimiento del bróker que T0.13
+midió en **17:00–17:45** hora de servidor — el mismo hueco que `F0-DATA-CAP-0001` declaró al
+construir las barras. Su gate horario **no dispara, y hace bien**: 16:59 no está dentro de
+18:00–18:45.
+
+La divergencia máxima de todo el censo es la misma firma con fin de semana de por medio: réplica el
+viernes `2026-07-31 16:55:07`, realidad el lunes `2026-08-02 18:45:03` — **179.396 s**.
+
+⇒ **La réplica opera en la hora muerta y en el fin de semana, donde el sistema vivo no podía
+operar.** No es desfase de fase: es un estado del mercado que la réplica no modela.
+🟡 **Hipótesis marcada, NO medida:** el mecanismo por el que se cuela sería el gate de spread —T0.13
+demostró que el «gate 0,50» de Capitaria es **un reloj, no un spread**, y fuera de ventana el estado
+ancho está al 95-100 %—. Falsable comprobando qué spread veía la réplica en esos nueve instantes.
+
+**Segunda población, distinta:** **16 de las 39** tienen como evento dominante
+`OPEN_SKIPPED_SL_CROSSED`, catorce con la réplica llegando **tarde** y con desvíos de precio
+pequeños (±0,9). Ahí la réplica sí ve la señal y se niega a abrir porque el SL ya está cruzado.
+
+## J · Qué queda del criterio de paso de D-45
+
+Tres campos cambian de naturaleza, y conviene separarlos:
+
+1. **`precio_open`: sigue siendo exigible.** El dato existe en la fuente al 100 % dentro de ±5 s.
+   Que hoy case en 16 de 137 es un defecto de la réplica, no un techo. **Se puede y se debe atacar.**
+2. **`precio_close`: inalcanzable para los 119 cierres por `SL`.** El precio no está publicado.
+   Exigir bit-identidad ahí es exigir lo que la fuente no contiene — exactamente el error que D-46
+   corrigió para el instante. **Requiere re-especificación del user**, y el §E.3 ya lo anticipaba.
+   Los 21 `EXPERT` sí son exigibles: casan al centavo.
+3. **`t_open`: la cola tiene causa nombrada y no es la que se creía.** El borde del día es
+   modelable; no hay techo.
+
+**Lo que NO se puede concluir de este addendum:** nada sobre el edge de las estrategias — esto mide
+el motor. Nada sobre si la réplica ya sirve para el backtest largo: no sirve. Y nada sobre el
+mecanismo del deslizamiento de los stops ni sobre el del borde del día: las dos son hipótesis
+marcadas, con su prueba falsable escrita y sin correr.
