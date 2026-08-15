@@ -2,7 +2,7 @@
 
 Comando: `python scripts/analysis/realtick_bt/faulty/divergencia_neto.py`
 
-Fecha: 2026-08-15 · git_sha: `d85ea1b85c73858e22b0265ebccd2c9cd06ff182` · run_id: `T0.7-M-0-DIVNETO-0001`
+Fecha: 2026-08-15 · git_sha: `aa0a8052fa53ee5c0101e1cc317dc62337a94a68` · run_id: `T0.7-M-0-DIVNETO-0001`
 
 REPORT-ONLY. Sin interpretación, sin veredicto. Divergencia situada junto a los umbrales 0.3% (aceptable) / 0.15% (ideal), sin emitirlo.
 
@@ -12,16 +12,16 @@ El brief (prosa, no el artefacto) menciona 137 posiciones emparejadas ('128 de 1
 
 - brief (prosa): 137
 - artefacto p_cap_resultado.json: 135
-- recomputado de comparacion_p_cap.csv: 135
+- recomputado de comparacion_p_cap.csv: 134
 
 ## 1 · Resultado monetario de cada posición de la réplica
 
-Global: n=157, sum_bruto_usd=12053.97
+Global: n=155, sum_bruto_usd=14053.92
 
 | estrategia | n | sum_bruto_usd |
 |---|---|---|
-| SAR::S6-K2P0 | 88 | 5398.86 |
-| SuperTrend::SuperTrend-p14x3-M15 | 69 | 6655.11 |
+| SAR::S6-K2P0 | 86 | 6726.80 |
+| SuperTrend::SuperTrend-p14x3-M15 | 69 | 7327.12 |
 
 Detalle posición a posición: ver `divergencia_neto.csv`, columna `bruto_usd` (filas del fichero réplica, 157) y `replica_bruto_usd` (vista unida con el real, en `divergencia_neto.csv` de comparacion_p_cap).
 
@@ -55,7 +55,7 @@ Tasa implícita por día de cierre (dispersión relativa dentro de cada día):
 
 ### Primaria en dólares, población (a) = emparejadas evaluables (n=135, ver §0)
 
-neto_real_usd=-12522.9700, neto_replica_usd=-10360.2100, diff_abs=2162.7600, divergencia_pct=17.270344 (n_real=135, n_replica=135)
+neto_real_usd=-12071.3900, neto_replica_usd=-9946.8200, diff_abs=2124.5700, divergencia_pct=17.600044 (n_real=134, n_replica=134)
 
 Umbrales: aceptable ≤0.3%, ideal ≤0.15%. Sin veredicto.
 
@@ -63,43 +63,43 @@ Por estrategia:
 
 | estrategia | neto_real_usd | neto_replica_usd | diff_abs | divergencia_pct | n |
 |---|---|---|---|---|---|
-| SAR::S6-K2P0 | 3960.3700 | 3128.9000 | -831.4700 | -20.994756 | 80 |
-| SuperTrend::SuperTrend-p14x3-M15 | -16483.3400 | -13489.1100 | 2994.2300 | 18.165190 | 55 |
+| SAR::S6-K2P0 | 4411.9500 | 4319.4900 | -92.4600 | -2.095672 | 79 |
+| SuperTrend::SuperTrend-p14x3-M15 | -16483.3400 | -14266.3100 | 2217.0300 | 13.450126 | 55 |
 
 ### Secundaria en pesos (población a), tasa emparejada por día de cierre de la réplica
 
-neto_real_clp=-11576967.95, neto_replica_clp_estimado=-9612926.86, diff_abs=1964041.09, divergencia_pct=16.965073 (n_real=135, n_replica_evaluable=135)
+neto_real_clp=-11156321.18, neto_replica_clp_estimado=-9226176.25, diff_abs=1930144.93, divergencia_pct=17.300909 (n_real=134, n_replica_evaluable=134)
 
 Por estrategia (CLP, población a):
 
 | estrategia | neto_real_clp | neto_replica_clp_est | diff_abs | divergencia_pct |
 |---|---|---|---|---|
-| SAR::S6-K2P0 | 3572929.11 | 2820314.94 | -752614.17 | -21.064347 |
-| SuperTrend::SuperTrend-p14x3-M15 | -15149897.06 | -12433241.80 | 2716655.26 | 17.931840 |
+| SAR::S6-K2P0 | 3993575.88 | 3922604.19 | -70971.69 | -1.777146 |
+| SuperTrend::SuperTrend-p14x3-M15 | -15149897.06 | -13148780.44 | 2001116.62 | 13.208780 |
 
 ### Conexión con el neto real registrado (16.146.299,81 CLP), población (b) = 152 real / 157 réplica, sin excluir nada
 
 neto_real_clp (152, recomputado) = 16146299.81 (registrado en p_cap_resultado.json: 16146299.81)
-neto_replica_clp_estimado (157, tasa por día) = 10905168.21 (n_evaluable=157/157)
-diff_abs = -5241131.60, divergencia_pct = -32.460264
+neto_replica_clp_estimado (157, tasa por día) = 12766222.24 (n_evaluable=155/155)
+diff_abs = -3380077.57, divergencia_pct = -20.934069
 
 ## 4 · ¿El sesgo es diferencial? (población a, USD)
 
 claves: ['SAR::S6-K2P0', 'SuperTrend::SuperTrend-p14x3-M15']
 mismo_signo: False
-cociente_magnitud_abs_diff (diff2/diff1): 3.601128122482143
-diff_abs_por_estrategia: {'SAR::S6-K2P0': -831.4699999999903, 'SuperTrend::SuperTrend-p14x3-M15': 2994.2300000001924}
-diff_por_posicion (diff_abs/n): {'SAR::S6-K2P0': -10.393374999999878, 'SuperTrend::SuperTrend-p14x3-M15': 54.44054545454895}
-diff_por_lote (diff_por_posicion/0.67): {'SAR::S6-K2P0': -15.512499999999816, 'SuperTrend::SuperTrend-p14x3-M15': 81.25454545455067}
-cociente_diff_por_posicion: 5.2380045417922085
+cociente_magnitud_abs_diff (diff2/diff1): 23.97826086956512
+diff_abs_por_estrategia: {'SAR::S6-K2P0': -92.46000000000731, 'SuperTrend::SuperTrend-p14x3-M15': 2217.030000000166}
+diff_por_posicion (diff_abs/n): {'SAR::S6-K2P0': -1.1703797468355357, 'SuperTrend::SuperTrend-p14x3-M15': 40.309636363639385}
+diff_por_lote (diff_por_posicion/0.67): {'SAR::S6-K2P0': -1.7468354430381128, 'SuperTrend::SuperTrend-p14x3-M15': 60.16363636364087}
+cociente_diff_por_posicion: 34.44150197628444
 
 ## 5 · Sensibilidad al conjunto evaluado
 
 | población | n_real | n_replica | neto_real_usd | neto_replica_usd | diff_abs | divergencia_pct |
 |---|---|---|---|---|---|---|
-| (a) emparejadas evaluables | 135 | 135 | -12522.9700 | -10360.2100 | 2162.7600 | 17.270344 |
-| (b) todas sin excluir | 152 | 157 | 17671.2500 | 12053.9700 | -5617.2800 | -31.787678 |
-| (c) matched sin filtrar criterio | 147 | 147 | 19691.9700 | 15164.1100 | -4527.8600 | -22.993433 |
+| (a) emparejadas evaluables | 134 | 134 | -12071.3900 | -9946.8200 | 2124.5700 | 17.600044 |
+| (b) todas sin excluir | 152 | 155 | 17671.2500 | 14053.9200 | -3617.3300 | -20.470142 |
+| (c) matched sin filtrar criterio | 146 | 146 | 20143.5500 | 16585.1800 | -3558.3700 | -17.665059 |
 
 Excluidos del criterio (12, aparte, nunca fundidos en el neto): n=12, sum_real_bruto_usd=32214.94, sum_real_profit_clp=29572002.10
 
@@ -110,18 +110,18 @@ Excluidos del criterio (12, aparte, nunca fundidos en el neto): n=12, sum_real_b
 
 ## 6 · Descomposición de la divergencia (sobre población (b), USD)
 
-term_replica_sin_pareja (10 posiciones) = -3110.1400
-term_real_sin_pareja_neg (-1 × 5 posiciones) = 2020.7200
-term_matched_diff (147 posiciones, réplica-real) = -4527.8600
-suma_terminos = -5617.280000
-diff_total (población b) = -5617.280000
-residuo = 0.000000000 (1.819e-12, ruido de punto flotante si es de este orden)
+term_replica_sin_pareja (10 posiciones) = -2531.2600
+term_real_sin_pareja_neg (-1 × 5 posiciones) = 2472.3000
+term_matched_diff (147 posiciones, réplica-real) = -3558.3700
+suma_terminos = -3617.330000
+diff_total (población b) = -3617.330000
+residuo = -0.000000000 (-9.095e-13, ruido de punto flotante si es de este orden)
 
 ## 7 · No evaluables
 
 - real_bruto_usd == 0 (división imposible para tasa implícita): 0
-- reales sin réplica (fuera de comparación pareada): 5 (position_id: [55333600.0, 55317670.0, 55318544.0, 55318552.0, 55321392.0])
-- réplica sin real (fuera de comparación pareada): 10
+- reales sin réplica (fuera de comparación pareada): 6 (position_id: [55216338.0, 55333600.0, 55317670.0, 55318544.0, 55318552.0, 55321392.0])
+- réplica sin real (fuera de comparación pareada): 9
 - tasa del día no evaluable, población (a): 0
 - tasa del día no evaluable, población (b): 0
-- delta_precio_open nulo desde el origen (propagado, no relleno): 5
+- delta_precio_open nulo desde el origen (propagado, no relleno): 6
