@@ -129,6 +129,7 @@ def correr_ciclos(
     stops_level: float = 0.0,
     cycle_sec: float = CYCLE_SEC,
     instantes: Sequence[float] | None = None,
+    tolerancia_tick_s: float | None = None,
 ) -> tuple[list[dict], list[dict]]:
     """Reproduce el bucle del ejecutor vivo. Devuelve (posiciones, eventos).
 
@@ -137,7 +138,25 @@ def correr_ciclos(
     `instantes` (D-46, aditivo): secuencia opcional de epochs reales que
     sustituye la rejilla sintética de `cycle_sec`. `None` (default) preserva
     el comportamiento anterior byte-idéntico -- ver `_pasos()`.
+
+    `tolerancia_tick_s` (T0.7-M-D): tolerancia máxima, en segundos, entre el
+    instante del ciclo `t` y el timestamp del tick que `ticks.first_at(t)`
+    devuelve. `first_at` es búsqueda hacia adelante SIN COTA (backtest.py) --
+    en un hueco de mercado (corte de mantenimiento del bróker, fin de
+    semana) no devuelve `None`: devuelve el primer tick DESPUÉS del hueco,
+    potencialmente miles de segundos por delante de `t`. Usar ese tick para
+    decidir en `t` es look-ahead (F0-A6-BORDE-0001). Si
+    `t_tick - t > tolerancia_tick_s`, el ciclo se salta (`continue`), igual
+    que cuando `first_at` devuelve `None`, y se emite `TICK_STALE_SKIP`.
+    `None` (default) toma el valor de `cycle_sec` -- el propio paso del
+    bucle. NO se re-sella `t_open` con `t_tick`: eso conservaría el
+    look-ahead. NO se usa `last_at(t)` (cotización rancia): alternativa
+    considerada y descartada por el controlador -- es un cambio de semántica
+    mayor sin medir.
     """
+    if tolerancia_tick_s is None:
+        tolerancia_tick_s = cycle_sec
+
     bar_times_arr = np.asarray(bar_times, dtype=float)
     bar_closes = bar_times_arr + BAR_SEC
 
@@ -162,6 +181,18 @@ def correr_ciclos(
         if tick is None:
             continue
         _tick_ts, tick_bid, tick_ask = tick
+        # T0.7-M-D: `first_at` es sin cota -- en un hueco de mercado
+        # devuelve el primer tick DESPUÉS del hueco, no None. Usarlo aquí
+        # sería decidir en `t` con un precio que en `t` no existía
+        # (look-ahead, F0-A6-BORDE-0001). Se salta ANTES de usar el tick
+        # para cualquier cosa (precio, spread, hora, t_open).
+        adelanto_s = _tick_ts - t
+        if adelanto_s > tolerancia_tick_s:
+            eventos.append(
+                {"t": t, "tipo": "TICK_STALE_SKIP",
+                 "detalle": {"t_tick": _tick_ts, "adelanto_s": adelanto_s}}
+            )
+            continue
         last_bid, last_ask = tick_bid, tick_ask
 
         if estado is not None:

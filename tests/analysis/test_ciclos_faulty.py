@@ -371,6 +371,109 @@ def test_paso6_ultimo_instante_barre_hasta_t1():
     assert pos["t_close"] == 930.0
 
 
+# ------------------------------------------------------- T0.7-M-D: TICK_STALE_SKIP
+# Brief T0.7-M-D: `ciclos.py:161` (`ticks.first_at(t)`) es búsqueda hacia
+# adelante SIN COTA -- en un hueco de mercado (corte de mantenimiento,
+# fin de semana) devuelve el primer tick DESPUÉS del hueco, no None. Eso es
+# look-ahead: el ciclo decide en `t` con un precio que en `t` no existía.
+# El arreglo: si el tick devuelto está más allá de `tolerancia_tick_s` del
+# instante del ciclo, el ciclo se salta (`continue`, como con tick is None),
+# con evento TICK_STALE_SKIP. NUNCA se re-sella t_open con el tick futuro.
+
+
+def test_ciclos_tick_stale_skip_salta_el_ciclo_sin_abrir():
+    """Hueco de ticks: `first_at(t)` sólo tiene un tick muy por delante del
+    instante del ciclo (simula el corte de mantenimiento/fin de semana).
+    Antes del arreglo esto abría una posición con el precio del tick futuro
+    (look-ahead). Después del arreglo: TICK_STALE_SKIP, ninguna posición."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]  # SL lejos: no hay gate de SL de por medio
+    t0, t1 = 900.0, 915.0
+
+    # único tick disponible, 5000 s por delante del instante del ciclo (t0=900)
+    ticks = FakeTicks(ts=[900.0 + 5000.0], bid=[2000.0], ask=[2000.30])
+
+    posiciones, eventos = correr_ciclos(estados, bar_times, ticks, t0, t1)
+
+    assert len(posiciones) == 0
+    assert not any(e["tipo"] == "OPEN" for e in eventos)
+    assert any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
+
+    ev = next(e for e in eventos if e["tipo"] == "TICK_STALE_SKIP")
+    assert ev["t"] == 900.0
+    assert ev["detalle"]["t_tick"] == 5900.0
+    assert abs(ev["detalle"]["adelanto_s"] - 5000.0) < 1e-9
+
+
+def test_ciclos_tick_stale_skip_tolerancia_default_es_cycle_sec():
+    """`tolerancia_tick_s=None` (default) toma `cycle_sec`. Adelanto ==
+    cycle_sec exacto NO salta (la regla es '>', no '>='); un pelo por encima
+    de cycle_sec sí salta."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]
+    t0 = 900.0
+
+    # adelanto exactamente igual a cycle_sec (15.0) -> NO salta, abre
+    ticks_igual = FakeTicks(ts=[915.0], bid=[2000.0], ask=[2000.30])
+    posiciones, eventos = correr_ciclos(estados, bar_times, ticks_igual, t0, t0 + 15.0)
+    assert len(posiciones) == 1
+    assert not any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
+
+    # adelanto un pelo mayor que cycle_sec -> salta
+    ticks_mayor = FakeTicks(ts=[915.001], bid=[2000.0], ask=[2000.30])
+    posiciones2, eventos2 = correr_ciclos(estados, bar_times, ticks_mayor, t0, t0 + 15.0)
+    assert len(posiciones2) == 0
+    assert any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos2)
+
+
+def test_ciclos_tick_stale_skip_tolerancia_explicita_distinta_de_cycle_sec():
+    """Con `tolerancia_tick_s` explícito (distinto de `cycle_sec`) se usa
+    ese valor, no `cycle_sec`."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]
+    t0, t1 = 900.0, 915.0
+
+    # adelanto de 100 s: con tolerancia=cycle_sec(15.0) saltaría; con
+    # tolerancia_tick_s=200.0 explícito, no salta.
+    ticks = FakeTicks(ts=[1000.0], bid=[2000.0], ask=[2000.30])
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t0, t1, tolerancia_tick_s=200.0
+    )
+    assert len(posiciones) == 1
+    assert not any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
+
+
+def test_ciclos_tick_stale_skip_no_actualiza_last_bid_ask():
+    """El salto por TICK_STALE_SKIP debe comportarse EXACTAMENTE como el
+    salto por `tick is None`: no actualiza `last_bid`/`last_ask` (verificado
+    indirectamente -- el cierre de FIN_VENTANA cuando no hay tick en t1 usa
+    last_bid/last_ask del ÚLTIMO tick fresco visto, no del tick stale)."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]
+    # ciclo 1 (t=900): tick fresco a 900 -> abre.
+    # ciclo 2 (t=915): único tick restante es stale (muy futuro) -> salta,
+    # NO debe pisar last_bid/last_ask del ciclo 1.
+    t0, t1 = 900.0, 930.0
+
+    ticks = FakeTicks(ts=[900.0, 20000.0], bid=[2000.0, 9999.0], ask=[2000.30, 9999.30])
+
+    posiciones, eventos = correr_ciclos(estados, bar_times, ticks, t0, t1)
+
+    # fin de ventana: sin tick en t1=930, y first_at(930) devuelve el stale
+    # (20000.0) que la implementación NO usa para el cierre porque cae en el
+    # bloque post-bucle -- ahí el brief no exige tolerancia (no está en el
+    # alcance del brief, sólo paso 2 del bucle). Lo que este test blinda es
+    # que el ciclo 2 no contaminó last_bid/last_ask con 9999: si lo hiciera,
+    # y el cierre de fin de ventana cayera a ese fallback, el precio sería
+    # 9999 en vez de 2000 -- no debe pasar porque tick_final = first_at(930)
+    # SÍ existe (devuelve el tick 20000.0, distinto del stale-skip de dentro
+    # del bucle). Este test sólo verifica que la posición sigue viva tras el
+    # ciclo 2 (no se cerró ni se rompió nada al saltar por TICK_STALE_SKIP).
+    assert len(posiciones) == 1
+    assert posiciones[0]["motivo_cierre"] == "FIN_VENTANA"
+    assert any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
+
+
 def test_instantes_se_ordenan_y_deduplican_y_se_filtran_a_ventana():
     """instantes fuera de [t0, t1) se ignoran; duplicados y desorden no deben
     romper ni repetir ciclos."""

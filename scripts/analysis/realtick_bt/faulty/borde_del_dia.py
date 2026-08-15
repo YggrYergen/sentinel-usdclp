@@ -72,7 +72,7 @@ CITA_GATE_SPREAD_REPLICA = {
     "file": "scripts/analysis/realtick_bt/faulty/ciclos.py",
     "linea_default": 127,
     "texto_linea_default": "    max_spread_open: float = 0.50,",
-    "linea_condicion": "182-183",
+    "linea_condicion": "213-214",
     "texto_condicion": (
         "spread = tick_ask - tick_bid\n"
         "                        if spread > max_spread_open + 1e-6:"
@@ -103,11 +103,11 @@ CITA_NO_MODELADO_BORDE_DIA = {
 
 CITA_T_OPEN_ES_INSTANTE_DE_CICLO = {
     "file": "scripts/analysis/realtick_bt/faulty/ciclos.py",
-    "linea_first_at": 161,
+    "linea_first_at": 180,
     "texto_first_at": "        tick = ticks.first_at(t)",
-    "linea_t_open": 211,
+    "linea_t_open": 242,
     "texto_t_open": '                                    "t_open": t,',
-    "linea_tick_ts_descartado": 164,
+    "linea_tick_ts_descartado": 183,
     "texto_tick_ts_descartado": "        _tick_ts, tick_bid, tick_ask = tick",
 }
 
@@ -161,7 +161,7 @@ def primer_tick_desde(t_arr: np.ndarray, bid_arr: np.ndarray, ask_arr: np.ndarra
     """Réplica EXACTA de `Ticks.first_at` (backtest.py:130-139): primer tick
     con t >= T (spills hacia adelante), NUNCA el último anterior -- eso es
     `tick_vigente`. Este es el método que usa de verdad `ciclos.py` en su
-    bucle (`ticks.first_at(t)`, ciclos.py:161). Devuelve (t_tick, bid, ask) o
+    bucle (`ticks.first_at(t)`, ciclos.py:180). Devuelve (t_tick, bid, ask) o
     None si no hay ningún tick con t >= T."""
     t_arr = np.asarray(t_arr, dtype=float)
     idx = int(np.searchsorted(t_arr, T, side="left"))
