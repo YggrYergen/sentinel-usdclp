@@ -59,3 +59,77 @@ El diff de 225 líneas no toca las kwargs de las estrategias que el harness cons
 divergencia.** Nótese que esto es sobre el `_GOLIVE_M15` **base**; el roster vivo `tomachine`
 aplica encima `_tomachine_copy("S6-K2P0", 0.67, active_fichas=1)`, y esa sí es una divergencia real
 — pero ya está catalogada como **D3**, no es ésta.
+
+### N-xx · 2026-08-13 · «El fill del bróker es el residuo central en las APERTURAS» — REFUTADA
+*(Medición `F0-A6-FILL-0001`, commit `50ff2b8`. Interpretación: memo P-CAP ADDENDUM II §H.1.)*
+
+El memo marcó como hipótesis que el precio de llenado del bróker sería un **techo estructural** y que
+la bit-identidad sobre precio sería tan inalcanzable como lo era sobre instante.
+
+**Refutada para las aperturas.** El precio real de llenado **sí está en el lago**: casa exacto con
+alguna cotización del mismo segundo en **120/152 (78,9 %)**, **98,0 %** a ±1 s y **100 % a ±5 s**.
+Control de lado invertido 0,7 %. **No hay techo en apertura: el residuo es nuestro**, y está
+localizado — el tick *vigente* acierta el 31,6 % frente al 78,9 % de *algún* tick del segundo, luego
+la réplica elige mal cuál tick dentro de un segundo que la fuente no sabe subdividir.
+
+🔒 **Cerrada como explicación de las aperturas.** Sigue **viva y confirmada** para los cierres por
+stop (§H.2), que es una población distinta y no se toca aquí.
+
+### N-xx · 2026-08-13 · «El gate horario explica la cola del p90 de Δt_open» — REFUTADA
+*(Medición `F0-A6-COLA-0001`, commit `50ff2b8`. Interpretación: memo ADDENDUM II §I.)*
+
+El memo §6 escribió que «el sospechoso natural es el gate horario».
+
+**Refutada.** De las **39** posiciones con |Δt_open| > 60 s, **una sola** tiene algún
+`TIME_GATE_SKIP` en su intervalo, y **39 de 39** abren **fuera** de `blocked_open_window` tanto en la
+realidad como en la réplica. La causa real resultó ser el **borde del día**, y su mecanismo se midió
+después (ver la entrada siguiente).
+
+🔒 **Cerrada.** No re-abrible por esta vía: el gate horario funciona y hace bien en no disparar.
+
+### N-xx · 2026-08-15 · «El spread o la comisión explican el desvío sistemático de los cierres por stop» — REFUTADA
+*(Hipótesis del user y del controlador. Medida por el controlador sobre `fill_vs_cotizacion.csv`.)*
+
+El desvío de los cierres por stop era llamativamente regular —mediana **−0,18** al cerrar largos y
+**+0,18** al cerrar cortos— y se planteó que fuera el spread o una comisión.
+
+**Refutada, con tres cortes:**
+- Correlación de Pearson entre `|delta_vigente|` y `spread_tick_vigente` en los 119 stops:
+  **−0,0075**. Cero.
+- Mediana de `|delta|` con spread 0,50: **0,255** (n=110). Con spread 0,60: **0,270** (n=9). Si el
+  spread fuera la causa, el segundo grupo sería ~20 % mayor.
+- Control: los **21 cierres a mercado** tienen **el mismo spread (0,50 en los 21)** y `|delta|` medio
+  **0,053** frente a **0,333** de los stops. Un orden de magnitud menos, mismo bróker y mismo spread.
+
+La comisión queda descartada por construcción: en MT5 va en el campo `commission` del deal, **nunca
+en el precio de ejecución**. Y el «±0,18» no es una constante — era la mediana con signo por lado; la
+magnitud absoluta va de **0,03 a 1,74** (p50 0,26 · p90 0,66).
+
+🟢 **Subproducto de valor propio:** verificado en `fill_vs_cotizacion.py:69-77` que la referencia
+contra la que se midió es **la cotización al PRINCIPIO del segundo**, y un stop se dispara por
+construcción durante un movimiento en contra ⇒ **parte del desvío es artefacto del método de
+medida**, no dinero perdido. Cuantificarlo es la tarea `T0.7-M-A`, aún sin correr.
+
+🔒 **Cerrada como explicación.** No se re-abre por spread ni por comisión.
+
+### N-xx · 2026-08-15 · «Si el sesgo de la réplica es común a las dos estrategias, la comparación entre ellas sobrevive» — REFUTADA
+*(Argumento dado por el CONTROLADOR al user el 2026-08-15 para justificar seguir con presupuesto
+acotado. Medición `F0-A6-NETO-0001`, commit `efa17c1`. Interpretación: memo ADDENDUM IV §S.)*
+
+El controlador argumentó que aunque el simulador tuviera sesgo absoluto, si el error era **común** a
+S6 y a SuperTrend, el veredicto **comparativo** seguiría siendo válido y bastaría declarar una banda.
+
+**Refutada, y en la peor dirección posible.** El sesgo es **diferencial y de signo opuesto**:
+
+| | diferencia réplica − real | por posición |
+|---|---:|---:|
+| S6 (n=80) | **−831,47 USD** | **−10,39** |
+| SuperTrend (n=55) | **+2.994,23 USD** | **+54,44** |
+
+Cociente **5,24×**. La réplica **penaliza a S6 y favorece a SuperTrend** — es decir, embellece
+justamente a la estrategia que **en la realidad perdió** (−16.483,34 USD reales frente a +3.960,37
+de S6). Cualquier ventaja de SuperTrend en un backtest por debajo de ~54 USD por posición es
+indistinguible de este sesgo.
+
+🔒 **Cerrado como justificación.** El veredicto comparativo **no** puede apoyarse en el simulador tal
+como está. Queda como opción declarada: apoyarlo en la ventana real de la 902, que es dato directo.
