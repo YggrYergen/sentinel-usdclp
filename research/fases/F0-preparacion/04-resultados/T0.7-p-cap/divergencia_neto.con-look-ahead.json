@@ -1,0 +1,327 @@
+{
+  "lineage": {
+    "run_id": "T0.7-M-0-DIVNETO-0001",
+    "area": "F0",
+    "experimento": "T0.7-M-0-divergencia-neto",
+    "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv",
+    "git_sha": "d85ea1b85c73858e22b0265ebccd2c9cd06ff182",
+    "etapa": "medicion",
+    "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
+    "timestamp": "2026-08-15T19:15:43.875014+00:00"
+  },
+  "umbrales_pct": {
+    "aceptable": 0.3,
+    "ideal": 0.15
+  },
+  "parametros": {
+    "volumen_vivo": 0.67,
+    "tamano_contrato": 100.0
+  },
+  "discrepancia_brief_vs_artefacto_n_emparejadas": {
+    "descripcion": "El brief (prosa, no el artefacto) menciona 137 posiciones emparejadas ('128 de 137', '131 de 137'). El artefacto p_cap_resultado.json (criterio_de_paso_6_campos.n_emparejadas) dice 135, y recomputado directamente de comparacion_p_cap.csv (140 evaluables - 5 sin pareja) da tambien 135. Se usa 135 (gana el artefacto, por instrucción del propio brief: 'Verifica contra el artefacto, nunca contra lo que yo te diga').",
+    "brief_dice": 137,
+    "artefacto_p_cap_resultado_json": 135,
+    "recomputado_de_comparacion_p_cap_csv": 135
+  },
+  "q1_bruto_replica": {
+    "global": {
+      "n": 157,
+      "sum_bruto_usd": 12053.970000000054
+    },
+    "por_estrategia": {
+      "SAR::S6-K2P0": {
+        "n": 88,
+        "sum_bruto_usd": 5398.860000000028
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "n": 69,
+        "sum_bruto_usd": 6655.110000000025
+      }
+    }
+  },
+  "q2_control": {
+    "n_bruto_usd_cero": 0,
+    "tasa_stats_global": {
+      "n": 152,
+      "p10": 911.5001006905669,
+      "p50": 924.9750025870603,
+      "p90": 931.5000681076863,
+      "min": 908.4000003256697,
+      "max": 939.6999984048504,
+      "dispersion_relativa": 0.009309012153416157
+    },
+    "tasa_stats_por_dia": {
+      "2026-07-28": {
+        "n": 22,
+        "p10": 931.4999999997297,
+        "p50": 931.5000000000402,
+        "p90": 931.5001074903022,
+        "min": 930.5000360517568,
+        "max": 939.6999984048504,
+        "dispersion_relativa": 0.0024480635761280132
+      },
+      "2026-07-29": {
+        "n": 20,
+        "p10": 931.4999999997665,
+        "p50": 931.5000088645779,
+        "p90": 934.0000000000011,
+        "min": 930.5000186101403,
+        "max": 934.000000000063,
+        "dispersion_relativa": 0.0013184171123409147
+      },
+      "2026-07-30": {
+        "n": 5,
+        "p10": 929.1000000000156,
+        "p50": 933.000000000016,
+        "p90": 933.9999999999067,
+        "min": 926.5000000000216,
+        "max": 933.999999999916,
+        "dispersion_relativa": 0.0034011087831702282
+      },
+      "2026-07-31": {
+        "n": 7,
+        "p10": 925.4999999999949,
+        "p50": 925.5000350360394,
+        "p90": 926.5000038125407,
+        "min": 925.499999999981,
+        "max": 926.5000095308982,
+        "dispersion_relativa": 0.0005772789904039497
+      },
+      "2026-08-02": {
+        "n": 7,
+        "p10": 930.6999984244053,
+        "p50": 930.6999999999832,
+        "p90": 930.7000190871439,
+        "min": 930.6999960618598,
+        "max": 930.7000200789698,
+        "dispersion_relativa": 1.0632108698770484e-08
+      },
+      "2026-08-03": {
+        "n": 13,
+        "p10": 925.2500039373401,
+        "p50": 930.6999747032452,
+        "p90": 930.7000262743293,
+        "min": 924.8500013302262,
+        "max": 930.7000414596283,
+        "dispersion_relativa": 0.002891496633370133
+      },
+      "2026-08-04": {
+        "n": 20,
+        "p10": 911.4999999997686,
+        "p50": 911.500065745309,
+        "p90": 925.8499397054754,
+        "min": 910.5000000000317,
+        "max": 925.8500108944299,
+        "dispersion_relativa": 0.006815824482260487
+      },
+      "2026-08-05": {
+        "n": 15,
+        "p10": 911.7000006564341,
+        "p50": 914.4999999998864,
+        "p90": 914.500017452208,
+        "min": 910.4999999999991,
+        "max": 914.5001463267962,
+        "dispersion_relativa": 0.001517916034936705
+      },
+      "2026-08-06": {
+        "n": 10,
+        "p10": 914.4000032811043,
+        "p50": 916.8999975760377,
+        "p90": 916.9000287264117,
+        "min": 913.5000000001146,
+        "max": 916.9000452286057,
+        "dispersion_relativa": 0.0013464141426429242
+      },
+      "2026-08-07": {
+        "n": 2,
+        "p10": 909.150000204891,
+        "p50": 912.1499997217758,
+        "p90": 915.1499992386606,
+        "min": 908.4000003256697,
+        "max": 915.8999991178819,
+        "dispersion_relativa": 0.0058140656761297635
+      },
+      "2026-08-09": {
+        "n": 13,
+        "p10": 913.7499648336152,
+        "p50": 913.75,
+        "p90": 913.7500343868217,
+        "min": 912.7500028461404,
+        "max": 913.7500654626293,
+        "dispersion_relativa": 0.00030355512706766846
+      },
+      "2026-08-10": {
+        "n": 12,
+        "p10": 913.7499768400413,
+        "p50": 916.5000013050902,
+        "p90": 917.5000000007534,
+        "min": 912.7500183809115,
+        "max": 917.5000569674296,
+        "dispersion_relativa": 0.002048109457192792
+      },
+      "2026-08-11": {
+        "n": 6,
+        "p10": 916.9999999999529,
+        "p50": 917.5000320220472,
+        "p90": 917.5000743542731,
+        "min": 916.5000000000196,
+        "max": 917.5000802436543,
+        "dispersion_relativa": 0.0004450570282610794
+      }
+    }
+  },
+  "q3_divergencia": {
+    "usd_poblacion_a_emparejadas_evaluables": {
+      "neto_real": -12522.97000000024,
+      "neto_replica": -10360.21000000004,
+      "n_real": 135,
+      "n_replica": 135,
+      "diff_abs": 2162.7600000002003,
+      "divergencia_pct": 17.270344015837768
+    },
+    "usd_poblacion_a_por_estrategia": {
+      "SAR::S6-K2P0": {
+        "neto_real": 3960.370000000009,
+        "neto_replica": 3128.9000000000187,
+        "n_real": 80,
+        "n_replica": 80,
+        "diff_abs": -831.4699999999903,
+        "divergencia_pct": -20.994755540517385
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "neto_real": -16483.340000000248,
+        "neto_replica": -13489.110000000055,
+        "n_real": 55,
+        "n_replica": 55,
+        "diff_abs": 2994.2300000001924,
+        "divergencia_pct": 18.16518982196659
+      }
+    },
+    "clp_poblacion_a_emparejadas_evaluables": {
+      "neto_real": -11576967.949999997,
+      "neto_replica": -9612926.860993817,
+      "n_real": 135,
+      "n_replica": 135,
+      "diff_abs": 1964041.08900618,
+      "divergencia_pct": 16.96507321682773
+    },
+    "clp_poblacion_a_por_estrategia": {
+      "SAR::S6-K2P0": {
+        "neto_real": 3572929.1099999994,
+        "neto_replica": 2820314.940301225,
+        "n_real": 80,
+        "n_replica": 80,
+        "diff_abs": -752614.1696987743,
+        "divergencia_pct": -21.06434654951143
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "neto_real": -15149897.059999997,
+        "neto_replica": -12433241.801295042,
+        "n_real": 55,
+        "n_replica": 55,
+        "diff_abs": 2716655.2587049548,
+        "divergencia_pct": 17.93183972106115
+      }
+    },
+    "clp_poblacion_b_conexion_con_16146299_81": {
+      "neto_real": 16146299.809999999,
+      "neto_replica": 10905168.21322883,
+      "n_real": 152,
+      "n_replica": 157,
+      "diff_abs": -5241131.596771169,
+      "divergencia_pct": -32.46026432337856
+    },
+    "neto_real_clp_152_registrado_referencia": 16146299.81
+  },
+  "q4_sesgo_diferencial_poblacion_a_usd": {
+    "claves": [
+      "SAR::S6-K2P0",
+      "SuperTrend::SuperTrend-p14x3-M15"
+    ],
+    "mismo_signo": false,
+    "cociente_magnitud_abs_diff": 3.601128122482143,
+    "diff_abs_por_estrategia": {
+      "SAR::S6-K2P0": -831.4699999999903,
+      "SuperTrend::SuperTrend-p14x3-M15": 2994.2300000001924
+    },
+    "diff_por_posicion": {
+      "SAR::S6-K2P0": -10.393374999999878,
+      "SuperTrend::SuperTrend-p14x3-M15": 54.44054545454895
+    },
+    "diff_por_lote": {
+      "SAR::S6-K2P0": -15.512499999999816,
+      "SuperTrend::SuperTrend-p14x3-M15": 81.25454545455067
+    },
+    "cociente_diff_por_posicion": 5.2380045417922085
+  },
+  "q5_sensibilidad_poblaciones": {
+    "a_emparejadas_evaluables": {
+      "neto_real": -12522.97000000024,
+      "neto_replica": -10360.21000000004,
+      "n_real": 135,
+      "n_replica": 135,
+      "diff_abs": 2162.7600000002003,
+      "divergencia_pct": 17.270344015837768
+    },
+    "b_todas_sin_excluir": {
+      "neto_real": 17671.24999999979,
+      "neto_replica": 12053.970000000054,
+      "n_real": 152,
+      "n_replica": 157,
+      "diff_abs": -5617.279999999735,
+      "divergencia_pct": -31.787677725117362
+    },
+    "c_matched_sin_filtrar_criterio": {
+      "neto_real": 19691.96999999978,
+      "neto_replica": 15164.11000000012,
+      "n_real": 147,
+      "n_replica": 147,
+      "diff_abs": -4527.859999999659,
+      "divergencia_pct": -22.99343336395348
+    },
+    "excluidos_12_aparte": {
+      "n": 12,
+      "sum_real_bruto_usd": 32214.940000000013,
+      "sum_real_profit_clp": 29572002.099999998,
+      "por_categoria": {
+        "CLIENT_manual": {
+          "n": 11,
+          "sum_real_bruto_usd": 30965.39000000004,
+          "sum_real_profit_clp": 28416355.779999997
+        },
+        "TP": {
+          "n": 1,
+          "sum_real_bruto_usd": 1249.5499999999756,
+          "sum_real_profit_clp": 1155646.32
+        }
+      }
+    }
+  },
+  "q6_descomposicion": {
+    "term_replica_sin_pareja": -3110.140000000066,
+    "term_real_sin_pareja_neg": 2020.7199999999907,
+    "term_matched_diff": -4527.859999999661,
+    "suma_terminos": -5617.279999999737,
+    "diff_total": -5617.279999999735,
+    "residuo": 1.8189894035458565e-12
+  },
+  "q7_no_evaluables": {
+    "real_bruto_usd_cero": 0,
+    "real_sin_pareja_replica": {
+      "n": 5,
+      "position_id": [
+        55333600.0,
+        55317670.0,
+        55318544.0,
+        55318552.0,
+        55321392.0
+      ]
+    },
+    "replica_sin_pareja_real": {
+      "n": 10
+    },
+    "tasa_dia_no_evaluable_poblacion_a": 0,
+    "tasa_dia_no_evaluable_poblacion_b": 0,
+    "delta_precio_open_nulo_origen": 5
+  }
+}
