@@ -486,3 +486,118 @@ ocurre en la rama `posicion_viva is None`, así que **nunca se crea una posició
 emparejar. El agente lo declaró no evaluable con la razón, y lo sustituyó por el `desired_sl` del
 propio evento — que es el dato correcto. Queda registrado como error de brief del orquestador, no
 del agente, en la misma línea que el precedente del 2026-08-11 con `symbol_info_session_quote`.
+
+---
+
+# ADDENDUM IV — El criterio monetario, computado por fin: no pasa, y el sesgo no es común
+
+**2026-08-15.** Aditivo: nada de lo anterior se retira. Interpretación Opus (D-14) de
+`F0-A6-NETO-0001` (`divergencia_neto.{csv,json,md}`, commit `efa17c1`). El agente fue REPORT-ONLY;
+la reconciliación aritmética la verifiqué yo de forma independiente sobre el JSON.
+
+## Q · El instrumento es de fiar antes de que discutamos su resultado
+
+El control obligatorio pasó limpio y conviene decirlo primero, porque de él depende todo lo demás:
+aplicando la fórmula de beneficio a las 152 posiciones reales y despejando la tasa implícita
+peso/dólar, sale **p50 = 924,98** con dispersión relativa global de **0,0093** — y **dentro de cada
+día** la dispersión se desploma (el 2026-08-02, con 7 posiciones, da **1,06 × 10⁻⁸**: exacta). Es
+justo el patrón que debe salir si la fórmula es correcta y la plataforma convierte al cierre con la
+tasa del día. Cero posiciones con bruto nulo. **La fórmula reproduce el beneficio real.**
+
+## R · El número, y no admite lectura amable
+
+**Divergencia de neto = 17,27 %** sobre las 135 emparejadas evaluables (real −12.522,97 USD,
+réplica −10.360,21 USD). El umbral aceptable es **0,3 %**. Son **58 veces el umbral**, y el ideal de
+0,15 % está a 115 veces.
+
+Las otras dos poblaciones no mejoran nada: todo sin excluir (152 real contra 157 réplica) da
+**−31,79 %**, y las 147 emparejadas sin filtrar el criterio dan **−22,99 %**.
+
+**Mi expectativa queda falsada, y la había dejado escrita antes de correr:** argumenté que como los
+conteos ya casaban, la razón de cierre acertaba en 128 de 135 y el signo en 131 de 135, el neto
+podía estar en rango. No lo está. Acertar el signo de una operación no acota su magnitud, y ahí
+estaba el error de mi razonamiento: 135 aciertos de dirección con errores de céntimos por posición
+no impiden que el agregado se desvíe un 17 %, porque el neto lo domina la cola de las operaciones
+grandes, no la mediana.
+
+## S · El hallazgo que de verdad importa: el sesgo es DIFERENCIAL
+
+Le dije al user que si el error era común a las dos estrategias, la comparación entre ellas
+sobreviviría aunque los absolutos estuvieran sesgados. **Está medido y es falso. Retiro esa
+tranquilidad.**
+
+| | neto real (USD) | neto réplica (USD) | diferencia | por posición |
+|---|---:|---:|---:|---:|
+| S6 (n=80) | **+3.960,37** | +3.128,90 | **−831,47** | **−10,39** |
+| SuperTrend (n=55) | **−16.483,34** | −13.489,11 | **+2.994,23** | **+54,44** |
+
+La réplica **penaliza a S6 y favorece a SuperTrend**, en direcciones opuestas y con un cociente de
+**5,24×** por posición. Y va exactamente en la peor dirección posible para la pregunta del user:
+**embellece a la estrategia que en la realidad perdió dinero.** Cualquier ventaja de SuperTrend que
+aparezca en un backtest por debajo de unos 54 USD por posición es indistinguible de este sesgo.
+
+## T · Un dato que no es de paridad y pesa más que ella
+
+Separando poblaciones sale algo que nadie había mirado:
+
+- Las **135 posiciones de puro motor**: neto real **−12.522,97 USD**. **Negativo.**
+- Los **12 excluidos** (11 cierres manuales + el TP): **+32.214,94 USD**, de los cuales los cierres
+  a mano solos aportan **+30.965,39 USD**.
+- El total de las 152: **+17.671,25 USD**. **Positivo.**
+
+Reconciliación verificada: −12.522,97 + 32.214,94 = +19.691,97 (las 147); menos 2.020,72 de las
+cinco reales sin pareja = **+17.671,25**. Cuadra al centavo.
+
+⇒ **Las dos estrategias, operando solas, PERDIERON dinero en la ventana. La cuenta terminó en
+positivo por la intervención manual de una persona.** Y dentro de esas 135, **S6 gana (+3.960,37)
+mientras SuperTrend pierde fuerte (−16.483,34)**.
+
+Esto no es un veredicto sobre las estrategias —son dos semanas y 135 posiciones, muy por debajo de
+la puerta estadística del plan §9— pero **es dato real, no simulado**, y reordena la pregunta: la
+premisa de trabajo era «las dos ganadoras hasta ahora», y en la única ventana con dinero real
+medido, una gana y la otra pierde tres veces lo que la primera gana.
+
+## U · Por qué arreglar el look-ahead no cierra este hueco
+
+La descomposición cuadra con residuo de 1,8 × 10⁻¹²:
+
+| fuente | USD |
+|---|---:|
+| 10 posiciones que la réplica inventó | −3.110,14 |
+| 5 posiciones reales que la réplica perdió | +2.020,72 |
+| **diferencias de precio en las 147 emparejadas** | **−4.527,86** |
+| total | −5.617,28 |
+
+**El término mayor no son las posiciones fantasma: son los precios de las emparejadas.** El
+look-ahead del ADDENDUM III explica el primer término y parte del tercero, pero **no** el grueso.
+Arreglarlo es obligatorio —un look-ahead no se transporta a la fase siguiente por mucha prisa que
+haya— pero **no** devuelve el criterio al 0,3 %, ni cerca.
+
+## V · Lo que esto obliga a decidir
+
+La paridad bit-idéntica **no se alcanza antes del 16**, y decirlo ahora vale más que descubrirlo el
+17. Lo que queda es elegir sobre qué se apoya el veredicto comparativo:
+
+1. **La ventana real de la 902 es evidencia directa** y no necesita simulador: para comparar S6 con
+   SuperTrend *en estas dos semanas*, el dato ya está y dice lo que dice.
+2. **El backtest largo sigue siendo necesario** para lo que dos semanas no pueden dar —régimen,
+   estructura de drawdown, estacionalidad— pero debe correr con **el sesgo declarado como banda**,
+   y con la advertencia de que favorece a SuperTrend por unos 54 USD por posición.
+3. **El look-ahead se arregla igual**, porque es un defecto de método y no una cuestión de
+   presupuesto.
+
+## W · Lo que NO se puede concluir
+
+- **No** que las estrategias no sirvan. Dos semanas no son una muestra, y el plan tiene una puerta
+  estadística que esto no cruza ni de lejos.
+- **No** que el motor congelado `b113eb7` tenga estos defectos. Los tiene la **réplica**, que es
+  instrumento de medida escrito por nosotros.
+- **No** que la divergencia sea irreducible: es lo que mide **hoy**, con el look-ahead dentro.
+
+## X · Corrección de registro que sale de aquí
+
+El agente detectó que el brief y **la prosa del propio TRACKER** dicen «137 emparejadas», mientras
+el artefacto `p_cap_resultado.json` y el recómputo directo de `comparacion_p_cap.csv` dan **135**.
+Aplicó la regla correcta —gana el artefacto (§A.9)— y lo declaró. El 137 venía de mí y se propagó
+al estado en una línea. **Corregido en el TRACKER.** Es exactamente el modo de fallo que el
+protocolo 00 paso 6 existe para evitar, ocurriendo en la prosa **vigente**, no en la histórica.
