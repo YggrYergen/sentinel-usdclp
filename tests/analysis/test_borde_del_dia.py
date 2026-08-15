@@ -305,9 +305,12 @@ def test_cita_gate_spread_harness_vivo_backtest_py_literal():
 
 
 def test_cita_gate_spread_harness_verificada_contra_el_fichero_real():
+    # T0.7-M-E (backtest.py:130-149, commit ver progreso.md) inserto 18
+    # lineas antes de resolve() al acotar Ticks.first_at con tolerance_s;
+    # la linea citada se desplazo de 358 a 376 (indice 357 -> 375).
     ruta = M._REPO_ROOT / "scripts/analysis/realtick_bt/backtest.py"
     lineas = ruta.read_text(encoding="utf-8").splitlines()
-    assert "abs(sp - 0.5) <= 0.05" in lineas[357]  # linea 358, indice 357
+    assert "abs(sp - 0.5) <= 0.05" in lineas[375]  # linea 376, indice 375
 
 
 def test_cita_no_modelado_borde_dia_llamador_py():

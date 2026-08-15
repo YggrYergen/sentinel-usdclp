@@ -82,8 +82,17 @@ def load_bars() -> list[dict[str, Any]]:
 # --------------------------------------------------------------------------- ticks
 class Ticks:
     """Per-month real-tick store; epoch-seconds axis shared with bars."""
-    def __init__(self) -> None:
+    def __init__(self, *, tolerance_s: float = 60.0) -> None:
         self._m: dict[str, tuple[np.ndarray, np.ndarray, np.ndarray]] = {}
+        # T0.7-M-E: max allowed gap between a requested instant and the
+        # returned tick's timestamp in `first_at`. Keyword-with-default
+        # (never positional/required): `AvaTicks.__init__`
+        # (scripts/research/backtest_largo_ava.py) calls `super().__init__()`
+        # with no arguments and must not break. Default 60.0s is an order of
+        # magnitude above the measured p90 of healthy calls (3.268s) and
+        # below every one of the 945 contaminated calls measured by T0.7-M-C
+        # (research/fases/F0-preparacion/02-specs/T0.7-M-E-brief-fix-lookahead-motor-largo.md).
+        self.tolerance_s = tolerance_s
 
     def _load(self, ym: str):
         if ym not in self._m:
@@ -128,14 +137,23 @@ class Ticks:
         return [self._shift(ym, -1), ym, self._shift(ym, 1)]
 
     def first_at(self, t_sec: float):
-        """First tick with t >= t_sec (spills across month files as needed)."""
+        """First tick with t >= t_sec (spills across month files as needed),
+        bounded by `self.tolerance_s`: if that tick's timestamp is more than
+        `tolerance_s` after `t_sec`, there is no tick "at" the requested
+        instant in any meaningful sense (a market gap -- daily close,
+        weekend, broker maintenance cut, feed outage) and this returns
+        `None`, exactly as it already does when there is no later tick at
+        all (T0.7-M-E; both call sites already handle `None`)."""
         for ym in self._candidates(t_sec):     # chronological -> first hit is the earliest
             ta, bid, ask = self._load(ym)
             if not len(ta):
                 continue
             i = int(np.searchsorted(ta, t_sec, "left"))
             if i < len(ta):
-                return float(ta[i]), float(bid[i]), float(ask[i])
+                t_tick = float(ta[i])
+                if t_tick - t_sec > self.tolerance_s:
+                    return None
+                return t_tick, float(bid[i]), float(ask[i])
         return None
 
     def range(self, t0: float, t1: float):
