@@ -1033,3 +1033,58 @@ Batchear la depuración concentra el riesgo al final: si al correr la A6 única 
 regresiones funcionales a la vez, desenredarlas cuesta más que haberlas encontrado por separado.
 **Se acepta a cambio de velocidad, y con la puerta de paridad como red.** Si la A6 final destapa un
 enredo, el coste es re-abrir el lote — no se degrada el criterio de A6 para que pase.
+
+### D-48 · 2026-08-15 · Disciplina de tokens: los agentes trabajan, no redactan
+*(Procedencia: instrucción explícita del user, 2026-08-15, ante disponibilidad críticamente baja de
+cuota de Claude Code.)*
+
+**El hecho que fuerza la decisión.** Hasta ahora aproximadamente la mitad del tiempo y de los tokens
+se va en reportar y la otra mitad o menos en trabajar. Con la cuota restante eso no permite terminar
+el plan.
+
+**Lo que se decide, vinculante para TODO brief a partir de ahora:**
+- **Un solo fichero de reporte por tarea**, no varios disjuntos. Se elimina la práctica de emitir
+  `.md` + `.json` + `.csv` + bitácora + reporte cuando el `.json` y una tabla bastan.
+- **La bitácora de progreso se mantiene** (es el seguro anti-muerte por límite de sesión, ya salvó
+  dos tareas), pero es de una línea por bloque cerrado, no prosa.
+- **El reporte al controlador es el mínimo accionable:** estado, SHAs de commit, una línea de tests,
+  y las dudas que exigen decisión. Nada de recapitulación, nada de adjetivos, nada de repetir el
+  brief de vuelta.
+- **Prohibido pegar en el reporte salidas de comando completas** salvo las que la Definición de HECHO
+  exige explícitamente. Se pega la línea de resultado, no la corrida entera.
+- El controlador aplica la misma regla a sí mismo: se interpreta y se decide, no se narra.
+
+**Lo que NO se relaja:** la honestidad (§C), la declaración de lo no evaluable, el registro aditivo,
+y la puerta de paridad. Se recorta la prosa, jamás la evidencia.
+
+### D-49 · 2026-08-15 · T0.11 (videos de YouTube) se simplifica a UN solo agente, una sola pasada
+*(Procedencia: instrucción explícita del user, 2026-08-15. Sustituye el diseño de 3 etapas del plan
+§4.4 y el `PROTOCOLO-REVISION-VIDEOS.md` en lo que se le oponga.)*
+
+**Lo que se hace:** se despacha **un único subagente Sonnet 5 high effort** que lee **todas las
+transcripciones ya disponibles en disco en una sola pasada** y produce, lo más rápido y completo
+posible, **el inventario de qué cubre cada video**.
+
+**Lo que se elimina del diseño anterior:** las etapas de conteo de tokens y estimación de coste por
+modelo, la decisión de routing con el user, y los dos orquestadores con tandas de Haiku.
+
+**Lo que se conserva:** la regla de compartimentación —un video, un bloque de análisis; no se mezclan
+videos en una misma conclusión— aplicada ahora **dentro** de la pasada única, fila por fila del
+inventario. El inventario es un **catálogo**, no un veredicto: no autoriza ninguna grilla por sí solo.
+
+### D-50 · 2026-08-15 · T0.10 (literatura formal) se ejecuta con un orquestador y como máximo 4 Haiku
+*(Procedencia: instrucción explícita del user, 2026-08-15. Sustituye el diseño de "una revisión por
+área" del plan §4.3 en su dimensionamiento.)*
+
+**Lo que se hace:** un **subagente ORQUESTADOR Sonnet 5 high effort** despacha **como máximo 4
+subagentes Haiku en total, con un máximo de 2 en paralelo**. Cada Haiku investiga **exclusivamente
+un área** de literatura formal, y las áreas se eligen por un solo criterio: **cuál puede beneficiar
+más a S6 y a SuperTrend**, que son las dos estrategias vivas.
+
+**Consecuencia sobre el plan §4.3:** de las siete áreas listadas, se escogen **cuatro**. La elección
+se justifica por escrito contra S6/ST antes de despachar, y las tres no cubiertas quedan como
+**pendiente declarado** con recomendación (§11 lo permite explícitamente).
+
+**Precedente que lo hace admisible:** D-25 ya resolvió que el máximo de 2 en paralelo del charter §C
+gobierna la concurrencia del *controlador*, y que un orquestador puede correr lectores en tandas.
+Aquí se aplica igual, con el tope duro de 4 en total.
