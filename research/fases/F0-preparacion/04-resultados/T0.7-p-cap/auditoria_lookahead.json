@@ -1,0 +1,218 @@
+{
+  "lineage": {
+    "run_id": "T0.7-M-C-auditoria-lookahead-20260815T201813Z",
+    "area": "F0",
+    "experimento": "T0.7-M-C-auditoria-lookahead",
+    "etapa": "F0",
+    "git_sha": "ef243e362597df9816e7a21157c324f5b2a33c05",
+    "generador": "scripts/analysis/realtick_bt/auditoria_lookahead.py",
+    "timestamp": "2026-08-15T20:18:14.097639Z"
+  },
+  "ventana_q4q5_capitaria": {
+    "t0_iso": "2026-07-27T00:00:00",
+    "t1_iso": "2026-08-12T00:00:00",
+    "n_instantes_rejilla": 1536
+  },
+  "resumen_delays_q4": {
+    "n_total": 1536,
+    "n_evaluable": 1530,
+    "n_no_evaluable": 6,
+    "p50": 0.1755000352859497,
+    "p90": 108005.8942000389,
+    "p99": 169844.8945800114,
+    "max": 176405.89599990845,
+    "n_gt_60s": 432,
+    "n_gt_15min": 432,
+    "n_gt_1h": 396
+  },
+  "clasificacion_gt_60s_q5": {
+    "fin_de_semana": 376,
+    "corte_mantenimiento": 56,
+    "otro": 0
+  },
+  "ejemplos_gt_60s_q5": {
+    "fin_de_semana": [
+      {
+        "t_pedido_iso": "2026-07-31T19:00:00",
+        "t_devuelto_iso": "2026-08-02T18:00:05.896000",
+        "delta_s": 169205.89599990845
+      },
+      {
+        "t_pedido_iso": "2026-07-31T19:15:00",
+        "t_devuelto_iso": "2026-08-02T18:00:05.896000",
+        "delta_s": 168305.89599990845
+      },
+      {
+        "t_pedido_iso": "2026-07-31T19:30:00",
+        "t_devuelto_iso": "2026-08-02T18:00:05.896000",
+        "delta_s": 167405.89599990845
+      },
+      {
+        "t_pedido_iso": "2026-07-31T19:45:00",
+        "t_devuelto_iso": "2026-08-02T18:00:05.896000",
+        "delta_s": 166505.89599990845
+      },
+      {
+        "t_pedido_iso": "2026-07-31T20:00:00",
+        "t_devuelto_iso": "2026-08-02T18:00:05.896000",
+        "delta_s": 165605.89599990845
+      }
+    ],
+    "corte_mantenimiento": [
+      {
+        "t_pedido_iso": "2026-07-27T17:00:00",
+        "t_devuelto_iso": "2026-07-27T18:00:05.732000",
+        "delta_s": 3605.7320001125336
+      },
+      {
+        "t_pedido_iso": "2026-07-27T17:15:00",
+        "t_devuelto_iso": "2026-07-27T18:00:05.732000",
+        "delta_s": 2705.7320001125336
+      },
+      {
+        "t_pedido_iso": "2026-07-27T17:30:00",
+        "t_devuelto_iso": "2026-07-27T18:00:05.732000",
+        "delta_s": 1805.7320001125336
+      },
+      {
+        "t_pedido_iso": "2026-07-27T17:45:00",
+        "t_devuelto_iso": "2026-07-27T18:00:05.732000",
+        "delta_s": 905.7320001125336
+      },
+      {
+        "t_pedido_iso": "2026-07-28T17:00:00",
+        "t_devuelto_iso": "2026-07-28T18:00:06.393000",
+        "delta_s": 3606.3929998874664
+      }
+    ],
+    "otro": []
+  },
+  "q6_ava_f0_bt_largo_0001": {
+    "modo": "mediana",
+    "n_bars_final": 31700,
+    "n_posiciones_por_estrategia": {
+      "S6-K2P0": 4578,
+      "S7-TPNONE": 5364,
+      "SuperTrend-p14x3-M15": 1617
+    },
+    "n_llamadas_first_at": 13672,
+    "tiempo_medido_seg": 173.53,
+    "resumen_delays": {
+      "n_total": 13672,
+      "n_evaluable": 13672,
+      "n_no_evaluable": 0,
+      "p50": 0.10800004005432129,
+      "p90": 3.2682999134063624,
+      "p99": 23400.06544007063,
+      "max": 76129.38899993896,
+      "n_gt_60s": 945,
+      "n_gt_15min": 736,
+      "n_gt_1h": 651
+    },
+    "n_llamadas_dentro_de_exclusion_ava": 1,
+    "n_intervalos_exclusion_ava": 44,
+    "ejemplos_llamadas_dentro_de_exclusion": [
+      "2026-02-20T00:00:00"
+    ],
+    "ejemplos_top10_delay": [
+      {
+        "t_pedido_iso": "2026-02-22T23:15:00",
+        "t_devuelto_iso": "2026-02-23T20:23:49.389000",
+        "delta_s": 76129.38899993896
+      },
+      {
+        "t_pedido_iso": "2026-01-21T23:15:00",
+        "t_devuelto_iso": "2026-01-22T20:18:22.556000",
+        "delta_s": 75802.55599999428
+      },
+      {
+        "t_pedido_iso": "2026-02-22T23:30:00",
+        "t_devuelto_iso": "2026-02-23T20:23:49.389000",
+        "delta_s": 75229.38899993896
+      },
+      {
+        "t_pedido_iso": "2026-01-21T23:30:00",
+        "t_devuelto_iso": "2026-01-22T20:18:22.556000",
+        "delta_s": 74902.55599999428
+      },
+      {
+        "t_pedido_iso": "2026-01-29T23:15:00",
+        "t_devuelto_iso": "2026-01-30T16:20:28.619000",
+        "delta_s": 61528.61899995804
+      },
+      {
+        "t_pedido_iso": "2026-01-29T23:30:00",
+        "t_devuelto_iso": "2026-01-30T16:20:28.619000",
+        "delta_s": 60628.61899995804
+      },
+      {
+        "t_pedido_iso": "2026-02-20T00:00:00",
+        "t_devuelto_iso": "2026-02-20T14:44:35.390000",
+        "delta_s": 53075.390000104904
+      },
+      {
+        "t_pedido_iso": "2026-01-22T23:15:00",
+        "t_devuelto_iso": "2026-01-23T12:08:21.552000",
+        "delta_s": 46401.55200004578
+      },
+      {
+        "t_pedido_iso": "2026-01-22T23:30:00",
+        "t_devuelto_iso": "2026-01-23T12:08:21.552000",
+        "delta_s": 45501.55200004578
+      },
+      {
+        "t_pedido_iso": "2026-02-04T23:15:00",
+        "t_devuelto_iso": "2026-02-05T08:00:00.091000",
+        "delta_s": 31500.09100008011
+      }
+    ]
+  },
+  "q6_ava_error": null,
+  "hallazgos_repo_wide_q3": [
+    {
+      "file_line": "scripts/analysis/realtick_bt/backtest.py:353",
+      "clase": "bt.Ticks.first_at (bajo auditoria)",
+      "nota": "resolve(), entrada; argumento = bar_times[bi] + BAR_SEC"
+    },
+    {
+      "file_line": "scripts/analysis/realtick_bt/backtest.py:383",
+      "clase": "bt.Ticks.first_at (bajo auditoria)",
+      "nota": "resolve(), salida fallback; argumento = pos['t_out'] + BAR_SEC"
+    },
+    {
+      "file_line": "scripts/research/backtest_largo_ava.py (AvaTicks, clase completa)",
+      "clase": "subclase de bt.Ticks -- first_at/range/_candidates HEREDADOS byte-identicos",
+      "nota": "unico metodo sobrescrito es _load(); confirmado por lectura del modulo. Este es 'el motor de backtest largo' del brief; produjo F0-BT-LARGO-0001."
+    },
+    {
+      "file_line": "scripts/analysis/a6_pata_a/signal_level.py:90-133",
+      "clase": "Ticks propia, reimplementacion independiente (mismo patron)",
+      "nota": "NO es la clase del harness -- reimplementacion paralela para un analisis A6 distinto."
+    },
+    {
+      "file_line": "scripts/analysis/a6_pata_a/capa3_gate_spread.py:36-38,111-168",
+      "clase": "importa Ticks/resolve de backtest.py (read-only)",
+      "nota": "replica las dos llamadas de resolve() para instrumentar el gate de spread; analisis A6 aparte, no forma parte del harness del backtest largo."
+    },
+    {
+      "file_line": "scripts/analysis/a6_pata_a/exp_active_fichas.py:195,112",
+      "clase": "bt.Ticks + bt.resolve (importados de backtest.py, sin copiar)",
+      "nota": "instancia Ticks() en :195 y la pasa a resolve(p, ticks, bar_times) importado de backtest.py en :112 -- llama a los MISMOS backtest.py:353/:383, desde otro caller. Confirmado: import 'from scripts.analysis.realtick_bt.backtest import (...)' en la cabecera del modulo."
+    },
+    {
+      "file_line": "scripts/analysis/a6_pata_a/capa1_senal_cruda.py:389,390",
+      "clase": "bt.Ticks + bt.run_supertrend (importados de backtest.py, sin copiar)",
+      "nota": "instancia Ticks() en :389 y la pasa a run_supertrend(cap_bars, st_ticks) en :390. run_supertrend() usa SOLO ticks.range(t0,t1) (backtest.py:313), NUNCA first_at() -- range() esta acotado por los dos argumentos que recibe, no hace busqueda hacia adelante sin cota. DESCARTADO de la familia de riesgo de first_at."
+    },
+    {
+      "file_line": "tests/analysis/test_realtick_pairing.py:61-78",
+      "clase": "Ticks propia en fixture de test",
+      "nota": "reimplementacion independiente en un test, no es el harness."
+    },
+    {
+      "file_line": "sentinel_engine/ai/dossier.py:254, sentinel_engine/opt/fast_replay.py:230,236,528,561, sentinel_engine/service/routers/runs.py:81",
+      "clase": "pandas Index.searchsorted, DESCARTADO",
+      "nota": "lookup 'as-of' HACIA ATRAS sobre barras (side='right')-1), no acceso a ticks por instante hacia adelante -- no es la misma familia de riesgo."
+    }
+  ]
+}
