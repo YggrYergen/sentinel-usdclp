@@ -380,3 +380,109 @@ Tres campos cambian de naturaleza, y conviene separarlos:
 el motor. Nada sobre si la réplica ya sirve para el backtest largo: no sirve. Y nada sobre el
 mecanismo del deslizamiento de los stops ni sobre el del borde del día: las dos son hipótesis
 marcadas, con su prueba falsable escrita y sin correr.
+
+---
+
+# ADDENDUM III — El borde del día tiene mecanismo, y es LOOK-AHEAD
+
+**2026-08-15.** Aditivo: nada de lo anterior se retira. Interpretación Opus (D-14) de la medición
+`T0.7-M-B1-BORDE-DIA-0001` (`borde_del_dia.{csv,json,md}`, commit `b921dff`, `git_sha` del brief
+`d85ea1b`). El agente fue REPORT-ONLY y no concluyó; las conclusiones de abajo son mías, y la
+verificación del código la hice yo de forma independiente sobre `ciclos.py` y `backtest.py`.
+
+## K · La hipótesis del §I se confirma, pero el culpable no es el gate
+
+El §I dejó marcada la hipótesis de que el mecanismo sería «el gate de spread». **Es más grave que
+eso, y el gate no está roto: está siendo alimentado con un tick del futuro.**
+
+Los diez casos del cluster tienen **cero ticks en su segundo de apertura**
+(`q1_n_ticks_segundo = 0.0` en los diez, sin excepción). Y `ciclos.py:161` hace:
+
+```python
+tick = ticks.first_at(t)
+```
+
+donde `first_at` está definido en `backtest.py:130-139` como *«First tick with `t >= t_sec` (spills
+across month files as needed)»* — una **búsqueda hacia adelante sin cota**. Cuando el instante del
+bucle cae dentro del corte de mantenimiento, no devuelve `None`: devuelve el primer tick **después
+del hueco**.
+
+La cadena completa, verificada línea a línea:
+
+| paso | línea | qué hace | consecuencia |
+|---|---|---|---|
+| busca tick | `ciclos.py:161` | `first_at(t)` salta el hueco entero | trae un tick del futuro |
+| toma precios | `ciclos.py:164` | `tick_bid, tick_ask` del tick futuro | precio de dentro de una hora |
+| gate de spread | `ciclos.py:182` | evalúa `tick_ask − tick_bid` **del futuro** | **0,50 → pasa** |
+| gate horario | `ciclos.py:176` | evalúa `_seconds_of_day(t)`, el instante **pasado** | 16:59 ∉ 18:00-18:45 → no dispara |
+| precio de entrada | `ciclos.py:207` | `precio_open = tick_ask` del futuro | entrada a precio no disponible |
+| sello temporal | `ciclos.py:211` | `"t_open": t`, el instante del bucle | queda fechada a las 16:59 |
+
+**Un solo defecto produce cinco síntomas.** Y el dato que lo cierra: el spread realmente vigente a
+las 16:59 era **0,60 en los diez casos** — por encima del umbral de 0,50 de `ciclos.py:127`. **El
+gate habría rechazado la apertura si lo hubieran alimentado con el tick correcto.** No hay que
+tocar el gate. Hay que dejar de darle datos del futuro.
+
+## L · La magnitud, que es lo que convierte esto en un defecto de primer orden
+
+El retraso del tick que la réplica acaba usando, medido:
+
+- **nueve casos: 3.592 a 3.665 s** — entre 59 y 61 minutos de look-ahead.
+- **el caso de fin de semana: 176.699 s — 2,04 días.**
+
+Los huecos de ticks confirman la causa por el otro lado: los siete días del cluster tienen un hueco
+de **exactamente 61 minutos** (`16:59`→`17:59`), salvo el viernes, con **115 minutos** (`16:55`→
+`18:49`). Coincide con el corte de mantenimiento 17:00-17:45 que T0.13 midió y que
+`F0-DATA-CAP-0001` ya había declarado al construir las barras. **No es un hueco de nuestro lago: es
+que el bróker cierra.**
+
+## M · De qué familia es este error, y por qué eso importa
+
+Esto no es «la réplica no modela un estado del mercado», que es como lo describió el §I. Es
+**look-ahead**: la réplica decide en `t` usando información que no existía en `t`.
+
+Y esa familia ya tiene un precedente medido y quemado en este programa. `NEGATIVOS.md` registra los
+**fills same-bar** como *«colapso ≈ −121 % neto»*, cerrados como no re-abribles con
+`live_fill_mode=True` obligatorio. Es el mismo error de clase, en otro sitio del motor y con otra
+cara. Que reaparezca en un módulo escrito **después** de aquel veredicto es el dato de proceso más
+importante de esta medición: **el look-ahead no se elimina con una regla, se elimina con un test que
+lo busque.**
+
+Nótese además que el sesgo **no es simétrico ni neutro**: la réplica abre a un precio de dentro de
+una hora sabiendo lo que hizo el mercado en el hueco. Eso favorece a la réplica de forma
+sistemática, así que cualquier neto que produzca en estos casos está **inflado**, no simplemente
+desplazado. Es exactamente el tipo de sesgo que el charter §A.13 llama degradación silenciosa.
+
+## N · La corrección que se deriva, y por qué es la fiel
+
+La reparación **no** es fechar la posición con el instante del tick (`t_open = _tick_ts`): eso
+arreglaría el sello y **conservaría el look-ahead**, que es lo grave.
+
+La reparación fiel es **no operar**: el sistema vivo, en un ciclo sin tick, no tenía nada sobre lo
+que actuar y no hacía nada. Luego `correr_ciclos` debe **saltar el ciclo** cuando el tick que
+`first_at` devuelve está más allá de una tolerancia del instante del bucle — del orden de un ciclo
+(15,77 s medidos), no más. Eso es copiar un insumo, no ajustar un parámetro: la distinción que fijó
+el §5 sigue gobernando.
+
+Predicción falsable, y conviene dejarla escrita antes de tocar nada: al aplicarla deben desaparecer
+las nueve posiciones de las 16:59 y la del viernes; el conteo de S6 debe **bajar** (hoy 88 réplica
+contra 84 real, +4), y la cola del p90 debe perder su población de 1-6 h y >6 h — **20 de las 39**.
+Si el conteo no baja o la cola no se vacía, esta lectura está mal.
+
+## O · Lo que NO dice esta medición
+
+- **Nada** sobre el edge de las estrategias. Mide el motor.
+- **Nada** sobre la segunda población de la cola. Los 16 casos de `OPEN_SKIPPED_SL_CROSSED` quedaron
+  censados —catorce con la réplica tarde, desvíos de precio de ±0,9, y el nivel de stop deseado en
+  cada rechazo— pero **su causa no está medida**. Constatado, no explicado.
+- **Nada** sobre si el motor vivo tiene este defecto. La réplica es un instrumento de medida escrito
+  por nosotros; el motor congelado `b113eb7` es otro artefacto y esto no lo acusa.
+
+## P · Corrección de un defecto de MI brief
+
+El brief le pidió al agente usar `sl_vivo` de `posiciones_replica.csv` para caracterizar los 16
+rechazos. **Era imposible por construcción y el agente lo demostró:** un `OPEN_SKIPPED_SL_CROSSED`
+ocurre en la rama `posicion_viva is None`, así que **nunca se crea una posición** y no hay fila que
+emparejar. El agente lo declaró no evaluable con la razón, y lo sustituyó por el `desired_sl` del
+propio evento — que es el dato correcto. Queda registrado como error de brief del orquestador, no
+del agente, en la misma línea que el precedente del 2026-08-11 con `symbol_info_session_quote`.
