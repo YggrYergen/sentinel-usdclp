@@ -1,0 +1,80 @@
+{
+  "lineage": {
+    "task": "T0.7-M-E",
+    "brief": "research/fases/F0-preparacion/02-specs/T0.7-M-E-brief-fix-lookahead-motor-largo.md",
+    "git_sha_fix_commit": "f3dda1aff0f84ae739b09a467da4c0bffe0252c4",
+    "generador": "IMPLEMENTADOR, ejecucion manual de research/fases/F0-preparacion/02-specs/T0.7-M-E-brief-fix-lookahead-motor-largo.md (E.5), reutilizando funciones puras de scripts/analysis/realtick_bt/auditoria_lookahead.py (no modificado)",
+    "timestamp_medicion_after": "2026-08-15 (misma sesion, tras commit f3dda1a)"
+  },
+  "que_se_midio": "Q6 AVA -- llamadas GENUINAS de ticks.first_at() que hace bt.build_all() al correr el motor largo AVA (scripts/research/backtest_largo_ava.py), instrumentadas via auditoria_lookahead.medir_q6_ava(modo='mediana'). BEFORE = medicion de T0.7-M-C (codigo sin cota, fichero previo research/fases/F0-preparacion/04-resultados/T0.7-p-cap/auditoria_lookahead.json y su respaldo auditoria_lookahead_ava_q6.csv.bak-20260815T204419Z, tomado ANTES de re-ejecutar la medicion para preservarlo). AFTER = misma funcion, mismo modo, ejecutada en esta sesion con el fix ya aplicado (Ticks.first_at acotado por tolerance_s=60.0, backtest.py:130-149).",
+
+  "before_pre_fix": {
+    "fuente": "research/fases/F0-preparacion/04-resultados/T0.7-p-cap/auditoria_lookahead.json (q6_ava_f0_bt_largo_0001), generado por T0.7-M-C antes de este fix",
+    "n_bars_final": 31700,
+    "n_posiciones_por_estrategia": {"S6-K2P0": 4578, "S7-TPNONE": 5364, "SuperTrend-p14x3-M15": 1617},
+    "n_llamadas_first_at": 13672,
+    "resumen_delays": {
+      "n_total": 13672, "n_evaluable": 13672, "n_no_evaluable": 0,
+      "p50": 0.10800004005432129, "p90": 3.2682999134063624, "p99": 23400.06544007063,
+      "max": 76129.38899993896, "n_gt_60s": 945, "n_gt_15min": 736, "n_gt_1h": 651
+    },
+    "sensibilidad_umbral": {
+      "n_gt_15s": 1122, "n_gt_60s": 945, "n_gt_300s": 794,
+      "fuente": "recomputado directamente sobre auditoria_lookahead_ava_q6.csv.bak-20260815T204419Z (backup tomado antes de que medir_q6_ava lo sobrescribiera), columna delta_s, filas evaluable=True"
+    }
+  },
+
+  "after_post_fix": {
+    "fuente": "medir_q6_ava(modo='mediana') ejecutado en esta sesion tras el commit f3dda1a; escribio research/fases/F0-preparacion/04-resultados/T0.7-p-cap/auditoria_lookahead_ava_q6.csv (sobrescrito -- el estado pre-fix quedo respaldado en el .bak citado arriba)",
+    "n_bars_final": 31700,
+    "n_posiciones_por_estrategia": {"S6-K2P0": 4482, "S7-TPNONE": 5253, "SuperTrend-p14x3-M15": 1566},
+    "n_llamadas_first_at": 13824,
+    "tiempo_medido_seg_build_all": 116.3,
+    "tiempo_total_medicion_seg": 234.16,
+    "resumen_delays": {
+      "n_total": 13824, "n_evaluable": 12830, "n_no_evaluable": 994,
+      "p50": 0.0969998836517334, "p90": 0.6632000923156746, "p99": 21.71371000766754,
+      "max": 59.92199993133545, "n_gt_60s": 0, "n_gt_15min": 0, "n_gt_1h": 0
+    },
+    "sensibilidad_umbral": {
+      "n_gt_15s": 189, "n_gt_60s": 0, "n_gt_300s": 0,
+      "fuente": "recomputado directamente sobre auditoria_lookahead_ava_q6.csv post-fix, columna delta_s, filas evaluable=True"
+    }
+  },
+
+  "delta_before_after": {
+    "n_llamadas_first_at": {"before": 13672, "after": 13824, "delta": 152},
+    "n_calls_ahora_none": {"before_n_no_evaluable": 0, "after_n_no_evaluable": 994, "delta": 994},
+    "n_gt_60s": {"before": 945, "after": 0, "delta": -945, "criterio_E5": "945 -> 0, CUMPLE"},
+    "p50": {"before": 0.10800004005432129, "after": 0.0969998836517334, "delta_abs": -0.011000156, "delta_rel_pct": -10.19},
+    "p90": {"before": 3.2682999134063624, "after": 0.6632000923156746, "delta_abs": -2.605099821, "delta_rel_pct": -79.71},
+    "n_posiciones_por_estrategia": {
+      "S6-K2P0": {"before": 4578, "after": 4482, "delta": -96, "delta_rel_pct": -2.10},
+      "S7-TPNONE": {"before": 5364, "after": 5253, "delta": -111, "delta_rel_pct": -2.07},
+      "SuperTrend-p14x3-M15": {"before": 1617, "after": 1566, "delta": -51, "delta_rel_pct": -3.15}
+    }
+  },
+
+  "criterios_exito_E5_declarados_en_el_brief": {
+    "n_gt_60s_945_a_0": "CUMPLE (945 -> 0, exacto)",
+    "p50_p90_esencialmente_sin_mover": {
+      "p50": "0.108s -> 0.097s (-10.2% relativo) -- variacion pequena, mismo orden de magnitud",
+      "p90": "3.268s -> 0.663s (-79.7% relativo) -- NO se mantiene esencialmente sin mover",
+      "declaracion": "El brief especifica textualmente: 'If they move appreciably, the fix is touching healthy calls and you must STOP and escalate.' p90 se movio 79.7% en relativo. Se declara la cifra medida, NO se interpreta ni se decide si es aceptable -- corresponde al rol IMPLEMENTADOR reportar, no concluir (charter SS B). Ver reporte final para la senal de STOP/escalar."
+    },
+    "sensibilidad_15_60_300s": "reportada arriba (before y after) -- ver 'before_pre_fix.sensibilidad_umbral' y 'after_post_fix.sensibilidad_umbral'",
+    "delta_posiciones_por_estrategia": "medido (no declarado 'no evaluado'): costo de la medicion Q6 completa fue barato (234s), ver 'delta_before_after.n_posiciones_por_estrategia'"
+  },
+
+  "verificacion_parity_gate": {
+    "comando": "python -m pytest tests/research/test_baseline_parity.py -m slow -q",
+    "antes_del_fix": "4 passed in 2.53s",
+    "despues_del_fix": "3 failed, 1 passed in 2.42s",
+    "primera_discrepancia_nombrada_por_el_test": "AssertionError: S6-K2P0: numero de posiciones cambio -- congelado=633 actual=624. assert 624 == 633",
+    "nota": "ROJO esperado por diseno segun el brief (el look-ahead vivia dentro de la linea base congelada). NO se re-congelo la baseline, NO se agrego skip/xfail, NO se toco 04-resultados/T0.6-baseline/."
+  },
+
+  "no_evaluable_o_no_intentado": [
+    "No se recorrio F0-BT-LARGO-0001 completo (metricas net/PF/maxDD por estrategia) con el fix -- fuera del alcance E.5, que solo pide n_gt_X, p50/p90, sensibilidad y delta de conteo de posiciones."
+  ]
+}
