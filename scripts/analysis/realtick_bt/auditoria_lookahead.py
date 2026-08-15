@@ -30,9 +30,11 @@ no existen por falta de barras.
 from __future__ import annotations
 
 import calendar
+import csv
 import json
 import subprocess
 import sys
+import time as time_module
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -133,7 +135,13 @@ def clasificar_hueco(t_pedido: float) -> str:
     """Clasifica un instante (hora servidor, SIEMPRE decodificado con
     `utcfromtimestamp`) como `fin_de_semana` / `corte_mantenimiento` / `otro`,
     segun los horarios MEDIDOS citados en el brief (gotchas): corte normal
-    16:59-17:59 hora servidor; viernes 16:55-18:49."""
+    16:59-17:59 hora servidor; viernes 16:55-18:49.
+
+    CORREGIDO tras hallazgo empirico (medicion real T0.7-M-C, ventana
+    2026-07-27..08-11): los instantes de viernes DESPUES de las 18:49 (fin
+    del corte ampliado) devuelven el MISMO tick de reapertura dominical que
+    los de sabado/domingo -- es la cola continua del mismo cierre semanal,
+    no un hueco aparte. Se clasifican como `fin_de_semana`, no `otro`."""
     d = datetime.utcfromtimestamp(t_pedido)
     wd = d.weekday()  # 0=lunes .. 5=sabado, 6=domingo
     if wd in (5, 6):
@@ -141,8 +149,12 @@ def clasificar_hueco(t_pedido: float) -> str:
     minutos = d.hour * 60 + d.minute
     if wd == 4:  # viernes
         ini, fin = 16 * 60 + 55, 18 * 60 + 49
-    else:
-        ini, fin = 16 * 60 + 59, 17 * 60 + 59
+        if minutos > fin:
+            return "fin_de_semana"  # cola continua del cierre semanal
+        if minutos >= ini:
+            return "corte_mantenimiento"
+        return "otro"
+    ini, fin = 16 * 60 + 59, 17 * 60 + 59
     if ini <= minutos <= fin:
         return "corte_mantenimiento"
     return "otro"
@@ -180,14 +192,20 @@ HALLAZGOS_REPO_WIDE = [
                 "analisis A6 aparte, no forma parte del harness del backtest largo.",
     },
     {
-        "file_line": "scripts/analysis/a6_pata_a/exp_active_fichas.py:195",
-        "clase": "instancia Ticks() (a confirmar import exacto)",
-        "nota": "modulo A6, fuera del alcance de esta auditoria.",
+        "file_line": "scripts/analysis/a6_pata_a/exp_active_fichas.py:195,112",
+        "clase": "bt.Ticks + bt.resolve (importados de backtest.py, sin copiar)",
+        "nota": "instancia Ticks() en :195 y la pasa a resolve(p, ticks, bar_times) importado "
+                "de backtest.py en :112 -- llama a los MISMOS backtest.py:353/:383, desde otro "
+                "caller. Confirmado: import 'from scripts.analysis.realtick_bt.backtest import "
+                "(...)' en la cabecera del modulo.",
     },
     {
-        "file_line": "scripts/analysis/a6_pata_a/capa1_senal_cruda.py:389",
-        "clase": "instancia Ticks() (a confirmar import exacto)",
-        "nota": "modulo A6, fuera del alcance de esta auditoria.",
+        "file_line": "scripts/analysis/a6_pata_a/capa1_senal_cruda.py:389,390",
+        "clase": "bt.Ticks + bt.run_supertrend (importados de backtest.py, sin copiar)",
+        "nota": "instancia Ticks() en :389 y la pasa a run_supertrend(cap_bars, st_ticks) en "
+                ":390. run_supertrend() usa SOLO ticks.range(t0,t1) (backtest.py:313), NUNCA "
+                "first_at() -- range() esta acotado por los dos argumentos que recibe, no hace "
+                "busqueda hacia adelante sin cota. DESCARTADO de la familia de riesgo de first_at.",
     },
     {
         "file_line": "tests/analysis/test_realtick_pairing.py:61-78",
@@ -205,6 +223,99 @@ HALLAZGOS_REPO_WIDE = [
 ]
 
 
+# --------------------------------------------------------------------- Q6: AVA / F0-BT-LARGO-0001
+
+
+def cargar_intervalos_exclusion_ava() -> list[tuple[float, float]]:
+    """Carga `exclusiones-ava.json` (D-33) y devuelve la lista de
+    `(ini_epoch, fin_epoch)`. NO decide nada sobre ellos -- solo los expone
+    para el cruce del Q6."""
+    with EXCLUSIONES_AVA_PATH.open("r", encoding="utf-8") as f:
+        d = json.load(f)
+    return [(iv["ini_epoch"], iv["fin_epoch"]) for iv in d["intervalos"]]
+
+
+def en_algun_intervalo(t: float, intervalos: list[tuple[float, float]]) -> bool:
+    return any(ini <= t < fin for ini, fin in intervalos)
+
+
+def medir_q6_ava(modo: str = "mediana") -> dict[str, Any]:
+    """Reproduce las llamadas GENUINAS de `ticks.first_at()` que el motor de
+    backtest largo hace de verdad al correr sobre AVA (no una rejilla
+    aproximada): instrumenta `AvaTicks` (subclase que solo registra el
+    argumento antes de delegar a `super().first_at()`, sin tocar
+    `backtest_largo_ava.py` ni `backtest.py`) y corre `bt.build_all()` sobre
+    los `bars_final` reales del propio pipeline de
+    `scripts/research/backtest_largo_ava.py` (mismas funciones, mismos
+    ficheros de config -- ese script SI se lee, no se edita)."""
+    from scripts.analysis.realtick_bt import backtest as bt
+    from scripts.research import backtest_largo_ava as blav
+    from scripts.research import cost_overlay as co
+    from scripts.research import ventana_calendario as vc
+
+    class _AvaTicksInstrumentado(blav.AvaTicks):
+        def __init__(self, *a, **kw):
+            super().__init__(*a, **kw)
+            self.llamadas: list[float] = []
+
+        def first_at(self, t_sec: float):
+            self.llamadas.append(t_sec)
+            return super().first_at(t_sec)
+
+    calendario = vc.cargar_calendario(co.CALENDARIO_PATH)
+    calib = co.cargar_calibracion(blav.CALIBRACION_PATH)
+    horas_ventana = co.horas_calendario(calendario)
+    excl_raw = blav.cargar_exclusiones(blav.EXCLUSIONES_PATH)
+    intervalos_bars = [(iv["ini_epoch"], iv["fin_epoch"]) for iv in excl_raw["intervalos"]]
+
+    bars_all = blav.load_bars_ava()
+    bars_ventana = vc.filter_bars(bars_all, "ava", calendario)
+    bars_final = blav.filter_exclusiones(bars_ventana, intervalos_bars)
+
+    ticks = _AvaTicksInstrumentado(calib, modo, horas_ventana)
+    t0 = time_module.time()
+    resolved = bt.build_all(ticks, bars_final)
+    tiempo_s = time_module.time() - t0
+
+    llamadas = ticks.llamadas
+    # medir_delays() vuelve a invocar first_at() -- se usa una instancia
+    # NUEVA (sin instrumentar) para no duplicar el registro de `llamadas`.
+    ticks_medicion = blav.AvaTicks(calib, modo, horas_ventana)
+    rows = medir_delays(ticks_medicion, llamadas)
+    resumen = resumen_delays(rows)
+
+    n_posiciones = {sid: len(rows_) for sid, rows_ in resolved.items()}
+
+    intervalos = cargar_intervalos_exclusion_ava()
+    n_en_exclusion = sum(1 for t in llamadas if en_algun_intervalo(t, intervalos))
+    ejemplos_exclusion = []
+    for t in llamadas:
+        if en_algun_intervalo(t, intervalos) and len(ejemplos_exclusion) < 10:
+            ejemplos_exclusion.append(datetime.utcfromtimestamp(t).isoformat())
+
+    top10 = sorted((r for r in rows if r["evaluable"]), key=lambda r: -r["delta_s"])[:10]
+    ejemplos_top_delay = [{
+        "t_pedido_iso": datetime.utcfromtimestamp(r["t_pedido"]).isoformat(),
+        "t_devuelto_iso": datetime.utcfromtimestamp(r["t_devuelto"]).isoformat(),
+        "delta_s": r["delta_s"],
+    } for r in top10]
+
+    _escribir_csv(rows, OUT_DIR / "auditoria_lookahead_ava_q6.csv")
+
+    return {
+        "modo": modo,
+        "n_bars_final": len(bars_final),
+        "n_posiciones_por_estrategia": n_posiciones,
+        "n_llamadas_first_at": len(llamadas),
+        "tiempo_medido_seg": round(tiempo_s, 2),
+        "resumen_delays": resumen,
+        "n_llamadas_dentro_de_exclusion_ava": n_en_exclusion,
+        "n_intervalos_exclusion_ava": len(intervalos),
+        "ejemplos_llamadas_dentro_de_exclusion": ejemplos_exclusion,
+        "ejemplos_top10_delay": ejemplos_top_delay,
+    }
+
+
 # --------------------------------------------------------------------- driver (I/O real)
 
 
@@ -215,9 +326,28 @@ def _git_sha() -> str:
     ).stdout.strip()
 
 
-def main() -> int:
+def _escribir_csv(rows: list[dict[str, Any]], path: Path) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8", newline="") as f:
+        w = csv.writer(f)
+        w.writerow(["t_pedido", "t_pedido_iso", "t_devuelto", "t_devuelto_iso",
+                    "delta_s", "evaluable", "clasificacion_si_gt_60s"])
+        for r in rows:
+            t_ped_iso = datetime.utcfromtimestamp(r["t_pedido"]).isoformat()
+            if r["evaluable"]:
+                t_dev_iso = datetime.utcfromtimestamp(r["t_devuelto"]).isoformat()
+                clasif = clasificar_hueco(r["t_pedido"]) if r["delta_s"] > UMBRAL_60S else ""
+            else:
+                t_dev_iso = ""
+                clasif = ""
+            w.writerow([r["t_pedido"], t_ped_iso, r.get("t_devuelto") or "", t_dev_iso,
+                        r["delta_s"] if r["delta_s"] is not None else "", r["evaluable"], clasif])
+
+
+def main(correr_q6_ava: bool = True) -> int:
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    # ---- Q4/Q5: Capitaria, rejilla declarada ----
     ticks = Ticks()
     instantes = decision_grid(WINDOW_T0, WINDOW_T1, BAR_SEC)
     rows = medir_delays(ticks, instantes)
@@ -237,6 +367,17 @@ def main() -> int:
                 "delta_s": r["delta_s"],
             })
 
+    _escribir_csv(rows, OUT_DIR / "auditoria_lookahead.csv")
+
+    # ---- Q6: AVA / F0-BT-LARGO-0001 (llamadas GENUINAS del motor largo) ----
+    q6: dict[str, Any] | None = None
+    q6_error: str | None = None
+    if correr_q6_ava:
+        try:
+            q6 = medir_q6_ava(modo="mediana")
+        except Exception as exc:  # noqa: BLE001 -- se declara, no se oculta
+            q6_error = f"{type(exc).__name__}: {exc}"
+
     out = {
         "lineage": {
             "run_id": f"T0.7-M-C-auditoria-lookahead-{datetime.utcnow().strftime('%Y%m%dT%H%M%SZ')}",
@@ -244,20 +385,23 @@ def main() -> int:
             "git_sha": _git_sha(), "generador": "scripts/analysis/realtick_bt/auditoria_lookahead.py",
             "timestamp": datetime.utcnow().isoformat() + "Z",
         },
-        "ventana": {
+        "ventana_q4q5_capitaria": {
             "t0_iso": datetime.utcfromtimestamp(WINDOW_T0).isoformat(),
             "t1_iso": datetime.utcfromtimestamp(WINDOW_T1).isoformat(),
             "n_instantes_rejilla": len(instantes),
         },
-        "resumen_delays": resumen,
-        "clasificacion_gt_60s": clasif,
-        "ejemplos_gt_60s": ejemplos,
-        "hallazgos_repo_wide": HALLAZGOS_REPO_WIDE,
+        "resumen_delays_q4": resumen,
+        "clasificacion_gt_60s_q5": clasif,
+        "ejemplos_gt_60s_q5": ejemplos,
+        "q6_ava_f0_bt_largo_0001": q6,
+        "q6_ava_error": q6_error,
+        "hallazgos_repo_wide_q3": HALLAZGOS_REPO_WIDE,
     }
     with (OUT_DIR / "auditoria_lookahead.json").open("w", encoding="utf-8") as f:
         json.dump(out, f, indent=2, ensure_ascii=False, sort_keys=False)
 
-    print(json.dumps({"resumen_delays": resumen, "clasificacion_gt_60s": clasif}, indent=2))
+    print(json.dumps({"resumen_delays_q4": resumen, "clasificacion_gt_60s_q5": clasif,
+                       "q6_ava_f0_bt_largo_0001": q6, "q6_ava_error": q6_error}, indent=2, default=str))
     return 0
 
 

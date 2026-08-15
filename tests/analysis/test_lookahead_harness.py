@@ -184,3 +184,21 @@ def test_clasificar_hueco_viernes_ventana_ampliada():
 def test_clasificar_hueco_otro():
     t = float(int(datetime(2026, 8, 4, 12, 0, 0, tzinfo=timezone.utc).timestamp()))
     assert al.clasificar_hueco(t) == "otro"
+
+
+def test_clasificar_hueco_viernes_noche_es_cierre_semanal_no_otro():
+    """Hallazgo empirico (medicion real sobre Capitaria, ventana 2026-07-27..
+    08-11): los instantes 2026-07-31 19:00..23:45 (viernes, TRAS el fin del
+    corte ampliado 16:55-18:49) devuelven TODOS el mismo tick de reapertura
+    2026-08-02 18:00:05.896 (domingo) -- es decir, son la MISMA cola continua
+    del cierre semanal, no un hueco distinto. Antes de este fix,
+    `clasificar_hueco` los marcaba "otro" (40 casos), separandolos
+    artificialmente del cierre de fin de semana."""
+    t = float(int(datetime(2026, 7, 31, 19, 0, 0, tzinfo=timezone.utc).timestamp()))
+    assert al.clasificar_hueco(t) == "fin_de_semana"
+    t2 = float(int(datetime(2026, 7, 31, 23, 45, 0, tzinfo=timezone.utc).timestamp()))
+    assert al.clasificar_hueco(t2) == "fin_de_semana"
+    # el propio corte ampliado del viernes (16:55-18:49) sigue siendo
+    # "corte_mantenimiento", no "fin_de_semana"
+    t3 = float(int(datetime(2026, 7, 31, 18, 30, 0, tzinfo=timezone.utc).timestamp()))
+    assert al.clasificar_hueco(t3) == "corte_mantenimiento"
