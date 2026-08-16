@@ -4,10 +4,10 @@
     "area": "F0",
     "experimento": "T0.7-M-0-divergencia-neto",
     "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv",
-    "git_sha": "0198002daee7a6469edd81d326d83ccfc3c1f175",
+    "git_sha": "aa0a8052fa53ee5c0101e1cc317dc62337a94a68",
     "etapa": "medicion",
     "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
-    "timestamp": "2026-08-16T01:01:50.041190+00:00"
+    "timestamp": "2026-08-15T19:54:41.492093+00:00"
   },
   "umbrales_pct": {
     "aceptable": 0.3,
@@ -25,17 +25,17 @@
   },
   "q1_bruto_replica": {
     "global": {
-      "n": 153,
-      "sum_bruto_usd": 14770.820000000036
+      "n": 155,
+      "sum_bruto_usd": 14053.920000000046
     },
     "por_estrategia": {
       "SAR::S6-K2P0": {
-        "n": 85,
-        "sum_bruto_usd": 6796.480000000036
+        "n": 86,
+        "sum_bruto_usd": 6726.800000000039
       },
       "SuperTrend::SuperTrend-p14x3-M15": {
-        "n": 68,
-        "sum_bruto_usd": 7974.340000000001
+        "n": 69,
+        "sum_bruto_usd": 7327.120000000009
       }
     }
   },
@@ -172,64 +172,64 @@
   },
   "q3_divergencia": {
     "usd_poblacion_a_emparejadas_evaluables": {
-      "neto_real": -12453.29000000024,
-      "neto_replica": -10371.600000000075,
+      "neto_real": -12071.390000000221,
+      "neto_replica": -9946.820000000062,
       "n_real": 134,
       "n_replica": 134,
-      "diff_abs": 2081.690000000164,
-      "divergencia_pct": 16.715984290096227
+      "diff_abs": 2124.57000000016,
+      "divergencia_pct": 17.60004440250974
     },
     "usd_poblacion_a_por_estrategia": {
       "SAR::S6-K2P0": {
-        "neto_real": 4030.050000000007,
-        "neto_replica": 3624.7000000000244,
+        "neto_real": 4411.950000000025,
+        "neto_replica": 4319.490000000018,
         "n_real": 79,
         "n_replica": 79,
-        "diff_abs": -405.34999999998263,
-        "divergencia_pct": -10.0581878636737
+        "diff_abs": -92.46000000000731,
+        "divergencia_pct": -2.095671981776919
       },
       "SuperTrend::SuperTrend-p14x3-M15": {
         "neto_real": -16483.340000000248,
-        "neto_replica": -13996.300000000097,
+        "neto_replica": -14266.310000000081,
         "n_real": 55,
         "n_replica": 55,
-        "diff_abs": 2487.04000000015,
-        "divergencia_pct": 15.088204211040438
+        "diff_abs": 2217.030000000166,
+        "divergencia_pct": 13.450126006016577
       }
     },
     "clp_poblacion_a_emparejadas_evaluables": {
-      "neto_real": -11512061.029999996,
-      "neto_replica": -9620415.545909125,
+      "neto_real": -11156321.179999996,
+      "neto_replica": -9226176.249386635,
       "n_real": 134,
       "n_replica": 134,
-      "diff_abs": 1891645.4840908702,
-      "divergencia_pct": 16.431857676582094
+      "diff_abs": 1930144.9306133613,
+      "divergencia_pct": 17.300908601247013
     },
     "clp_poblacion_a_por_estrategia": {
       "SAR::S6-K2P0": {
-        "neto_real": 3637836.030000001,
-        "neto_replica": 3277731.6233316255,
+        "neto_real": 3993575.880000001,
+        "neto_replica": 3922604.1885331157,
         "n_real": 79,
         "n_replica": 79,
-        "diff_abs": -360104.4066683757,
-        "divergencia_pct": -9.898863052064929
+        "diff_abs": -70971.69146688515,
+        "divergencia_pct": -1.777146437164608
       },
       "SuperTrend::SuperTrend-p14x3-M15": {
         "neto_real": -15149897.059999997,
-        "neto_replica": -12898147.16924075,
+        "neto_replica": -13148780.437919753,
         "n_real": 55,
         "n_replica": 55,
-        "diff_abs": 2251749.8907592464,
-        "divergencia_pct": 14.863136573412778
+        "diff_abs": 2001116.6220802441,
+        "divergencia_pct": 13.208780324743966
       }
     },
     "clp_poblacion_b_conexion_con_16146299_81": {
       "neto_real": 16146299.809999999,
-      "neto_replica": 13440223.823463123,
+      "neto_replica": 12766222.240608906,
       "n_real": 152,
-      "n_replica": 153,
-      "diff_abs": -2706075.9865368754,
-      "divergencia_pct": -16.759728348788016
+      "n_replica": 155,
+      "diff_abs": -3380077.5693910923,
+      "divergencia_pct": -20.934069162382862
     },
     "neto_real_clp_152_registrado_referencia": 16146299.81
   },
@@ -239,45 +239,45 @@
       "SuperTrend::SuperTrend-p14x3-M15"
     ],
     "mismo_signo": false,
-    "cociente_magnitud_abs_diff": 6.135537190083277,
+    "cociente_magnitud_abs_diff": 23.97826086956512,
     "diff_abs_por_estrategia": {
-      "SAR::S6-K2P0": -405.34999999998263,
-      "SuperTrend::SuperTrend-p14x3-M15": 2487.04000000015
+      "SAR::S6-K2P0": -92.46000000000731,
+      "SuperTrend::SuperTrend-p14x3-M15": 2217.030000000166
     },
     "diff_por_posicion": {
-      "SAR::S6-K2P0": -5.131012658227628,
-      "SuperTrend::SuperTrend-p14x3-M15": 45.21890909091182
+      "SAR::S6-K2P0": -1.1703797468355357,
+      "SuperTrend::SuperTrend-p14x3-M15": 40.309636363639385
     },
     "diff_por_lote": {
-      "SAR::S6-K2P0": -7.658227848100937,
-      "SuperTrend::SuperTrend-p14x3-M15": 67.49090909091316
+      "SAR::S6-K2P0": -1.7468354430381128,
+      "SuperTrend::SuperTrend-p14x3-M15": 60.16363636364087
     },
-    "cociente_diff_por_posicion": 8.812862509392346
+    "cociente_diff_por_posicion": 34.44150197628444
   },
   "q5_sensibilidad_poblaciones": {
     "a_emparejadas_evaluables": {
-      "neto_real": -12453.29000000024,
-      "neto_replica": -10371.600000000075,
+      "neto_real": -12071.390000000221,
+      "neto_replica": -9946.820000000062,
       "n_real": 134,
       "n_replica": 134,
-      "diff_abs": 2081.690000000164,
-      "divergencia_pct": 16.715984290096227
+      "diff_abs": 2124.57000000016,
+      "divergencia_pct": 17.60004440250974
     },
     "b_todas_sin_excluir": {
       "neto_real": 17671.24999999979,
-      "neto_replica": 14770.820000000036,
+      "neto_replica": 14053.920000000046,
       "n_real": 152,
-      "n_replica": 153,
-      "diff_abs": -2900.429999999753,
-      "divergencia_pct": -16.41327014217889
+      "n_replica": 155,
+      "diff_abs": -3617.3299999997434,
+      "divergencia_pct": -20.47014218009358
     },
     "c_matched_sin_filtrar_criterio": {
-      "neto_real": 19761.64999999978,
-      "neto_replica": 15814.010000000075,
+      "neto_real": 20143.5499999998,
+      "neto_replica": 16585.180000000088,
       "n_real": 146,
       "n_replica": 146,
-      "diff_abs": -3947.6399999997047,
-      "divergencia_pct": -19.976267163924817
+      "diff_abs": -3558.3699999997116,
+      "divergencia_pct": -17.665059038748122
     },
     "excluidos_12_aparte": {
       "n": 12,
@@ -298,19 +298,19 @@
     }
   },
   "q6_descomposicion": {
-    "term_replica_sin_pareja": -1043.1900000000414,
-    "term_real_sin_pareja_neg": 2090.3999999999883,
-    "term_matched_diff": -3947.639999999702,
-    "suma_terminos": -2900.429999999755,
-    "diff_total": -2900.429999999753,
-    "residuo": 2.2737367544323206e-12
+    "term_replica_sin_pareja": -2531.260000000044,
+    "term_real_sin_pareja_neg": 2472.3000000000065,
+    "term_matched_diff": -3558.369999999705,
+    "suma_terminos": -3617.3299999997425,
+    "diff_total": -3617.3299999997434,
+    "residuo": -9.094947017729282e-13
   },
   "q7_no_evaluables": {
     "real_bruto_usd_cero": 0,
     "real_sin_pareja_replica": {
       "n": 6,
       "position_id": [
-        55217492.0,
+        55216338.0,
         55333600.0,
         55317670.0,
         55318544.0,
@@ -319,7 +319,7 @@
       ]
     },
     "replica_sin_pareja_real": {
-      "n": 7
+      "n": 9
     },
     "tasa_dia_no_evaluable_poblacion_a": 0,
     "tasa_dia_no_evaluable_poblacion_b": 0,

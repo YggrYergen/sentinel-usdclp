@@ -21,7 +21,7 @@
     "n_emparejadas": 134,
     "n_sin_pareja_real": 6,
     "position_id_sin_pareja_real": [
-      55217492.0,
+      55216338.0,
       55333600.0,
       55317670.0,
       55318544.0,
@@ -38,32 +38,32 @@
         "delta_abs_stats": {
           "n": 134,
           "min": 0.0,
-          "p50": 0.08500000000026375,
-          "p90": 0.6010000000000674,
+          "p50": 0.09999999999968168,
+          "p90": 1.2949999999997557,
           "max": 42.5
         }
       },
       "t_open": {
-        "si": 21,
-        "no": 113,
+        "si": 19,
+        "no": 115,
         "no_evaluable": 0,
         "delta_abs_stats": {
           "n": 134,
           "min": 0.0,
-          "p50": 1.1150000095367432,
-          "p90": 206.20000000000013,
+          "p50": 1.2300000190734863,
+          "p90": 631.305999660492,
           "max": 66564.0
         }
       },
       "t_close": {
-        "si": 81,
-        "no": 53,
+        "si": 78,
+        "no": 56,
         "no_evaluable": 0,
         "delta_abs_stats": {
           "n": 134,
           "min": 0.0,
-          "p50": 0.7510000467300415,
-          "p90": 235.8514999389649,
+          "p50": 0.7574999332427979,
+          "p90": 360.37689990997364,
           "max": 57658.1819999218
         }
       },
@@ -74,8 +74,8 @@
         "delta_abs_stats": {
           "n": 134,
           "min": 0.0,
-          "p50": 0.07999999999992724,
-          "p90": 0.4209999999999128,
+          "p50": 0.084999999999809,
+          "p90": 0.4439999999998236,
           "max": 37.409999999999854
         }
       },
@@ -85,8 +85,8 @@
         "no_evaluable": 1
       },
       "resultado": {
-        "si": 131,
-        "no": 3,
+        "si": 130,
+        "no": 4,
         "no_evaluable": 0
       }
     }
@@ -100,15 +100,15 @@
     "profit_clp_client_manual": 28416355.779999997
   },
   "sl_de_entrada_no_gating": {
-    "n_evaluable": 60,
-    "n_no_evaluable": 74,
+    "n_evaluable": 61,
+    "n_no_evaluable": 73,
     "n_coincide": 9
   },
   "residuos_1_a_1": {
-    "replica_sin_pareja_total": 7,
+    "replica_sin_pareja_total": 9,
     "replica_sin_pareja_por_estrategia": {
-      "SAR::S6-K2P0": 3,
-      "SuperTrend::SuperTrend-p14x3-M15": 4
+      "SAR::S6-K2P0": 4,
+      "SuperTrend::SuperTrend-p14x3-M15": 5
     },
     "real_sin_pareja_total": 6
   },
@@ -128,15 +128,15 @@
     "SL|SL": 117
   },
   "lineage": {
-    "run_id": "T0.7-P-CAP-comparador-20260816T010022Z",
+    "run_id": "T0.7-P-CAP-comparador-20260815T195427Z",
     "area": "F0",
     "experimento": "T0.7-P-CAP",
     "config_hash": "4f1347b460be708a31f574d1aa9ab438c3ec379a8950a5aea5c237c77c2f5ab9",
     "substrate_id": "posiciones_replica.csv + verdad_terreno_902.csv",
     "engine_sha": "b113eb7",
-    "git_sha": "0198002daee7a6469edd81d326d83ccfc3c1f175",
+    "git_sha": "aa0a8052fa53ee5c0101e1cc317dc62337a94a68",
     "etapa": "F0",
     "generador": "scripts/analysis/realtick_bt/faulty/comparador.py",
-    "timestamp": "2026-08-16T01:00:22.846670Z"
+    "timestamp": "2026-08-15T19:54:27.902246Z"
   }
 }
