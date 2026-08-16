@@ -139,6 +139,29 @@ def test_apply_sizing_dd_band_kicks_in_after_a_drawdown():
     assert rows[2]["lot_mult"] == 0.5   # dd was 20% when this one was sized
 
 
+def test_apply_sizing_dd_continuous_linear_ramp_floored():
+    # OLA2 (P-16 continuous alternative): factor = max(floor, 1 - dd_pct/ref).
+    cfg = SizingConfig(dd_continuous=(20.0, 0.25))
+    resolved = {
+        "S6-K2P0": [
+            _pos("S6-K2P0", "F1", 0, BAR_SEC, 100.0),                  # dd 0% before -> factor 1.0
+            _pos("S6-K2P0", "F2", BAR_SEC, 2 * BAR_SEC, -20.0),        # dd 0% before -> factor 1.0
+            _pos("S6-K2P0", "F3", 2 * BAR_SEC, 3 * BAR_SEC, -80.0),    # dd 20% before -> ref hit -> floor 0.25
+        ],
+    }
+    out = apply_sizing(resolved, cfg)["S6-K2P0"]
+    assert out[0]["lot_mult"] == 1.0
+    assert out[1]["lot_mult"] == 1.0
+    assert out[2]["lot_mult"] == 0.25   # dd_pct=20 -> 1-20/20=0 -> floored at 0.25
+
+
+def test_apply_sizing_dd_bands_takes_precedence_over_dd_continuous_when_both_set():
+    cfg = SizingConfig(dd_bands=[(5.0, 0.9)], dd_continuous=(20.0, 0.25))
+    resolved = {"S6-K2P0": [_pos("S6-K2P0", "F1", 0, BAR_SEC, 100.0)]}
+    out = apply_sizing(resolved, cfg)["S6-K2P0"]
+    assert out[0]["lot_mult"] == 0.9   # dd_bands wins, dd_continuous never evaluated
+
+
 def test_apply_sizing_ficha_factors_applied_per_position():
     cfg = SizingConfig(ficha_factors={"F1": 1.0, "F2": 0.5, "F3": 0.25})
     resolved = {"S6-K2P0": [

@@ -65,6 +65,14 @@ class SizingConfig:
     # (worst-case / deepest band).
     dd_bands: list[tuple[float, float]] | None = None
 
+    # Continuous drawdown alternative (P-16, OLA2): factor = max(dd_floor,
+    # 1 - drawdown_pct / dd_reference_pct). `(dd_reference_pct, dd_floor)`,
+    # e.g. `(20.0, 0.25)` for "factor = 1 - DD/20%, floored at 25%". Mutually
+    # exclusive with `dd_bands` in practice (never both set by the same
+    # pre-registered arm); if both are set, `dd_bands` takes precedence (it
+    # is checked first in `lot_multiplier`).
+    dd_continuous: tuple[float, float] | None = None
+
     # Ficha index (P-17): S6 trades F1/F2/F3 per signal; per-ficha factor.
     ficha_factors: dict[str, float] | None = None
 
@@ -186,6 +194,9 @@ def lot_multiplier(pos: dict[str, Any], sid: str, state: AccountState, cfg: Sizi
             mult *= max(lo, min(hi, f))
     if cfg.dd_bands:
         mult *= _dd_band_factor(state.drawdown_pct, cfg.dd_bands)
+    elif cfg.dd_continuous is not None:
+        ref, floor = cfg.dd_continuous
+        mult *= max(floor, 1.0 - state.drawdown_pct / ref)
     if cfg.ficha_factors:
         mult *= cfg.ficha_factors.get(pos.get("ficha"), 1.0)
     if cfg.sharpe_floor is not None:
