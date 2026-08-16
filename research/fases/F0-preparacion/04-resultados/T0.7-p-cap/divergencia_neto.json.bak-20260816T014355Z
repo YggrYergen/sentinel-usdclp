@@ -4,10 +4,10 @@
     "area": "F0",
     "experimento": "T0.7-M-0-divergencia-neto",
     "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv",
-    "git_sha": "fc3773b0055d3e628fe52a78916863aa5efe1db5",
+    "git_sha": "0198002daee7a6469edd81d326d83ccfc3c1f175",
     "etapa": "medicion",
     "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
-    "timestamp": "2026-08-16T01:44:32.888154+00:00"
+    "timestamp": "2026-08-16T01:01:50.041190+00:00"
   },
   "umbrales_pct": {
     "aceptable": 0.3,

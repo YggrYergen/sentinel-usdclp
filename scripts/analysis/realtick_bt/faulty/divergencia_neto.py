@@ -22,6 +22,7 @@ calcula y escribe números. Ningún veredicto pasa/no-pasa.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import subprocess
 from datetime import datetime, timezone
@@ -45,6 +46,19 @@ RUTA_SALIDA_DIR = (
 RUTA_CSV = RUTA_SALIDA_DIR / "divergencia_neto.csv"
 RUTA_JSON = RUTA_SALIDA_DIR / "divergencia_neto.json"
 RUTA_MD = RUTA_SALIDA_DIR / "divergencia_neto.md"
+
+# --- T0.7-M-H (D-54): coste de deslizamiento modelado, flag apagado por defecto
+RUTA_FILL_VS_COTIZACION = RUTA_SALIDA_DIR / "fill_vs_cotizacion.csv"
+RUTA_CSV_DESLIZ = RUTA_SALIDA_DIR / "divergencia_neto_con_deslizamiento.csv"
+RUTA_JSON_DESLIZ = RUTA_SALIDA_DIR / "divergencia_neto_con_deslizamiento.json"
+RUTA_MD_DESLIZ = RUTA_SALIDA_DIR / "divergencia_neto_con_deslizamiento.md"
+
+RUN_ID_DESLIZ = "T0.7-M-H-DIVNETO-DESLIZ-0001"
+EXPERIMENTO_DESLIZ = "T0.7-M-H-divergencia-neto-con-deslizamiento"
+SUBSTRATE_ID_DESLIZ = (
+    "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv + fill_vs_cotizacion.csv"
+)
+GENERADOR_DESLIZ = "scripts/analysis/realtick_bt/faulty/divergencia_neto.py --coste-deslizamiento"
 
 # --- constantes fijadas por el brief (verbatim, no recalculadas) -----------
 VOLUMEN_VIVO = 0.67           # F0-INFRA-0025 / verificado uniforme en 152 reales
@@ -293,6 +307,197 @@ def _lineage() -> dict:
         "generador": GENERADOR,
         "timestamp": datetime.now(timezone.utc).isoformat(),
     }
+
+
+# ================================================== T0.7-M-H (D-54): coste
+# ---------------------------------------------------------------- calibración
+def calibrar_coste_deslizamiento(ruta_fill: Path = RUTA_FILL_VS_COTIZACION) -> dict:
+    """Calibra el coste de deslizamiento desde `fill_vs_cotizacion.csv`
+    (D-54, Bloque 1 del brief T0.7-M-H). Modelo:
+      deslizamiento(spread) = mediana|delta_vigente|(cierres por stop, ese
+      spread) - mediana|delta_vigente|(cierres a mercado).
+    `delta_vigente` = precio_real - cotización vigente (última con t<=T, lado
+    BUY/SELL correspondiente) ya viene calculado en `fill_vs_cotizacion.py`
+    (mismo campo, sin recomputar la cotización). "Cierres por stop" =
+    `reason_name == 'SL'` (119 filas). "Cierres a mercado" =
+    `reason_name == 'EXPERT'` (21 filas, ejecutor cerrando a mercado -- ver
+    brief §0). Todo número lo calcula este código, no se copian cifras del
+    brief ni de D-54."""
+    df = pd.read_csv(ruta_fill)
+    closes = df[df["evento"] == "CLOSE"].copy()
+    closes["spread_r"] = closes["spread_tick_vigente"].round(2)
+
+    stops = closes[closes["reason_name"] == "SL"]
+    mercado = closes[closes["reason_name"] == "EXPERT"]
+
+    n_stop_spread_no_recuperable = int(stops["spread_tick_vigente"].isna().sum())
+
+    stats_por_spread = {}
+    for spread, g in stops.groupby("spread_r"):
+        vals = g["delta_vigente"].dropna().abs()
+        stats_por_spread[float(spread)] = {
+            "n": int(vals.size),
+            "mediana_abs_delta_vigente": float(vals.median()) if vals.size else None,
+        }
+
+    vals_mercado = mercado["delta_vigente"].dropna().abs()
+    mediana_abs_delta_mercado = float(vals_mercado.median()) if vals_mercado.size else None
+    n_mercado = int(vals_mercado.size)
+    n_mercado_no_evaluable = int(len(mercado) - vals_mercado.size)
+
+    coste_por_spread = {
+        spread: (stats["mediana_abs_delta_vigente"] - mediana_abs_delta_mercado)
+        for spread, stats in stats_por_spread.items()
+        if stats["mediana_abs_delta_vigente"] is not None and mediana_abs_delta_mercado is not None
+    }
+
+    # spread dominante entre los cierres por stop (recuperable ahí; NO
+    # recuperable por posición ni en rep ni en cmp -- ver Normas específicas
+    # del brief: "el spread por operación no se registra hoy"). Se usa como
+    # modo de fallback para aplicar el coste a la réplica.
+    conteo_spread_stops = stops["spread_r"].value_counts(dropna=True)
+    spread_dominante = float(conteo_spread_stops.idxmax()) if len(conteo_spread_stops) else None
+    coste_aplicado_replica = coste_por_spread.get(spread_dominante)
+
+    d0 = stats_por_spread.get(0.5, {})
+    d1 = stats_por_spread.get(0.6, {})
+    discrepancia_vs_d54 = {
+        "d54_mediana_stop_spread050": 0.255,
+        "recalculo_mediana_stop_spread050": d0.get("mediana_abs_delta_vigente"),
+        "d54_n_stop_spread050": 110,
+        "recalculo_n_stop_spread050": d0.get("n"),
+        "d54_mediana_stop_spread060": 0.270,
+        "recalculo_mediana_stop_spread060": d1.get("mediana_abs_delta_vigente"),
+        "d54_n_stop_spread060": 9,
+        "recalculo_n_stop_spread060": d1.get("n"),
+        "d54_mediana_mercado": 0.053,
+        "recalculo_mediana_mercado": mediana_abs_delta_mercado,
+        "d54_n_mercado": 21,
+        "recalculo_n_mercado": n_mercado,
+        "d54_coste_spread050": 0.202,
+        "recalculo_coste_spread050": coste_por_spread.get(0.5),
+        "d54_coste_spread060": 0.217,
+        "recalculo_coste_spread060": coste_por_spread.get(0.6),
+        "nota_mediana_mercado": (
+            "mediana|delta_vigente| en reason_name=='EXPERT' (n=21) recalculada por este "
+            "código = 0.03 (redondeado), NO 0.053. La MEDIA aritmética de la misma serie SI "
+            "da 0.0529 (~0.053) -- coincide con la cifra citada por D-54, que por tanto parece "
+            "una media, no una mediana, pese a que el propio texto de D-54 dice 'mediana'. El "
+            "Bloque 1 del brief especifica la fórmula con 'mediana', así que gana la mediana "
+            "recalculada (0.03) según instrucción explícita del brief ('si no coinciden, gana "
+            "tu recálculo')."
+        ),
+    }
+
+    return {
+        "columna_delta": "delta_vigente (fill_vs_cotizacion.csv)",
+        "definicion_stop": "reason_name == 'SL' (cierres por stop server-side, n=119)",
+        "definicion_mercado": "reason_name == 'EXPERT' (cierres a mercado del ejecutor, n=21)",
+        "stats_por_spread_stop": stats_por_spread,
+        "n_stop_spread_no_recuperable_en_fill_vs_cotizacion": n_stop_spread_no_recuperable,
+        "mediana_abs_delta_mercado": mediana_abs_delta_mercado,
+        "n_mercado_evaluable": n_mercado,
+        "n_mercado_no_evaluable": n_mercado_no_evaluable,
+        "coste_por_spread": coste_por_spread,
+        "conteo_spread_entre_stops": {float(k): int(v) for k, v in conteo_spread_stops.items()},
+        "spread_dominante_modo": spread_dominante,
+        "coste_aplicado_replica": coste_aplicado_replica,
+        "razon_modo_dominante": (
+            "El spread por operación no se registra ni en posiciones_replica.csv ni en "
+            "comparacion_p_cap.csv (columnas verificadas, ninguna contiene 'spread'); no es "
+            "recuperable por posición para NINGUNA de las filas de la réplica. Se usa el modo "
+            "dominante entre los propios cierres por stop de fill_vs_cotizacion.csv "
+            f"({spread_dominante}) para el 100% de los cierres por stop de la réplica."
+        ),
+        "discrepancia_vs_d54": discrepancia_vs_d54,
+    }
+
+
+# ------------------------------------------------------------- aplicación
+def _direccion_generica(side_series: pd.Series, mapa: dict) -> np.ndarray:
+    return pd.Series(side_series).map(mapa).astype(float).to_numpy()
+
+
+def aplicar_deslizamiento_precio_close(
+    precio_close: np.ndarray, direccion: np.ndarray, es_stop: np.ndarray, coste: float
+) -> np.ndarray:
+    """Aplica el coste EN CONTRA de la posición, sólo donde `es_stop` es
+    True (brief §Bloque 2): LONG (direccion>0) -> precio_close - coste (el
+    cierre más bajo posible); SHORT (direccion<0) -> precio_close + coste
+    (el cierre más alto posible). Vectorizado; filas con es_stop=False no se
+    tocan."""
+    precio_close = np.asarray(precio_close, dtype=float)
+    direccion = np.asarray(direccion, dtype=float)
+    es_stop = np.asarray(es_stop, dtype=bool)
+    ajuste = np.where(direccion > 0, -coste, coste)
+    return np.where(es_stop, precio_close + ajuste, precio_close)
+
+
+def aplicar_coste_a_rep(rep: pd.DataFrame, coste: float, solo_stops: bool = True) -> pd.DataFrame:
+    """Copia de `rep` (posiciones_replica.csv, 157 filas) con `precio_close`
+    ajustado. `solo_stops=True` (comportamiento del Bloque 2): sólo
+    motivo_cierre=='SL'. `solo_stops=False` (control del Bloque 3): TODAS
+    las filas, para medir cuánto se movería el sesgo si el coste no fuera
+    exclusivo de los stops."""
+    rep2 = rep.copy()
+    direccion = _direccion_generica(rep2["side"], {"L": 1.0, "S": -1.0})
+    if solo_stops:
+        es_stop = (rep2["motivo_cierre"] == "SL").to_numpy()
+    else:
+        es_stop = np.ones(len(rep2), dtype=bool)
+    rep2["precio_close"] = aplicar_deslizamiento_precio_close(
+        rep2["precio_close"].to_numpy(), direccion, es_stop, coste
+    )
+    return rep2
+
+
+def aplicar_coste_a_cmp_replica(cmp: pd.DataFrame, coste: float, solo_stops: bool = True) -> pd.DataFrame:
+    """Copia de `cmp` (comparacion_p_cap.csv) con `replica_precio_close`
+    ajustado (columna del lado RÉPLICA únicamente; `real_precio_close`
+    NUNCA se toca -- brief: 'los cierres a mercado no se tocan' y el coste
+    es sólo de la réplica). `solo_stops` igual que en `aplicar_coste_a_rep`."""
+    cmp2 = cmp.copy()
+    tiene_replica = cmp2["replica_side"].notna()
+    direccion = _direccion_generica(cmp2["replica_side"], {"L": 1.0, "S": -1.0})
+    if solo_stops:
+        es_stop = (cmp2["replica_motivo_cierre"] == "SL").to_numpy() & tiene_replica.to_numpy()
+    else:
+        es_stop = tiene_replica.to_numpy()
+    nuevo = aplicar_deslizamiento_precio_close(
+        cmp2["replica_precio_close"].to_numpy(), direccion, es_stop, coste
+    )
+    # sólo sobreescribe donde había réplica; NaN se preserva donde no la hay
+    cmp2["replica_precio_close"] = np.where(tiene_replica.to_numpy(), nuevo, cmp2["replica_precio_close"])
+    return cmp2
+
+
+def frecuencia_stops_por_estrategia(pop_a: pd.DataFrame) -> dict:
+    """Bloque 3, punto 3: nº y % de cierres por stop sobre el total de cada
+    estrategia, en la realidad (`real_reason_name=='SL'`) y en la réplica
+    (`replica_motivo_cierre=='SL'`), más USD afectados (bruto_usd, SIN
+    ajuste de deslizamiento -- son los USD que la posición ya tenía antes de
+    aplicar ningún coste, para medir el peso del mecanismo, no su efecto)."""
+    salida = {}
+    for strat, g in pop_a.groupby("strategy_id"):
+        n = int(len(g))
+        real_stop = g["real_reason_name"] == "SL"
+        replica_stop = g["replica_motivo_cierre"] == "SL"
+        salida[strat] = {
+            "n_total": n,
+            "real": {
+                "n_stop": int(real_stop.sum()),
+                "pct_stop": (float(real_stop.sum()) / n * 100.0) if n else None,
+                "usd_stop": float(g.loc[real_stop, "real_bruto_usd"].sum()),
+                "usd_no_stop": float(g.loc[~real_stop, "real_bruto_usd"].sum()),
+            },
+            "replica": {
+                "n_stop": int(replica_stop.sum()),
+                "pct_stop": (float(replica_stop.sum()) / n * 100.0) if n else None,
+                "usd_stop": float(g.loc[replica_stop, "replica_bruto_usd"].sum()),
+                "usd_no_stop": float(g.loc[~replica_stop, "replica_bruto_usd"].sum()),
+            },
+        }
+    return salida
 
 
 def construir_resultado(cmp: pd.DataFrame, rep: pd.DataFrame) -> dict:
@@ -683,7 +888,231 @@ def escribir_md(resultado: dict, comando: str, fecha: str) -> str:
     return "\n".join(lineas)
 
 
+def escribir_md_deslizamiento(salida: dict, comando: str, fecha: str) -> str:
+    L = salida["lineage"]
+    cal = salida["calibracion_deslizamiento"]
+    tres = salida["tres_numeros_bloque_3"]
+    ctrl = salida["control_coste_uniforme_todas_posiciones"]
+    lineas = [
+        "# divergencia_neto_con_deslizamiento -- T0.7-M-H (D-54)",
+        "",
+        f"Comando: `{comando}`",
+        "",
+        f"Fecha: {fecha} · git_sha: `{L['git_sha']}` · run_id: `{L['run_id']}`",
+        "",
+        "REPORT-ONLY. Sin interpretación, sin veredicto. `T0.7-M-A` (precio de cierre contra el "
+        "nivel del stop) queda diferida por D-54 y NO se corre aquí: parte del desvío medido en "
+        "`fill_vs_cotizacion.py:69-77` es artefacto del método (la referencia es la cotización al "
+        "PRINCIPIO del segundo, y un stop se dispara durante un movimiento en contra), no dinero "
+        "perdido.",
+        "",
+        "## 1 · Calibración del coste (Bloque 1)",
+        "",
+        f"Columna usada: `{cal['columna_delta']}`. Stop: {cal['definicion_stop']}. "
+        f"Mercado: {cal['definicion_mercado']}.",
+        "",
+        "| spread | n (stop) | mediana|delta| (stop) | coste = stop - mercado |",
+        "|---|---|---|---|",
+    ]
+    for spread, stats in sorted(cal["stats_por_spread_stop"].items()):
+        coste_sp = cal["coste_por_spread"].get(spread)
+        coste_str = "n/e" if coste_sp is None else f"{coste_sp:.6f}"
+        med_str = "n/e" if stats["mediana_abs_delta_vigente"] is None else f"{stats['mediana_abs_delta_vigente']:.6f}"
+        lineas.append(f"| {spread} | {stats['n']} | {med_str} | {coste_str} |")
+    lineas += [
+        "",
+        f"mediana|delta| (mercado, n={cal['n_mercado_evaluable']}): {cal['mediana_abs_delta_mercado']:.6f}",
+        "",
+        f"spread dominante (fallback, spread no recuperable por posición en réplica): "
+        f"{cal['spread_dominante_modo']}",
+        f"coste aplicado a la réplica: {cal['coste_aplicado_replica']:.6f}",
+        "",
+        cal["razon_modo_dominante"],
+        "",
+        "### Discrepancia vs D-54",
+        "",
+        cal["discrepancia_vs_d54"]["nota_mediana_mercado"],
+        "",
+        "| cifra | D-54 | recálculo (este código) |",
+        "|---|---|---|",
+    ]
+    dvd = cal["discrepancia_vs_d54"]
+    pares = [
+        ("mediana stop spread 0.50", "d54_mediana_stop_spread050", "recalculo_mediana_stop_spread050"),
+        ("n stop spread 0.50", "d54_n_stop_spread050", "recalculo_n_stop_spread050"),
+        ("mediana stop spread 0.60", "d54_mediana_stop_spread060", "recalculo_mediana_stop_spread060"),
+        ("n stop spread 0.60", "d54_n_stop_spread060", "recalculo_n_stop_spread060"),
+        ("mediana mercado", "d54_mediana_mercado", "recalculo_mediana_mercado"),
+        ("n mercado", "d54_n_mercado", "recalculo_n_mercado"),
+        ("coste spread 0.50", "d54_coste_spread050", "recalculo_coste_spread050"),
+        ("coste spread 0.60", "d54_coste_spread060", "recalculo_coste_spread060"),
+    ]
+    for etiqueta, k_d54, k_rec in pares:
+        lineas.append(f"| {etiqueta} | {dvd[k_d54]} | {dvd[k_rec]} |")
+
+    lineas += [
+        "",
+        "## 2 · Los tres números del Bloque 3",
+        "",
+        "### (1) Divergencia global (población a, USD)",
+        "",
+        f"antes: {tres['1_divergencia_global_pct']['antes']:.6f} %",
+        f"después (coste sólo en stops): {tres['1_divergencia_global_pct']['despues_stops_only']:.6f} %",
+        "",
+        "### (2) Sesgo por posición por estrategia (diff_abs / n, población a, USD)",
+        "",
+        f"antes: {tres['2_sesgo_por_posicion_por_estrategia']['antes']}",
+        f"después (coste sólo en stops): {tres['2_sesgo_por_posicion_por_estrategia']['despues_stops_only']}",
+        f"cociente antes: {tres['2_sesgo_por_posicion_por_estrategia']['cociente_antes']}",
+        f"cociente después (stops only): {tres['2_sesgo_por_posicion_por_estrategia']['cociente_despues_stops_only']}",
+        "",
+        "### (3) Frecuencia y peso de los cierres por stop por estrategia (población a)",
+        "",
+        "| estrategia | n_total | real n_stop | real % | real USD stop | réplica n_stop | réplica % | réplica USD stop |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+    for strat, d in tres["3_frecuencia_y_peso_stops_por_estrategia"].items():
+        r, p = d["real"], d["replica"]
+        lineas.append(
+            f"| {strat} | {d['n_total']} | {r['n_stop']} | {r['pct_stop']:.2f} | {r['usd_stop']:.2f} | "
+            f"{p['n_stop']} | {p['pct_stop']:.2f} | {p['usd_stop']:.2f} |"
+        )
+
+    lineas += [
+        "",
+        "## 3 · Control -- coste uniforme a TODAS las posiciones de la réplica",
+        "",
+        ctrl["descripcion"],
+        "",
+        f"cociente antes (sin coste): {ctrl['cociente_antes']}",
+        f"cociente después, coste sólo en stops: {ctrl['cociente_stops_only']}",
+        f"cociente después, coste uniforme (control): {ctrl['cociente_uniforme']}",
+        f"diff_por_posicion, coste uniforme: {ctrl['diff_por_posicion_uniforme']}",
+        "",
+    ]
+    return "\n".join(lineas)
+
+
+def _ejecutar_con_deslizamiento(cmp: pd.DataFrame, rep: pd.DataFrame, resultado_base: dict) -> None:
+    """T0.7-M-H (D-54), Bloques 1-3. Sólo se invoca con `--coste-deslizamiento`.
+    NUNCA toca `rep`/`cmp` originales (trabaja sobre copias vía
+    `aplicar_coste_a_rep` / `aplicar_coste_a_cmp_replica`) ni los artefactos
+    `divergencia_neto.*` (escribe únicamente en `*_con_deslizamiento.*`)."""
+    calibracion = calibrar_coste_deslizamiento()
+    coste = calibracion["coste_aplicado_replica"]
+    if coste is None:
+        raise RuntimeError(
+            "calibrar_coste_deslizamiento() no produjo un coste aplicable (spread dominante o "
+            "medianas no evaluables) -- no se puede continuar con --coste-deslizamiento."
+        )
+
+    # Bloque 2: coste sólo en los cierres por stop de la réplica
+    rep2 = aplicar_coste_a_rep(rep, coste, solo_stops=True)
+    cmp2 = aplicar_coste_a_cmp_replica(cmp, coste, solo_stops=True)
+    resultado2 = construir_resultado(cmp2, rep2)
+    real2 = _preparar_real(cmp2)
+    tabla_tasa_dia2 = tasa_por_dia(real2, "close_day", "tasa")
+    df_csv2 = construir_csv_posicion_a_posicion(cmp2, rep2, tabla_tasa_dia2)
+
+    # Bloque 3, control: mismo coste, aplicado a TODAS las posiciones réplica
+    rep3 = aplicar_coste_a_rep(rep, coste, solo_stops=False)
+    cmp3 = aplicar_coste_a_cmp_replica(cmp, coste, solo_stops=False)
+    resultado3 = construir_resultado(cmp3, rep3)
+
+    # Bloque 3, punto 3: frecuencia/peso de los stops (población a, sin ajustar)
+    matched = _preparar_matched(cmp)
+    pop_a = matched[matched["excluido_criterio"] == False]  # noqa: E712
+    frecuencia = frecuencia_stops_por_estrategia(pop_a)
+
+    lineage2 = {
+        "run_id": RUN_ID_DESLIZ,
+        "area": AREA,
+        "experimento": EXPERIMENTO_DESLIZ,
+        "substrate_id": SUBSTRATE_ID_DESLIZ,
+        "git_sha": _git_sha(),
+        "etapa": ETAPA,
+        "generador": GENERADOR_DESLIZ,
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+    }
+
+    q3a = resultado_base["q3_divergencia"]["usd_poblacion_a_emparejadas_evaluables"]
+    q4a = resultado_base["q4_sesgo_diferencial_poblacion_a_usd"]
+    q3d = resultado2["q3_divergencia"]["usd_poblacion_a_emparejadas_evaluables"]
+    q4d = resultado2["q4_sesgo_diferencial_poblacion_a_usd"]
+    q4u = resultado3["q4_sesgo_diferencial_poblacion_a_usd"]
+
+    tres_numeros = {
+        "1_divergencia_global_pct": {
+            "antes": q3a["divergencia_pct"],
+            "despues_stops_only": q3d["divergencia_pct"],
+        },
+        "2_sesgo_por_posicion_por_estrategia": {
+            "antes": q4a.get("diff_por_posicion"),
+            "despues_stops_only": q4d.get("diff_por_posicion"),
+            "cociente_antes": q4a.get("cociente_diff_por_posicion"),
+            "cociente_despues_stops_only": q4d.get("cociente_diff_por_posicion"),
+        },
+        "3_frecuencia_y_peso_stops_por_estrategia": frecuencia,
+    }
+    control = {
+        "descripcion": (
+            "coste aplicado a TODAS las posiciones de la réplica por igual (no sólo a los "
+            "cierres por stop), para separar 'el coste importa' de 'el coste importa de forma "
+            "asimétrica entre estrategias'."
+        ),
+        "cociente_antes": q4a.get("cociente_diff_por_posicion"),
+        "cociente_stops_only": q4d.get("cociente_diff_por_posicion"),
+        "cociente_uniforme": q4u.get("cociente_diff_por_posicion"),
+        "diff_por_posicion_uniforme": q4u.get("diff_por_posicion"),
+    }
+
+    salida = {
+        "lineage": lineage2,
+        "calibracion_deslizamiento": calibracion,
+        "tres_numeros_bloque_3": tres_numeros,
+        "control_coste_uniforme_todas_posiciones": control,
+        "resultado_completo_despues_stops_only": resultado2,
+        "resultado_completo_control_uniforme": resultado3,
+    }
+
+    ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    for ruta in (RUTA_CSV_DESLIZ, RUTA_JSON_DESLIZ, RUTA_MD_DESLIZ):
+        if ruta.exists():
+            ruta.rename(ruta.with_name(f"{ruta.name}.bak-{ts}"))
+
+    df_csv2.to_csv(RUTA_CSV_DESLIZ, index=False)
+
+    with open(RUTA_JSON_DESLIZ, "w", encoding="utf-8") as fh:
+        json.dump(salida, fh, indent=2, ensure_ascii=False, allow_nan=False, default=lambda o: None)
+
+    comando2 = "python scripts/analysis/realtick_bt/faulty/divergencia_neto.py --coste-deslizamiento"
+    fecha2 = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    md2 = escribir_md_deslizamiento(salida, comando2, fecha2)
+    with open(RUTA_MD_DESLIZ, "w", encoding="utf-8") as fh:
+        fh.write(md2)
+
+    print(f"[deslizamiento] coste aplicado (spread {calibracion['spread_dominante_modo']}): {coste:.6f}")
+    print(f"[deslizamiento] filas CSV: {len(df_csv2)}")
+    print(f"[deslizamiento] CSV: {RUTA_CSV_DESLIZ}")
+    print(f"[deslizamiento] JSON: {RUTA_JSON_DESLIZ}")
+    print(f"[deslizamiento] MD: {RUTA_MD_DESLIZ}")
+
+
 def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--coste-deslizamiento",
+        action="store_true",
+        default=False,
+        help=(
+            "T0.7-M-H (D-54): calibra y aplica el coste de deslizamiento a los cierres por stop "
+            "de la réplica; escribe artefactos NUEVOS "
+            "divergencia_neto_con_deslizamiento.{csv,json,md}. Apagado por defecto -- sin este "
+            "flag el script reproduce exactamente el comportamiento anterior."
+        ),
+    )
+    args = parser.parse_args()
+
     rep, cmp = _cargar_datos()
 
     resultado = construir_resultado(cmp, rep)
@@ -715,6 +1144,9 @@ def main() -> None:
     print(f"CSV: {RUTA_CSV}")
     print(f"JSON: {RUTA_JSON}")
     print(f"MD: {RUTA_MD}")
+
+    if args.coste_deslizamiento:
+        _ejecutar_con_deslizamiento(cmp, rep, resultado)
 
 
 if __name__ == "__main__":

@@ -7,7 +7,7 @@
     "git_sha": "fc3773b0055d3e628fe52a78916863aa5efe1db5",
     "etapa": "medicion",
     "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
-    "timestamp": "2026-08-16T01:44:32.888154+00:00"
+    "timestamp": "2026-08-16T01:43:55.616713+00:00"
   },
   "umbrales_pct": {
     "aceptable": 0.3,

@@ -1,0 +1,777 @@
+{
+  "lineage": {
+    "run_id": "T0.7-M-H-DIVNETO-DESLIZ-0001",
+    "area": "F0",
+    "experimento": "T0.7-M-H-divergencia-neto-con-deslizamiento",
+    "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv + fill_vs_cotizacion.csv",
+    "git_sha": "fc3773b0055d3e628fe52a78916863aa5efe1db5",
+    "etapa": "medicion",
+    "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py --coste-deslizamiento",
+    "timestamp": "2026-08-16T01:44:33.088786+00:00"
+  },
+  "calibracion_deslizamiento": {
+    "columna_delta": "delta_vigente (fill_vs_cotizacion.csv)",
+    "definicion_stop": "reason_name == 'SL' (cierres por stop server-side, n=119)",
+    "definicion_mercado": "reason_name == 'EXPERT' (cierres a mercado del ejecutor, n=21)",
+    "stats_por_spread_stop": {
+      "0.5": {
+        "n": 110,
+        "mediana_abs_delta_vigente": 0.25500000000010914
+      },
+      "0.6": {
+        "n": 9,
+        "mediana_abs_delta_vigente": 0.2700000000004365
+      }
+    },
+    "n_stop_spread_no_recuperable_en_fill_vs_cotizacion": 0,
+    "mediana_abs_delta_mercado": 0.0299999999997453,
+    "n_mercado_evaluable": 21,
+    "n_mercado_no_evaluable": 0,
+    "coste_por_spread": {
+      "0.5": 0.22500000000036385,
+      "0.6": 0.24000000000069122
+    },
+    "conteo_spread_entre_stops": {
+      "0.5": 110,
+      "0.6": 9
+    },
+    "spread_dominante_modo": 0.5,
+    "coste_aplicado_replica": 0.22500000000036385,
+    "razon_modo_dominante": "El spread por operación no se registra ni en posiciones_replica.csv ni en comparacion_p_cap.csv (columnas verificadas, ninguna contiene 'spread'); no es recuperable por posición para NINGUNA de las filas de la réplica. Se usa el modo dominante entre los propios cierres por stop de fill_vs_cotizacion.csv (0.5) para el 100% de los cierres por stop de la réplica.",
+    "discrepancia_vs_d54": {
+      "d54_mediana_stop_spread050": 0.255,
+      "recalculo_mediana_stop_spread050": 0.25500000000010914,
+      "d54_n_stop_spread050": 110,
+      "recalculo_n_stop_spread050": 110,
+      "d54_mediana_stop_spread060": 0.27,
+      "recalculo_mediana_stop_spread060": 0.2700000000004365,
+      "d54_n_stop_spread060": 9,
+      "recalculo_n_stop_spread060": 9,
+      "d54_mediana_mercado": 0.053,
+      "recalculo_mediana_mercado": 0.0299999999997453,
+      "d54_n_mercado": 21,
+      "recalculo_n_mercado": 21,
+      "d54_coste_spread050": 0.202,
+      "recalculo_coste_spread050": 0.22500000000036385,
+      "d54_coste_spread060": 0.217,
+      "recalculo_coste_spread060": 0.24000000000069122,
+      "nota_mediana_mercado": "mediana|delta_vigente| en reason_name=='EXPERT' (n=21) recalculada por este código = 0.03 (redondeado), NO 0.053. La MEDIA aritmética de la misma serie SI da 0.0529 (~0.053) -- coincide con la cifra citada por D-54, que por tanto parece una media, no una mediana, pese a que el propio texto de D-54 dice 'mediana'. El Bloque 1 del brief especifica la fórmula con 'mediana', así que gana la mediana recalculada (0.03) según instrucción explícita del brief ('si no coinciden, gana tu recálculo')."
+    }
+  },
+  "tres_numeros_bloque_3": {
+    "1_divergencia_global_pct": {
+      "antes": 16.715984290096227,
+      "despues_stops_only": 3.279173615947694
+    },
+    "2_sesgo_por_posicion_por_estrategia": {
+      "antes": {
+        "SAR::S6-K2P0": -5.131012658227628,
+        "SuperTrend::SuperTrend-p14x3-M15": 45.21890909091182
+      },
+      "despues_stops_only": {
+        "SAR::S6-K2P0": -16.580379746853737,
+        "SuperTrend::SuperTrend-p14x3-M15": 31.24027272725282
+      },
+      "cociente_antes": 8.812862509392346,
+      "cociente_despues_stops_only": 1.884171122991373
+    },
+    "3_frecuencia_y_peso_stops_por_estrategia": {
+      "SAR::S6-K2P0": {
+        "n_total": 79,
+        "real": {
+          "n_stop": 58,
+          "pct_stop": 73.41772151898735,
+          "usd_stop": 1965.1099999999647,
+          "usd_no_stop": 2064.940000000042
+        },
+        "replica": {
+          "n_stop": 60,
+          "pct_stop": 75.9493670886076,
+          "usd_stop": 1335.9799999999432,
+          "usd_no_stop": 2288.720000000082
+        }
+      },
+      "SuperTrend::SuperTrend-p14x3-M15": {
+        "n_total": 55,
+        "real": {
+          "n_stop": 55,
+          "pct_stop": 100.0,
+          "usd_stop": -16483.340000000248,
+          "usd_no_stop": 0.0
+        },
+        "replica": {
+          "n_stop": 51,
+          "pct_stop": 92.72727272727272,
+          "usd_stop": -14906.830000000136,
+          "usd_no_stop": 910.5300000000402
+        }
+      }
+    }
+  },
+  "control_coste_uniforme_todas_posiciones": {
+    "descripcion": "coste aplicado a TODAS las posiciones de la réplica por igual (no sólo a los cierres por stop), para separar 'el coste importa' de 'el coste importa de forma asimétrica entre estrategias'.",
+    "cociente_antes": 8.812862509392346,
+    "cociente_stops_only": 1.884171122991373,
+    "cociente_uniforme": 1.491828674994759,
+    "diff_por_posicion_uniforme": {
+      "SAR::S6-K2P0": -20.206012658252003,
+      "SuperTrend::SuperTrend-p14x3-M15": 30.143909090887412
+    }
+  },
+  "resultado_completo_despues_stops_only": {
+    "lineage": {
+      "run_id": "T0.7-M-0-DIVNETO-0001",
+      "area": "F0",
+      "experimento": "T0.7-M-0-divergencia-neto",
+      "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv",
+      "git_sha": "fc3773b0055d3e628fe52a78916863aa5efe1db5",
+      "etapa": "medicion",
+      "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
+      "timestamp": "2026-08-16T01:44:32.978694+00:00"
+    },
+    "umbrales_pct": {
+      "aceptable": 0.3,
+      "ideal": 0.15
+    },
+    "parametros": {
+      "volumen_vivo": 0.67,
+      "tamano_contrato": 100.0
+    },
+    "discrepancia_brief_vs_artefacto_n_emparejadas": {
+      "descripcion": "El brief (prosa, no el artefacto) menciona 137 posiciones emparejadas ('128 de 137', '131 de 137'). El artefacto p_cap_resultado.json (criterio_de_paso_6_campos.n_emparejadas) dice 135, y recomputado directamente de comparacion_p_cap.csv (140 evaluables - 5 sin pareja) da tambien 135. Se usa 135 (gana el artefacto, por instrucción del propio brief: 'Verifica contra el artefacto, nunca contra lo que yo te diga').",
+      "brief_dice": 137,
+      "artefacto_p_cap_resultado_json": 135,
+      "recomputado_de_comparacion_p_cap_csv": 134
+    },
+    "q1_bruto_replica": {
+      "global": {
+        "n": 153,
+        "sum_bruto_usd": 12826.144999996888
+      },
+      "por_estrategia": {
+        "SAR::S6-K2P0": {
+          "n": 85,
+          "sum_bruto_usd": 5816.604999998452
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "n": 68,
+          "sum_bruto_usd": 7009.539999998439
+        }
+      }
+    },
+    "q2_control": {
+      "n_bruto_usd_cero": 0,
+      "tasa_stats_global": {
+        "n": 152,
+        "p10": 911.5001006905669,
+        "p50": 924.9750025870603,
+        "p90": 931.5000681076863,
+        "min": 908.4000003256697,
+        "max": 939.6999984048504,
+        "dispersion_relativa": 0.009309012153416157
+      },
+      "tasa_stats_por_dia": {
+        "2026-07-28": {
+          "n": 22,
+          "p10": 931.4999999997297,
+          "p50": 931.5000000000402,
+          "p90": 931.5001074903022,
+          "min": 930.5000360517568,
+          "max": 939.6999984048504,
+          "dispersion_relativa": 0.0024480635761280132
+        },
+        "2026-07-29": {
+          "n": 20,
+          "p10": 931.4999999997665,
+          "p50": 931.5000088645779,
+          "p90": 934.0000000000011,
+          "min": 930.5000186101403,
+          "max": 934.000000000063,
+          "dispersion_relativa": 0.0013184171123409147
+        },
+        "2026-07-30": {
+          "n": 5,
+          "p10": 929.1000000000156,
+          "p50": 933.000000000016,
+          "p90": 933.9999999999067,
+          "min": 926.5000000000216,
+          "max": 933.999999999916,
+          "dispersion_relativa": 0.0034011087831702282
+        },
+        "2026-07-31": {
+          "n": 7,
+          "p10": 925.4999999999949,
+          "p50": 925.5000350360394,
+          "p90": 926.5000038125407,
+          "min": 925.499999999981,
+          "max": 926.5000095308982,
+          "dispersion_relativa": 0.0005772789904039497
+        },
+        "2026-08-02": {
+          "n": 7,
+          "p10": 930.6999984244053,
+          "p50": 930.6999999999832,
+          "p90": 930.7000190871439,
+          "min": 930.6999960618598,
+          "max": 930.7000200789698,
+          "dispersion_relativa": 1.0632108698770484e-08
+        },
+        "2026-08-03": {
+          "n": 13,
+          "p10": 925.2500039373401,
+          "p50": 930.6999747032452,
+          "p90": 930.7000262743293,
+          "min": 924.8500013302262,
+          "max": 930.7000414596283,
+          "dispersion_relativa": 0.002891496633370133
+        },
+        "2026-08-04": {
+          "n": 20,
+          "p10": 911.4999999997686,
+          "p50": 911.500065745309,
+          "p90": 925.8499397054754,
+          "min": 910.5000000000317,
+          "max": 925.8500108944299,
+          "dispersion_relativa": 0.006815824482260487
+        },
+        "2026-08-05": {
+          "n": 15,
+          "p10": 911.7000006564341,
+          "p50": 914.4999999998864,
+          "p90": 914.500017452208,
+          "min": 910.4999999999991,
+          "max": 914.5001463267962,
+          "dispersion_relativa": 0.001517916034936705
+        },
+        "2026-08-06": {
+          "n": 10,
+          "p10": 914.4000032811043,
+          "p50": 916.8999975760377,
+          "p90": 916.9000287264117,
+          "min": 913.5000000001146,
+          "max": 916.9000452286057,
+          "dispersion_relativa": 0.0013464141426429242
+        },
+        "2026-08-07": {
+          "n": 2,
+          "p10": 909.150000204891,
+          "p50": 912.1499997217758,
+          "p90": 915.1499992386606,
+          "min": 908.4000003256697,
+          "max": 915.8999991178819,
+          "dispersion_relativa": 0.0058140656761297635
+        },
+        "2026-08-09": {
+          "n": 13,
+          "p10": 913.7499648336152,
+          "p50": 913.75,
+          "p90": 913.7500343868217,
+          "min": 912.7500028461404,
+          "max": 913.7500654626293,
+          "dispersion_relativa": 0.00030355512706766846
+        },
+        "2026-08-10": {
+          "n": 12,
+          "p10": 913.7499768400413,
+          "p50": 916.5000013050902,
+          "p90": 917.5000000007534,
+          "min": 912.7500183809115,
+          "max": 917.5000569674296,
+          "dispersion_relativa": 0.002048109457192792
+        },
+        "2026-08-11": {
+          "n": 6,
+          "p10": 916.9999999999529,
+          "p50": 917.5000320220472,
+          "p90": 917.5000743542731,
+          "min": 916.5000000000196,
+          "max": 917.5000802436543,
+          "dispersion_relativa": 0.0004450570282610794
+        }
+      }
+    },
+    "q3_divergencia": {
+      "usd_poblacion_a_emparejadas_evaluables": {
+        "neto_real": -12453.29000000024,
+        "neto_replica": -12044.925000002779,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 408.3649999974605,
+        "divergencia_pct": 3.279173615947694
+      },
+      "usd_poblacion_a_por_estrategia": {
+        "SAR::S6-K2P0": {
+          "neto_real": 4030.050000000007,
+          "neto_replica": 2720.199999998562,
+          "n_real": 79,
+          "n_replica": 79,
+          "diff_abs": -1309.850000001445,
+          "divergencia_pct": -32.50207813802417
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "neto_real": -16483.340000000248,
+          "neto_replica": -14765.125000001342,
+          "n_real": 55,
+          "n_replica": 55,
+          "diff_abs": 1718.2149999989051,
+          "divergencia_pct": 10.423949272410079
+        }
+      },
+      "clp_poblacion_a_emparejadas_evaluables": {
+        "neto_real": -11512061.029999996,
+        "neto_replica": -11165175.256184442,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 346885.77381555364,
+        "divergencia_pct": 3.013237793923976
+      },
+      "clp_poblacion_a_por_estrategia": {
+        "SAR::S6-K2P0": {
+          "neto_real": 3637836.030000001,
+          "neto_replica": 2440702.3754404113,
+          "n_real": 79,
+          "n_replica": 79,
+          "diff_abs": -1197133.65455959,
+          "divergencia_pct": -32.907850840093786
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "neto_real": -15149897.059999997,
+          "neto_replica": -13605877.631624853,
+          "n_real": 55,
+          "n_replica": 55,
+          "diff_abs": 1544019.4283751436,
+          "divergencia_pct": 10.191616631190126
+        }
+      },
+      "clp_poblacion_b_conexion_con_16146299_81": {
+        "neto_real": 16146299.809999999,
+        "neto_replica": 11645456.336692696,
+        "n_real": 152,
+        "n_replica": 153,
+        "diff_abs": -4500843.473307302,
+        "divergencia_pct": -27.875386474118137
+      },
+      "neto_real_clp_152_registrado_referencia": 16146299.81
+    },
+    "q4_sesgo_diferencial_poblacion_a_usd": {
+      "claves": [
+        "SAR::S6-K2P0",
+        "SuperTrend::SuperTrend-p14x3-M15"
+      ],
+      "mismo_signo": false,
+      "cociente_magnitud_abs_diff": 1.3117647058800699,
+      "diff_abs_por_estrategia": {
+        "SAR::S6-K2P0": -1309.850000001445,
+        "SuperTrend::SuperTrend-p14x3-M15": 1718.2149999989051
+      },
+      "diff_por_posicion": {
+        "SAR::S6-K2P0": -16.580379746853737,
+        "SuperTrend::SuperTrend-p14x3-M15": 31.24027272725282
+      },
+      "diff_por_lote": {
+        "SAR::S6-K2P0": -24.746835443065276,
+        "SuperTrend::SuperTrend-p14x3-M15": 46.62727272724301
+      },
+      "cociente_diff_por_posicion": 1.884171122991373
+    },
+    "q5_sensibilidad_poblaciones": {
+      "a_emparejadas_evaluables": {
+        "neto_real": -12453.29000000024,
+        "neto_replica": -12044.925000002779,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 408.3649999974605,
+        "divergencia_pct": 3.279173615947694
+      },
+      "b_todas_sin_excluir": {
+        "neto_real": 17671.24999999979,
+        "neto_replica": 12826.144999996888,
+        "n_real": 152,
+        "n_replica": 153,
+        "diff_abs": -4845.105000002901,
+        "divergencia_pct": -27.418009478689733
+      },
+      "c_matched_sin_filtrar_criterio": {
+        "neto_real": 19761.64999999978,
+        "neto_replica": 13959.784999997075,
+        "n_real": 146,
+        "n_replica": 146,
+        "diff_abs": -5801.865000002705,
+        "divergencia_pct": -29.35921342601842
+      },
+      "excluidos_12_aparte": {
+        "n": 12,
+        "sum_real_bruto_usd": 32214.940000000013,
+        "sum_real_profit_clp": 29572002.099999998,
+        "por_categoria": {
+          "CLIENT_manual": {
+            "n": 11,
+            "sum_real_bruto_usd": 30965.39000000004,
+            "sum_real_profit_clp": 28416355.779999997
+          },
+          "TP": {
+            "n": 1,
+            "sum_real_bruto_usd": 1249.5499999999756,
+            "sum_real_profit_clp": 1155646.32
+          }
+        }
+      }
+    },
+    "q6_descomposicion": {
+      "term_replica_sin_pareja": -1133.6400000001877,
+      "term_real_sin_pareja_neg": 2090.3999999999883,
+      "term_matched_diff": -5801.8650000027,
+      "suma_terminos": -4845.105000002899,
+      "diff_total": -4845.105000002901,
+      "residuo": -1.8189894035458565e-12
+    },
+    "q7_no_evaluables": {
+      "real_bruto_usd_cero": 0,
+      "real_sin_pareja_replica": {
+        "n": 6,
+        "position_id": [
+          55217492.0,
+          55333600.0,
+          55317670.0,
+          55318544.0,
+          55318552.0,
+          55321392.0
+        ]
+      },
+      "replica_sin_pareja_real": {
+        "n": 7
+      },
+      "tasa_dia_no_evaluable_poblacion_a": 0,
+      "tasa_dia_no_evaluable_poblacion_b": 0,
+      "delta_precio_open_nulo_origen": 6
+    }
+  },
+  "resultado_completo_control_uniforme": {
+    "lineage": {
+      "run_id": "T0.7-M-0-DIVNETO-0001",
+      "area": "F0",
+      "experimento": "T0.7-M-0-divergencia-neto",
+      "substrate_id": "posiciones_replica.csv(reloj_reconstruido) + comparacion_p_cap.csv",
+      "git_sha": "fc3773b0055d3e628fe52a78916863aa5efe1db5",
+      "etapa": "medicion",
+      "generador": "scripts/analysis/realtick_bt/faulty/divergencia_neto.py",
+      "timestamp": "2026-08-16T01:44:33.059638+00:00"
+    },
+    "umbrales_pct": {
+      "aceptable": 0.3,
+      "ideal": 0.15
+    },
+    "parametros": {
+      "volumen_vivo": 0.67,
+      "tamano_contrato": 100.0
+    },
+    "discrepancia_brief_vs_artefacto_n_emparejadas": {
+      "descripcion": "El brief (prosa, no el artefacto) menciona 137 posiciones emparejadas ('128 de 137', '131 de 137'). El artefacto p_cap_resultado.json (criterio_de_paso_6_campos.n_emparejadas) dice 135, y recomputado directamente de comparacion_p_cap.csv (140 evaluables - 5 sin pareja) da tambien 135. Se usa 135 (gana el artefacto, por instrucción del propio brief: 'Verifica contra el artefacto, nunca contra lo que yo te diga').",
+      "brief_dice": 137,
+      "artefacto_p_cap_resultado_json": 135,
+      "recomputado_de_comparacion_p_cap_csv": 134
+    },
+    "q1_bruto_replica": {
+      "global": {
+        "n": 153,
+        "sum_bruto_usd": 12464.344999996305
+      },
+      "por_estrategia": {
+        "SAR::S6-K2P0": {
+          "n": 85,
+          "sum_bruto_usd": 5515.104999997964
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "n": 68,
+          "sum_bruto_usd": 6949.239999998342
+        }
+      }
+    },
+    "q2_control": {
+      "n_bruto_usd_cero": 0,
+      "tasa_stats_global": {
+        "n": 152,
+        "p10": 911.5001006905669,
+        "p50": 924.9750025870603,
+        "p90": 931.5000681076863,
+        "min": 908.4000003256697,
+        "max": 939.6999984048504,
+        "dispersion_relativa": 0.009309012153416157
+      },
+      "tasa_stats_por_dia": {
+        "2026-07-28": {
+          "n": 22,
+          "p10": 931.4999999997297,
+          "p50": 931.5000000000402,
+          "p90": 931.5001074903022,
+          "min": 930.5000360517568,
+          "max": 939.6999984048504,
+          "dispersion_relativa": 0.0024480635761280132
+        },
+        "2026-07-29": {
+          "n": 20,
+          "p10": 931.4999999997665,
+          "p50": 931.5000088645779,
+          "p90": 934.0000000000011,
+          "min": 930.5000186101403,
+          "max": 934.000000000063,
+          "dispersion_relativa": 0.0013184171123409147
+        },
+        "2026-07-30": {
+          "n": 5,
+          "p10": 929.1000000000156,
+          "p50": 933.000000000016,
+          "p90": 933.9999999999067,
+          "min": 926.5000000000216,
+          "max": 933.999999999916,
+          "dispersion_relativa": 0.0034011087831702282
+        },
+        "2026-07-31": {
+          "n": 7,
+          "p10": 925.4999999999949,
+          "p50": 925.5000350360394,
+          "p90": 926.5000038125407,
+          "min": 925.499999999981,
+          "max": 926.5000095308982,
+          "dispersion_relativa": 0.0005772789904039497
+        },
+        "2026-08-02": {
+          "n": 7,
+          "p10": 930.6999984244053,
+          "p50": 930.6999999999832,
+          "p90": 930.7000190871439,
+          "min": 930.6999960618598,
+          "max": 930.7000200789698,
+          "dispersion_relativa": 1.0632108698770484e-08
+        },
+        "2026-08-03": {
+          "n": 13,
+          "p10": 925.2500039373401,
+          "p50": 930.6999747032452,
+          "p90": 930.7000262743293,
+          "min": 924.8500013302262,
+          "max": 930.7000414596283,
+          "dispersion_relativa": 0.002891496633370133
+        },
+        "2026-08-04": {
+          "n": 20,
+          "p10": 911.4999999997686,
+          "p50": 911.500065745309,
+          "p90": 925.8499397054754,
+          "min": 910.5000000000317,
+          "max": 925.8500108944299,
+          "dispersion_relativa": 0.006815824482260487
+        },
+        "2026-08-05": {
+          "n": 15,
+          "p10": 911.7000006564341,
+          "p50": 914.4999999998864,
+          "p90": 914.500017452208,
+          "min": 910.4999999999991,
+          "max": 914.5001463267962,
+          "dispersion_relativa": 0.001517916034936705
+        },
+        "2026-08-06": {
+          "n": 10,
+          "p10": 914.4000032811043,
+          "p50": 916.8999975760377,
+          "p90": 916.9000287264117,
+          "min": 913.5000000001146,
+          "max": 916.9000452286057,
+          "dispersion_relativa": 0.0013464141426429242
+        },
+        "2026-08-07": {
+          "n": 2,
+          "p10": 909.150000204891,
+          "p50": 912.1499997217758,
+          "p90": 915.1499992386606,
+          "min": 908.4000003256697,
+          "max": 915.8999991178819,
+          "dispersion_relativa": 0.0058140656761297635
+        },
+        "2026-08-09": {
+          "n": 13,
+          "p10": 913.7499648336152,
+          "p50": 913.75,
+          "p90": 913.7500343868217,
+          "min": 912.7500028461404,
+          "max": 913.7500654626293,
+          "dispersion_relativa": 0.00030355512706766846
+        },
+        "2026-08-10": {
+          "n": 12,
+          "p10": 913.7499768400413,
+          "p50": 916.5000013050902,
+          "p90": 917.5000000007534,
+          "min": 912.7500183809115,
+          "max": 917.5000569674296,
+          "dispersion_relativa": 0.002048109457192792
+        },
+        "2026-08-11": {
+          "n": 6,
+          "p10": 916.9999999999529,
+          "p50": 917.5000320220472,
+          "p90": 917.5000743542731,
+          "min": 916.5000000000196,
+          "max": 917.5000802436543,
+          "dispersion_relativa": 0.0004450570282610794
+        }
+      }
+    },
+    "q3_divergencia": {
+      "usd_poblacion_a_emparejadas_evaluables": {
+        "neto_real": -12453.29000000024,
+        "neto_replica": -12391.650000003341,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 61.63999999689804,
+        "divergencia_pct": 0.49496960238536847
+      },
+      "usd_poblacion_a_por_estrategia": {
+        "SAR::S6-K2P0": {
+          "neto_real": 4030.050000000007,
+          "neto_replica": 2433.774999998099,
+          "n_real": 79,
+          "n_replica": 79,
+          "diff_abs": -1596.2750000019082,
+          "divergencia_pct": -39.609310058235145
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "neto_real": -16483.340000000248,
+          "neto_replica": -14825.42500000144,
+          "n_real": 55,
+          "n_replica": 55,
+          "diff_abs": 1657.9149999988076,
+          "divergencia_pct": 10.058125355654756
+        }
+      },
+      "clp_poblacion_a_emparejadas_evaluables": {
+        "neto_real": -11512061.029999996,
+        "neto_replica": -11485049.242599659,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 27011.787400336936,
+        "divergencia_pct": 0.23463902189143404
+      },
+      "clp_poblacion_a_por_estrategia": {
+        "SAR::S6-K2P0": {
+          "neto_real": 3637836.030000001,
+          "neto_replica": 2176330.8348349286,
+          "n_real": 79,
+          "n_replica": 79,
+          "diff_abs": -1461505.1951650726,
+          "divergencia_pct": -40.17512562722823
+        },
+        "SuperTrend::SuperTrend-p14x3-M15": {
+          "neto_real": -15149897.059999997,
+          "neto_replica": -13661380.07743459,
+          "n_real": 55,
+          "n_replica": 55,
+          "diff_abs": 1488516.9825654067,
+          "divergencia_pct": 9.825261364286835
+        }
+      },
+      "clp_poblacion_b_conexion_con_16146299_81": {
+        "neto_real": 16146299.809999999,
+        "neto_replica": 11311807.317598889,
+        "n_real": 152,
+        "n_replica": 153,
+        "diff_abs": -4834492.49240111,
+        "divergencia_pct": -29.941798116537697
+      },
+      "neto_real_clp_152_registrado_referencia": 16146299.81
+    },
+    "q4_sesgo_diferencial_poblacion_a_usd": {
+      "claves": [
+        "SAR::S6-K2P0",
+        "SuperTrend::SuperTrend-p14x3-M15"
+      ],
+      "mismo_signo": false,
+      "cociente_magnitud_abs_diff": 1.038614900312807,
+      "diff_abs_por_estrategia": {
+        "SAR::S6-K2P0": -1596.2750000019082,
+        "SuperTrend::SuperTrend-p14x3-M15": 1657.9149999988076
+      },
+      "diff_por_posicion": {
+        "SAR::S6-K2P0": -20.206012658252003,
+        "SuperTrend::SuperTrend-p14x3-M15": 30.143909090887412
+      },
+      "diff_por_lote": {
+        "SAR::S6-K2P0": -30.158227848137315,
+        "SuperTrend::SuperTrend-p14x3-M15": 44.990909090876734
+      },
+      "cociente_diff_por_posicion": 1.491828674994759
+    },
+    "q5_sensibilidad_poblaciones": {
+      "a_emparejadas_evaluables": {
+        "neto_real": -12453.29000000024,
+        "neto_replica": -12391.650000003341,
+        "n_real": 134,
+        "n_replica": 134,
+        "diff_abs": 61.63999999689804,
+        "divergencia_pct": 0.49496960238536847
+      },
+      "b_todas_sin_excluir": {
+        "neto_real": 17671.24999999979,
+        "neto_replica": 12464.344999996305,
+        "n_real": 152,
+        "n_replica": 153,
+        "diff_abs": -5206.905000003484,
+        "divergencia_pct": -29.465402843621963
+      },
+      "c_matched_sin_filtrar_criterio": {
+        "neto_real": 19761.64999999978,
+        "neto_replica": 13613.059999996514,
+        "n_real": 146,
+        "n_replica": 146,
+        "diff_abs": -6148.590000003265,
+        "divergencia_pct": -31.113748092913973
+      },
+      "excluidos_12_aparte": {
+        "n": 12,
+        "sum_real_bruto_usd": 32214.940000000013,
+        "sum_real_profit_clp": 29572002.099999998,
+        "por_categoria": {
+          "CLIENT_manual": {
+            "n": 11,
+            "sum_real_bruto_usd": 30965.39000000004,
+            "sum_real_profit_clp": 28416355.779999997
+          },
+          "TP": {
+            "n": 1,
+            "sum_real_bruto_usd": 1249.5499999999756,
+            "sum_real_profit_clp": 1155646.32
+          }
+        }
+      }
+    },
+    "q6_descomposicion": {
+      "term_replica_sin_pareja": -1148.715000000212,
+      "term_real_sin_pareja_neg": 2090.3999999999883,
+      "term_matched_diff": -6148.590000003261,
+      "suma_terminos": -5206.905000003484,
+      "diff_total": -5206.905000003484,
+      "residuo": 0.0
+    },
+    "q7_no_evaluables": {
+      "real_bruto_usd_cero": 0,
+      "real_sin_pareja_replica": {
+        "n": 6,
+        "position_id": [
+          55217492.0,
+          55333600.0,
+          55317670.0,
+          55318544.0,
+          55318552.0,
+          55321392.0
+        ]
+      },
+      "replica_sin_pareja_real": {
+        "n": 7
+      },
+      "tasa_dia_no_evaluable_poblacion_a": 0,
+      "tasa_dia_no_evaluable_poblacion_b": 0,
+      "delta_precio_open_nulo_origen": 6
+    }
+  }
+}

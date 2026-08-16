@@ -2,7 +2,7 @@
 
 Comando: `python scripts/analysis/realtick_bt/faulty/divergencia_neto.py`
 
-Fecha: 2026-08-16 · git_sha: `fc3773b0055d3e628fe52a78916863aa5efe1db5` · run_id: `T0.7-M-0-DIVNETO-0001`
+Fecha: 2026-08-16 · git_sha: `0198002daee7a6469edd81d326d83ccfc3c1f175` · run_id: `T0.7-M-0-DIVNETO-0001`
 
 REPORT-ONLY. Sin interpretación, sin veredicto. Divergencia situada junto a los umbrales 0.3% (aceptable) / 0.15% (ideal), sin emitirlo.
 
