@@ -22,3 +22,8 @@ Bloque 2 -- paired_harness.run_paired_arms(pares="todos"|"contra_control", brazo
 cambio aditivo, default "todos" byte-identico. 21 tests de test_harness_pareado.py siguen
 verdes sin tocarlos; 2 tests nuevos en test_ola1.py (coincide con "todos" en los pares
 compartidos + ValueError si falta el control). Parity gate 4 passed. VERDE.
+
+Bloque 3 -- metricas.py: metricas_de_brazo() con las 20 claves del brief (net_lote1, R,
+en-R, racha de perdidas, sharpe x2, n_por_reason, overlay de coste D-54/D-59). COSTE_CLP
+verificado = 21071.25. 3 tests nuevos (coste sintetico + n=0 + datos reales S6, slow).
+Parity gate 4 passed. VERDE.

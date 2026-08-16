@@ -171,6 +171,65 @@ class TestParesContraControl:
                              brazo_control="no_existe")
 
 
+# --------------------------------------------------------------------- Bloque 3
+class TestMetricas:
+    def test_overlay_de_coste_solo_toca_salidas_por_nivel(self):
+        from scripts.research.ola1.metricas import COSTE_CLP, metricas_de_brazo
+
+        assert abs(COSTE_CLP - 21071.25) < 1e-6
+
+        reasons_con_coste = ["EXIT_INITSL", "EXIT_SL_RAISED", "EXIT_TRAIL", "EXIT_STLINE"]
+        reasons_sin_coste = ["EXIT_TP", "EXIT_STFLIP", "time_stop", "reverse"]
+
+        posiciones = []
+        t = 1_700_000_000.0
+        for reason in reasons_con_coste + reasons_sin_coste:
+            posiciones.append({
+                "t_in_exec": t, "t_exit": t + 900.0, "net1": 1000.0, "reason": reason,
+                "side_l": "L", "R1": 500.0, "margin1": 100.0,
+            })
+            t += 3600.0
+
+        m = metricas_de_brazo("S6-K2P0", "default", {}, posiciones, [])
+        esperado = sum(1000.0 for _ in reasons_sin_coste) + sum(
+            1000.0 - COSTE_CLP for _ in reasons_con_coste
+        )
+        assert abs(m["net_con_coste_lote1"] - esperado) < 1e-6
+        assert m["n_posiciones_con_coste"] == len(reasons_con_coste)
+
+    def test_metricas_de_brazo_n_cero(self):
+        from scripts.research.ola1.metricas import metricas_de_brazo
+
+        m = metricas_de_brazo("S6-K2P0", "default", {}, [], [])
+        assert m["n"] == 0
+        assert m["net_por_posicion_lote1"] is None
+        assert m["sharpe_por_posicion"] is None
+        assert m["sharpe_diario_ann"] is None
+        assert m["R_mediana"] is None
+
+    @pytest.mark.slow
+    def test_metricas_de_brazo_sobre_datos_reales(self):
+        from scripts.analysis.realtick_bt import backtest as bt
+        from scripts.research.ola1 import riesgo
+        from scripts.research.ola1.metricas import metricas_de_brazo
+        from scripts.research.ola1.sustrato import cargar_barras
+
+        bars = cargar_barras()
+        resolved = bt.build_all(bt.Ticks(), bars)
+        sid = "S6-K2P0"
+        posiciones = resolved[sid]
+        r_vals = riesgo.r_por_posicion(sid, {}, posiciones, bars)
+        for p, r in zip(posiciones, r_vals):
+            p["R1"] = r
+        m = metricas_de_brazo(sid, "default", {}, posiciones, bars)
+        assert m["n"] == len(posiciones) == 624
+        assert abs(m["net_lote1"] - sum(p["net1"] for p in posiciones)) < 1e-6
+        assert m["n_R_no_computable"] == sum(1 for r in r_vals if r is None)
+        assert set(m["n_por_reason"]) <= {
+            "EXIT_INITSL", "EXIT_SL_RAISED", "EXIT_TRAIL", "EXIT_TP", "time_stop", "reverse",
+        }
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])
