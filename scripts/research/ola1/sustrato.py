@@ -42,13 +42,81 @@ class ControlNoReproduceLineaBaseError(Exception):
     invalida y los demas brazos no son interpretables)."""
 
 
-def cargar_barras() -> list[dict[str, Any]]:
-    """Barras M15 pre-holdout: bt.load_bars() filtrado por b["t"] < HOLDOUT_INI.
+def cargar_barras(*, margen_extra_s: float = 0.0) -> list[dict[str, Any]]:
+    """Barras M15 pre-holdout: bt.load_bars() filtrado por
+    b["t"] < HOLDOUT_INI - margen_extra_s.
 
     Reutiliza HOLDOUT_INI de scripts.research.baseline_golden -- no se
     redefine aqui.
+
+    `margen_extra_s=0.0` (default) es BYTE-IDENTICO al sustrato de siempre
+    (b["t"] < HOLDOUT_INI) -- el corte que usan P-03/P-05/P-08 y la linea
+    base T0.6-baseline.
+
+    `margen_extra_s > 0.0` (D-60, BLOCK-3(a) de este task): recorta el
+    sustrato MAS, para que ningun `max_hold_bars` de la grilla de P-02 pueda
+    empujar una salida `resolve()`-`t_exit` hasta el sello del holdout
+    (`first_at(t_exit)` devuelve el primer tick EN O DESPUES de t_exit --
+    ver DECISIONES.md D-60 para la medicion exacta que fuerza esto). El
+    llamador calcula `margen_extra_s = (max(grilla_max_hold_bars) + 1) * BAR_SEC`
+    -- ver `MARGEN_P02_S` mas abajo, que es el valor exacto usado por la
+    grilla de P-02 congelada en manifiesto.py.
     """
-    return [b for b in bt.load_bars() if b["t"] < HOLDOUT_INI]
+    return [b for b in bt.load_bars() if b["t"] < HOLDOUT_INI - margen_extra_s]
+
+
+# D-60: margen para P-02. max(grilla) = 128 (manifiesto._grid_p02), BAR_SEC=900.
+# margen = (128 + 1) * 900 = 116100 s (~32.25 h) antes de HOLDOUT_INI.
+MAX_MAX_HOLD_BARS_GRID_P02 = 128
+MARGEN_P02_S = (MAX_MAX_HOLD_BARS_GRID_P02 + 1) * bt.BAR_SEC
+
+
+def verificar_control_contra_linea_base_recortada(
+    sid: str, posiciones_control: list[dict[str, Any]], ultimo_t_bar: float
+) -> dict:
+    """Variante de `verificar_control_contra_linea_base` para un sustrato
+    RECORTADO (D-60, P-02): compara el brazo de control, no contra la linea
+    base T0.6 completa (que corrio sobre el sustrato SIN recortar y por
+    tanto tiene mas posiciones cerca del holdout), sino contra el PREFIJO de
+    esa misma linea base filtrado a `t_exit <= ultimo_t_bar`.
+
+    Justificacion de por que esto es una comparacion valida y no una
+    relajacion: el motor es causal -- una posicion que CIERRA en o antes de
+    `ultimo_t_bar` en la corrida completa depende solo de barras
+    `<= ultimo_t_bar`, exactamente las mismas barras que ve la corrida
+    recortada. Por tanto el conjunto de posiciones CERRADAS del brazo de
+    control recortado debe ser EXACTAMENTE el prefijo (por t_exit) de la
+    linea base congelada, ni una posicion de mas ni de menos -- cualquier
+    diferencia es una regresion real, no un artefacto del recorte.
+    """
+    path = BASELINE_DIR / f"posiciones_{sid}.json"
+    with path.open("r", encoding="utf-8") as f:
+        congelado_completo = json.load(f)
+
+    congelado_recortado = _normalizar(
+        [p for p in congelado_completo if p["t_exit"] <= ultimo_t_bar]
+    )
+    control = _normalizar(posiciones_control)
+
+    if len(control) != len(congelado_recortado):
+        raise ControlNoReproduceLineaBaseError(
+            f"{sid}: numero de posiciones del brazo de control recortado ({len(control)}) "
+            f"!= prefijo de la linea base congelada hasta t_exit<={ultimo_t_bar} "
+            f"({len(congelado_recortado)}) -- el instrumento no reproduce la linea base "
+            "bajo el sustrato recortado de P-02, la corrida es invalida"
+        )
+
+    for i, (esperado, obtenido) in enumerate(zip(congelado_recortado, control)):
+        for k, v_esperado in esperado.items():
+            v_obtenido = obtenido.get(k)
+            if v_esperado != v_obtenido:
+                raise ControlNoReproduceLineaBaseError(
+                    f"{sid}: posicion recortada #{i} difiere del prefijo de la linea base "
+                    f"congelada -- clave={k!r} congelado={v_esperado!r} control={v_obtenido!r}"
+                )
+
+    return {"n_congelado_recortado": len(congelado_recortado), "n_control": len(control),
+            "identico": True}
 
 
 def dia_servidor(t: float) -> str:

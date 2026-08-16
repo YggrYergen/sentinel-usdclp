@@ -81,6 +81,98 @@ class TestSustrato:
         resultado = sustrato.verificar_control_contra_linea_base("S6-K2P0", extra)
         assert resultado["identico"] is True
 
+    # ------------------------------------------------------------- D-60 (BLOCK-3(a)): P-02 substrate trim
+    def test_cargar_barras_margen_extra_cero_es_byte_identico(self):
+        from scripts.research.ola1.sustrato import cargar_barras
+
+        sin_margen = cargar_barras()
+        con_margen_cero = cargar_barras(margen_extra_s=0.0)
+        assert con_margen_cero == sin_margen
+
+    def test_cargar_barras_margen_p02_recorta_el_sustrato(self):
+        from scripts.research.baseline_golden import HOLDOUT_INI
+        from scripts.research.ola1.sustrato import MARGEN_P02_S, cargar_barras
+
+        completo = cargar_barras()
+        recortado = cargar_barras(margen_extra_s=MARGEN_P02_S)
+        assert len(recortado) < len(completo)
+        assert recortado == completo[: len(recortado)]  # prefijo exacto, nada mas se movio
+        assert recortado[-1]["t"] < HOLDOUT_INI - MARGEN_P02_S
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE"])
+    @pytest.mark.parametrize("max_hold_bars", [4, 10, 64, 128])
+    def test_margen_p02_ningun_max_hold_bars_de_la_grilla_toca_el_holdout(self, sid, max_hold_bars):
+        """La medicion exacta que fuerza D-60: con el sustrato recortado,
+        NINGUN valor de la grilla congelada de P-02 (manifiesto._grid_p02,
+        max=128) puede producir una posicion cuyo t_exit caiga en o despues
+        de HOLDOUT_INI -- verificar_holdout debe pasar limpio, no lanzar."""
+        import numpy as np
+
+        from scripts.analysis.realtick_bt import backtest as bt
+        from scripts.analysis.realtick_bt.overlay import overlay_kwargs
+        from scripts.research.ola1.sustrato import MARGEN_P02_S, cargar_barras, verificar_holdout
+
+        bars = cargar_barras(margen_extra_s=MARGEN_P02_S)
+        ticks = bt.Ticks()
+        bar_times = np.array([b["t"] for b in bars], dtype="float64")
+        eff = overlay_kwargs(sid, {"max_hold_bars": max_hold_bars})
+        raw = bt.run_ladder(eff, bars)
+        resolved = [r for p in raw if (r := bt.resolve(p, ticks, bar_times)) is not None]
+        verificar_holdout(resolved)  # no debe lanzar
+
+    @pytest.mark.slow
+    @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE"])
+    def test_control_reproduce_linea_base_recortada(self, sid):
+        """El control (default, sin max_hold_bars) sobre el sustrato
+        RECORTADO debe reproducir EXACTAMENTE el prefijo (por t_exit) de la
+        linea base T0.6 completa -- el motor es causal, asi que recortar el
+        sustrato no puede cambiar ninguna posicion que ya cerraba dentro del
+        tramo compartido."""
+        import numpy as np
+
+        from scripts.analysis.realtick_bt import backtest as bt
+        from scripts.research.ola1.sustrato import (
+            MARGEN_P02_S,
+            cargar_barras,
+            verificar_control_contra_linea_base_recortada,
+        )
+
+        bars = cargar_barras(margen_extra_s=MARGEN_P02_S)
+        ticks = bt.Ticks()
+        bar_times = np.array([b["t"] for b in bars], dtype="float64")
+        raw = bt.run_ladder(bt._GL[sid], bars)
+        resolved = [r for p in raw if (r := bt.resolve(p, ticks, bar_times)) is not None]
+        resultado = verificar_control_contra_linea_base_recortada(sid, resolved, bars[-1]["t"])
+        assert resultado["identico"] is True
+        assert resultado["n_congelado_recortado"] == resultado["n_control"]
+
+    def test_control_no_reproduce_linea_base_recortada_dispara(self, monkeypatch, tmp_path):
+        import json
+
+        from scripts.research.ola1 import sustrato
+
+        congelado = [
+            {"a": 1.0, "t_in_exec": 1.0, "t_exit": 2.0},
+            {"a": 9.0, "t_in_exec": 100.0, "t_exit": 200.0},  # fuera del corte -> se ignora
+        ]
+        (tmp_path / "posiciones_S6-K2P0.json").write_text(json.dumps(congelado), encoding="utf-8")
+        monkeypatch.setattr(sustrato, "BASELINE_DIR", tmp_path)
+
+        # dentro del corte (ultimo_t_bar=50): solo la primera posicion cuenta.
+        correcta = [{"a": 1.0, "t_in_exec": 1.0, "t_exit": 2.0}]
+        resultado = sustrato.verificar_control_contra_linea_base_recortada(
+            "S6-K2P0", correcta, ultimo_t_bar=50.0
+        )
+        assert resultado["identico"] is True
+        assert resultado["n_congelado_recortado"] == 1
+
+        distinta = [{"a": 2.0, "t_in_exec": 1.0, "t_exit": 2.0}]
+        with pytest.raises(sustrato.ControlNoReproduceLineaBaseError):
+            sustrato.verificar_control_contra_linea_base_recortada(
+                "S6-K2P0", distinta, ultimo_t_bar=50.0
+            )
+
 
 # --------------------------------------------------------------------- Bloque 2
 class TestParesContraControl:

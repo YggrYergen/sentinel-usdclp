@@ -165,8 +165,9 @@ def ola1_paired(params: dict, out_dir: Path) -> dict:
     secundaria_tipo = params.get("secundaria", "none")
     brazos: dict[str, dict[str, Any]] = params["brazos"]
     confirmatorios = set(params.get("confirmatorios", []))
+    margen_extra_s = float(params.get("margen_extra_s", 0.0))
 
-    bars = sustrato_mod.cargar_barras()
+    bars = sustrato_mod.cargar_barras(margen_extra_s=margen_extra_s)
     ticks = backtest.Ticks()
 
     signal_positions, resolved = _resolver_brazos_con_progreso(sid, brazos, bars, ticks, out_dir)
@@ -175,9 +176,14 @@ def ola1_paired(params: dict, out_dir: Path) -> dict:
     todas_las_posiciones = [p for positions in result.arms.values() for p in positions]
     sustrato_mod.verificar_holdout(todas_las_posiciones)
 
-    control_check = sustrato_mod.verificar_control_contra_linea_base(
-        sid, result.arms[brazo_control]
-    )
+    if margen_extra_s > 0.0:
+        control_check = sustrato_mod.verificar_control_contra_linea_base_recortada(
+            sid, result.arms[brazo_control], bars[-1]["t"]
+        )
+    else:
+        control_check = sustrato_mod.verificar_control_contra_linea_base(
+            sid, result.arms[brazo_control]
+        )
 
     r_por_brazo: dict[str, list[float | None]] = {}
     for arm_name, overlay in brazos.items():
@@ -243,6 +249,7 @@ def ola1_paired(params: dict, out_dir: Path) -> dict:
     sustrato_block = {
         "n_barras": len(bars), "t0": bars[0]["t"], "t1": bars[-1]["t"],
         "holdout_excluido": sustrato_mod.HOLDOUT_INI,
+        "margen_extra_s": margen_extra_s,
     }
     control_block = {"brazo": brazo_control, **control_check}
 
