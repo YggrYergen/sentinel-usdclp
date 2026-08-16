@@ -97,6 +97,83 @@ def test_trail_atr_floor_k_positive_changes_events():
 
 
 # ---------------------------------------------------------------------------
+# BLOCK-2 (P-03 correction, DIAG-P03): ac_modulate_floor_relief_k lets the
+# AC-modulated (tighter) trail win over the ATR14 floor DURING an active
+# AC-tightening window. Default 1.0 = byte-identical no-op (the floor's own
+# k is multiplied by exactly 1.0 regardless of whether AC is tightening).
+# ---------------------------------------------------------------------------
+
+# ac_modulate_factor tight enough that, once the floor is bypassed, the
+# AC-modulated trail is genuinely SMALLER than the floor -- otherwise relief
+# would be a no-op even at relief_k=0.0 (relief only ever narrows a trail
+# that would otherwise be widened back up by the floor's max()).
+_AC_FLOOR_KW = dict(
+    ac_modulate=True, ac_modulate_factor=0.1, trail_atr_floor_k=5.0,
+)
+
+
+def test_ac_modulate_floor_relief_k_default_is_byte_identical_noop_synthetic():
+    bars = _synthetic_bars(400, seed=7)
+    baseline = simular_variant(bars, symbol="XAUUSD", **_AC_FLOOR_KW, **V09_PARAMS)
+    with_default = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=1.0, **_AC_FLOOR_KW, **V09_PARAMS)
+    assert with_default == baseline
+
+
+def test_ac_modulate_floor_relief_k_omitted_matches_explicit_default():
+    # No kwarg at all vs. explicit relief_k=1.0 -- same guarantee, other seed.
+    bars = _synthetic_bars(500, seed=99)
+    omitted = simular_variant(bars, symbol="XAUUSD", **_AC_FLOOR_KW, **V09_PARAMS)
+    explicit = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=1.0, **_AC_FLOOR_KW, **V09_PARAMS)
+    assert omitted == explicit
+
+
+def test_ac_modulate_floor_relief_k_zero_changes_events_when_floor_dominates():
+    # Full bypass (relief_k=0.0): during an active AC-tightening window the
+    # floor is fully relieved, so the (much smaller) modulated trail governs
+    # instead -- must produce a DIFFERENT event stream from relief_k=1.0.
+    bars = _synthetic_bars(400, seed=7)
+    off = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=1.0, **_AC_FLOOR_KW, **V09_PARAMS)
+    on = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=0.0, **_AC_FLOOR_KW, **V09_PARAMS)
+    assert on != off
+
+
+def test_ac_modulate_floor_relief_k_inert_when_floor_disabled():
+    # trail_atr_floor_k=0.0 -> no floor to relieve -> relief_k is a no-op
+    # regardless of its value (nothing for it to bypass).
+    bars = _synthetic_bars(400, seed=7)
+    kw = dict(ac_modulate=True, ac_modulate_factor=0.1)  # no trail_atr_floor_k
+    baseline = simular_variant(bars, symbol="XAUUSD", **kw, **V09_PARAMS)
+    relief_on = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=0.0, **kw, **V09_PARAMS)
+    assert relief_on == baseline
+
+
+def test_ac_modulate_floor_relief_k_inert_when_ac_modulate_off():
+    # ac_modulate=False -> the tightening window is never active -> relief_k
+    # is a no-op regardless of its value.
+    bars = _synthetic_bars(400, seed=7)
+    kw = dict(ac_modulate=False, trail_atr_floor_k=5.0)
+    baseline = simular_variant(bars, symbol="XAUUSD", **kw, **V09_PARAMS)
+    relief_on = simular_variant(
+        bars, symbol="XAUUSD", ac_modulate_floor_relief_k=0.0, **kw, **V09_PARAMS)
+    assert relief_on == baseline
+
+
+def test_ac_modulate_floor_relief_k_out_of_range_raises():
+    bars = _synthetic_bars(100, seed=7)
+    with pytest.raises(ValueError, match="ac_modulate_floor_relief_k"):
+        simular_variant(bars, symbol="XAUUSD", ac_modulate_floor_relief_k=1.5,
+                         **_AC_FLOOR_KW, **V09_PARAMS)
+    with pytest.raises(ValueError, match="ac_modulate_floor_relief_k"):
+        simular_variant(bars, symbol="XAUUSD", ac_modulate_floor_relief_k=-0.1,
+                         **_AC_FLOOR_KW, **V09_PARAMS)
+
+
+# ---------------------------------------------------------------------------
 # classic-mode pin: return_state open_state under live_fill_mode=False is
 # unchanged (reports f.sl), and the classic event stream is untouched.
 # ---------------------------------------------------------------------------

@@ -745,6 +745,75 @@ def test_direction_mask_plus1_blocks_all_shorts_long_only():
 
 
 # ---------------------------------------------------------------------------
+# BLOCK-1 (WP-3 wiring): higher-timeframe direction mask (htf_mask). SAME
+# mechanics/semantics as direction_mask (mirrored tests below), but an
+# INDEPENDENT second mask -- the generic injection point for P-19/P-20/P-21/
+# P-28 (H1/H4 trend/momentum gates). htf_mask=None (default) must reproduce
+# current behavior exactly.
+# ---------------------------------------------------------------------------
+
+def test_htf_mask_default_matches_pre_extension_events_synthetic():
+    bars = _synthetic_bars(300, seed=120)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    with_defaults = simular_variant(bars, symbol="XAUUSD", htf_mask=None, **V09_PARAMS)
+    assert with_defaults == baseline
+    assert len(baseline) > 0
+
+
+def test_htf_mask_blocks_only_the_masked_side():
+    bars = _synthetic_bars(600, seed=1)
+    baseline = simular_variant(bars, symbol="XAUUSD", **V09_PARAMS)
+    entries = [e for e in baseline if e["motivo"] in ("ENTRY_L", "ENTRY_S")]
+    assert entries
+    first = entries[0]
+
+    mask = [0] * len(bars)
+    mask[first["idx"]] = -1 if first["lado"] == "L" else +1
+    blocked = simular_variant(bars, symbol="XAUUSD", htf_mask=mask, **V09_PARAMS)
+    assert blocked != baseline
+    blocked_entries = [e for e in blocked if e["motivo"] in ("ENTRY_L", "ENTRY_S")]
+    assert first["idx"] not in {e["idx"] for e in blocked_entries}
+
+
+def test_htf_mask_minus1_blocks_all_longs_short_only():
+    bars = _synthetic_bars(600, seed=1)
+    mask = [-1] * len(bars)
+    events = simular_variant(bars, symbol="XAUUSD", htf_mask=mask, **V09_PARAMS)
+    entries = [e for e in events if e["motivo"] in ("ENTRY_L", "ENTRY_S")]
+    assert entries
+    assert all(e["motivo"] == "ENTRY_S" for e in entries)
+
+
+def test_htf_mask_plus1_blocks_all_shorts_long_only():
+    bars = _synthetic_bars(600, seed=1)
+    mask = [+1] * len(bars)
+    events = simular_variant(bars, symbol="XAUUSD", htf_mask=mask, **V09_PARAMS)
+    entries = [e for e in events if e["motivo"] in ("ENTRY_L", "ENTRY_S")]
+    assert entries
+    assert all(e["motivo"] == "ENTRY_L" for e in entries)
+
+
+def test_htf_mask_and_direction_mask_combine_as_and_not_or():
+    """direction_mask and htf_mask are INDEPENDENT filters: either one can
+    block a side, neither can un-block what the other blocked. Long-only via
+    direction_mask + short-only via htf_mask (contradictory) must block BOTH
+    sides everywhere -- zero entries -- proving the two masks are ANDed."""
+    bars = _synthetic_bars(600, seed=1)
+    dmask = [+1] * len(bars)   # direction_mask: short blocked -> long-only
+    hmask = [-1] * len(bars)   # htf_mask: long blocked -> short-only
+    events = simular_variant(
+        bars, symbol="XAUUSD", direction_mask=dmask, htf_mask=hmask, **V09_PARAMS)
+    entries = [e for e in events if e["motivo"] in ("ENTRY_L", "ENTRY_S")]
+    assert entries == []
+
+
+def test_htf_mask_wrong_length_raises():
+    bars = _synthetic_bars(50, seed=1)
+    with pytest.raises(ValueError, match="htf_mask"):
+        simular_variant(bars, symbol="XAUUSD", htf_mask=[0] * 10, **V09_PARAMS)
+
+
+# ---------------------------------------------------------------------------
 # V-13: controlled re-entry after full trail-out (reentry_enable/reentry_max).
 # reentry_enable=False (default) must reproduce current behavior exactly.
 # ---------------------------------------------------------------------------

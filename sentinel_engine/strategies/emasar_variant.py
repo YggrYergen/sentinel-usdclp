@@ -142,6 +142,8 @@ def simular_variant(
     ac_decel_lookback: int = 1,
     ac_decel_umbral: float = 0.0,
     ac_modulate_hold_bars: int = 1,
+    ac_modulate_floor_relief_k: float = 1.0,
+    htf_mask: list[int | None] | None = None,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -205,6 +207,42 @@ def simular_variant(
     Per-ficha (`tag`-keyed), reset on every new entry. `ac_modulate_hold_bars <
     1` raises `ValueError` (a silent 0 would disable the tightening without
     saying so).
+
+    AC-modulated trail vs. the ATR14 floor (P-03/BLOCK-2; `ac_modulate_floor_relief_k`,
+    default 1.0 = disabled = EXACT current behavior): DIAG-P03 measured that
+    the ATR14 trail floor (`trail_atr_floor_k`) absorbs 100% of the AC-modulate
+    tightening in the live S6-K2P0 config (floor minimum 8.67 vs. modulated
+    trail maximum 1.00 over the full grid) -- the floor's `max(...)` at line
+    ~1002 always wins, so the AC tightening computed above NEVER reaches
+    `nuevo_sl`. `ac_modulate_floor_relief_k` scales the floor's `k` DURING an
+    active AC-tightening window only (i.e. only on bars where the hold counter
+    from the block above is > 0 for this ficha) -- `relief_k=1.0` (default)
+    multiplies the floor by 1.0, an exact no-op regardless of whether AC is
+    tightening; `relief_k=0.0` fully bypasses the floor while AC is tightening
+    (the modulated trail always wins); `0.0 < relief_k < 1.0` reduces the floor
+    proportionally (a middle ground between "floor always wins" and "floor
+    never applies during tightening"). Outside an active AC-tightening window,
+    or when `ac_modulate=False`, the floor is UNCHANGED regardless of
+    `relief_k` -- this lever only ever affects bars where AC-modulate is the
+    one asking for a tighter trail. Raises `ValueError` if `relief_k` is
+    outside `[0.0, 1.0]` (values > 1.0 would WIDEN the floor during tightening,
+    the opposite of the lever's purpose; a silent typo there would look like a
+    no-op grid cell instead of an error).
+
+    Higher-timeframe direction mask (BLOCK-1/WP-3 wiring; `htf_mask`, default
+    None = disabled = EXACT current behavior): a second, independent mask with
+    THE SAME semantics as `direction_mask` (`+1` = long-only, `-1` =
+    short-only, `0`/`None` = both allowed), applied as an ADDITIONAL AND
+    filter on top of `direction_mask` (both must allow a side for it to enter;
+    either one can block it). This is the generic injection point for the
+    higher-timeframe (H1/H4) family of levers (P-19/P-20/P-21/P-28): the
+    caller (research harness) computes the mask from
+    `scripts.analysis.realtick_bt.higher_tf.build_higher_series` snapshots
+    (EMA slope sign, SuperTrend-H4 direction, or momentum sign) --
+    `emasar_variant.py` itself stays ignorant of H1/H4 aggregation, exactly
+    like it is ignorant of how `direction_mask` was computed. `htf_mask=None`
+    is a no-op; when given, it must be `len(bars)`-aligned like
+    `direction_mask`.
 
     Runner exit on sustained AC deceleration (V-07; `f3_ac_decel_exit`,
     default False = disabled = EXACT current behavior): F3 only. Each bar, if
@@ -570,6 +608,19 @@ def simular_variant(
             "ac_modulate_hold_bars must be >= 1 (a value < 1 would silently "
             f"disable the AC-modulated trail tightening); got "
             f"ac_modulate_hold_bars={ac_modulate_hold_bars!r}")
+    # ac_modulate_floor_relief_k (P-03/BLOCK-2): must be in [0.0, 1.0]. Above
+    # 1.0 would WIDEN the floor during AC-tightening (opposite of the lever's
+    # purpose); a value there is almost certainly a typo, not a deliberate
+    # grid cell -- fail loud instead of silently accepting it.
+    if not (0.0 <= ac_modulate_floor_relief_k <= 1.0):
+        raise ValueError(
+            "ac_modulate_floor_relief_k must be in [0.0, 1.0] (1.0=no relief/"
+            "byte-identical, 0.0=full bypass of the floor while AC is "
+            f"tightening); got ac_modulate_floor_relief_k={ac_modulate_floor_relief_k!r}")
+    if htf_mask is not None and len(htf_mask) != len(bars):
+        raise ValueError(
+            f"htf_mask must be len(bars)-aligned; got len(htf_mask)="
+            f"{len(htf_mask)}, len(bars)={len(bars)}")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -989,6 +1040,7 @@ def simular_variant(
             # applies for exactly the triggering bar, byte-identical to the
             # pre-P-03 block). Re-arms to hold_bars if the condition fires
             # again while the hold counter is still active.
+            ac_tightening_active = False
             if ac_modulate:
                 if ac_desacelerando(ac, i, f.lado, lookback=ac_decel_lookback,
                                      umbral=ac_decel_umbral):
@@ -996,11 +1048,22 @@ def simular_variant(
                 if ac_modulate_hold_by_tag.get(tag, 0) > 0:
                     trail_efectivo = trail_efectivo * ac_modulate_factor
                     ac_modulate_hold_by_tag[tag] -= 1
+                    ac_tightening_active = True
             # ATR14 trail floor (trail_atr_floor_k=0.0 default -> atr14_floor is
             # None -> this block is skipped entirely, byte-identical no-op).
             if atr14_floor is not None and atr14_floor[i] is not None:
+                # P-03/BLOCK-2 relief: while AC-modulate is actively tightening
+                # THIS bar (ac_tightening_active), scale the floor's k by
+                # ac_modulate_floor_relief_k. relief_k=1.0 (default) multiplies
+                # by exactly 1.0 -- byte-identical no-op regardless of
+                # ac_tightening_active. Outside an active tightening window the
+                # floor is untouched (full trail_atr_floor_k), no matter what
+                # relief_k is set to.
+                floor_k_efectivo = trail_atr_floor_k
+                if ac_tightening_active and ac_modulate_floor_relief_k != 1.0:
+                    floor_k_efectivo = trail_atr_floor_k * ac_modulate_floor_relief_k
                 trail_efectivo = max(trail_efectivo,
-                                     trail_atr_floor_k * atr14_floor[i])
+                                     floor_k_efectivo * atr14_floor[i])
             if f.lado == +1:
                 f.max_fav = max(f.max_fav, bar["high"])
                 # F5 trail-start-delay (PX-T3; trail_arm_r=0.0 default -> armed
@@ -1335,6 +1398,18 @@ def simular_variant(
             if long_ok and mask_i == -1:
                 long_ok = False
             if short_ok and mask_i == +1:
+                short_ok = False
+
+        # Higher-timeframe direction mask (BLOCK-1/WP-3 wiring; htf_mask=None
+        # disables this check entirely, preserving current behavior
+        # byte-for-byte): SAME semantics as direction_mask, applied as an
+        # INDEPENDENT additional AND filter (either mask can block a side;
+        # neither can un-block a side the other blocked).
+        if htf_mask is not None:
+            htf_i = htf_mask[i]
+            if long_ok and htf_i == -1:
+                long_ok = False
+            if short_ok and htf_i == +1:
                 short_ok = False
 
         # Confirmation-bar entry (P54; confirm_bar=False disables this block
