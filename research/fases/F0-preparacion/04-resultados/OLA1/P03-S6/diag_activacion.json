@@ -1,0 +1,226 @@
+{
+  "estado": "PRE-INTERPRETACION -- charter SS A.4, ningun numero aqui es veredicto",
+  "sustrato": {
+    "n_bars": 8334,
+    "n_ac_none": 37,
+    "n_atr14_none": 13,
+    "pip_size_XAUUSD": 0.01
+  },
+  "paso2_cota_superior_disparo_por_umbral_lookback_TODO_el_sustrato": {
+    "u10-lb1": {
+      "umbral_pips": 10,
+      "ac_decel_umbral": 0.1,
+      "lookback": 1,
+      "n_long": 4025,
+      "n_short": 3912,
+      "n_total": 7937,
+      "frac_long": 0.483,
+      "frac_short": 0.4694
+    },
+    "u10-lb2": {
+      "umbral_pips": 10,
+      "ac_decel_umbral": 0.1,
+      "lookback": 2,
+      "n_long": 4116,
+      "n_short": 3984,
+      "n_total": 8100,
+      "frac_long": 0.4939,
+      "frac_short": 0.478
+    },
+    "u10-lb3": {
+      "umbral_pips": 10,
+      "ac_decel_umbral": 0.1,
+      "lookback": 3,
+      "n_long": 4142,
+      "n_short": 4005,
+      "n_total": 8147,
+      "frac_long": 0.497,
+      "frac_short": 0.4806
+    },
+    "u25-lb1": {
+      "umbral_pips": 25,
+      "ac_decel_umbral": 0.25,
+      "lookback": 1,
+      "n_long": 3758,
+      "n_short": 3649,
+      "n_total": 7407,
+      "frac_long": 0.4509,
+      "frac_short": 0.4378
+    },
+    "u25-lb2": {
+      "umbral_pips": 25,
+      "ac_decel_umbral": 0.25,
+      "lookback": 2,
+      "n_long": 3975,
+      "n_short": 3840,
+      "n_total": 7815,
+      "frac_long": 0.477,
+      "frac_short": 0.4608
+    },
+    "u25-lb3": {
+      "umbral_pips": 25,
+      "ac_decel_umbral": 0.25,
+      "lookback": 3,
+      "n_long": 4045,
+      "n_short": 3897,
+      "n_total": 7942,
+      "frac_long": 0.4854,
+      "frac_short": 0.4676
+    },
+    "u50-lb1": {
+      "umbral_pips": 50,
+      "ac_decel_umbral": 0.5,
+      "lookback": 1,
+      "n_long": 3314,
+      "n_short": 3228,
+      "n_total": 6542,
+      "frac_long": 0.3976,
+      "frac_short": 0.3873
+    },
+    "u50-lb2": {
+      "umbral_pips": 50,
+      "ac_decel_umbral": 0.5,
+      "lookback": 2,
+      "n_long": 3762,
+      "n_short": 3597,
+      "n_total": 7359,
+      "frac_long": 0.4514,
+      "frac_short": 0.4316
+    },
+    "u50-lb3": {
+      "umbral_pips": 50,
+      "ac_decel_umbral": 0.5,
+      "lookback": 3,
+      "n_long": 3856,
+      "n_short": 3709,
+      "n_total": 7565,
+      "frac_long": 0.4627,
+      "frac_short": 0.445
+    },
+    "u75-lb1": {
+      "umbral_pips": 75,
+      "ac_decel_umbral": 0.75,
+      "lookback": 1,
+      "n_long": 2911,
+      "n_short": 2807,
+      "n_total": 5718,
+      "frac_long": 0.3493,
+      "frac_short": 0.3368
+    },
+    "u75-lb2": {
+      "umbral_pips": 75,
+      "ac_decel_umbral": 0.75,
+      "lookback": 2,
+      "n_long": 3520,
+      "n_short": 3362,
+      "n_total": 6882,
+      "frac_long": 0.4224,
+      "frac_short": 0.4034
+    },
+    "u75-lb3": {
+      "umbral_pips": 75,
+      "ac_decel_umbral": 0.75,
+      "lookback": 3,
+      "n_long": 3683,
+      "n_short": 3538,
+      "n_total": 7221,
+      "frac_long": 0.4419,
+      "frac_short": 0.4245
+    },
+    "u100-lb1": {
+      "umbral_pips": 100,
+      "ac_decel_umbral": 1.0,
+      "lookback": 1,
+      "n_long": 2522,
+      "n_short": 2418,
+      "n_total": 4940,
+      "frac_long": 0.3026,
+      "frac_short": 0.2901
+    },
+    "u100-lb2": {
+      "umbral_pips": 100,
+      "ac_decel_umbral": 1.0,
+      "lookback": 2,
+      "n_long": 3279,
+      "n_short": 3135,
+      "n_total": 6414,
+      "frac_long": 0.3934,
+      "frac_short": 0.3762
+    },
+    "u100-lb3": {
+      "umbral_pips": 100,
+      "ac_decel_umbral": 1.0,
+      "lookback": 3,
+      "n_long": 3507,
+      "n_short": 3378,
+      "n_total": 6885,
+      "frac_long": 0.4208,
+      "frac_short": 0.4053
+    },
+    "u150-lb1": {
+      "umbral_pips": 150,
+      "ac_decel_umbral": 1.5,
+      "lookback": 1,
+      "n_long": 1847,
+      "n_short": 1815,
+      "n_total": 3662,
+      "frac_long": 0.2216,
+      "frac_short": 0.2178
+    },
+    "u150-lb2": {
+      "umbral_pips": 150,
+      "ac_decel_umbral": 1.5,
+      "lookback": 2,
+      "n_long": 2838,
+      "n_short": 2724,
+      "n_total": 5562,
+      "frac_long": 0.3405,
+      "frac_short": 0.3269
+    },
+    "u150-lb3": {
+      "umbral_pips": 150,
+      "ac_decel_umbral": 1.5,
+      "lookback": 3,
+      "n_long": 3180,
+      "n_short": 3052,
+      "n_total": 6232,
+      "frac_long": 0.3816,
+      "frac_short": 0.3662
+    }
+  },
+  "referencia_umbral_0.0_lookback_1": {
+    "n_long": 4198,
+    "n_short": 4098,
+    "n_total": 8296
+  },
+  "paso3_piso_atr_vs_trail": {
+    "trail_atr_floor_k_live_S6K2P0": 2.0,
+    "base_trail_price_units_100pips": 1.0,
+    "ac_modulate_live_S6K2P0": true,
+    "ac_modulate_factor_live_S6K2P0": 0.25,
+    "trail_modulado_price_units": 0.25,
+    "n_bars_atr14_valido": 8321,
+    "n_floor_domina_trail_BASE_sin_modular": 8321,
+    "frac_floor_domina_trail_BASE": 1.0,
+    "n_floor_domina_trail_MODULADO_por_AC": 8321,
+    "frac_floor_domina_trail_MODULADO": 1.0,
+    "floor_2xATR14_p10": 14.430932099963911,
+    "floor_2xATR14_p50": 22.76671312980364,
+    "floor_2xATR14_p90": 46.873877596577806,
+    "floor_2xATR14_min": 8.666738609146984,
+    "floor_2xATR14_max": 148.85796417195417
+  },
+  "paso4_spy_simulacion_real_S6K2P0": {
+    "control_default": {
+      "n_true": 6306,
+      "n_calls": 13947
+    },
+    "ac_off": {
+      "n_true": 0,
+      "n_calls": 0
+    },
+    "n_eventos_default": 2497,
+    "n_eventos_ac_off": 2497,
+    "eventos_default_igual_a_ac_off": true
+  }
+}
