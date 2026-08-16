@@ -17,3 +17,8 @@ Bloque 1 -- sustrato.py + riesgo.py: cargar_barras/verificar_holdout/verificar_c
 y r_por_posicion (escalera via bt._sl_inicial_genuine, SuperTrend via bt._atr_wilder+bt.supertrend).
 9 tests nuevos en tests/research/test_ola1.py (3 rapidos + 6 slow, datos reales del sustrato),
 todos verdes. Parity gate 4 passed antes y despues. VERDE.
+
+Bloque 2 -- paired_harness.run_paired_arms(pares="todos"|"contra_control", brazo_control):
+cambio aditivo, default "todos" byte-identico. 21 tests de test_harness_pareado.py siguen
+verdes sin tocarlos; 2 tests nuevos en test_ola1.py (coincide con "todos" en los pares
+compartidos + ValueError si falta el control). Parity gate 4 passed. VERDE.

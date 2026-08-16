@@ -77,7 +77,8 @@ class PairedResult:
 
 
 def run_paired_arms(sid: str, arms: dict[str, dict[str, Any]],
-                     bars: list[dict[str, Any]], ticks: "backtest.Ticks | None" = None
+                     bars: list[dict[str, Any]], ticks: "backtest.Ticks | None" = None, *,
+                     pares: str = "todos", brazo_control: str = "default"
                      ) -> PairedResult:
     """Run the K `arms` of strategy `sid` (each value = overlay dict for
     `overlay.overlay_kwargs`, or -- for SuperTrend -- kwargs of
@@ -87,7 +88,23 @@ def run_paired_arms(sid: str, arms: dict[str, dict[str, Any]],
     Entries are computed exactly once per arm (no re-simulation per policy
     inside an arm). `bars` are shared across arms (comparability, charter
     regla 1); `ticks` defaults to a fresh `backtest.Ticks()` reader.
+
+    `pares` (OLA1-EXEC Bloque 2, additive, default "todos" = today's exact
+    behavior -- every C(K,2) pair): with `pares="contra_control"`, only the
+    `(brazo_control, otro)` pairs are computed (K-1 pairs instead of C(K,2)).
+    Motivating measurement: P-03 runs 95 arms, so C(95,2) = 4465 pairs today,
+    each with its own `no_casadas` list -- work and memory nobody reads,
+    because the only alignment the Ola 1 decision rules use is each arm
+    against the control arm (D-56). `brazo_control` must be a key of `arms`;
+    otherwise `ValueError` naming the available keys.
     """
+    if pares not in ("todos", "contra_control"):
+        raise ValueError(f"pares debe ser 'todos' o 'contra_control', recibido: {pares!r}")
+    if pares == "contra_control" and brazo_control not in arms:
+        raise ValueError(
+            f"brazo_control={brazo_control!r} no esta en arms; claves disponibles: "
+            f"{sorted(arms.keys())}"
+        )
     if ticks is None:
         ticks = backtest.Ticks()
     bar_times = np.array([b["t"] for b in bars], dtype="float64")
@@ -108,9 +125,14 @@ def run_paired_arms(sid: str, arms: dict[str, dict[str, Any]],
                 out.append(r)
         resolved[arm_name] = out
 
+    if pares == "todos":
+        pares_iter = itertools.combinations(arms.keys(), 2)
+    else:
+        pares_iter = ((brazo_control, otro) for otro in arms.keys() if otro != brazo_control)
+
     alignment_signal: dict[tuple[str, str], dict[str, Any]] = {}
     alignment_filled: dict[tuple[str, str], dict[str, Any]] = {}
-    for a, b in itertools.combinations(arms.keys(), 2):
+    for a, b in pares_iter:
         ids_a_sig = {entry_identity(sid, p) for p in signal_positions[a]}
         ids_b_sig = {entry_identity(sid, p) for p in signal_positions[b]}
         alignment_signal[(a, b)] = _align(ids_a_sig, ids_b_sig)

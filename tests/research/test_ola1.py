@@ -82,6 +82,95 @@ class TestSustrato:
         assert resultado["identico"] is True
 
 
+# --------------------------------------------------------------------- Bloque 2
+class TestParesContraControl:
+    def test_pares_contra_control_coincide_con_todos(self, monkeypatch):
+        from scripts.analysis.realtick_bt import backtest
+        from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+
+        class _FakeTicks:
+            def __init__(self, ticks):
+                self._t = np.array([t for t, _, _ in ticks], dtype="float64")
+                self._bid = np.array([b for _, b, _ in ticks], dtype="float64")
+                self._ask = np.array([a for _, _, a in ticks], dtype="float64")
+
+            def first_at(self, t_sec):
+                i = int(np.searchsorted(self._t, t_sec, "left"))
+                if i < len(self._t):
+                    return float(self._t[i]), float(self._bid[i]), float(self._ask[i])
+                return None
+
+            def range(self, t0, t1):
+                lo = int(np.searchsorted(self._t, t0, "left"))
+                hi = int(np.searchsorted(self._t, t1, "left"))
+                return self._t[lo:hi], self._bid[lo:hi], self._ask[lo:hi]
+
+        def _trend_bars(n=40):
+            bars = []
+            t0 = 1_700_000_000
+            price = 100.0
+            for i in range(n):
+                drift = 0.8 if i < n // 2 else -0.8
+                price += drift
+                o = price - drift
+                c = price
+                h = max(o, c) + 0.3
+                l = min(o, c) - 0.3
+                bars.append({"t": t0 + BAR_SEC * i, "open": o, "high": h, "low": l,
+                             "close": c, "volume": 1})
+            return bars
+
+        bars = _trend_bars()
+        events_by_marker = {
+            "default": [
+                {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+                {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+                {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+                {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+            ],
+            "u1": [
+                {"idx": 1, "lado": "L", "precio": 101.0, "motivo": "ENTRY_L"},
+                {"idx": 6, "lado": "L", "precio": 106.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+                {"idx": 6, "lado": "L", "precio": 106.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+                {"idx": 6, "lado": "L", "precio": 106.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+            ],
+            "u2": [
+                {"idx": 2, "lado": "S", "precio": 99.0, "motivo": "ENTRY_S"},
+                {"idx": 7, "lado": "S", "precio": 94.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+                {"idx": 7, "lado": "S", "precio": 94.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+                {"idx": 7, "lado": "S", "precio": 94.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+            ],
+        }
+
+        def fake_simular_variant(bars_, **kw):
+            return events_by_marker[kw["_marker"]]
+
+        monkeypatch.setattr(backtest, "simular_variant", fake_simular_variant)
+        ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                            (b["t"] + BAR_SEC for b in bars)])
+        arms = {"default": {"_marker": "default"}, "u1": {"_marker": "u1"},
+                "u2": {"_marker": "u2"}}
+        sid = "S6-K2P0"
+
+        todos = run_paired_arms(sid, arms, bars, ticks=ticks, pares="todos")
+        contra_control = run_paired_arms(sid, arms, bars, ticks=ticks,
+                                          pares="contra_control", brazo_control="default")
+
+        assert len(contra_control.alignment_signal) == len(arms) - 1
+        assert len(contra_control.alignment_filled) == len(arms) - 1
+        for otro in ("u1", "u2"):
+            key = ("default", otro)
+            assert contra_control.alignment_signal[key] == todos.alignment_signal[key]
+            assert contra_control.alignment_filled[key] == todos.alignment_filled[key]
+
+    def test_pares_contra_control_valueerror_si_falta_el_control(self):
+        from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+
+        with pytest.raises(ValueError):
+            run_paired_arms("S6-K2P0", {"a": {}, "b": {}}, [], pares="contra_control",
+                             brazo_control="no_existe")
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])
