@@ -632,6 +632,73 @@ derivada:** un solo terminal MT5 abierto a la vez durante cualquier corrida de e
 **Firmada por:** controlador (Opus), sobre verificación de terreno del 2026-08-11 y confirmación
 del user.
 
+### ENMIENDA E-03 · 2026-08-16 · Re-congelado de la línea base de paridad tras los fixes de look-ahead
+**Fase / frontera:** Fase 0, frontera entre el cierre de T0.7 (fidelidad del motor) y el arranque de
+la instrumentación de motor de un solo viaje (D-52, spec `55aa1d4`). No hay experimento a mitad.
+**Manda:** **D-55**, que autorizó explícitamente re-congelar **una sola vez**, después de que
+cerraran T0.7-M-F y T0.7-M-G, con causa escrita y enmienda.
+
+**Causa.** `tests/research/test_baseline_parity.py -m slow` estaba en **3 failed, 1 passed**, y lo
+estaba **por construcción**: la línea base se congeló el 2026-08-12 (`bd17f60`) sobre un motor que
+todavía contenía look-ahead, así que **el look-ahead vivía DENTRO del congelado** y quitarlo tenía
+que cambiarlo. Los tres fixes responsables, todos ya commiteados y verdes:
+- `f3dda1a` (T0.7-M-E) — `Ticks.first_at()` acotado a `tolerance_s=60`; sin cota devolvía ticks de
+  hasta 21 h en el futuro del instante de decisión.
+- `43785dc` (T0.7-M-F) — misma cota en `TicksAva`; verificado **sin call-site activo** (simetría).
+- `492556b` (T0.7-M-G) — `ciclos.py` comparaba el reloj **reconstruido** contra la ventana bloqueada
+  en vez del timestamp del **tick real** efectivamente usado.
+
+**Cambio exacto.** Se regeneran `posiciones_*.json` y `baseline.json` en
+`research/fases/F0-preparacion/04-resultados/T0.6-baseline/` con
+`python -m scripts.research.baseline_golden` sobre el mismo corte de sustrato de siempre (Capitaria
+pre-holdout, `2026-01-01 20:00` → `2026-05-11 23:45`, **8.334 barras**, holdout D-31 excluido). Los
+artefactos previos **no se borran**: quedan como `*.bak-20260816T012302Z` en el mismo directorio.
+
+| Estrategia | congelado 2026-08-12 | re-congelado 2026-08-16 | Δ |
+|---|---:|---:|---:|
+| S6-K2P0 | 633 | **624** | −9 |
+| S7-TPNONE | 717 | **708** | −9 |
+| SuperTrend-p14x3-M15 | 153 | **153** | 0 |
+
+Métricas nuevas: S6 `net=26.964.878,63 wr=31,73 pf=1,074 maxdd=73.553.412,37` · S7
+`net=−9.332.765,67 wr=31,78 pf=0,973 maxdd=54.341.995,18` · ST `net=41.154.773,45 wr=23,53 pf=1,455
+maxdd=24.662.118,77` (lote de investigación, unidades del harness).
+
+🔴 **Verificación de que el cambio es EXACTAMENTE el esperado y nada más** (diff posición a posición
+congelado-vs-nuevo, por clave `(t_in_exec, t_exit)`, hecho por el controlador antes de aceptar):
+
+- **En las posiciones comunes, CERO campos difieren.** S6: 205 claves comunes, 0 diferencias. S7:
+  233 claves comunes, 0 diferencias. ST: 152 claves comunes, 0 diferencias. **No hay deriva
+  numérica silenciosa**: ni un precio de fill, ni un neto, ni un margen.
+- Todo el cambio está en **seis instantes de entrada por estrategia** (S6/S7 · ×3 fichas = 18 filas)
+  y **uno** en ST. De ellos, tres (S6/S7) y uno (ST) **no desaparecen: se desplazan a la barra
+  siguiente**; los otros tres desaparecen.
+- **Los siete instantes afectados son todos del borde del día** (hora de servidor): `17:00`, `18:00`
+  o `19:00`, y los desplazados aterrizan en `18:15` / `19:15`. Es la firma exacta del corte de
+  mantenimiento `17:00–17:45` (T0.13 / `F0-DATA-CAP-0001`) — segundos sin ningún tick, donde
+  `first_at()` sin cota saltaba al futuro. Dos de los que desaparecen cruzan además un fin de semana
+  (`2026-01-16 18:00` → salida `2026-01-18 20:00`).
+- ST conserva el conteo porque su caso único (`2026-04-09 17:00` → `18:15`) mueve
+  `entry_delay_bars` 0→1 en lugar de perder la posición — que es lo que D-55 anticipó como
+  «posición #102».
+
+**Afecta a.** Ninguna conclusión publicada del programa: la línea base golden es **instrumento de
+control**, no fuente de resultados, y ninguna cifra citada en TRACKER, LEDGER o memos procede de
+`T0.6-baseline/`. Afecta a la puerta de paridad de D-22, que a partir de aquí compara contra el motor
+**sin look-ahead**.
+
+**Re-validación requerida:** sí, y **hecha**: `python -m pytest tests/research/test_baseline_parity.py
+-m slow -q` → **4 passed**. ⚠️ **Sin `-m slow` el test devuelve `4 deselected` — un verde que no probó
+nada; ese resultado no es citable.**
+
+**Consecuencia operativa.** Con esto vuelve a haber red de seguridad bajo el motor, que es la
+condición que el spec `2026-08-15-spec-instrumentacion-motor-un-viaje.md` §0 exige **antes** de
+empezar los paquetes de instrumentación: toda esa instrumentación es aditiva y apagada por defecto,
+y este test es lo que demuestra que con los parámetros nuevos sin especificar el motor sigue siendo
+byte-idéntico. **Ningún agente puede re-congelar ni editar ese test** (D-55): es del controlador.
+
+**Firmada por:** controlador (Opus 5), bajo autorización explícita del user en **D-55**.
+
 ---
 
 ## Self-Review (hecho al escribir)

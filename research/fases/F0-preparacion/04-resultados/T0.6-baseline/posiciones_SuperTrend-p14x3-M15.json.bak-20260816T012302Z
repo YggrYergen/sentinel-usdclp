@@ -2144,14 +2144,14 @@
  {
   "band": 0.5,
   "entry_bid": 4765.4,
-  "entry_delay_bars": 1,
-  "entry_fill": 4770.43,
+  "entry_delay_bars": 0,
+  "entry_fill": 4768.84,
   "exit_bid": 4763.646117523,
   "exit_fill": 4763.42,
   "ficha": "F1",
   "level_slip": true,
-  "margin1": 4467507.695,
-  "net1": -656486.5000000205,
+  "margin1": 4466018.66,
+  "net1": -507583.0000000068,
   "reason": "EXIT_STLINE",
   "same_bar": false,
   "side": "LONG",
@@ -2159,7 +2159,7 @@
   "spread": 0.5,
   "t_exit": 1775759436.4,
   "t_in": 1775753100,
-  "t_in_exec": 1775758500.0,
+  "t_in_exec": 1775754000.0,
   "t_out": 1775759400
  },
  {
