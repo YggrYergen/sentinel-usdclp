@@ -304,13 +304,61 @@ def test_cita_gate_spread_harness_vivo_backtest_py_literal():
     assert "abs(sp - 0.5) <= 0.05" in cita["texto"]
 
 
+_CITA_GATE_SPREAD_TEXTO = "abs(sp - 0.5) <= 0.05"
+
+
+def _localizar_cita_gate_spread(texto: str) -> int:
+    """Localiza `_CITA_GATE_SPREAD_TEXTO` en `texto` (contenido de
+    backtest.py) POR CONTENIDO, no por numero de linea, y devuelve el
+    indice 0-based de la unica linea donde aparece.
+
+    Acepta un `texto` arbitrario (no lee el fichero directamente) para que
+    la prueba de mutacion pueda ejercitarla contra una copia mutada sin
+    tocar backtest.py. Lanza AssertionError con mensaje explicito en los
+    dos casos de fallo: la cadena desaparecio (0 apariciones) o es ambigua
+    (>1 apariciones).
+    """
+    lineas = texto.splitlines()
+    encontradas = [i for i, l in enumerate(lineas) if _CITA_GATE_SPREAD_TEXTO in l]
+    if len(encontradas) == 0:
+        raise AssertionError(
+            "la constante del gate de spread desaparecio de backtest.py"
+        )
+    if len(encontradas) > 1:
+        numeros = [i + 1 for i in encontradas]
+        raise AssertionError(
+            f"la cadena '{_CITA_GATE_SPREAD_TEXTO}' aparece en mas de una "
+            f"linea, ambiguedad -- lineas encontradas: {numeros}"
+        )
+    idx = encontradas[0]
+
+    # El cuerpo de resolve() va desde 'def resolve(' hasta el siguiente
+    # 'def ' a nivel de modulo (columna 0). Esto conserva la intencion
+    # original: verificar QUE codigo implementa el gate, no solo que la
+    # cadena existe en algun sitio del fichero.
+    idx_resolve = next(i for i, l in enumerate(lineas) if l.startswith("def resolve("))
+    idx_siguiente_def = next(
+        i for i, l in enumerate(lineas) if i > idx_resolve and l.startswith("def ")
+    )
+    assert idx_resolve < idx < idx_siguiente_def, (
+        f"la cadena '{_CITA_GATE_SPREAD_TEXTO}' se encontro en la linea "
+        f"{idx + 1}, fuera del cuerpo de resolve() (lineas "
+        f"{idx_resolve + 1}-{idx_siguiente_def})"
+    )
+    return idx
+
+
 def test_cita_gate_spread_harness_verificada_contra_el_fichero_real():
-    # T0.7-M-E (backtest.py:130-149, commit ver progreso.md) inserto 18
-    # lineas antes de resolve() al acotar Ticks.first_at con tolerance_s;
-    # la linea citada se desplazo de 358 a 376 (indice 357 -> 375).
+    # Cita por CONTENIDO, no por numero de linea: esta prueba se rompio tres
+    # veces por el mismo motivo (T0.7-M-E desplazo la linea de 358 a 376;
+    # WP-1+2 la desplazo de 376 a 400) porque citaba un indice hardcodeado.
+    # Desde WP-2b ya no hay numero de linea que mantener: se localiza la
+    # cadena por contenido y, si acaso, el numero de linea encontrado se
+    # reporta (no se asume).
     ruta = M._REPO_ROOT / "scripts/analysis/realtick_bt/backtest.py"
-    lineas = ruta.read_text(encoding="utf-8").splitlines()
-    assert "abs(sp - 0.5) <= 0.05" in lineas[375]  # linea 376, indice 375
+    texto = ruta.read_text(encoding="utf-8")
+    idx = _localizar_cita_gate_spread(texto)
+    assert idx >= 0, f"cita del gate de spread localizada en linea {idx + 1}"
 
 
 def test_cita_no_modelado_borde_dia_llamador_py():
