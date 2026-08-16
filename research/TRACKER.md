@@ -15,6 +15,47 @@
 
 ## 🔴 ESTADO EN UNA LÍNEA (actualizar SIEMPRE)
 
+> **2026-08-16 · FASE 0 · OLA 1 — INSTRUMENTO EN CONSTRUCCIÓN, GRILLA DENSA YA CONGELADA POR
+> ESCRITO.** La ola se correrá **completa, de una sola pasada, por script y sin intervención
+> agéntica** (D-58, directiva del user). **157 brazos** = **44 confirmatorios** (pre-registro
+> `22ee9fb`, intactos, únicos que dan veredicto) + **113 exploratorios** (describen la superficie
+> de respuesta, jamás revierten un veredicto). La ampliación está en
+> `01-hipotesis/2026-08-16-ampliacion-E04-ola1.md`, **commit `1c7279d`, ESCRITA Y COMMITEADA ANTES
+> DE CORRER UN SOLO BRAZO** — sin esa precedencia no valdría nada.
+> 🟢 **Por qué densa y no 44:** `build_all()` sobre las 3 estrategias y las 8.334 barras tarda
+> **1,55 s** (medido). 44 brazos y 157 cuestan lo mismo. Y el propio pre-registro ya obligaba a
+> densificar («meseta ⇒ refinar paso ≤0,25» en P-05; «óptimo de borde ⇒ extender» en P-08):
+> declararlo ahora cumple esas reglas por adelantado y sin contaminación por lo ya visto.
+> 🔴 **HALLAZGO DE UNIDADES QUE HABRÍA MATADO P-03 EN SILENCIO:** el pre-registro pide umbral
+> `{25,50,75}` **pips** y el motor recibe unidades de AC. Medido sobre las 8.334 barras
+> (`|AC[i]−AC[i−1]|`, n=8.296, p50 **1,287**, p90 **4,356**): leído en crudo, el trigger se
+> dispararía en el **0,1 % / 0,0 % / 0,0 %** de las barras ⇒ los tres umbrales serían idénticos
+> entre sí y a «AC-modulate apagado», **y P-03 habría salido plana por un error de unidades
+> disfrazado de resultado**. Con pips × 0,01 (`pip_size("XAUUSD")`=0,01) se dispara en el
+> **89,3 % / 78,9 % / 68,9 %**. Resuelto en E-04 §2.1 antes de correr.
+> 🔴 **Y la tercera dimensión de P-03 no existía en el motor:** «duración del apriete {3,5,10}»
+> no tenía parámetro (el apriete duraba la barra del disparo). Sin ella, **12 de los 44 brazos
+> pre-registrados serían duplicados exactos de otros 6**. Se añade `ac_modulate_hold_bars`
+> (WP-2b, aditivo, default 1 = byte-idéntico, bajo la puerta de paridad).
+> 🟢 **WP-1+2 CERRADO** (`659a121`): harness pareado de K brazos con tabla de alineación que
+> **mide, no asume**; `atr_period`/`mult`/`sl_offset` de SuperTrend; `ac_decel_lookback`/`umbral`;
+> instrumentación de camino. Todo aditivo, defaults byte-idénticos, paridad **4 passed** en los 6
+> bloques.
+> 🟢 **D-54 RE-MEDIDO (T0.7-M-H, `71414e4`) y el número es grande:** aplicar el coste de
+> deslizamiento calibrado (**0,225 USD**, sólo a los cierres por stop de la réplica) lleva la
+> divergencia de neto de **16,72 % → 3,28 %**, y el cociente del sesgo diferencial
+> |ST|/|S6| de **8,81× → 1,88×**. El sesgo sigue siendo diferencial y sigue sin pasar el 0,3 %,
+> pero **el deslizamiento no modelado explica la mayor parte del hueco**.
+> ⚠️ **Estado del resultado: `piloto-instrumento` (D-57)** mientras el user no firme el congelado
+> del motor. Todo artefacto de la ola nace **PRE-INTERPRETACIÓN** y ninguna lectura es válida
+> hasta discutirla con el user y ser aprobada (D-58).
+> **Decisiones nuevas: D-58** (ola densa, una pasada, pre-interpretación, componibilidad) y
+> **D-59** (mediana 0,225 manda sobre media 0,202; qué cierres reciben deslizamiento y cuáles no;
+> `ticks_csv_mt5`).
+>
+> ---
+> **Estado previo (2026-08-15), vigente en lo que no contradiga lo anterior:**
+
 > **2026-08-15 · FASE 0 · T0.7 — EL CRITERIO MONETARIO SE COMPUTÓ POR FIN Y NO PASA; Y EL BORDE
 > DEL DÍA RESULTÓ SER LOOK-AHEAD.** Dos corridas nuevas con fila en el LEDGER y suite verde
 > (`pytest tests/analysis -q` → **268 passed, 0 failed**): **`F0-A6-NETO-0001`** (`efa17c1`) y
