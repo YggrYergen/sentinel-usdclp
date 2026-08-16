@@ -1,0 +1,20 @@
+{
+  "alignment_filled": {
+    "default->h4st": {
+      "n_casadas": 153,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    }
+  },
+  "alignment_signal": {
+    "default->h4st": {
+      "n_casadas": 443,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    }
+  }
+}

@@ -1,0 +1,411 @@
+{
+  "brazos": {
+    "neutral": {
+      "confirmatorio": false,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 87741621.50000256,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 40246087.50000123,
+          "S7-TPNONE": -13929500.999998707,
+          "SuperTrend-p14x3-M15": 61425035.00000002
+        },
+        "net_por_posicion_lote1": 59085.26700336873
+      },
+      "overlay": {}
+    },
+    "sh0.3-r20": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 5755167.100000525,
+        "net_lote1_por_sid": {
+          "S6-K2P0": -8230898.499999774,
+          "S7-TPNONE": 718857.4000003021,
+          "SuperTrend-p14x3-M15": 13267208.199999994
+        },
+        "net_por_posicion_lote1": 3875.533400673754
+      },
+      "overlay": {
+        "sharpe_floor": 0.3,
+        "sharpe_floor_factor": 0.2
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 2195765.3776863837,
+        "ic95_alto": 171402.24934417676,
+        "ic95_bajo": -316266.22597425873,
+        "ic_excluye_0": false,
+        "media_diff": -55209.733602695014,
+        "mediana_diff": 407564.79999997,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.6562,
+        "suma_diff": -81986454.40000209,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.3-r30": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 16003473.900000766,
+        "net_lote1_por_sid": {
+          "S6-K2P0": -2171275.2499996284,
+          "S7-TPNONE": -1112187.399999593,
+          "SuperTrend-p14x3-M15": 19286936.549999993
+        },
+        "net_por_posicion_lote1": 10776.750101010617
+      },
+      "overlay": {
+        "sharpe_floor": 0.3,
+        "sharpe_floor_factor": 0.3
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1921294.7054755858,
+        "ic95_alto": 149976.96817615474,
+        "ic95_bajo": -276732.94772747636,
+        "ic_excluye_0": false,
+        "media_diff": -48308.51690235813,
+        "mediana_diff": 356619.19999997376,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.6562,
+        "suma_diff": -71738147.60000183,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.3-r50": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 36500087.500001274,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 9947971.250000603,
+          "S7-TPNONE": -4774276.999999339,
+          "SuperTrend-p14x3-M15": 31326393.249999996
+        },
+        "net_por_posicion_lote1": 24579.183501684358
+      },
+      "overlay": {
+        "sharpe_floor": 0.3,
+        "sharpe_floor_factor": 0.5
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1372353.3610539897,
+        "ic95_alto": 107126.4058401105,
+        "ic95_bajo": -197666.39123391165,
+        "ic_excluye_0": false,
+        "media_diff": -34506.083501684385,
+        "mediana_diff": 254727.99999998126,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.6562,
+        "suma_diff": -51241534.00000131,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.5-r20": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 26214320.700000245,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 9725927.100000178,
+          "S7-TPNONE": 2592606.600000116,
+          "SuperTrend-p14x3-M15": 13895786.99999995
+        },
+        "net_por_posicion_lote1": 17652.74121212138
+      },
+      "overlay": {
+        "sharpe_floor": 0.5,
+        "sharpe_floor_factor": 0.2
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 2231320.348545045,
+        "ic95_alto": 192349.94803236146,
+        "ic95_bajo": -306340.95650052465,
+        "ic_excluye_0": false,
+        "media_diff": -41432.52579124738,
+        "mediana_diff": 451018.39999996463,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7422,
+        "suma_diff": -61527300.80000237,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.5-r30": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 33905233.300000496,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 13540947.150000304,
+          "S7-TPNONE": 527343.150000239,
+          "SuperTrend-p14x3-M15": 19836942.999999948
+        },
+        "net_por_posicion_lote1": 22831.80693602727
+      },
+      "overlay": {
+        "sharpe_floor": 0.5,
+        "sharpe_floor_factor": 0.3
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1952405.3049769145,
+        "ic95_alto": 168306.2045283163,
+        "ic95_bajo": -268048.3369379591,
+        "ic_excluye_0": false,
+        "media_diff": -36253.46006734146,
+        "mediana_diff": 394641.099999969,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7422,
+        "suma_diff": -53836388.200002074,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.5-r50": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 49287058.50000116,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 21170987.25000059,
+          "S7-TPNONE": -3603183.749999442,
+          "SuperTrend-p14x3-M15": 31719254.999999966
+        },
+        "net_por_posicion_lote1": 33189.938383839166
+      },
+      "overlay": {
+        "sharpe_floor": 0.5,
+        "sharpe_floor_factor": 0.5
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1394575.2178406531,
+        "ic95_alto": 120218.7175202259,
+        "ic95_bajo": -191463.0978128279,
+        "ic_excluye_0": false,
+        "media_diff": -25895.328619529613,
+        "mediana_diff": 281886.4999999779,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7422,
+        "suma_diff": -38454563.000001475,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.7-r20": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 25524307.50000046,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 9071126.300000269,
+          "S7-TPNONE": 2246476.200000188,
+          "SuperTrend-p14x3-M15": 14206704.99999999
+        },
+        "net_por_posicion_lote1": 17188.085858586168
+      },
+      "overlay": {
+        "sharpe_floor": 0.7,
+        "sharpe_floor_factor": 0.2
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 2231980.5241615,
+        "ic95_alto": 192540.8122698371,
+        "ic95_bajo": -307784.37709209893,
+        "ic_excluye_0": false,
+        "media_diff": -41897.18114478261,
+        "mediana_diff": 451018.39999996463,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7386,
+        "suma_diff": -62217314.000002176,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.7-r30": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 33301471.750000663,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 12967996.450000374,
+          "S7-TPNONE": 224479.05000030634,
+          "SuperTrend-p14x3-M15": 20108996.249999985
+        },
+        "net_por_posicion_lote1": 22425.23350168395
+      },
+      "overlay": {
+        "sharpe_floor": 0.7,
+        "sharpe_floor_factor": 0.3
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1952982.9586413123,
+        "ic95_alto": 168473.21073610743,
+        "ic95_bajo": -269311.32995558664,
+        "ic_excluye_0": false,
+        "media_diff": -36660.033501684775,
+        "mediana_diff": 394641.099999969,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7386,
+        "suma_diff": -54440149.75000189,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "sh0.7-r50": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 48855800.2500013,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 20761736.75000065,
+          "S7-TPNONE": -3819515.24999939,
+          "SuperTrend-p14x3-M15": 31913578.749999996
+        },
+        "net_por_posicion_lote1": 32899.52878787966
+      },
+      "overlay": {
+        "sharpe_floor": 0.7,
+        "sharpe_floor_factor": 0.5
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1394987.8276009373,
+        "ic95_alto": 120338.00766864819,
+        "ic95_bajo": -192365.23568256188,
+        "ic_excluye_0": false,
+        "media_diff": -26185.738215489127,
+        "mediana_diff": 281886.4999999779,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7386,
+        "suma_diff": -38885821.250001356,
+        "tasa_emparejamiento": 1.0
+      }
+    }
+  },
+  "control": {
+    "brazo": "neutral",
+    "identico": true,
+    "nota": "sizing es 100% pareado por construccion (misma posicion, mismo indice por sid) -- no requiere entry_identity"
+  },
+  "lineage": {
+    "clase": "1-A",
+    "engine_sha": "0eb7d0e",
+    "estado_investigacion": "piloto-instrumento",
+    "etapa": "F0",
+    "generador": "runner:tasks_sizing.ola1_sizing",
+    "git_sha": "0eb7d0e",
+    "palanca": "P-18",
+    "preregistro": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA2.md",
+    "run_id": "SIZING-P18",
+    "sid": "ALL-S6-S7-ST",
+    "substrate_id": "t06-baseline-frozen-golden",
+    "timestamp": "2026-08-16T14:01:44"
+  }
+}

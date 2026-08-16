@@ -1,0 +1,415 @@
+# OLA2 -- manifiesto generado (BLOCK-B de OLA2-reporte.md)
+#
+# Generado por: python -m scripts.research.ola1.manifiesto_ola2
+# Grillas HARDCODEADAS desde el pre-registro OLA2 (commit `e864e5a`), no configurables.
+# 12 corridas: P19-S6/S7, P28-S6/S7, P21-S6, P20-ST, P09-S6 (ola1_paired, htf/regimen) +
+# SIZING-P13/P15/P16/P17/P18 (ola1_sizing).
+#
+# PRE-INTERPRETACION -- este manifiesto no contiene resultados ni conclusiones.
+experimento: OLA2-htf-regimen-sizing
+area: B
+etapa: F0
+hipotesis: research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA2.md
+substrate_id: capitaria-ticks-2026-preholdout
+engine_sha: 0eb7d0e
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/OLA2/
+  ledger: append
+corridas:
+- run_key: P19-S6
+  tipo: ola1_paired
+  palanca: P-19
+  sid: S6-K2P0
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    p10:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 10
+    p15:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 15
+    p20:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 20
+    p30:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 30
+  confirmatorios:
+  - p10
+  - p15
+  - p20
+  - p30
+- run_key: P19-S7
+  tipo: ola1_paired
+  palanca: P-19
+  sid: S7-TPNONE
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    p10:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 10
+    p15:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 15
+    p20:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 20
+    p30:
+      _htf:
+        tf_sec: 14400
+        field: ema_slope
+        ema_period: 30
+  confirmatorios:
+  - p10
+  - p15
+  - p20
+  - p30
+- run_key: P28-S6
+  tipo: ola1_paired
+  palanca: P-28
+  sid: S6-K2P0
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    p10:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 10
+    p15:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 15
+    p20:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 20
+    p30:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 30
+  confirmatorios:
+  - p10
+  - p15
+  - p20
+  - p30
+- run_key: P28-S7
+  tipo: ola1_paired
+  palanca: P-28
+  sid: S7-TPNONE
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    p10:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 10
+    p15:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 15
+    p20:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 20
+    p30:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+        ema_period: 30
+  confirmatorios:
+  - p10
+  - p15
+  - p20
+  - p30
+- run_key: P21-S6
+  tipo: ola1_paired
+  palanca: P-21
+  sid: S6-K2P0
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    momentum:
+      _htf:
+        tf_sec: 3600
+        field: momentum
+        momentum_lookback: 2
+    emaslope:
+      _htf:
+        tf_sec: 3600
+        field: ema_slope
+  confirmatorios:
+  - momentum
+  - emaslope
+- run_key: P20-ST
+  tipo: ola1_paired
+  palanca: P-20
+  sid: SuperTrend-p14x3-M15
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    h4st:
+      _htf:
+        tf_sec: 14400
+        field: st_dir
+        st_atr_period: 14
+        st_mult: 3.0
+  confirmatorios:
+  - h4st
+- run_key: P09-S6
+  tipo: ola1_paired
+  palanca: P-09
+  sid: S6-K2P0
+  clase: 1-B
+  brazo_control: control
+  secundaria: none
+  brazos:
+    control: {}
+    k2-baseline:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 2
+    k2-adx25:
+      _regime:
+        adx_min: 25.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 2
+    k2-vr095:
+      _regime:
+        adx_min: 20.0
+        vr_low: 0.95
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 2
+    k2-vr105:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.05
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 2
+    k2-er050:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.5
+        chop_max: 61.8
+        k_of_m: 2
+    k2-chop38:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 38.0
+        k_of_m: 2
+    k3-baseline:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 3
+    k3-adx25:
+      _regime:
+        adx_min: 25.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 3
+    k3-vr095:
+      _regime:
+        adx_min: 20.0
+        vr_low: 0.95
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 3
+    k3-vr105:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.05
+        er_min: 0.35
+        chop_max: 61.8
+        k_of_m: 3
+    k3-er050:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.5
+        chop_max: 61.8
+        k_of_m: 3
+    k3-chop38:
+      _regime:
+        adx_min: 20.0
+        vr_low: 1.0
+        er_min: 0.35
+        chop_max: 38.0
+        k_of_m: 3
+  confirmatorios:
+  - k2-baseline
+  - k2-adx25
+  - k2-vr095
+  - k2-vr105
+  - k2-er050
+  - k2-chop38
+  - k3-baseline
+  - k3-adx25
+  - k3-vr095
+  - k3-vr105
+  - k3-er050
+  - k3-chop38
+- run_key: SIZING-P13
+  tipo: ola1_sizing
+  palanca: P-13
+  brazo_control: neutral
+  brazos:
+    neutral: {}
+    alpha0.25:
+      kelly_mult: 0.25
+    alpha0.50:
+      kelly_mult: 0.5
+    alpha1.00:
+      kelly_mult: 1.0
+  confirmatorios:
+  - alpha0.25
+  - alpha0.50
+  - alpha1.00
+- run_key: SIZING-P15
+  tipo: ola1_sizing
+  palanca: P-15
+  brazo_control: neutral
+  brazos:
+    neutral: {}
+    disc0.70:
+      correlation_discount_per_extra: 0.7
+    disc0.77:
+      correlation_discount_per_extra: 0.77
+    disc0.85:
+      correlation_discount_per_extra: 0.85
+  confirmatorios:
+  - disc0.70
+  - disc0.77
+  - disc0.85
+- run_key: SIZING-P16
+  tipo: ola1_sizing
+  palanca: P-16
+  brazo_control: neutral
+  brazos:
+    neutral: {}
+    ladder:
+      dd_bands:
+      - - 5.0
+        - 1.0
+      - - 10.0
+        - 0.75
+      - - 15.0
+        - 0.5
+      - - 1000000000.0
+        - 0.25
+    continuous:
+      dd_continuous:
+      - 20.0
+      - 0.25
+  confirmatorios:
+  - ladder
+  - continuous
+- run_key: SIZING-P17
+  tipo: ola1_sizing
+  palanca: P-17
+  brazo_control: neutral
+  brazos:
+    neutral: {}
+    asym-front:
+      ficha_factors:
+        F1: 1.2
+        F2: 1.05
+        F3: 0.75
+    asym-back:
+      ficha_factors:
+        F1: 0.9
+        F2: 0.9
+        F3: 1.2
+  confirmatorios:
+  - asym-front
+  - asym-back
+- run_key: SIZING-P18
+  tipo: ola1_sizing
+  palanca: P-18
+  brazo_control: neutral
+  brazos:
+    neutral: {}
+    sh0.3-r20:
+      sharpe_floor: 0.3
+      sharpe_floor_factor: 0.2
+    sh0.3-r30:
+      sharpe_floor: 0.3
+      sharpe_floor_factor: 0.3
+    sh0.3-r50:
+      sharpe_floor: 0.3
+      sharpe_floor_factor: 0.5
+    sh0.5-r20:
+      sharpe_floor: 0.5
+      sharpe_floor_factor: 0.2
+    sh0.5-r30:
+      sharpe_floor: 0.5
+      sharpe_floor_factor: 0.3
+    sh0.5-r50:
+      sharpe_floor: 0.5
+      sharpe_floor_factor: 0.5
+    sh0.7-r20:
+      sharpe_floor: 0.7
+      sharpe_floor_factor: 0.2
+    sh0.7-r30:
+      sharpe_floor: 0.7
+      sharpe_floor_factor: 0.3
+    sh0.7-r50:
+      sharpe_floor: 0.7
+      sharpe_floor_factor: 0.5
+  confirmatorios:
+  - sh0.3-r20
+  - sh0.3-r30
+  - sh0.3-r50
+  - sh0.5-r20
+  - sh0.5-r30
+  - sh0.5-r50
+  - sh0.7-r20
+  - sh0.7-r30
+  - sh0.7-r50

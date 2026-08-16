@@ -1,0 +1,142 @@
+{
+  "brazos": {
+    "continuous": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 110239649.26920597,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 68985666.29513411,
+          "S7-TPNONE": -24441266.89227835,
+          "SuperTrend-p14x3-M15": 65695249.86635011
+        },
+        "net_por_posicion_lote1": 74235.45405333735
+      },
+      "overlay": {
+        "dd_continuous": [
+          20.0,
+          0.25
+        ]
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1779880.7845847083,
+        "ic95_alto": 209221.34661300157,
+        "ic95_bajo": -201753.81818313675,
+        "ic_excluye_0": false,
+        "media_diff": 15150.187049968656,
+        "mediana_diff": 391925.2499999949,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.8828,
+        "suma_diff": 22498027.769203454,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "ladder": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 101382680.50000015,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 64586893.12499983,
+          "S7-TPNONE": -31614601.124999683,
+          "SuperTrend-p14x3-M15": 68410388.49999993
+        },
+        "net_por_posicion_lote1": 68271.16531986542
+      },
+      "overlay": {
+        "dd_bands": [
+          [
+            5.0,
+            1.0
+          ],
+          [
+            10.0,
+            0.75
+          ],
+          [
+            15.0,
+            0.5
+          ],
+          [
+            1000000000.0,
+            0.25
+          ]
+        ]
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1761922.5945004132,
+        "ic95_alto": 202577.25195448776,
+        "ic95_bajo": -206565.59114447882,
+        "ic_excluye_0": false,
+        "media_diff": 9185.898316496721,
+        "mediana_diff": 385603.87500004855,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.9274,
+        "suma_diff": 13641058.99999763,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "neutral": {
+      "confirmatorio": false,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 87741621.50000256,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 40246087.50000123,
+          "S7-TPNONE": -13929500.999998707,
+          "SuperTrend-p14x3-M15": 61425035.00000002
+        },
+        "net_por_posicion_lote1": 59085.26700336873
+      },
+      "overlay": {}
+    }
+  },
+  "control": {
+    "brazo": "neutral",
+    "identico": true,
+    "nota": "sizing es 100% pareado por construccion (misma posicion, mismo indice por sid) -- no requiere entry_identity"
+  },
+  "lineage": {
+    "clase": "1-A",
+    "engine_sha": "0eb7d0e",
+    "estado_investigacion": "piloto-instrumento",
+    "etapa": "F0",
+    "generador": "runner:tasks_sizing.ola1_sizing",
+    "git_sha": "0eb7d0e",
+    "palanca": "P-16",
+    "preregistro": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA2.md",
+    "run_id": "SIZING-P16",
+    "sid": "ALL-S6-S7-ST",
+    "substrate_id": "t06-baseline-frozen-golden",
+    "timestamp": "2026-08-16T14:01:43"
+  }
+}

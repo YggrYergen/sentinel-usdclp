@@ -1,0 +1,130 @@
+{
+  "brazos": {
+    "asym-back": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 81599118.00000261,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 40246087.50000129,
+          "S7-TPNONE": -13929500.99999876,
+          "SuperTrend-p14x3-M15": 55282531.500000015
+        },
+        "net_por_posicion_lote1": 54948.90101010277
+      },
+      "overlay": {
+        "ficha_factors": {
+          "F1": 0.9,
+          "F2": 0.9,
+          "F3": 1.2
+        }
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 366525.2599223814,
+        "ic95_alto": 2443.884144688688,
+        "ic95_bajo": -12404.575144255428,
+        "ic_excluye_0": false,
+        "media_diff": -4136.365993266007,
+        "mediana_diff": 29406.10000000306,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.2516,
+        "suma_diff": -6142503.50000002,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "asym-front": {
+      "confirmatorio": true,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 100026628.5000027,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 40246087.500001326,
+          "S7-TPNONE": -13929500.999998733,
+          "SuperTrend-p14x3-M15": 73710042.00000003
+        },
+        "net_por_posicion_lote1": 67357.9989899008
+      },
+      "overlay": {
+        "ficha_factors": {
+          "F1": 1.2,
+          "F2": 1.05,
+          "F3": 0.75
+        }
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 532688.3363372029,
+        "ic95_alto": 24809.150288510824,
+        "ic95_bajo": -4887.768289377389,
+        "ic_excluye_0": false,
+        "media_diff": 8272.731986531993,
+        "mediana_diff": -28516.424999996438,
+        "n_brazo": 1485,
+        "n_casadas": 1485,
+        "n_control": 1485,
+        "n_dias_bloque": 102,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.2516,
+        "suma_diff": 12285007.00000001,
+        "tasa_emparejamiento": 1.0
+      }
+    },
+    "neutral": {
+      "confirmatorio": false,
+      "metricas": {
+        "n": 1485,
+        "n_por_sid": {
+          "S6-K2P0": 624,
+          "S7-TPNONE": 708,
+          "SuperTrend-p14x3-M15": 153
+        },
+        "net_lote1": 87741621.50000256,
+        "net_lote1_por_sid": {
+          "S6-K2P0": 40246087.50000123,
+          "S7-TPNONE": -13929500.999998707,
+          "SuperTrend-p14x3-M15": 61425035.00000002
+        },
+        "net_por_posicion_lote1": 59085.26700336873
+      },
+      "overlay": {}
+    }
+  },
+  "control": {
+    "brazo": "neutral",
+    "identico": true,
+    "nota": "sizing es 100% pareado por construccion (misma posicion, mismo indice por sid) -- no requiere entry_identity"
+  },
+  "lineage": {
+    "clase": "1-A",
+    "engine_sha": "0eb7d0e",
+    "estado_investigacion": "piloto-instrumento",
+    "etapa": "F0",
+    "generador": "runner:tasks_sizing.ola1_sizing",
+    "git_sha": "0eb7d0e",
+    "palanca": "P-17",
+    "preregistro": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA2.md",
+    "run_id": "SIZING-P17",
+    "sid": "ALL-S6-S7-ST",
+    "substrate_id": "t06-baseline-frozen-golden",
+    "timestamp": "2026-08-16T14:01:43"
+  }
+}

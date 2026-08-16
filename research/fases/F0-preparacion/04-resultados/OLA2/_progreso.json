@@ -1,0 +1,14 @@
+{
+  "actualizado_en": "2026-08-16T14:01:57",
+  "completadas": 12,
+  "eta_iso": "2026-08-16T14:01:57",
+  "eta_segundos": 0.0,
+  "failed_run_keys": [],
+  "fallidas": 0,
+  "iniciado_en": "2026-08-16T14:01:41",
+  "pendientes": 0,
+  "run_key_actual": null,
+  "segundos_por_corrida_media": 1.355,
+  "segundos_transcurridos": 16.257,
+  "total": 12
+}

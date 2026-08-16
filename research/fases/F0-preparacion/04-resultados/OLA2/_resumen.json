@@ -1,0 +1,569 @@
+{
+  "corridas": [
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\SIZING-P16",
+      "duration_s": 0.28200000000651926,
+      "estado": "ok",
+      "metricas": {
+        "clase": "1-A",
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 3,
+        "n_confirmatorios": 2,
+        "palanca": "P-16",
+        "sid": "ALL-S6-S7-ST"
+      },
+      "run_key": "SIZING-P16"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\SIZING-P15",
+      "duration_s": 0.32900000002700835,
+      "estado": "ok",
+      "metricas": {
+        "clase": "1-A",
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 4,
+        "n_confirmatorios": 3,
+        "palanca": "P-15",
+        "sid": "ALL-S6-S7-ST"
+      },
+      "run_key": "SIZING-P15"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\SIZING-P13",
+      "duration_s": 0.32900000002700835,
+      "estado": "ok",
+      "metricas": {
+        "clase": "1-A",
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 4,
+        "n_confirmatorios": 3,
+        "palanca": "P-13",
+        "sid": "ALL-S6-S7-ST"
+      },
+      "run_key": "SIZING-P13"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\SIZING-P17",
+      "duration_s": 0.26600000000325963,
+      "estado": "ok",
+      "metricas": {
+        "clase": "1-A",
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 3,
+        "n_confirmatorios": 2,
+        "palanca": "P-17",
+        "sid": "ALL-S6-S7-ST"
+      },
+      "run_key": "SIZING-P17"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\SIZING-P18",
+      "duration_s": 1.1560000000172295,
+      "estado": "ok",
+      "metricas": {
+        "clase": "1-A",
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 10,
+        "n_confirmatorios": 9,
+        "palanca": "P-18",
+        "sid": "ALL-S6-S7-ST"
+      },
+      "run_key": "SIZING-P18"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P21-S6",
+      "duration_s": 10.328000000037719,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 624,
+            "net_lote1": 40246087.50000123,
+            "net_por_posicion_lote1": 64496.935096155816
+          },
+          "emaslope": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 378,
+            "net_lote1": -52984360.50000053,
+            "net_por_posicion_lote1": -140170.26587301728,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5625
+          },
+          "momentum": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 432,
+            "net_lote1": -17775706.49999975,
+            "net_por_posicion_lote1": -41147.468749999425,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4951923076923077
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 3,
+        "n_confirmatorios": 2,
+        "palanca": "P-21",
+        "sid": "S6-K2P0"
+      },
+      "run_key": "P21-S6"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P19-S7",
+      "duration_s": 10.703000000037719,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 708,
+            "net_lote1": -13929500.999998707,
+            "net_por_posicion_lote1": -19674.43644067614
+          },
+          "p10": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 369,
+            "net_lote1": -45881944.49999987,
+            "net_por_posicion_lote1": -124341.31300812974,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4957627118644068
+          },
+          "p15": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 363,
+            "net_lote1": -48742015.499999695,
+            "net_por_posicion_lote1": -134275.5247933876,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4915254237288136
+          },
+          "p20": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 348,
+            "net_lote1": -33846046.499999054,
+            "net_por_posicion_lote1": -97258.7543103421,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4788135593220339
+          },
+          "p30": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 351,
+            "net_lote1": -40265753.999999456,
+            "net_por_posicion_lote1": -114717.24786324632,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4915254237288136
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 5,
+        "n_confirmatorios": 4,
+        "palanca": "P-19",
+        "sid": "S7-TPNONE"
+      },
+      "run_key": "P19-S7"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P19-S6",
+      "duration_s": 11.188000000023749,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 624,
+            "net_lote1": 40246087.50000123,
+            "net_por_posicion_lote1": 64496.935096155816
+          },
+          "p10": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 324,
+            "net_lote1": 40858558.49999984,
+            "net_por_posicion_lote1": 126106.66203703656,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.4855769230769231
+          },
+          "p15": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 312,
+            "net_lote1": 9552299.999999478,
+            "net_por_posicion_lote1": 30616.346153844483,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.47115384615384615
+          },
+          "p20": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 306,
+            "net_lote1": 13631693.999999842,
+            "net_por_posicion_lote1": 44548.01960784262,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.46634615384615385
+          },
+          "p30": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 309,
+            "net_lote1": -28583853.000000488,
+            "net_por_posicion_lote1": -92504.37864077828,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.47596153846153844
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 5,
+        "n_confirmatorios": 4,
+        "palanca": "P-19",
+        "sid": "S6-K2P0"
+      },
+      "run_key": "P19-S6"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P28-S7",
+      "duration_s": 11.23399999999674,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 708,
+            "net_lote1": -13929500.999998707,
+            "net_por_posicion_lote1": -19674.43644067614
+          },
+          "p10": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 462,
+            "net_lote1": -50770474.499997795,
+            "net_por_posicion_lote1": -109892.80194804717,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.6016949152542372
+          },
+          "p15": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 438,
+            "net_lote1": -45055951.49999804,
+            "net_por_posicion_lote1": -102867.46917807772,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5847457627118644
+          },
+          "p20": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 426,
+            "net_lote1": -58979833.49999859,
+            "net_por_posicion_lote1": -138450.31338027839,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.576271186440678
+          },
+          "p30": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 399,
+            "net_lote1": -30440932.4999991,
+            "net_por_posicion_lote1": -76293.06390977217,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5296610169491526
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 5,
+        "n_confirmatorios": 4,
+        "palanca": "P-28",
+        "sid": "S7-TPNONE"
+      },
+      "run_key": "P28-S7"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P20-ST",
+      "duration_s": 11.39000000001397,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 153,
+            "net_lote1": 61425035.00000002,
+            "net_por_posicion_lote1": 401470.8169934642
+          },
+          "h4st": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 153,
+            "net_lote1": 61425035.00000002,
+            "net_por_posicion_lote1": 401470.8169934642,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 1.0
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 2,
+        "n_confirmatorios": 1,
+        "palanca": "P-20",
+        "sid": "SuperTrend-p14x3-M15"
+      },
+      "run_key": "P20-ST"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P28-S6",
+      "duration_s": 11.53100000001723,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "default": {
+            "n": 624,
+            "net_lote1": 40246087.50000123,
+            "net_por_posicion_lote1": 64496.935096155816
+          },
+          "p10": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 417,
+            "net_lote1": -30620740.49999977,
+            "net_por_posicion_lote1": -73431.03237410016,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5721153846153846
+          },
+          "p15": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 393,
+            "net_lote1": -39150382.500000335,
+            "net_por_posicion_lote1": -99619.29389313063,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5721153846153846
+          },
+          "p20": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 378,
+            "net_lote1": -52984360.50000053,
+            "net_por_posicion_lote1": -140170.26587301728,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5625
+          },
+          "p30": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 351,
+            "net_lote1": -18059466.00000048,
+            "net_por_posicion_lote1": -51451.470085471454,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5048076923076923
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 5,
+        "n_confirmatorios": 4,
+        "palanca": "P-28",
+        "sid": "S6-K2P0"
+      },
+      "run_key": "P28-S6"
+    },
+    {
+      "artefactos": "research\\fases\\F0-preparacion\\04-resultados\\OLA2\\P09-S6",
+      "duration_s": 13.702999999979511,
+      "estado": "ok",
+      "metricas": {
+        "brazos": {
+          "control": {
+            "n": 624,
+            "net_lote1": 40246087.50000123,
+            "net_por_posicion_lote1": 64496.935096155816
+          },
+          "k2-adx25": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 330,
+            "net_lote1": 136718698.50000146,
+            "net_por_posicion_lote1": 414299.0863636408,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.5288461538461539
+          },
+          "k2-baseline": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 420,
+            "net_lote1": 67981471.5000019,
+            "net_por_posicion_lote1": 161860.64642857597,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.6730769230769231
+          },
+          "k2-chop38": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 168,
+            "net_lote1": 40928796.00000077,
+            "net_por_posicion_lote1": 243623.78571429028,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.2692307692307692
+          },
+          "k2-er050": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 411,
+            "net_lote1": 75092316.0000018,
+            "net_por_posicion_lote1": 182706.36496350804,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.6586538461538461
+          },
+          "k2-vr095": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 426,
+            "net_lote1": 80317986.00000216,
+            "net_por_posicion_lote1": 188539.8732394417,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.6826923076923077
+          },
+          "k2-vr105": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 417,
+            "net_lote1": 58221268.50000199,
+            "net_por_posicion_lote1": 139619.34892086807,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.6682692307692307
+          },
+          "k3-adx25": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 87,
+            "net_lote1": 33360003.000000395,
+            "net_por_posicion_lote1": 383448.31034483213,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.13942307692307693
+          },
+          "k3-baseline": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 144,
+            "net_lote1": 37827108.0000006,
+            "net_por_posicion_lote1": 262688.2500000042,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.23076923076923078
+          },
+          "k3-chop38": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 42,
+            "net_lote1": 25653544.50000011,
+            "net_por_posicion_lote1": 610798.6785714312,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.0673076923076923
+          },
+          "k3-er050": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 114,
+            "net_lote1": 40439943.00000064,
+            "net_por_posicion_lote1": 354736.3421052688,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.18269230769230768
+          },
+          "k3-vr095": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 180,
+            "net_lote1": 9577585.500000542,
+            "net_por_posicion_lote1": 53208.80833333635,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.28846153846153844
+          },
+          "k3-vr105": {
+            "ic95_alto": 0.0,
+            "ic95_bajo": 0.0,
+            "ic_excluye_0": false,
+            "media_diff": 0.0,
+            "n": 129,
+            "net_lote1": 49708483.500000335,
+            "net_por_posicion_lote1": 385337.08139535144,
+            "p_bootstrap": 1.0,
+            "tasa_emparejamiento": 0.20673076923076922
+          }
+        },
+        "clase": "1-B",
+        "control_reproduce_linea_base": true,
+        "estado_investigacion": "piloto-instrumento",
+        "n_brazos": 13,
+        "n_confirmatorios": 12,
+        "palanca": "P-09",
+        "sid": "S6-K2P0"
+      },
+      "run_key": "P09-S6"
+    }
+  ]
+}

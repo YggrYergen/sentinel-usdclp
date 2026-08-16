@@ -1,0 +1,13 @@
+12/12 corridas (100.0%) -- transcurrido 16.3s -- ETA 0.0s (2026-08-16T14:01:57)
+
+ultimas corridas:
+  [ok] SIZING-P13 -- 0.329s
+  [ok] SIZING-P17 -- 0.266s
+  [ok] SIZING-P18 -- 1.156s
+  [ok] P21-S6 -- 10.328s
+  [ok] P19-S7 -- 10.703s
+  [ok] P19-S6 -- 11.188s
+  [ok] P28-S7 -- 11.234s
+  [ok] P20-ST -- 11.390s
+  [ok] P28-S6 -- 11.531s
+  [ok] P09-S6 -- 13.703s
