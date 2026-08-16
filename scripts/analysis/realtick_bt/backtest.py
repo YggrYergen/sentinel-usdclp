@@ -303,8 +303,11 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
     return positions
 
 
-def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks) -> list[dict[str, Any]]:
-    """Always-in SuperTrend(14,3.0) with the LINE as a server-side SL (live semantics).
+def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
+                    atr_period: int = 14, mult: float = 3.0) -> list[dict[str, Any]]:
+    """Always-in SuperTrend(atr_period, mult) with the LINE as a server-side SL (live
+    semantics). Defaults (14, 3.0) are EXACTLY today's hardcoded values (WP-1+2 Bloque 1;
+    build_all() calls this with no extra args, so behavior is byte-identical).
 
     The live reconciler holds one ficha on the trend side with sl=SuperTrend line, trailed
     each closed bar; a tick hitting the line closes it intra-bar. So per bar j the active
@@ -313,9 +316,9 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks) -> list[dict[str, A
     else if the trend flipped at bar j close without a prior line-touch -> EXIT_STFLIP at
     the close. After either, the always-in position re-opens on trend[j]'s side."""
     highs = [b["high"] for b in bars]; lows = [b["low"] for b in bars]; closes = [b["close"] for b in bars]
-    atr = _atr_wilder(highs, lows, closes, 14)
+    atr = _atr_wilder(highs, lows, closes, atr_period)
     atrf = [a if a is not None else 0.0 for a in atr]
-    trend, line = supertrend(highs, lows, closes, atrf, 3.0)
+    trend, line = supertrend(highs, lows, closes, atrf, mult)
     n = len(bars)
     fv = next((i for i in range(len(atr)) if atr[i] is not None), None)
     if fv is None:
