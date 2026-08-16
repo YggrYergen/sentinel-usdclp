@@ -7,6 +7,24 @@
 > más y pierdan menos — debilidades conocidas: gestión de salida/trailing y regímenes
 > de rango. Corpus: 14 archivos en `data/literature/youtube_transcripts/`.
 
+> **ESTADO: DETENIDO POR DECISIÓN INFORMADA DEL USER (2026-08-15), no por error ni bloqueo
+> técnico.** El user indicó explícitamente que no queda presupuesto disponible para esta
+> tarea y ordenó detener la ejecución, reportar lo revisado/lo pendiente, y dejar el resto
+> para un esfuerzo de investigación futuro. Sin este mensaje, la tarea habría continuado.
+>
+> **Procesados (12/14), en el orden en que se completaron — ver secciones abajo:**
+> znSRU984kc8, oDK0hbAMWbU, xGIa8Vg0PWM, PnIkSLm2yRk, en8RMFRqSME, FbuYWdwA_wU, lYmmBoYQvWM,
+> nLQhKkjkuWI, KML09tRtHM8, uGMen58jwxE, nkMzaQqpFbw, bITIVwysCzM.
+>
+> **Pendientes (2/14), NO leídos, sin entrada en este fichero:** `h52a9zFp1d8.txt`,
+> `fi7OxEzvhjw.txt`. Ambos son los dos archivos más pequeños del lote asignado (11 KB y
+> 8.4 KB respectivamente), por lo que su revisión debería ser rápida cuando se retome.
+>
+> **Sección de cierre NO ejecutada** (ranking de videos por profundidad, patrones
+> cross-video) porque el protocolo exige que se escriba solo después de completar TODAS
+> las entradas individuales del grupo, para no contaminar la compartimentación. Con 2
+> videos pendientes, esa sección debe esperar a la continuación de esta tarea.
+
 ---
 
 ## 1. znSRU984kc8
@@ -116,6 +134,68 @@
   narran ganadores, sesgo de selección clásico); ningún backtest ni estadística de tasa de acierto;
   "hindsight" explícito reconocido por el propio autor en al menos un trade ("that's hindsight
   talking"); producto vinculado (plataforma Ninja Trader, PDF de venta/lead-magnet).
+
+## 12. bITIVwysCzM
+
+- **Título (inferido):** Estrategia de "opening range" (rango de apertura) multi-timeframe (15M/5M/
+  1M) con 3 modelos de entrada (breakout, break-and-retest, reversión), demostrada en Tesla, Nvidia
+  y QQQ.
+- **URL:** https://www.youtube.com/watch?v=bITIVwysCzM
+- **Duración/extensión:** 435 líneas, transcripción media, muy alta densidad de reglas mecánicas
+  explícitas y ejemplificadas paso a paso (formato de tutorial estructurado, no vlog).
+- **Qué cubre realmente:** estrategia mecánica de 3 pasos sobre el rango de apertura de la primera
+  vela de **15 minutos** de la sesión de Nueva York (9:30am ET), confirmada en 5 minutos y ejecutada
+  en 1 minuto. Aunque los ejemplos son en acciones/índices (Tesla, Nvidia, QQQ), la lógica es
+  agnóstica de instrumento y el propio autor discute explícitamente cuándo aplicar continuación vs.
+  reversión según si el activo tiende o rangea, notando que **forex tiende más a mean-reversion**
+  que las acciones/índices que él opera. Es, junto con el video 11, uno de los dos videos del grupo
+  A con checklist más completamente especificado.
+- **Reglas/parámetros específicos y testeables:**
+  - **Paso 1 — Definir el rango de apertura:** marcar máximo/mínimo de la **primera vela de 15
+    minutos** tras la apertura de sesión (NY 9:30am ET; declara que timeframes de apertura por
+    encima de 15 minutos generan rangos demasiado grandes para ser útiles). Menciona alternativas
+    de rango de apertura en 5M o 1M para operativa más rápida, pero recomienda 15M para
+    principiantes por mayor liquidez y porque permite combinar los tres timeframes.
+  - **Paso 2 — Confirmación de ruptura:** esperar el **cierre de una vela de 5 minutos** por encima
+    (o por debajo) del rango de 15 minutos — no basta con mecha, exige cierre. Esto es el disparador
+    direccional del día.
+  - **Paso 3 — Entrada de precisión en 1 minuto**, con **tres modelos alternativos explícitos**:
+    1. **Breakout puro:** tras el cierre de 5M de confirmación, buscar en 1M un "bullish/bearish
+       gap" (fair value gap) que muestre desplazamiento fuerte; entrar al cierre de la vela que deja
+       el gap, stop en la ruptura de la vela que formó el gap, objetivo **R:R fijo 1:2**.
+    2. **Break-and-retest (su modelo preferido):** en vez de perseguir el breakout, esperar a que el
+       precio retest el nivel del rango roto con reacción de precio fuerte (compradores/vendedores
+       defendiendo el nivel), stop en el swing/break-of-structure que invalida el retest, mismo
+       **R:R 1:2** como objetivo.
+    3. **Reversión (para días de rango):** si el precio recorre todo el rango del día sin
+       continuación clara (detectado cuando el precio va de la parte alta a la baja del rango sin
+       romper), buscar una ruptura de estructura en sentido contrario con desplazamiento, entrada en
+       un order block resultante, stop bajo el swing low, objetivo el extremo opuesto del rango
+       diario (high/low of day).
+  - **Regla de selección de modelo según régimen:** el propio autor declara explícitamente un
+    heurístico de régimen — si el timeframe superior no muestra tendencia clara, esperar
+    mean-reversion (reversión) en vez de continuación; en instrumentos/mercados con mayor tendencia
+    de fondo prefiere continuación (breakout/retest). Nota explícita: en **forex** hay más tendencia
+    a mean-reversion que en índices/acciones, sugiriendo que el modelo de reversión debería pesar
+    más en FX que en equities.
+- **Relevancia a S6/SuperTrend:** HIGH. Aporta un filtro de sesgo diario multi-timeframe totalmente
+  operacionalizable (rango M15 de apertura + confirmación por cierre de M5) que podría probarse como
+  gate de "día de tendencia vs. día de rango" antes de las señales M15 de S6/ST — exactamente el
+  tipo de filtro de régimen que el programa busca para reducir la debilidad en lateral. El criterio
+  cuantificable de "el precio recorrió todo el rango sin romper" como señal de "día de rango" (y por
+  tanto momento de no operar continuación) es una regla directamente testeable con datos de barras.
+  El R:R fijo 1:2 y las dos variantes de entrada (breakout vs. retest) son parámetros de grid
+  concretos y comparables entre sí. Limitación: los ejemplos usan sesión de Nueva York/acciones,
+  requeriría adaptar la ventana horaria a la sesión relevante de XAUUSD (Londres/NY) y validar si el
+  patrón de "primera vela M15 como rango de referencia" generaliza al comportamiento de gaps de
+  apertura de FX/XAU (que no tiene gaps de apertura de mercado accionario tradicionales, salvo el
+  gap de fin de semana).
+- **Red flags:** cifra de resultado personal ($65.000 en un mes) mostrada solo como captura de
+  pantalla propia sin auditoría externa ni contexto de tamaño de cuenta/apalancamiento; los 3
+  ejemplos mostrados narran trades ganadores reproducidos sobre el historial ya conocido (no hay
+  ningún ejemplo perdedor mostrado en este video, a diferencia del video 11); ningún backtest
+  agregado ni estadística de win rate/drawdown se presenta — solo anécdotas individuales
+  seleccionadas.
 
 ## 11. nkMzaQqpFbw
 
