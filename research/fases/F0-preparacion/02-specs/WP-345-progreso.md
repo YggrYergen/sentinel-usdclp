@@ -96,3 +96,28 @@ Verificación extra (fuera de mandato estricto, porque toqué `backtest.py`): `t
 **353 passed, 11 deselected**; `tests/analysis -q` → **307 passed** (0 rojos — el rojo colateral de cita
 `file:line` reportado en `WP-1-2-progreso.md` Bloque 4 ya no está presente, línea realineada por otro
 commit intermedio; verificado, no corregido por mí).
+
+## Bloque WP-5 — cómputos de régimen (2026-08-16)
+`scripts/analysis/realtick_bt/regime.py` (módulo nuevo, **cero cambios en `backtest.py`** — spec §2 tabla:
+"no toca el núcleo", confirmado verbatim). 4 series cerradas, sin dependencia estadística externa:
+`compute_adx(highs, lows, closes, period=14)` (recursión de Wilder clásica izquierda-a-derecha sobre TR/
++DM/-DM, warm-up `2*period-1`); `compute_variance_ratio(closes, *, window=40, q=2)` (Lo-MacKinlay, ventana
+trasera estricta `closes[i-window..i]`, `None` hasta llenarla); `compute_efficiency_ratio(closes, *,
+period=10)` (Kaufman ER, ventana trasera); `compute_choppiness(highs, lows, closes, *, period=14)` (ventana
+trasera). `compute_regime_series(bars, ...) -> RegimeSeries` (`.adx`, `.variance_ratio`,
+`.efficiency_ratio`, `.choppiness`, alineadas índice a índice con `bars`). `RegimeGateConfig` (`enabled=
+False` por defecto) + `regime_gate(idx, series, cfg) -> bool` — gate "k de m" compuesto; con `enabled=False`
+siempre `True` (nunca filtra); un indicador `None` (warm-up) cuenta como FALLO del criterio, nunca como
+paso. Ningún criterio sin umbral fijado se evalúa (no cuenta en `m`).
+Tests: `tests/research/test_regime.py`, **13 passed** — sanity direccional (ER≈1 en tendencia limpia/≈0 en
+zigzag puro, Choppiness mayor en zigzag que en tendencia al mismo período, ADX>10 tras un drift sostenido,
+VR(2)>1 en un drift persistente); el contrato antitrampa §1 para las 4 series (corte de prefijo == valor de
+la serie completa en `t`, sobre bars con tendencia Y sobre bars en zigzag, múltiples puntos de corte
+incluyendo justo en los bordes de warm-up); un test explícito adicional del mismo contrato: pegar 50 barras
+de régimen TOTALMENTE distinto (zigzag) después del punto `t` no cambia NINGÚN valor ya calculado en `t`;
+gate apagado por defecto siempre `True`; `None` cuenta como fallo no como paso; "k de m" con distintos
+umbrales de exigencia; sólo se evalúan los criterios con umbral fijado.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed** (era de
+esperar sin cambio real: WP-5 no toca `backtest.py`; corrida igual, por disciplina, tras cada bloque).
+Verificación combinada final: `python -m pytest tests/research tests/analysis -q` → **673 passed, 11
+deselected**, 72.64s (0 rojos).
