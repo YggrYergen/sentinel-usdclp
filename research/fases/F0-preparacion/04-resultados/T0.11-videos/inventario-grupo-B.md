@@ -9,6 +9,20 @@
 > los títulos abajo están **inferidos del contenido** de la transcripción (marcado explícitamente).
 > "Longitud" es un proxy por tamaño de fichero de la transcripción (no hay metadata de duración).
 
+> **ESTADO: TAREA DETENIDA A MITAD DE CAMINO POR DECISIÓN INFORMADA DEL USER (2026-08-15).**
+> El user cortó explícitamente la ejecución por presupuesto de tokens antes de completar el lote,
+> indicando que esfuerzos de investigación futuros retomarán lo pendiente. Esto NO es un
+> incumplimiento del protocolo ni una simplificación de alcance por parte del agente — es una
+> instrucción directa del user, documentada aquí para trazabilidad (CHARTER §A.13).
+> - **Procesados (9/14):** `m5zu_X-_51I`, `ksVXut9bSSg`, `hC4g7qY6UcQ`, `wm4A6qo0g3I`,
+>   `C_R4sLaM0eo`, `Fb7G5SNpaes`, `fV02FcLmFpA`, `RetsRS5u-8Q`, `6njREUQAFdg`.
+> - **Pendientes (5/14), NO leídos, NO tocados:** `yHAC0xtBR2Q`, `R24f53OtTgE`, `jU2YQC7TC0k`,
+>   `B4ch-Lf8wJc`, `_UmlGzR88Fs`.
+> - La sección de cierre con ranking y patrones cruzados (prevista para el final del protocolo,
+>   solo después de tener las 14 entradas) **no se ha escrito** porque depende de tener el lote
+>   completo — escribirla ahora con 9/14 rompería la compartimentación (D-49/PROTOCOLO-REVISION-
+>   VIDEOS.md, regla de hierro). Queda pendiente para cuando se retome esta tarea.
+
 ---
 
 ## 1. `m5zu_X-_51I` — "Cómo hice $1.000.000 en 51 días day trading" (título inferido) — Ross Cameron / Warrior Trading
@@ -567,5 +581,126 @@ autopromoción de su propio "live trading room" de pago ("Rumors Squad"); estruc
 contenido motivacional/venta de comunidad, no de educación técnica.
 
 ---
+
+## 8. `RetsRS5u-8Q` — "I used Claude as my personal trader and made $100k in a month" — Brendan (mismo autor que #6)
+
+- URL: https://www.youtube.com/watch?v=RetsRS5u-8Q
+- Longitud: transcripción de 22 KB / 588 líneas — walkthrough de un mes de trading discrecional
+  asistido por LLM en opciones/acciones, con arquitectura de sistema de monitoreo por capas.
+
+**Qué cubre:** No es una estrategia mecánica de entrada/salida sino un flujo de trabajo donde
+Claude actúa como analista de investigación (no-determinístico) para elegir opciones LEAPS y
+acciones de small-cap en una cuenta Robinhood real ($66k → $169k, +155% en mayo), y luego como
+gestor de portafolio diario vía un sistema de 4 capas construido en Claude Code. Mismo autor y
+mismo enfoque metodológico que el video #6 del lote (`Fb7G5SNpaes`), aplicado esta vez a un caso
+real de un mes.
+
+**Reglas/parámetros concretos y citables:**
+- Selección de opciones LEAPS (opciones call de vencimiento largo) con un mínimo de 45 días
+  restantes a expiración como umbral de gestión de theta decay (regla explícita mencionada, aunque
+  laxa para instrumentos LEAP que suelen ser de meses/años).
+- Diversificación explícita por ventana de catalizador (near/medio/largo plazo) y por sector, para
+  que un solo evento de earnings o sector no concentre el riesgo del portafolio.
+- Arquitectura de monitoreo diario en 4 capas (aplicable como patrón de diseño, no como regla de
+  mercado): (1) valuación — precio spot + cadena de opciones + Griegas + snapshot diario; (2)
+  analítica de portafolio — asignación por nombre/sector, Griegas agregadas, sangrado diario por
+  theta, entorno de IV; (3) contexto de mercado — "macro gate" determinístico (VIX, amplitud de
+  mercado, spreads de crédito) + resumen de noticias/sentimiento generado por LLM por posición; (4)
+  alertas/dashboard — detecta nuevos strikes/expiraciones comparando la cadena de hoy vs. ayer,
+  marca cuando se toca un target o stop, señala movimientos grandes de IV.
+- Diseño consciente de costo: la consulta al LLM corre solo una vez al día (~$1/día) en vez de
+  continuamente.
+
+**Indicadores:** Griegas de opciones (theta, IV), VIX, amplitud de mercado, spreads de crédito como
+"macro gate" determinístico; el resto es análisis cualitativo generado por LLM (no reproducible
+como regla fija).
+
+**Gestión de riesgo/sizing:** cualitativa — "quería mezcla de riesgo/upside con downside acotado
+en vez de abierto"; sin regla numérica de % de cuenta por posición ni de riesgo por trade.
+
+**Afirmaciones de resultados:** +155% en un mes ($66k → $169k) en una cuenta Robinhood real, dato
+mostrado en pantalla pero sin extracto de broker verificado en la transcripción; es una única
+corrida de un solo mes (n=1), con advertencia explícita del propio autor de no replicar esos
+trades puntuales porque son sensibles al momento temporal.
+
+**Menciones de zonas S/R, régimen, trailing, XAUUSD:** régimen se aproxima solo a nivel macro
+(VIX, amplitud, crédito) como score determinístico diario, no a nivel de precio intradía. Sin
+mención de zonas S/R técnicas, sin ATR, sin trailing stop de precio, sin oro/XAUUSD ni forex.
+Instrumento exclusivamente opciones LEAPS y acciones US.
+
+**Qué NO cubre:** cualquier regla de entrada/salida técnica reproducible; backtest o validación
+histórica (todo el proceso es prospectivo/discrecional, "no back-testable" según el propio autor);
+instrumento fuera de opciones/acciones US.
+
+**Relevancia a S6/SuperTrend: LOW.** Instrumento (opciones LEAPS), mecánica (selección discrecional
+por LLM, no reglas fijas) y objetivo (portafolio de acciones/opciones diversificado) no son
+transferibles a un sistema mecánico de tendencia en XAUUSD M15. El único elemento de posible interés
+tangencial es el patrón de arquitectura de monitoreo por capas (valuación → analítica de portafolio
+→ contexto/régimen macro → alertas), que podría inspirar el diseño de un dashboard de supervisión
+para S6/ST, pero no aporta ninguna regla de mercado aplicable.
+
+**Red flags:** resultado de un solo mes/una sola cuenta (n=1), sin verificación externa de broker
+ni track record extendido; fuerte autopromoción (mismo canal/comunidad de pago que el video #6);
+advertencia propia del autor de que el resultado no es reproducible tal cual porque las entradas
+fueron específicas de ese momento de mercado — reconocimiento explícito de la falta de
+generalización de las cifras mostradas.
+
+---
+
+## 9. `6njREUQAFdg` — "Self-improving AI trading agent con Hermes" (título inferido)
+
+- URL: https://www.youtube.com/watch?v=6njREUQAFdg
+- Longitud: transcripción de 20 KB / 544 líneas — demo de tooling de agentes de IA, no una
+  estrategia de mercado.
+
+**Qué cubre:** Es un video de arquitectura de agentes de IA ("Hermes agent" orquestado vía Claude
+Code, hosteado 24/7 en Railway), no una estrategia de trading. Se demuestra cómo montar un bucle de
+"auto-mejora" que ajusta los parámetros de una estrategia cripto propia y no revelada del autor
+("Wacko Alpha", descrita solo como "D Tau momentum and yield strategy" sobre subredes de
+Bittensor). No se explica ninguna regla de entrada/salida de esa estrategia — es contenido 100%
+de meta-tooling/automatización, no de mecánica de mercado.
+
+**Reglas/parámetros concretos y citables:** ninguna regla de mercado (entrada, salida, stop,
+filtro) se revela — la estrategia subyacente es una caja negra del propio autor. Lo único
+cuantificable es el marco de definición de objetivos del agente: retorno objetivo declarado
+("4.7" interpretado en el video como "47%" — inconsistencia no aclarada), meta de 10x en 6 meses,
+Sharpe mínimo de 1, máximo de 12 posiciones concurrentes, tolerancia de slippage y reserva de gas
+(específico de cripto/DeFi), ciclo de revisión: la estrategia dispara cada 30 minutos con reshuffle
+diario; un agente ("Hermes") revisa semanalmente con offset de 3 días respecto a otro agente
+("Cornelius") que retunea parámetros aprendidos cada semana. Principio metodológico declarado:
+ajustar **una sola variable a la vez** en cada iteración de mejora (método científico clásico,
+para poder atribuir causalidad al cambio de resultado).
+
+**Indicadores:** ninguno de mercado específico; Sharpe ratio y max drawdown como métricas de
+scoring del agente (no del activo).
+
+**Gestión de riesgo/sizing:** máximo 12 posiciones concurrentes, tolerancia de slippage y reserva
+de gas — todos parámetros de ejecución cripto/DeFi, no aplicables a FX/CFD.
+
+**Afirmaciones de resultados:** menciona un desafío personal de "£50.000 a £500.000 en un año"
+(dashboard enlazado, no mostrado ni verificable en la transcripción); de la estrategia "Wacko
+Alpha" solo se revela el conteo de 24 operaciones ganadoras vs. 22 perdedoras (≈52% win rate) tras
+"6-8 semanas y 1.5 millones de datos" — sin cifra de P&L ni de retorno mostrada. Reconoce
+explícitamente estar arriesgando dinero real con un sistema experimental ("this is real money...
+maybe this is a mistake").
+
+**Menciones de zonas S/R, régimen, trailing, XAUUSD:** ninguna. Instrumento exclusivamente cripto
+vía subredes Bittensor.
+
+**Qué NO cubre:** cualquier regla de mercado reproducible; XAUUSD, forex, o cualquier activo
+tradicional; la mecánica interna de "Wacko Alpha" (deliberadamente no divulgada).
+
+**Relevancia a S6/SuperTrend: LOW.** Cero contenido de mercado transferible — es un video sobre
+arquitectura de agentes de IA para automatizar el ciclo prueba-aprendizaje-ajuste de una estrategia
+cripto no revelada. El único principio genérico de posible interés (cambiar una sola variable por
+iteración al ajustar un sistema, con criterios explícitos de éxito/fracaso vía Sharpe/max DD/
+retorno objetivo) es una buena práctica metodológica general ya cubierta por el diseño experimental
+del propio programa (CHARTER §A.10, enmiendas en fronteras de fase), no un hallazgo nuevo.
+
+**Red flags:** estrategia subyacente es una caja negra no auditable desde el video; dinero real en
+juego en un sistema "auto-mejorante" experimental, presentado con tono de entusiasmo/hype más que
+de rigor ("Kablam! Kaboom!"); fuerte autopromoción de comunidad propia de pago ("01 Systems") y de
+otros videos del mismo canal; ninguna cifra de rentabilidad verificable, solo conteo de trades
+ganadores/perdedores sin P&L.
 
 ---
