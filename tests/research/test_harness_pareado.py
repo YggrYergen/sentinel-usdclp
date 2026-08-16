@@ -17,9 +17,13 @@ Ver brief: research/fases/F0-preparacion/02-specs/WP-1-2-brief-harness-pareado-y
 """
 from __future__ import annotations
 
+import copy
+
 import numpy as np
 
+from scripts.analysis.realtick_bt import backtest
 from scripts.analysis.realtick_bt.backtest import run_supertrend
+from scripts.analysis.realtick_bt.overlay import overlay_kwargs
 
 BAR_SEC = 900
 
@@ -84,3 +88,29 @@ def test_run_supertrend_different_params_change_result():
     default_out = run_supertrend(bars, ticks)
     wide_out = run_supertrend(bars, ticks, atr_period=14, mult=6.0)
     assert default_out != wide_out
+
+
+# --------------------------------------------------------------------- B2
+def test_overlay_kwargs_does_not_mutate_gl():
+    sid = "S6-K2P0"
+    before = copy.deepcopy(backtest._GL[sid])
+    _ = overlay_kwargs(sid, {"max_hold_bars": 5})
+    after = backtest._GL[sid]
+    assert after == before, "overlay_kwargs must never mutate _GL[sid] in place"
+
+
+def test_overlay_kwargs_empty_overlay_equals_gl():
+    sid = "S7-TPNONE"
+    out = overlay_kwargs(sid, {})
+    assert out == backtest._GL[sid]
+    assert out is not backtest._GL[sid], "must be a deep copy, not the same object"
+
+
+def test_overlay_kwargs_applies_on_top_of_deepcopy():
+    sid = "S6-K2P0"
+    out = overlay_kwargs(sid, {"max_hold_bars": 7})
+    assert out["max_hold_bars"] == 7
+    for k, v in backtest._GL[sid].items():
+        if k != "max_hold_bars":
+            assert out[k] == v
+    assert backtest._GL[sid].get("max_hold_bars") != 7

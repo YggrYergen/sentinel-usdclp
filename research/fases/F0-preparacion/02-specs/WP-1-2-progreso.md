@@ -22,3 +22,11 @@ llamando sin kwargs nuevos). Tests nuevos:
 `tests/research/test_harness_pareado.py::test_run_supertrend_defaults_match_explicit_hardcoded_values`
 y `::test_run_supertrend_different_params_change_result` → 2 passed.
 Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+
+## Bloque 2 — Overlay de kwargs por deep-copy (2026-08-16)
+`scripts/analysis/realtick_bt/overlay.py::overlay_kwargs(sid: str, overlay: dict[str, Any]) ->
+dict[str, Any]` — `copy.deepcopy(backtest._GL[sid])` + `.update(overlay)` sobre la copia; `_GL`/
+`_GOLIVE_M15` nunca mutados (nunca `dict.update` sobre el original). Overlay vacío ⇒ igual por
+valor a `_GL[sid]`, distinto por identidad (deep copy). Tests nuevos: 3 (no-mutación, overlay
+vacío, overlay aplica sobre la copia) → total fichero 5 passed.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
