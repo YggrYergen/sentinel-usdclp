@@ -42,6 +42,7 @@ from sentinel_engine.strategies.live_configs_20 import _GOLIVE_M15  # noqa: E402
 from sentinel_engine.strategies._supertrend_ref import supertrend, flips  # noqa: E402
 from sentinel_engine.strategies.emasar_ref import _atr_wilder  # noqa: E402
 from scripts.analysis.realtick_bt import higher_tf as _higher_tf  # noqa: E402
+from scripts.analysis.realtick_bt import regime  # noqa: E402
 
 BAR_SEC = 900          # M15
 H1_SEC = 3600
@@ -351,6 +352,39 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
             if not pos["fichas"]:
                 open_pos.pop(pos["sid"], None)
     return positions
+
+
+def apply_regime_gate_by_entry_bar(positions: list[dict[str, Any]], bars: list[dict[str, Any]],
+                                    series: "regime.RegimeSeries", cfg: "regime.RegimeGateConfig | None"
+                                    ) -> list[dict[str, Any]]:
+    """WP-5 (P-09) harness-level post-filter: drop any `run_ladder`-shaped
+    position (or raw ENTRY event) whose ENTRY bar (`t_in`) fails
+    `regime.regime_gate()`. `cfg=None` OR `cfg.enabled=False` (both are the
+    library default) returns `positions` UNCHANGED (same list object, same
+    dicts) -- byte-identical, no-op, satisfying WP-5's own acceptance
+    criterion ("con el gate apagado, resultado byte-identico al de hoy").
+
+    Deliberately NOT wired into `sentinel_engine` (per WP-5's spec table:
+    "modulo nuevo, SIN TOCAR el nucleo") -- this operates purely on
+    `run_ladder`'s OUTPUT (the S6/S7 entry-gate half of P-09; ST's
+    "supresion de flip" half is NOT covered here -- it would require
+    threading the gate into `run_supertrend`'s own flip detection, a
+    different and more invasive change out of this function's declared
+    scope; see OLA1B-reporte.md).
+
+    A position whose `t_in` cannot be resolved to a bar index (should not
+    happen for `run_ladder` output, whose `t_in` is always a bar's own `t`)
+    is KEPT, not silently dropped -- fail safe, never fail silent.
+    """
+    if cfg is None or not cfg.enabled:
+        return positions
+    t_to_idx = {b["t"]: i for i, b in enumerate(bars)}
+    out = []
+    for p in positions:
+        idx = t_to_idx.get(p["t_in"])
+        if idx is None or regime.regime_gate(idx, series, cfg):
+            out.append(p)
+    return out
 
 
 def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
