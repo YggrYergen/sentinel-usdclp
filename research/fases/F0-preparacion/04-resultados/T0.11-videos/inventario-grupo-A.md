@@ -117,6 +117,117 @@
   "hindsight" explícito reconocido por el propio autor en al menos un trade ("that's hindsight
   talking"); producto vinculado (plataforma Ninja Trader, PDF de venta/lead-magnet).
 
+## 7. lYmmBoYQvWM
+
+- **Título (inferido):** Estrategia "London Sweep / Frankfurt" — sistema ICT/SMC de 5 pasos
+  (bias M15 → localización de sesión → confirmación M1 → punto de interés → toma de beneficio) con
+  recap de un trade real de junio.
+- **URL:** https://www.youtube.com/watch?v=lYmmBoYQvWM
+- **Duración/extensión:** 662 líneas, transcripción media, muy densa en reglas concretas
+  (posiblemente el video más "spec-like" del grupo A hasta ahora).
+- **Qué cubre realmente:** sistema discrecional (pero declarado "mecánico y basado en reglas
+  repetibles") de 5 pasos para operar durante la sesión de Londres/Frankfurt en forex, vendiendo
+  además un indicador propio que automatiza cada paso. No es específicamente sobre oro, pero es
+  agnóstico de par y estructuralmente idéntico a lo que otros videos ICT aplican a XAUUSD. Explica
+  con mucho detalle el problema de ambigüedad en la definición de "swing high/low" (afirma que la
+  mayoría de traders usan reglas no reproducibles) y ofrece una regla mecánica fija para resolverla
+  (aunque no la especifica completamente en el audio — remite a su indicador propietario).
+- **Reglas/parámetros específicos y testeables:**
+  - **Paso 1 — Sesgo direccional M15 vía estructura de mercado:** operar solo en dirección de la
+    secuencia de higher-highs/higher-lows (alcista) o lower-highs/lower-lows (bajista) en M15,
+    usando puntos de swing "externos". Regla explícita: si el rango M1 es demasiado grande, usar
+    estructura "interna" en lugar de externa (declarado pero sin definir el umbral numérico exacto
+    de "demasiado grande").
+  - **Paso 2 — Localización por sesión (rangos horarios en hora de Nueva York/EST):**
+    - Sesión Asia: **20:00–00:00 EST**.
+    - Sesión Londres: **02:00–05:00 EST**.
+    - Sesión Nueva York: **07:00–10:00 EST**.
+    Regla de ubicación: en sesión de Londres, operar únicamente en relación al rango
+    (máximo/mínimo) de la sesión Asia — si el sesgo es bajista, buscar cortos **por encima del
+    máximo de Asia**; si es alcista, buscar largos **por debajo del mínimo de Asia**. En sesión
+    Nueva York, la referencia pasa a ser el rango de Londres (mismo patrón: NY toma el extremo de
+    Londres y luego opera en dirección opuesta) — afirma esto como observación estadística repetida
+    ("Londres suele tomar el rango de Asia y luego tendencia en la dirección opuesta").
+  - **Paso 3 — Confirmación por cambio de estructura en M1:** tras el precio tomar el nivel de
+    localización, esperar un "change of character" (cambio de estructura) en el timeframe de 1
+    minuto en la dirección del sesgo M15 antes de confirmar la entrada — evita entrar apenas se
+    toca el nivel (explícitamente muestra cómo vender inmediatamente al tocar el máximo de Asia sin
+    confirmación produce 3 stops seguidos antes de 1 ganador, break-even neto tras comisiones).
+  - **Paso 4 — Punto de interés (entrada de precisión):** dentro del leg de M1 que confirma el
+    shift, entrar en un **order block** o **fair value gap** alineado con el sesgo (no en el
+    breakout directo) para mejorar el R:R de ~1:1 a **1:4/1:5**. Stop loss: por encima/debajo del
+    swing high/low que invalidaría el sesgo M1 (si se rompe, el sesgo M1 cambia y el trade queda
+    invalidado).
+  - **Paso 5 — Toma de beneficios (regla dual, la más operacionalizable del video):**
+    - Objetivo 1 (parcial): **cerrar 50% de la posición en 5R fijo**, declarado explícitamente como
+      corrección a un patrón repetido de "llegar a 1:4, 1:5, 1:6, 1:7 y volver a break-even" antes
+      de tocar el target de estructura.
+    - Objetivo 2 (resto de la posición): dejar correr hasta el **siguiente swing estructural**
+      (o niveles de liquidez: máximo/mínimo del día previo, máximo/mínimo de la semana previa).
+    - Ratio medio de resultado declarado por el autor: **win:loss promedio de 6.14** con
+      **win rate ~33%**, presentado explícitamente como el trade-off esperado (a mayor R:R buscado,
+      menor win rate).
+    - Afirma (sin mostrar la metodología) tener **"10 años de datos"** que dan **75% de probabilidad
+      de que se tome el mínimo/máximo del día previo** en los días siguientes — cifra no verificable
+      desde el video, pero es un patrón de "toma de liquidez del extremo previo" replicable
+      empíricamente con datos propios.
+- **Relevancia a S6/SuperTrend:** HIGH. Aporta tres piezas testeables y trasladables a M15 XAUUSD:
+  (a) un **filtro de régimen basado en rango de sesión** (Asia/Londres/NY) que podría probarse como
+  filtro adicional para S6/ST — no operar señales de tendencia contra el rango de la sesión previa;
+  (b) una **regla dual de toma de beneficios** (parcial fijo a 5R + resto trailing a estructura) que
+  ataca directamente la debilidad declarada de gestión de salida — el patrón "corre a 5-7R y vuelve
+  a break-even" descrito es exactamente el tipo de fuga de ganancias que un backtest de S6/ST podría
+  estar sufriendo silenciosamente; (c) la idea de exigir confirmación de cambio de estructura en un
+  timeframe menor antes de entrar, como filtro anti-falso-breakout. Limitación: la estrategia base
+  es de reversión en rango de sesión (contra-extremo), no de continuación pura, y varias
+  definiciones clave (umbral de "M1 range demasiado grande", regla exacta de swing) se delegan al
+  indicador propietario sin especificarse completamente en el audio.
+- **Red flags:** cifras de rentabilidad ("22.79R en junio", win:loss 6.14, 75% con "10 años de
+  datos") presentadas sin mostrar metodología de cálculo ni auditoría externa — solo capturas de su
+  propio panel; producto vinculado directamente (indicador propietario + paquete de "5 setups" de
+  pago, enlace en descripción); el video reconoce explícitamente la ambigüedad/subjetividad del
+  concepto central (definición de swing high/low) como problema de toda la industria, pero resuelve
+  venciendo esa ambigüedad con un producto propio no auditable en vez de una regla pública
+  verificable.
+
+## 6. FbuYWdwA_wU
+
+- **Título (inferido):** "David Tech" — tutorial de construcción de un "AI hedge fund" usando
+  Claude Code + servidores MCP (TradingKit, TradingView, TriggerTrade) para descubrir, backtest,
+  forward-test y desplegar automáticamente estrategias.
+- **URL:** https://www.youtube.com/watch?v=FbuYWdwA_wU
+- **Duración/extensión:** 774 líneas, transcripción media.
+- **Qué cubre realmente:** NO es un video de estrategia de trading. Es un tutorial de
+  infraestructura/tooling: cómo conectar Claude Code a MCP servers de terceros para automatizar el
+  ciclo completo "generar idea → backtest → forward-test 20 trades / ~3 meses → validar
+  robustez/juez → desplegar en TradingView → conectar a exchange/broker vía webhooks → monitoreo y
+  apagado automático de estrategias que pierden edge". Todo el contenido es sobre criptomonedas
+  (BTC/USDT) y trading multi-activo genérico vía TradingView/Pine Script; no discute mecánica de
+  entrada/salida de ninguna estrategia concreta más allá de un ejemplo trivial de cruce de SMA
+  (-22%, mencionado solo como prueba de que el sistema de backtest funciona, no como estrategia
+  recomendada).
+- **Reglas/parámetros específicos y testeables:**
+  - **Regla de circuit-breaker de drawdown a nivel de portafolio (meta-regla, no de trading):**
+    pausar automáticamente una estrategia si toca **4% de drawdown máximo en un solo día**.
+  - **Alternativa mencionada:** bandas de Bollinger sobre la curva de equity (no sobre precio); si
+    la equity toca la banda inferior (1 desviación estándar), apagar los bots asociados.
+  - **Ventana de forward-testing recomendada antes de confiar en una estrategia:** mínimo **20
+    trades**, o aproximadamente **3 meses**, dependiendo del timeframe de optimización.
+  - Ningún parámetro de entrada, stop, trailing o filtro de régimen específico de mercado.
+- **Relevancia a S6/SuperTrend:** NONE. No aporta mecánica de trading aplicable a S6/ST ni menciona
+  oro/XAUUSD en ningún momento. Las únicas reglas concretas (4% drawdown diario como apagador, 20
+  trades/3 meses de forward-test antes de confiar en una estrategia) son ideas de **gobernanza de
+  portafolio de estrategias**, no de la estrategia individual — conceptualmente cercanas a lo que
+  ya hace este programa de investigación (holdout, gates estadísticos) pero sin aportar nada nuevo
+  o específico al problema de exits/regímenes de rango de S6/ST.
+- **Red flags:** el video es esencialmente un anuncio/tutorial de producto propio (su comunidad de
+  pago "school.com/davidtech", su plataforma "Strategy Factory AI" con 400+ estrategias, su
+  colección de repos de GitHub); afirma "he backtesteado más de 2.000 estrategias en 5 años" y
+  "actualmente corro 7 bots" sin mostrar ningún resultado auditado agregado; el ejemplo de backtest
+  mostrado en vivo fue en realidad una pérdida (-22%), usado solo para demostrar que la herramienta
+  "funciona", no que el enfoque genera edge — irónicamente el propio video no aporta evidencia de
+  que el método de descubrimiento automatizado de estrategias sea rentable.
+
 ## 5. en8RMFRqSME
 
 - **Título (inferido):** "Brad Gold" (canal "Brad Trades") — estrategia de scalping en oro (XAUUSD)
