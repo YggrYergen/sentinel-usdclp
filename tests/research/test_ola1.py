@@ -230,6 +230,113 @@ class TestMetricas:
         }
 
 
+# --------------------------------------------------------------------- Bloque 4
+class TestPareado:
+    def test_ic_de_diferencia_cero_contiene_cero(self):
+        from scripts.research.ola1 import pareado
+
+        posiciones = []
+        t0 = 1_700_000_000.0
+        for i in range(10):
+            posiciones.append({
+                "t_in": t0 + i * 86400, "t_in_exec": t0 + i * 86400 + 60,
+                "t_exit": t0 + i * 86400 + 900, "side": "LONG", "side_l": "L",
+                "ficha": "F1", "net1": 100.0 * (i % 3 - 1),
+            })
+        r_control = [500.0] * len(posiciones)
+        resultado = pareado.pareado_vs_control("S6-K2P0", posiciones, posiciones, r_control)
+        assert resultado["tasa_emparejamiento"] == 1.0
+        assert resultado["n_casadas"] == 10
+        assert resultado["media_diff"] == 0.0
+        assert resultado["suma_diff"] == 0.0
+        assert resultado["ic_excluye_0"] is False
+        assert resultado["p_bootstrap"] == 1.0
+        assert resultado["n_identidades_duplicadas"] == 0
+
+    def test_bootstrap_vectorizado_igual_al_ingenuo(self):
+        from scripts.research.ola1.pareado import _bootstrap_bloques
+
+        dias = ["2026-01-01", "2026-01-02", "2026-01-03"]
+        diffs_por_dia = {
+            "2026-01-01": [10.0, -5.0],
+            "2026-01-02": [3.0],
+            "2026-01-03": [-2.0, 4.0, 1.0],
+        }
+        suma_dia = {d: sum(v) for d, v in diffs_por_dia.items()}
+        n_dia = {d: len(v) for d, v in diffs_por_dia.items()}
+        B = 500
+        seed = 20260816
+
+        resultado = _bootstrap_bloques(dias, suma_dia, n_dia, B=B, seed=seed)
+
+        rng = np.random.default_rng(seed)
+        idx = rng.integers(0, len(dias), size=(B, len(dias)))
+        stats_ingenuo = []
+        for fila in idx:
+            pool = []
+            for i in fila:
+                pool.extend(diffs_por_dia[dias[i]])
+            stats_ingenuo.append(float(np.mean(pool)))
+        stats_ingenuo = np.array(stats_ingenuo)
+        ic_bajo_ing, ic_alto_ing = np.percentile(stats_ingenuo, [2.5, 97.5])
+
+        assert abs(resultado["ic95_bajo"] - ic_bajo_ing) < 1e-9
+        assert abs(resultado["ic95_alto"] - ic_alto_ing) < 1e-9
+        frac_le0 = float(np.mean(stats_ingenuo <= 0))
+        frac_ge0 = float(np.mean(stats_ingenuo >= 0))
+        p_ing = min(max(2 * min(frac_le0, frac_ge0), 0.0), 1.0)
+        assert abs(resultado["p_bootstrap"] - p_ing) < 1e-9
+
+    def test_bootstrap_es_reproducible(self):
+        from scripts.research.ola1.pareado import _bootstrap_bloques
+
+        dias = ["2026-01-01", "2026-01-02", "2026-01-03", "2026-01-04"]
+        suma_dia = {"2026-01-01": 10.0, "2026-01-02": -3.0,
+                    "2026-01-03": 5.0, "2026-01-04": 0.0}
+        n_dia = {"2026-01-01": 2, "2026-01-02": 1, "2026-01-03": 3, "2026-01-04": 1}
+        r1 = _bootstrap_bloques(dias, suma_dia, n_dia)
+        r2 = _bootstrap_bloques(dias, suma_dia, n_dia)
+        assert r1 == r2
+
+    def test_no_evaluable_si_no_hay_casadas_o_menos_de_2_dias(self):
+        from scripts.research.ola1 import pareado
+
+        resultado = pareado.pareado_vs_control("S6-K2P0", [], [], [])
+        assert resultado["p_bootstrap"] is None
+        assert resultado["motivo_no_evaluable"] == "n_casadas == 0"
+
+        t0 = 1_700_000_000.0
+        posiciones = [{
+            "t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 900, "side": "LONG",
+            "side_l": "L", "ficha": "F1", "net1": 100.0,
+        }]
+        resultado2 = pareado.pareado_vs_control("S6-K2P0", posiciones, posiciones, [500.0])
+        assert resultado2["p_bootstrap"] is None
+        assert resultado2["motivo_no_evaluable"] == "n_dias_bloque < 2"
+
+    def test_identidades_duplicadas_se_cuentan_y_publican(self):
+        from scripts.research.ola1 import pareado
+
+        t0 = 1_700_000_000.0
+        # dos posiciones con la MISMA identidad (mismo t_in/side/ficha) en el
+        # brazo -- debe quedarse con la primera por t_exit y contar 1 duplicada.
+        posiciones_brazo = [
+            {"t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 900, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 50.0},
+            {"t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 1800, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 999.0},
+        ]
+        posiciones_control = [
+            {"t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 900, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 10.0},
+        ]
+        resultado = pareado.pareado_vs_control("S6-K2P0", posiciones_brazo,
+                                                posiciones_control, [500.0])
+        assert resultado["n_identidades_duplicadas"] == 1
+        assert resultado["n_casadas"] == 1
+        assert resultado["media_diff"] == 40.0  # 50.0 - 10.0, la PRIMERA por t_exit
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])

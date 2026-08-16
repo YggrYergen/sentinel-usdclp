@@ -27,3 +27,9 @@ Bloque 3 -- metricas.py: metricas_de_brazo() con las 20 claves del brief (net_lo
 en-R, racha de perdidas, sharpe x2, n_por_reason, overlay de coste D-54/D-59). COSTE_CLP
 verificado = 21071.25. 3 tests nuevos (coste sintetico + n=0 + datos reales S6, slow).
 Parity gate 4 passed. VERDE.
+
+Bloque 4 -- pareado.py: pareado_vs_control() con dedup de identidad (primera por t_exit,
+n_identidades_duplicadas contado), tasa de emparejamiento + degradado_a_1B (D-56, umbral 0.90),
+diffs pareados + media_diff_en_R, bootstrap por bloques vectorizado (dia servidor, B=10000,
+seed 20260816). 5 tests nuevos (IC de diferencia cero, vectorizado==ingenuo, reproducible,
+no-evaluable, duplicadas). Parity gate 4 passed. VERDE.
