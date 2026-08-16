@@ -117,6 +117,122 @@
   "hindsight" explícito reconocido por el propio autor en al menos un trade ("that's hindsight
   talking"); producto vinculado (plataforma Ninja Trader, PDF de venta/lead-magnet).
 
+## 11. nkMzaQqpFbw
+
+- **Título (inferido):** Estrategia de "supply and demand" en 3 pasos + "6 claves" para zonas
+  válidas; aplicable a forex/cripto/futuros/oro; incluye 3 recreaciones de trades y una trade en
+  vivo con opening range breakout como filtro adicional.
+- **URL:** https://www.youtube.com/watch?v=nkMzaQqpFbw
+- **Duración/extensión:** 458 líneas, transcripción media, muy alta densidad de reglas mecánicas
+  explícitas (posiblemente el video más operacionalizable del grupo A).
+- **Qué cubre realmente:** metodología discrecional pero muy bien especificada de "supply and
+  demand" (zonas de oferta/demanda institucionales) con reglas de construcción de zona, filtro de
+  tendencia, condiciones de entrada, y — en la parte final — combina la estrategia con un **opening
+  range breakout de 3 velas de 5 minutos** y un **indicador de trailing stop** para gestión de
+  salida. Declara aplicabilidad explícita a oro. Presenta un backtest propio (121 trades, 79% win
+  rate, +2.100% P&L, sin metodología mostrada) y 4 trades narrados (3 recreados + 1 en vivo).
+- **Reglas/parámetros específicos y testeables:**
+  - **Paso 1 — Construcción de zona de demanda/oferta institucional:** requiere un movimiento
+    impulsivo de ≥3-4 velas grandes consecutivas en la misma dirección (ejemplo: "más de 60 pips",
+    sin definir umbral universal). La zona se dibuja sobre el **cuerpo** de la última vela antes del
+    impulso (no la mecha) si la vela es grande; si la vela es pequeña usa **mecha a mecha**; si hay
+    varias velas pequeñas, las agrupa. Exige un **fair value gap** (gap de no-solapamiento entre
+    velas) como confirmación de momentum/desequilibrio.
+  - **Paso 2 — Confirmación de tendencia (3 métodos alternativos, cualquiera sirve):**
+    (a) estructura de swings + rupturas de estructura (break of structure); (b) precio por encima/
+    debajo de una **EMA** con separación clara (si el precio solo cruza la EMA sin separación,
+    descarta el trade); (c) repetir el análisis de estructura en un timeframe superior (ej. H1→H4).
+  - **Paso 3 — Condiciones de entrada (checklist estricto):**
+    1. **Momentum lento de aproximación a la zona** (velas mixtas, no una sola vela grande) —
+       rechaza explícitamente zonas alcanzadas por una única vela grande de impulso.
+    2. La vela debe **cerrar dentro de la zona o mecharla, nunca cerrar por debajo/encima** — un
+       cierre fuera de la zona invalida el setup.
+    3. Entrada en la primera vela de reacción positiva tras el toque de zona.
+    4. **Stop loss:** ajustado al borde de la zona, o más allá de la mecha más cercana (a menudo
+       coincidiendo con el nivel de la EMA).
+    5. **Take profit:** por defecto sugiere 1:1 pero él usa 1:1.5 o 1:1.83 apuntando a niveles de
+       precio reciente (no ATR ni R fijo rígido).
+  - **"6 claves" adicionales de validez de zona (filtros de calidad, cada uno testeable):**
+    (1) **zona no usada previamente** (fresh, no tocada) — zonas ya "gastadas" no sostienen precio;
+    (2) cierre-o-mecha dentro de zona (repite regla del paso 3.2); (3) **stack de confluencias**
+    (nivel usado antes como soporte/resistencia opuesto = mayor probabilidad); (4) **"la demanda más
+    baja es la más fuerte"** — de varias zonas apiladas, preferir la más reciente/más baja en un
+    tramo alcista; (5) **descuento de Fibonacci**: la entrada debe estar **por debajo del 50%** del
+    retroceso fibonacci del swing (regla de "comprar barato dentro del rango"); (6) exigir **break
+    of structure confirmado** en la zona — su ausencia predice que la zona no sostendrá precio
+    (ejemplo mostrado explícitamente de zona sin BOS que efectivamente falla).
+  - **Gestión de salida alternativa con trailing stop (trade en vivo, M5):** usa un indicador de
+    trailing stop configurado en **timeframe de 5 minutos**, no cierra hasta que una vela **cierra**
+    por debajo de la línea de trailing (no solo mecha) — deja correr la ganancia de $474 hasta
+    $1.428 en el ejemplo mostrado.
+  - **Filtro adicional — Opening Range Breakout:** usa las **primeras 3 velas de 5 minutos** del
+    día (desde 9:30am ET) para definir un rango; solo confirma dirección cuando el precio rompe y
+    **cierra** fuera del rango (arriba o abajo), y luego espera el retroceso a la zona de demanda/
+    oferta ya marcada antes de entrar — combina ORB (dirección/filtro de sesgo del día) con S/D
+    (punto de entrada de precisión).
+- **Relevancia a S6/SuperTrend:** HIGH. Aporta el conjunto más grande de reglas de filtro de calidad
+  de zona/señal directamente testeables como grid para reducir falsas señales de entrada en S6/ST:
+  "zona fresca vs. usada", "descuento Fibonacci <50%", "confluencia con nivel S/R histórico",
+  "confirmación de break of structure", y "momentum de aproximación lento vs. impulsivo" son todos
+  filtros binarios computables sobre una serie de precios sin ambigüedad excesiva. La combinación
+  ORB (3 velas M5) + zona de reacción es directamente análoga a un filtro de sesgo diario que podría
+  aplicarse antes de las señales M15 de S6/ST. La regla de trailing-stop-por-cierre-de-vela (no por
+  mecha) en el timeframe de ejecución es una alternativa de gestión de salida trasladable y
+  fácilmente implementable (equivalente a un SuperTrend con confirmación de cierre). Limitación: no
+  hay un ATR ni volatilidad explícita en la definición de zona/stop, y varios umbrales ("60 pips",
+  "más o menos 3-4 velas") son ilustrativos, no reglas universales — requerirían calibración propia
+  para XAUUSD M15.
+- **Red flags:** backtest propio citado (121 trades, 79% win rate, +2.100% P&L) sin mostrar
+  metodología, rango de fechas, ni costos de transacción — no verificable ni reproducible desde el
+  video; los 3 "trades recreados" se presentan reproduciendo el chart histórico conociendo ya el
+  resultado (riesgo de selección/hindsight, aunque el autor incluye honestamente 1 de 4 trades como
+  perdedor); fuerte venta cruzada (bróker afiliado "TripleA AFX", sala VIP de pago, sala gratuita
+  como funnel); la elección de qué zonas "sí cuentan" entre las docenas visibles en cualquier chart
+  sigue siendo discrecional pese a presentarse como sistemática.
+
+## 10. uGMen58jwxE
+
+- **Título (inferido):** "Haddy" — episodio 1 de una serie de recap semanal de trading discrecional
+  en una cuenta de $100k (US30 principalmente, una mención de oro), objetivo declarado "$100k a
+  $100 millones".
+- **URL:** https://www.youtube.com/watch?v=uGMen58jwxE
+- **Duración/extensión:** 616 líneas, transcripción media, en formato de vlog/diario semanal, no
+  de tutorial de estrategia.
+- **Qué cubre realmente:** recap narrativo de la semana de trading del autor: 29 trades, 27
+  ganadores, 2 perdedores (93% win rate declarado), +55% de la cuenta en una semana. Repasa
+  discrecionalmente algunos trades (incluyendo uno en oro y varios en US30), su entrada ("point of
+  interest", "internal change of character", timeframe de 5 minutos), y se enfoca casi
+  exclusivamente en la lección de gestión emocional/paciencia: haber cerrado posiciones demasiado
+  pronto le habría costado ganar $100-150k en vez de $55k esa semana. No es un tutorial de mecánica
+  replicable; es contenido de mindset y diario personal.
+- **Reglas/parámetros específicos y testeables:**
+  - Referencias vagas a conceptos de estructura (estilo ICT): "point of interest", "internal
+    change of character", "rejection" en niveles clave, en gráfico de **5 minutos** con contexto de
+    timeframe superior para targets — sin especificar reglas mecánicas de construcción (a diferencia
+    de los videos 5 y 7 del grupo, aquí no se define swing/estructura con precisión).
+  - **Gestión de riesgo declarada:** mueve el stop a break-even (o ligeramente por encima) tan
+    pronto como es posible tras entrar en ganancia ("tomar el riesgo de la mesa lo antes posible") —
+    identifica esto como la causa de varias de sus "pérdidas pequeñas" (trades que llegaron a
+    break-even y luego revirtieron).
+  - Toma múltiples posiciones simultáneas al construir una cuenta pequeña, explícitamente para
+    generar un "colchón de ganancia" psicológico.
+  - No hay stop/entry/exit cuantificado en pips, ATR, ni R múltiplo consistente; los ejemplos de
+    R:R mencionados son post-hoc ("esa pérdida de $500 podría haber sido una ganancia de $25.000 si
+    hubiera aguantado" — hindsight, no regla).
+- **Relevancia a S6/SuperTrend:** LOW. No aporta ninguna regla mecánica, parámetro numérico ni
+  filtro de régimen implementable. El único tema tangencialmente relevante es la lección de
+  "salir demasiado pronto / mover a break-even demasiado agresivo cuesta ganancias" — que apunta en
+  la misma dirección que la debilidad de gestión de salida de S6/ST, pero sin ninguna regla
+  operacionalizable (es una reflexión post-hoc sobre 2 trades específicos, no un patrón
+  sistemático).
+- **Red flags:** win rate de 93% sobre solo 29 trades (muestra pequeña, alta varianza, no
+  estadísticamente significativo); afirmación repetida de "sabía hacia dónde iba a ir el precio"
+  presentada como habilidad predictiva, clásico sesgo de hindsight/confirmación; ninguna evidencia
+  auditada de resultados más allá de capturas de pantalla de su propia plataforma; formato de vlog
+  orientado a construir marca personal/seguidores más que a enseñar método; el propio video es
+  "episodio 1" de una serie promocional de una cuenta de $100k → $100M sin submitir a validación
+  externa.
+
 ## 9. KML09tRtHM8
 
 - **Título (inferido):** "Brendan" (mismo autor del video 8) — 25.000 backtests con Claude del
