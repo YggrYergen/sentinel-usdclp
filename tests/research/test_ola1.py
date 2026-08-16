@@ -825,6 +825,89 @@ corridas:
             assert (out_dir / "posiciones.csv").exists()
 
 
+class TestConsolidarMarcaPositivo:
+    """BLOCK-4 (coordinador, clarificacion mid-task #2): net_positivo/
+    diff_positivo deben marcar el signo de cada brazo, con diff_positivo
+    (pareado, sobrevive al sesgo del simulador) priorizado sobre net_positivo
+    (absoluto, no fiable por si solo) -- nunca None para el control en
+    net_positivo, siempre None para el control en diff_positivo (no tiene
+    pareado contra si mismo)."""
+
+    def _escribir_metricas_fake(self, out_dir, run_key, *, control_net, variantes):
+        """variantes: lista de (arm, net, media_diff) -- p_bootstrap fijo en
+        0.01 salvo que se quiera excluir de BH (no probado aqui)."""
+        import json
+
+        d = out_dir / run_key
+        d.mkdir(parents=True)
+        brazos = {
+            "default": {
+                "overlay": {}, "confirmatorio": True,
+                "metricas": {"n": 10, "net_lote1": control_net},
+            }
+        }
+        for arm, net, media_diff in variantes:
+            brazos[arm] = {
+                "overlay": {"x": 1}, "confirmatorio": True,
+                "metricas": {"n": 10, "net_lote1": net},
+                "pareado": {"tasa_emparejamiento": 1.0, "media_diff": media_diff,
+                            "ic95_bajo": media_diff - 1, "ic95_alto": media_diff + 1,
+                            "p_bootstrap": 0.01},
+            }
+        doc = {
+            "lineage": {"palanca": "P-TEST", "sid": "S6-K2P0", "clase": "1-A"},
+            "sustrato": {}, "control": {"brazo": "default"}, "brazos": brazos,
+        }
+        (d / "metricas.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    def test_net_positivo_y_diff_positivo_marcan_el_signo_correcto(self, tmp_path):
+        from scripts.research.ola1.consolidar import construir_consolidado
+
+        self._escribir_metricas_fake(
+            tmp_path, "P-TEST",
+            control_net=100.0,
+            variantes=[
+                ("gana_ambos", 500.0, 50.0),      # net positivo, diff positivo
+                ("gana_diff_pierde_net", -10.0, 20.0),  # net negativo pero diff positivo
+                ("pierde_ambos", -500.0, -50.0),  # ambos negativos
+            ],
+        )
+        filas, _ = construir_consolidado(tmp_path)
+        por_arm = {f["arm"]: f for f in filas}
+
+        assert por_arm["default"]["net_positivo"] is True
+        assert por_arm["default"]["diff_positivo"] is None  # el control no tiene pareado propio
+
+        assert por_arm["gana_ambos"]["net_positivo"] is True
+        assert por_arm["gana_ambos"]["diff_positivo"] is True
+
+        assert por_arm["gana_diff_pierde_net"]["net_positivo"] is False
+        assert por_arm["gana_diff_pierde_net"]["diff_positivo"] is True
+
+        assert por_arm["pierde_ambos"]["net_positivo"] is False
+        assert por_arm["pierde_ambos"]["diff_positivo"] is False
+
+    def test_consolidado_md_lista_los_brazos_positivos_y_no_omite_el_control(self, tmp_path):
+        from scripts.research.ola1.consolidar import construir_consolidado, escribir_consolidado_md
+
+        self._escribir_metricas_fake(
+            tmp_path, "P-TEST", control_net=100.0,
+            variantes=[("gana", 500.0, 50.0), ("pierde", -500.0, -50.0)],
+        )
+        filas, resumen = construir_consolidado(tmp_path)
+        out_md = tmp_path / "_consolidado.md"
+        escribir_consolidado_md(filas, resumen, out_md)
+        texto = out_md.read_text(encoding="utf-8")
+
+        # el control aparece en la tabla (fila propia, con su net_lote1).
+        assert "| default | True |" in texto
+        # el brazo ganador (por diff) aparece en la lista de destacados.
+        assert "gana" in texto.split("POSITIVO:")[1].split("\n")[0]
+        # el aviso de unidad/no-fiabilidad del neto absoluto esta presente.
+        assert "CLP" in texto
+        assert "DIFERENCIA PAREADA" in texto
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])

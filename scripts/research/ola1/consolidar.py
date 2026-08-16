@@ -34,6 +34,20 @@ Ninguna interpretacion de estos datos es valida hasta haber sido discutida en pr
 el humano y aprobada por el (directiva del user, 2026-08-16). Lo que el controlador escriba
 antes de esa conversacion es PROPUESTA DE LECTURA y vive en un fichero aparte.
 Estado del resultado: piloto-instrumento (D-57) -- el congelado del motor no esta firmado.
+
+UNIDAD de `net_lote1`: CLP (peso chileno) por 1.0 lote, NO USD -- confirmado leyendo
+`scripts/analysis/realtick_bt/backtest.py:520` (`net1 = diff * CONTRACT * USDCLP`) y su
+docstring de cabecera (linea 12: "Net in CLP (USDCLP=936.50)"). Las magnitudes de decenas de
+millones que se ven en `net_lote1` son CLP, no USD (dividir por ~936.5 para una lectura
+aproximada en USD).
+
+\U0001F7E1 UN NETO ABSOLUTO NO ES UNA CIFRA DE FIAR POR SI SOLA. El simulador diverge 3.28% del
+neto real (D-54/T0.7-M-H, tras modelar el deslizamiento de los stops) y el sesgo tiene SIGNO
+OPUESTO por estrategia (penaliza a S6, favorece a SuperTrend -- N-xx 2026-08-15 en NEGATIVOS.md).
+Lo que sobrevive a esa divergencia es la DIFERENCIA PAREADA contra el control (misma entrada,
+mismo simulador, el sesgo se cancela en la resta) -- NUNCA el nivel absoluto. Las columnas
+`net_positivo`/`diff_positivo` de abajo marcan un HECHO (el signo del numero), no un veredicto:
+priorizar SIEMPRE `diff_positivo` (columna `media_diff`) sobre `net_positivo` al leer esta tabla.
 """
 
 
@@ -127,6 +141,11 @@ def construir_consolidado(resultados_dir: Path) -> tuple[list[dict[str, Any]], d
         clave = f"{fila['run_key']}::{fila['arm']}"
         fila["p_bh_confirmatorio"] = rechazo_confirm.get(clave)
         fila["p_bh_total"] = rechazo_total.get(clave)
+        # Coordinador (clarificacion mid-task): marcar hecho (signo), nunca
+        # veredicto -- ver BANNER para la prioridad diff_positivo > net_positivo.
+        fila["net_positivo"] = fila["metricas"]["net_lote1"] > 0
+        media_diff = (fila["pareado"] or {}).get("media_diff") if fila["pareado"] else None
+        fila["diff_positivo"] = None if (fila["es_control"] or media_diff is None) else media_diff > 0
 
     resumen_bh = {
         "alpha": ALPHA_BH,
@@ -169,16 +188,32 @@ def escribir_consolidado_md(filas: list[dict[str, Any]], resumen_bh: dict[str, A
         grupo = sorted(por_run[run_key], key=lambda f: _valor_orden(f["arm"], f["overlay"]))
         lineas.append(f"## {run_key} ({len(grupo)} brazos)")
         lineas.append("")
-        lineas.append("| brazo | confirmatorio | n | net_lote1 | tasa_emparejamiento | media_diff | "
+
+        positivos_diff = [f["arm"] for f in grupo
+                           if not f["es_control"] and (f["pareado"] or {}).get("media_diff", 0) is not None
+                           and (f["pareado"] or {}).get("media_diff", -1) > 0]
+        positivos_net = [f["arm"] for f in grupo if f["metricas"]["net_lote1"] > 0]
+        lineas.append(f"- Brazos con `media_diff` (pareado vs. control) POSITIVO: "
+                       f"{', '.join(positivos_diff) or '(ninguno)'}")
+        lineas.append(f"- Brazos con `net_lote1` (absoluto, ver aviso arriba) POSITIVO: "
+                       f"{', '.join(positivos_net) or '(ninguno)'}")
+        lineas.append("")
+
+        lineas.append("| brazo | control | confirmatorio | n | net_lote1 | net_positivo | "
+                       "tasa_emparejamiento | media_diff | diff_positivo | "
                        "ic95_bajo | ic95_alto | p_bootstrap | p_bh_conf | p_bh_total |")
-        lineas.append("|---|---|---|---|---|---|---|---|---|---|---|")
+        lineas.append("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|")
         for fila in grupo:
             m = fila["metricas"]
             p = fila["pareado"] or {}
+            media_diff = p.get("media_diff")
+            diff_positivo = "n/a (control)" if fila["es_control"] else (
+                "" if media_diff is None else str(media_diff > 0))
             lineas.append(
-                f"| {fila['arm']} | {fila['confirmatorio']} | {m['n']} | "
-                f"{_fmt(m['net_lote1'])} | {_fmt(p.get('tasa_emparejamiento'))} | "
-                f"{_fmt(p.get('media_diff'))} | {_fmt(p.get('ic95_bajo'))} | "
+                f"| {fila['arm']} | {fila['es_control']} | {fila['confirmatorio']} | {m['n']} | "
+                f"{_fmt(m['net_lote1'])} | {m['net_lote1'] > 0} | "
+                f"{_fmt(p.get('tasa_emparejamiento'))} | "
+                f"{_fmt(media_diff)} | {diff_positivo} | {_fmt(p.get('ic95_bajo'))} | "
                 f"{_fmt(p.get('ic95_alto'))} | {_fmt(p.get('p_bootstrap'))} | "
                 f"{_fmt(fila['p_bh_confirmatorio'])} | {_fmt(fila['p_bh_total'])} |"
             )
