@@ -452,4 +452,12 @@ def ticks_csv_mt5(params: dict, out_dir: Path) -> dict:
     }
 
 
-register("ticks_csv_mt5", ticks_csv_mt5)
+# parallelizable=False (T0.9-B spec, verbatim): the spec names this module
+# alongside tasks_ticks.py as one of "the two MT5 types" to mark
+# non-parallelizable. Note for the record: this task-type is NOT actually
+# MT5-connected (see module docstring/self-check above -- it never imports
+# the MT5 package), so the "second MT5 connection" hazard given as the
+# rationale does not literally apply here. Marking it non-parallelizable
+# anyway per the explicit, unambiguous instruction; flagged in the T0.9-B
+# report for the controller.
+register("ticks_csv_mt5", ticks_csv_mt5, parallelizable=False)

@@ -12,16 +12,34 @@ from typing import Callable
 TaskFn = Callable[[dict, Path], dict]
 
 _REGISTRY: dict[str, TaskFn] = {}
+_NON_PARALLELIZABLE: set[str] = set()
 
 
-def register(name: str, fn: TaskFn) -> None:
-    """Register (or overwrite) a task-type under ``name``."""
+def register(name: str, fn: TaskFn, *, parallelizable: bool = True) -> None:
+    """Register (or overwrite) a task-type under ``name``.
+
+    ``parallelizable=False`` marks a task-type that must never run inside a
+    process pool (T0.9-B): MT5-backed task-types are the motivating case --
+    MT5 is attach-only (charter SS A.12) and a second connection is a
+    real-money-adjacent hazard. The runner forces ``--workers`` down to 1
+    for any manifest whose pending corridas include such a type.
+    """
     _REGISTRY[name] = fn
+    if parallelizable:
+        _NON_PARALLELIZABLE.discard(name)
+    else:
+        _NON_PARALLELIZABLE.add(name)
 
 
 def get_registry() -> dict[str, TaskFn]:
     """Return a snapshot (shallow copy) of the current task-type registry."""
     return dict(_REGISTRY)
+
+
+def get_non_parallelizable_types() -> set[str]:
+    """Return a snapshot (shallow copy) of task-type names registered with
+    ``parallelizable=False``."""
+    return set(_NON_PARALLELIZABLE)
 
 
 def echo(params: dict, out_dir: Path) -> dict:

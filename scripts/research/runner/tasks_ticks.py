@@ -335,4 +335,4 @@ def ticks_mt5(
         provider.shutdown()
 
 
-register("ticks_mt5", ticks_mt5)
+register("ticks_mt5", ticks_mt5, parallelizable=False)
