@@ -1214,3 +1214,80 @@ causa por escrito y su enmienda. Razón del user: menos churn y menos cuota que 
 **Riesgo aceptado y declarado.** Durante ese tramo **no hay red de seguridad** bajo las
 modificaciones del motor. Se mitiga con la suite dirigida `tests/analysis` en cada incremento, y con
 la prohibición explícita —repetida en todo brief— de que ningún agente toque ese test.
+
+### D-56 · 2026-08-16 · La Ola 1 NO es toda pareada-por-entrada: se parte en 1-A y 1-B, y P-33 no corre
+*(Procedencia: decisión del CONTROLADOR sobre una **contradicción interna del propio catálogo**,
+detectada al construir el pre-registro. Aditiva: no cambia ninguna grilla, cambia qué se puede
+concluir de cada una.)*
+
+**El hecho que fuerza la decisión.** La Parte 3 del catálogo
+(`05-analisis/2026-08-15-catalogo-palancas-y-requisitos-motor.md`) encabeza la Ola 1 con «todo
+pareado-por-entrada» y de ahí deduce que sus conclusiones sobreviven a la divergencia del simulador.
+Pero el campo **«Pareado-por-entrada»** de dos de sus seis palancas, en ese mismo documento, dice
+**NO**:
+
+- **P-05** (multiplicador ATR de SuperTrend): *«NO — el multiplicador determina la línea SuperTrend,
+  que ES la señal de flip (entrada); cambia el conjunto de entradas, no sólo la salida»*.
+- **P-33** (`stop_and_reverse`): *«NO — cambiar `stop_and_reverse` cambia si se reabre o no tras un
+  cierre, lo que altera el conjunto de entradas subsecuentes»*.
+
+Gana la ficha de la palanca sobre el encabezado de la ola: la ficha razona el **mecanismo**, el
+encabezado generaliza. El argumento mecánico de P-05 es además incontestable.
+
+🔴 **Y hay un tercer caso que ninguno de los dos documentos declara:** S6 y S7 corren con
+`stop_and_reverse=True`. Una salida distinta puede generar una **entrada** distinta aguas abajo, así
+que **ni siquiera P-02, P-03, P-08 o P-27 son pareadas por construcción** — lo son sólo en la medida
+en que el emparejamiento se **mida**. Por eso el brief de WP-1+2 (Bloque 3) exige que el harness
+emita la tabla de alineación (`n_casadas`, `n_solo_A`, `n_solo_B`) en dos niveles —entradas de señal
+y entradas rellenadas— y **prohíbe presuponer el emparejamiento**.
+
+**LO DECIDIDO.**
+1. **Ola 1-A — pareada por entrada, sujeta a verificación**: **P-02**, **P-03**, **P-08**, **P-27**.
+   La comparación entre brazos se hace **sobre el subconjunto casado**, y todo resultado se reporta
+   con su tasa de emparejamiento al lado. Si la tasa cae por debajo de **0,90**, la palanca baja
+   automáticamente a la categoría 1-B y se declara así en el memo: la garantía de cancelación del
+   sesgo se apoya en el emparejamiento, no en la intención.
+2. **Ola 1-B — NO pareada**: **P-05**. Se corre igual (es barata y su grilla ya está fijada), pero su
+   resultado es **descriptivo dentro de SuperTrend**, jamás cifra absoluta de dinero, y arrastra
+   explícitamente que el simulador **embellece a SuperTrend en +45,22 USD/posición**. Cualquier
+   ventaja de un multiplicador sobre otro por debajo de esa escala es indistinguible del sesgo.
+3. **P-33 NO se corre en la Ola 1.** Es una **cita de respaldo literario**, no una palanca nueva: el
+   propio catálogo dice que no agrega grilla y que su experimento son las familias **A3/E3**, que
+   están **en cuarentena §2.1 del plan hasta que A6 cierre** — y A6 no ha cerrado. Correrla ahora
+   sería quemar presupuesto en un experimento en cuarentena y no pareado. Queda **pendiente
+   declarado** (charter §11) con recomendación: ejecutarla junto a A3/E3 cuando se levante la
+   cuarentena.
+
+**Consecuencia sobre lo que la Ola 1 podrá afirmar.** Con esto, la Ola 1 entrega **cuatro** palancas
+con conclusión comparativa defendible (condicionada a la tasa de emparejamiento medida) y **una**
+descriptiva. Ninguna cifra absoluta de USD, y ninguna comparación S6-vs-SuperTrend, en ningún caso.
+
+### D-57 · 2026-08-16 · La Ola 1 se corre como PILOTO PRE-CONGELADO, y el congelado del motor queda ESCALADO al user
+*(Procedencia: decisión del CONTROLADOR sobre un conflicto entre el protocolo de fases y el mandato
+de obtener resultados. **Requiere firma del user** para promover de piloto a veredicto: toca el
+motor congelado y el cierre de fase, y el protocolo 04 exige firma para ambos.)*
+
+**El conflicto, dicho sin adornos.** `protocolos/00-inicio-de-sesion.md` paso 4 prohíbe despachar
+nada de la fase siguiente antes de que la anterior esté `[x]`. El criterio de cierre de la Fase 0
+(`fases/F0-preparacion/00-README.md`) exige **«A6 en verde: neto ≤0,3 %»**. A6 mide hoy **16,72 %**.
+⇒ **La Fase 0 no puede cerrarse por su propio criterio**, y por tanto la Ola 1 —que pertenece a la
+etapa de grillas— no puede despacharse de forma ortodoxa. El presupuesto, en cambio, exige
+resultados ya.
+
+**LO DECIDIDO (lo que el controlador SÍ puede decidir por su cuenta).** La Ola 1 se corre **dentro de
+la Fase 0**, etiquetada `etapa=F0`, `estado=piloto-instrumento`, con la finalidad declarada de
+**validar de extremo a extremo el harness pareado** que produce WP-1+2. Todos sus artefactos llevan
+`engine_sha` = el commit exacto en que WP-1+2 quedó verde con la puerta de paridad en 4 passed.
+
+**LO ESCALADO (lo que el controlador NO puede firmar).** Congelar el motor en ese SHA y cerrar la
+Fase 0 con A6 **fuera de criterio** y sus pendientes declarados. Es una enmienda que toca *el motor
+congelado* y *el alcance*: protocolo 04 §3 la reserva a la firma del user.
+
+**Por qué esto no desperdicia nada.** Si el user firma el congelado sobre ese mismo SHA, los
+artefactos del piloto **son veredicto sin re-correr nada**: sólo se re-etiqueta el linaje. Si el user
+decide congelar en otro SHA, se re-corre la grilla —el cómputo es barato; la cuota no. Por eso el
+piloto corre **ahora** y la firma se pide **en paralelo**, no antes.
+
+**Riesgo aceptado y declarado.** Si el user rechaza cerrar la Fase 0, las cifras de la Ola 1 quedan
+como validación de instrumento y **no** como resultado del programa. Se declara así en el memo desde
+el primer día, no a posteriori.
