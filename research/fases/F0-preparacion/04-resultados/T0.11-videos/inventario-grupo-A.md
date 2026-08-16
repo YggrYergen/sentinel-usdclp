@@ -117,6 +117,144 @@
   "hindsight" explícito reconocido por el propio autor en al menos un trade ("that's hindsight
   talking"); producto vinculado (plataforma Ninja Trader, PDF de venta/lead-magnet).
 
+## 9. KML09tRtHM8
+
+- **Título (inferido):** "Brendan" (mismo autor del video 8) — 25.000 backtests con Claude del
+  "ICT Silver Bullet" sobre 16 años de datos de futuros NQ/ES en 1 minuto, con holdout de 2 años,
+  para determinar qué reglas ICT concretas aportan edge real.
+- **URL:** https://www.youtube.com/watch?v=KML09tRtHM8
+- **Duración/extensión:** 555 líneas, transcripción media, extremadamente denso en metodología y
+  resultados cuantitativos citados con precisión.
+- **Qué cubre realmente:** el video cuantitativamente más riguroso del grupo A hasta ahora. Testea
+  el setup ICT "Silver Bullet" (barrido de liquidez → desplazamiento → fair value gap → entrada en
+  el retroceso al FVG → objetivo en la liquidez opuesta, restringido a 3 ventanas horarias
+  específicas) descomponiendo cada regla discrecional en un "dial" parametrizable, muestrea 25.000
+  configuraciones de un espacio de ~258 millones de combinaciones posibles, aplica walk-forward,
+  filtro de Sharpe, filtro de drawdown, corrección por múltiples comparaciones ("luck correction"),
+  validación cruzada en ES sin retuning, y finalmente un **holdout de 2 años nunca tocado** evaluado
+  una sola vez. Metodológicamente es un espejo casi exacto de las prácticas de este programa (walk-
+  forward, holdout sagrado, corrección por comparaciones múltiples, out-of-sample).
+  - **No cubre forex ni oro** (lo declara explícitamente como fuera de alcance) ni timeframe M15 —
+    todo en 1 minuto/5 minutos sobre futuros de índice (NQ/ES).
+- **Reglas/parámetros específicos y testeables:**
+  - **Definición completa del setup Silver Bullet:** (1) nivel de liquidez (swing obvio con stops
+    acumulados) → (2) barrido (mecha que toma el nivel) → (3) desplazamiento (movimiento fuerte en
+    dirección opuesta) → (4) fair value gap (zona de velas no solapadas dejada por el
+    desplazamiento) → (5) entrada en el retroceso al FVG → (6) objetivo = liquidez del lado
+    contrario. Ventanas horarias "signature": **3-4am y 10-11am hora Londres; 2-3pm hora NY**.
+  - **Resultado del embudo de validación:** de 25.000 configuraciones, solo 9.481 producen ≥100
+    trades (mínimo evaluable); 6.190 son rentables tras costos; 2.191 superan el umbral risk-
+    adjusted; 1.614 sobreviven la corrección por suerte; **solo 420 (1.7%) sobreviven la validación
+    cruzada en ES**.
+  - **Win rate real vs. reclamado:** el marketing de ICT cita 70-80% de win rate; las mejores
+    configuraciones reales rondan **34-48%** (supervivientes ~52% en promedio). Solo 5 de 25.000
+    configuraciones alcanzaron 70%, todas mediante toma de profit rápida ~20 veces al año (no
+    escalable como "ingreso diario").
+  - **Hallazgo regla por regla (el resultado más accionable del video):** partiendo solo de "entrar
+    en el FVG" (score 0.33), **añadir la exigencia de barrido de liquidez es la ÚNICA regla que
+    mejora el resultado** (score sube a 0.69). Todo lo demás lo empeora: exigir desplazamiento
+    (baja el score), restringir a las 3 ventanas horarias "especiales" (baja el score — se probó
+    explícitamente cada hora del día y las horas ICT "famosas" quedaron **en medio de la
+    distribución**, la ventana de las 10am incluso salió ligeramente negativa), y sobre todo
+    **añadir el sesgo direccional de estructura M15 hunde el score a 0.16** (peor regla de todas).
+    La versión que sobrevive todo el embudo es la más simple: sin sesgo direccional, sin restricción
+    horaria, solo barrido + FVG de 1 minuto, operado con alta frecuencia (~1.996 veces/año en la
+    versión "as traded" que la mayoría de traders ICT usan de facto).
+  - **Discreción necesaria para "salvar" la versión textbook:** habría que saltarse correctamente
+    por adelantado el **17.2%** de los trades perdedores para convertir la versión de libro en una
+    estrategia sólida — algo no demostrable por backtest y que el autor señala como el mito de
+    "solo necesitas experiencia de pantalla".
+  - **Resultado en holdout (2 años nunca tocados, evaluados una sola vez):** la mejor configuración
+    hizo $455k en un solo contrato (Sharpe 13, 24/24 meses positivos) — pero con el caveat explícito
+    de que esos 2 años fueron un mercado fuertemente alcista, tratarlo como techo no como
+    expectativa, y que los fills asumidos son óptimos (en la realidad se pierden más perdedoras de
+    las que se llenan ganadoras por delante en la cola de órdenes).
+  - **Conclusión explícita del autor:** "barrido + rebote" en 1 minuto es esencialmente
+    **mean-reversion con vocabulario ICT distinto** — conecta directamente con el hallazgo del
+    video 8 del mismo autor.
+- **Relevancia a S6/SuperTrend:** HIGH (como evidencia metodológica y como advertencia, no como
+  regla de grid directa). Aporta un contraste directo y con datos contra el video 7 (lYmmBoYQvWM) y
+  el video 5 (en8RMFRqSME) de este mismo grupo A, que sí dependen de sesgo direccional M15/H1 y de
+  ventanas horarias de sesión como reglas centrales — este video muestra evidencia cuantitativa
+  (aunque en otro instrumento/timeframe) de que exactamente ese tipo de filtro (sesgo direccional
+  de timeframe superior, restricción a horas "especiales") puede **destruir** el edge en vez de
+  mejorarlo, mientras que exigir un barrido de liquidez previo sí añade valor. Esto es una hipótesis
+  de alto valor para testear explícitamente en la grilla de S6/ST: ¿el filtro de tendencia M15/H1
+  que ya usan ayuda o perjudica, controlando por lo demás igual? El video también es una plantilla
+  metodológica directamente aplicable (embudo de validación, corrección por comparaciones
+  múltiples, holdout único) que refuerza (no contradice) las normas ya adoptadas por este programa.
+- **Red flags:** ninguna afirmación de PnL personal del autor (a diferencia de casi todos los otros
+  videos); el propio autor declara las limitaciones (fills perfectos asumidos, 2 años alcistas como
+  techo no expectativa, imposibilidad de backtest de discreción); venta cruzada de su comunidad de
+  pago y datos premium de futuros, pero secundaria al contenido técnico. Limitación real: instrumento
+  y timeframe distintos a los de S6/ST (NQ/ES en 1 minuto vs XAUUSD en M15), por lo que el resultado
+  cuantitativo específico no es transferible directamente — solo la metodología y la hipótesis de
+  "el sesgo de timeframe superior puede perjudicar" son trasladables, sujetas a validación propia.
+
+## 8. nLQhKkjkuWI
+
+- **Título (inferido):** "Brendan" — 9.000 backtests con Claude sobre 30 activos y 15 años de
+  datos diarios para determinar qué familias de estrategias (trend, mean-reversion, momentum,
+  breakout, volumen, volatilidad, patrones) sobreviven validación rigurosa.
+- **URL:** https://www.youtube.com/watch?v=nLQhKkjkuWI
+- **Duración/extensión:** 617 líneas, transcripción media.
+- **Qué cubre realmente:** NO es un video de estrategia de trading manual sino de **metodología de
+  investigación cuantitativa** (meta-nivel): construye con Claude Code un pipeline de backtesting
+  masivo sobre **barras diarias** de 30 activos líquidos (incluye oro como uno de los 30, pero sin
+  tratamiento especial) durante 15 años, con walk-forward, filtros de robustez y bootstrap. El
+  hallazgo central: de las familias de estrategias probadas "desnudas" (sin filtros de régimen ni
+  capas adicionales), **solo mean-reversion sobrevive de forma consistente**; trend-following y
+  momentum en su forma básica fallan en agregado, pero funcionan "situacionalmente" — en activos
+  específicos con tendencia fuerte (ej. Apple, Nvidia) o cuando se activan solo en régimen de
+  mercado detectado como tendencial. Propone un framework de capas: señal base con edge real → 
+  gestión de riesgo/sizing → señales no correlacionadas combinadas → filtro de régimen de mercado
+  (vía Hidden Markov Model) que decide cuándo usar momentum vs. mean-reversion.
+  - **NO trata timeframes intradía ni M15** — todo el testing es en barras diarias, explícitamente
+    fuera del alcance intradía/futuros/opciones (lo declara el propio autor).
+- **Reglas/parámetros específicos y testeables (de metodología, no de estrategia de mercado):**
+  - **Embudo de validación (6 filtros) aplicado a cada backtest:** (1) walk-forward obligatorio
+    (tune en datos antiguos, testear en datos nuevos no vistos); (2) filtro de **Sharpe
+    out-of-sample > 0.5**; (3) filtro de **drawdown máximo < 35%**; (4) filtro de sobreajuste
+    (descarta estrategias con desempeño in-sample muy superior al out-of-sample); (5) número mínimo
+    de trades para considerar viable la estrategia; (6) tras estos filtros, exige un histórico de
+    activo de **≥10 años** para el ranking final. De 9.000 backtests, sobreviven 524 → 478 tras el
+    filtro de historia larga.
+  - **Prueba de robustez por reshuffle (bootstrap):** cada estrategia superviviente se somete a
+    **500 reordenamientos aleatorios de sus propios trades** para verificar que el resultado no
+    dependa de la secuencia específica en que ocurrieron (ejemplo dado: una estrategia de momentum
+    dual en Nvidia mostraba drawdowns de 61%/51% al reordenar, pese a verse "limpia" en el
+    backtest original — señal de que el resultado dependía de una única trayectoria afortunada).
+  - **Hallazgo de generalización:** una estrategia se considera robusta si funciona en **múltiples
+    activos no relacionados** (ejemplo: RSI mean-reversion funcionó en 20 tickers distintos, Keltner
+    reversion en 18) — un patrón que solo funciona en un instrumento se trata como sospechoso de
+    suerte/sobreajuste.
+  - **Propuesta de arquitectura de estrategia en capas:** señal base con edge demostrado + gestión
+    de riesgo/sizing + combinación de señales no correlacionadas + **filtro de régimen de mercado**
+    (HMM: detecta bear/tendencial/lateral-choppy/bull) que decide cuándo activar momentum
+    (mercados tendenciales) vs. mean-reversion (mercados en rango/choppy) — en vez de correr
+    cualquiera de las dos "a piloto automático" todo el tiempo.
+  - **Momentum cross-sectional > momentum de un solo activo:** rankear una cesta de activos entre
+    sí y solo ir largo en los más fuertes / corto en los más débiles mejoró sustancialmente el
+    resultado de momentum frente a aplicarlo aisladamente a un solo activo.
+- **Relevancia a S6/SuperTrend:** MEDIUM. No aporta ningún parámetro de entrada/salida/stop
+  específico de oro ni de M15 — es barras diarias, multi-activo, sin especificidad de instrumento.
+  Pero el **hallazgo central es directamente relevante como hipótesis de programa, no como regla
+  de grid**: refuerza con evidencia (aunque en otro mercado/timeframe) la premisa de que
+  trend-following como S6/ST necesita un **filtro de régimen explícito** (detectar tendencial vs.
+  lateral/choppy) para no operar "a piloto automático" en todas las condiciones — coincide
+  exactamente con la debilidad declarada de S6/ST en regímenes de rango. También es relevante
+  metodológicamente: el uso de walk-forward + bootstrap de reshuffle + exigencia de generalización
+  cross-activo son prácticas de validación ya adoptadas por este programa (Charter §A.2 bootstrap
+  por bloques, holdout) — este video es una confirmación externa independiente de que esas
+  prácticas son las correctas, no un hallazgo nuevo de mecánica.
+- **Red flags:** ninguna cifra de PnL personal ni afirmación de rentabilidad propia (a diferencia
+  de la mayoría de otros videos del grupo) — el video es inusualmente honesto en admitir que los
+  resultados de mean-reversion "desnuda" son modestos y que esto es "el piso, no el techo"; sí hay
+  venta cruzada de su comunidad de pago ("school", enlace en descripción) y los prompts exactos
+  usados con Claude no se muestran con suficiente detalle como para auditar la metodología
+  (p. ej. qué contó exactamente como "estrategia de trend" vs "mean reversion" en cada una de las
+  9.000 corridas, o cómo se corrigió por comparaciones múltiples más allá de mencionarlo de pasada).
+
 ## 7. lYmmBoYQvWM
 
 - **Título (inferido):** Estrategia "London Sweep / Frankfurt" — sistema ICT/SMC de 5 pasos
