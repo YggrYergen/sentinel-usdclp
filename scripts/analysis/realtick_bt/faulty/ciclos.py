@@ -203,7 +203,19 @@ def correr_ciclos(
                     side = ficha["side"]
                     desired_sl = ficha["sl"]
 
-                    hms = _seconds_of_day(t)
+                    # T0.7-M-G: la hora que decide si estamos dentro de la
+                    # ventana bloqueada debe ser la del TICK REAL usado para
+                    # esta decision (`_tick_ts`), no la del instante
+                    # sintetico del bucle (`t`). `first_at(t)` puede devolver
+                    # un tick hasta `tolerancia_tick_s` por delante de `t`
+                    # (no es stale, ya paso el chequeo de arriba) -- si ese
+                    # adelanto cruza el borde 18:00:00, `t` cae ANTES del
+                    # borde pero la unica cotizacion real de este ciclo ya
+                    # esta DESPUES. Usar `t` ahi deja pasar una apertura que
+                    # el ejecutor real, mirando esa misma cotizacion, habria
+                    # bloqueado. Medido: 5 posiciones abrieron ~45 min antes
+                    # de las 18:45 reales por este mecanismo (T0.7-M-G-reporte.md).
+                    hms = _seconds_of_day(_tick_ts)
                     if blocked_start <= hms < blocked_end:
                         eventos.append(
                             {"t": t, "tipo": "TIME_GATE_SKIP",

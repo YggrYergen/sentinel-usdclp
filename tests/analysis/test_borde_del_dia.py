@@ -284,7 +284,7 @@ def test_cita_gate_spread_replica_ciclos_py_literal():
     assert cita["file"] == "scripts/analysis/realtick_bt/faulty/ciclos.py"
     assert cita["linea_default"] == 127
     assert "max_spread_open: float = 0.50" in cita["texto_linea_default"]
-    assert cita["linea_condicion"] == "213-214"
+    assert cita["linea_condicion"] == "225-226"
     assert "spread > max_spread_open + 1e-6" in cita["texto_condicion"]
 
 
@@ -294,7 +294,7 @@ def test_cita_gate_spread_replica_verificada_contra_el_fichero_real():
     ruta = M._REPO_ROOT / "scripts/analysis/realtick_bt/faulty/ciclos.py"
     lineas = ruta.read_text(encoding="utf-8").splitlines()
     assert "max_spread_open: float = 0.50" in lineas[126]  # linea 127, indice 126
-    assert "spread > max_spread_open + 1e-6" in lineas[213]  # linea 214, indice 213
+    assert "spread > max_spread_open + 1e-6" in lineas[225]  # linea 226, indice 225
 
 
 def test_cita_gate_spread_harness_vivo_backtest_py_literal():
@@ -338,11 +338,11 @@ def test_cita_t_open_usa_instante_de_ciclo_no_tick_encontrado():
     cita = M.CITA_T_OPEN_ES_INSTANTE_DE_CICLO
     assert cita["file"] == "scripts/analysis/realtick_bt/faulty/ciclos.py"
     assert cita["linea_first_at"] == 180
-    assert cita["linea_t_open"] == 242
+    assert cita["linea_t_open"] == 254
 
 
 def test_cita_t_open_verificada_contra_el_fichero_real():
     ruta = M._REPO_ROOT / "scripts/analysis/realtick_bt/faulty/ciclos.py"
     lineas = ruta.read_text(encoding="utf-8").splitlines()
     assert "ticks.first_at(t)" in lineas[179]        # linea 180
-    assert '"t_open": t,' in lineas[241]              # linea 242
+    assert '"t_open": t,' in lineas[253]              # linea 254

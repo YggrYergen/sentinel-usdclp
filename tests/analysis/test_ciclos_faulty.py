@@ -474,6 +474,69 @@ def test_ciclos_tick_stale_skip_no_actualiza_last_bid_ask():
     assert any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
 
 
+# ------------------------------------------------------- T0.7-M-G: ventana horaria
+# Brief T0.7-M-G: el filtro horario (`ciclos.py`, paso 3) evalúa
+# `_seconds_of_day(t)` -- el instante SINTÉTICO del bucle, no el timestamp
+# REAL del tick que `first_at(t)` devolvió (`_tick_ts`). Cuando `t` cae unos
+# segundos ANTES del borde 18:00:00 pero el tick vigente (dentro de
+# `tolerancia_tick_s`, por tanto no-stale) ya tiene timestamp DESPUÉS de
+# 18:00:00, el filtro compara la hora equivocada: dice "17:59:53, no
+# bloqueado" cuando la única cotización real disponible en ese ciclo es de
+# "18:00:06", ya dentro de la ventana bloqueada. Medido: 5 posiciones reales
+# (T0.7-M-G-reporte.md) abrieron así ~45 min antes de las 18:45 reales.
+# El arreglo: el filtro horario debe leer `_seconds_of_day(_tick_ts)` -- la
+# hora real de la cotización usada para decidir --, no `_seconds_of_day(t)`.
+
+
+def test_time_gate_usa_la_hora_real_del_tick_no_el_instante_del_ciclo():
+    """t=17:59:53 (antes del borde 18:00:00), pero el único tick disponible
+    (dentro de tolerancia) tiene timestamp real 18:00:06 -- YA dentro de la
+    ventana bloqueada. Con el filtro horario leyendo la hora del CICLO esto
+    abre indebidamente (el bug medido); con el filtro leyendo la hora REAL
+    del tick, debe bloquear (TIME_GATE_SKIP), igual que si el ciclo hubiera
+    caído en 18:00:06 directamente."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]  # SL lejos: no hay gate de SL de por medio
+
+    t_1800 = 18 * 3600.0  # 18:00:00
+    t_ciclo = t_1800 - 7.0  # 17:59:53
+    t_tick = t_1800 + 6.0  # 18:00:06 -- adelanto 13s, dentro de tolerancia (cycle_sec=15)
+
+    ticks = FakeTicks(ts=[t_tick], bid=[2000.0], ask=[2000.30])  # spread legal (0.30)
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t_ciclo, t_ciclo + CYCLE_SEC
+    )
+
+    assert len(posiciones) == 0, (
+        "no debe abrir: la unica cotizacion real disponible en este ciclo "
+        "(18:00:06) ya esta dentro de la ventana bloqueada 18:00-18:45"
+    )
+    assert any(e["tipo"] == "TIME_GATE_SKIP" for e in eventos)
+    assert not any(e["tipo"] == "OPEN" for e in eventos)
+    # no debe haberse saltado por staleness -- el tick SI esta dentro de
+    # tolerancia, esto es un bloqueo horario, no un TICK_STALE_SKIP
+    assert not any(e["tipo"] == "TICK_STALE_SKIP" for e in eventos)
+
+
+def test_time_gate_no_bloquea_cuando_tick_real_tambien_esta_fuera_de_ventana():
+    """Caso simetrico de control: t y el timestamp real del tick estan AMBOS
+    fuera de la ventana bloqueada -> abre normalmente. Blinda que el arreglo
+    no sobre-bloquea el caso general (ciclo y tick ya alineados, el caso
+    normal de un stream de ticks denso)."""
+    bar_times = np.array([0.0])
+    estados = [_estado_long(sl=1000.0)]
+
+    t_1745 = 17 * 3600.0 + 45 * 60.0  # 17:45:00, bien fuera de la ventana
+    ticks = FakeTicks(ts=[t_1745 + 2.0], bid=[2000.0], ask=[2000.30])  # tick 2s despues
+
+    posiciones, eventos = correr_ciclos(
+        estados, bar_times, ticks, t_1745, t_1745 + CYCLE_SEC
+    )
+    assert len(posiciones) == 1
+    assert any(e["tipo"] == "OPEN" for e in eventos)
+    assert not any(e["tipo"] == "TIME_GATE_SKIP" for e in eventos)
+
+
 def test_instantes_se_ordenan_y_deduplican_y_se_filtran_a_ventana():
     """instantes fuera de [t0, t1) se ignoran; duplicados y desorden no deben
     romper ni repetir ciclos."""

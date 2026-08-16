@@ -72,7 +72,7 @@ CITA_GATE_SPREAD_REPLICA = {
     "file": "scripts/analysis/realtick_bt/faulty/ciclos.py",
     "linea_default": 127,
     "texto_linea_default": "    max_spread_open: float = 0.50,",
-    "linea_condicion": "213-214",
+    "linea_condicion": "225-226",
     "texto_condicion": (
         "spread = tick_ask - tick_bid\n"
         "                        if spread > max_spread_open + 1e-6:"
@@ -105,7 +105,7 @@ CITA_T_OPEN_ES_INSTANTE_DE_CICLO = {
     "file": "scripts/analysis/realtick_bt/faulty/ciclos.py",
     "linea_first_at": 180,
     "texto_first_at": "        tick = ticks.first_at(t)",
-    "linea_t_open": 242,
+    "linea_t_open": 254,
     "texto_t_open": '                                    "t_open": t,',
     "linea_tick_ts_descartado": 183,
     "texto_tick_ts_descartado": "        _tick_ts, tick_bid, tick_ask = tick",
