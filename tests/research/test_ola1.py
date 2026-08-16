@@ -713,6 +713,118 @@ corridas:
         assert resolved == expected.arms
 
 
+# --------------------------------------------------------------------- BLOCK-3 (OLA1B)
+class TestManifiestoOla1B:
+    def test_construir_manifiesto_forma_y_conteos(self):
+        from scripts.research.ola1.manifiesto_ola1b import construir_manifiesto
+
+        data = construir_manifiesto(engine_sha="test-sha")
+        por_run = {c["run_key"]: c for c in data["corridas"]}
+        assert set(por_run) == {"P02-S6", "P02-S7", "P03FLOOR-S6", "P34-S6"}
+
+        # P-02: misma grilla que la Ola 1 original, +margen_extra_s (D-60).
+        for key in ("P02-S6", "P02-S7"):
+            from scripts.research.ola1.sustrato import MARGEN_P02_S
+            assert por_run[key]["margen_extra_s"] == MARGEN_P02_S
+            assert len(por_run[key]["brazos"]) == 17
+            assert len(por_run[key]["confirmatorios"]) == 7
+
+        # P-03-floor: 5 relief x 4 umbral = 20, todos confirmatorios.
+        p03f = por_run["P03FLOOR-S6"]
+        assert p03f["sid"] == "S6-K2P0"
+        assert p03f["brazo_control"] == "relief1.00-u0"
+        assert len(p03f["brazos"]) == 20
+        assert set(p03f["confirmatorios"]) == set(p03f["brazos"])
+        assert p03f["brazos"]["relief1.00-u0"] == {}  # control = byte-identico
+        assert p03f["brazos"]["relief0.00-u75"] == {
+            "ac_modulate_floor_relief_k": 0.00, "ac_decel_umbral": 0.75,
+        }
+
+        # P-34 (nuevo lever): 9 valores de trail_atr_floor_k, control=2.0 en la grilla.
+        p34 = por_run["P34-S6"]
+        assert p34["sid"] == "S6-K2P0"
+        assert p34["brazo_control"] == "default"
+        assert len(p34["brazos"]) == 9
+        assert set(p34["confirmatorios"]) == set(p34["brazos"])
+        assert p34["brazos"]["default"] == {}
+        assert p34["brazos"]["floork0.00"] == {"trail_atr_floor_k": 0.00}
+
+        n_brazos_total = sum(len(c["brazos"]) for c in data["corridas"])
+        n_confirm_total = sum(len(c["confirmatorios"]) for c in data["corridas"])
+        assert n_brazos_total == 17 + 17 + 20 + 9  # 63
+        assert n_confirm_total == 7 + 7 + 20 + 9    # 43
+
+    def test_manifiesto_ola1b_valida_contra_el_runner(self, tmp_path):
+        from scripts.research.ola1.manifiesto_ola1b import construir_manifiesto, escribir_manifiesto
+        from scripts.research.runner import tasks_ola1  # noqa: F401 -- registra ola1_paired
+        from scripts.research.runner.manifest import load_manifest
+
+        data = construir_manifiesto(engine_sha="test-sha")
+        salida = tmp_path / "manifiesto.yaml"
+        escribir_manifiesto(data, salida)
+        cargado = load_manifest(salida)
+        assert len(cargado["corridas"]) == 4
+        for c in cargado["corridas"]:
+            assert c["tipo"] == "ola1_paired"
+
+    def test_p03floor_and_p34_smoke_run_real_substrate(self, tmp_path):
+        """Manifiesto de humo (subset pequeno de cada corrida nueva) contra el
+        RUNNER real, sustrato/ticks reales -- prueba que ambas corridas nuevas
+        efectivamente corren de punta a punta antes de lanzar la grilla
+        completa. No toca research/LEDGER.jsonl ni 04-resultados/OLA1B/."""
+        from scripts.research.runner import tasks_ola1  # noqa: F401
+        from scripts.research.runner.manifest import load_manifest
+        from scripts.research.runner.runner import run_manifest
+
+        manifest_path = tmp_path / "humo_ola1b.yaml"
+        resultados_dir = tmp_path / "resultados"
+        ledger_path = tmp_path / "LEDGER.jsonl"
+        manifest_path.write_text(f"""
+experimento: OLA1B-humo
+area: B
+etapa: F0
+hipotesis: research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA1B.md
+substrate_id: capitaria-ticks-2026-preholdout
+engine_sha: humo
+salidas:
+  resultados: {resultados_dir.as_posix()}
+  ledger: append
+corridas:
+  - run_key: HUMO-P03FLOOR
+    tipo: ola1_paired
+    palanca: P-03-floor
+    sid: S6-K2P0
+    clase: "1-A"
+    brazo_control: relief1.00-u0
+    secundaria: p03
+    brazos:
+      relief1.00-u0: {{}}
+      relief0.00-u0: {{ac_modulate_floor_relief_k: 0.00}}
+    confirmatorios: [relief1.00-u0, relief0.00-u0]
+  - run_key: HUMO-P34
+    tipo: ola1_paired
+    palanca: P-34
+    sid: S6-K2P0
+    clase: "1-A"
+    brazo_control: default
+    secundaria: none
+    brazos:
+      default: {{}}
+      floork0.00: {{trail_atr_floor_k: 0.00}}
+    confirmatorios: [default, floork0.00]
+""", encoding="utf-8")
+
+        load_manifest(manifest_path)
+        resultado = run_manifest(manifest_path, ledger_path=ledger_path,
+                                  on_error="continue", workers=1)
+        assert resultado["failed_run_keys"] == []
+
+        for run_key in ("HUMO-P03FLOOR", "HUMO-P34"):
+            out_dir = resultados_dir / run_key
+            assert (out_dir / "metricas.json").exists()
+            assert (out_dir / "posiciones.csv").exists()
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])
