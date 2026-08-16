@@ -47,6 +47,7 @@ from scripts.research.runner import lineage, progreso, tasks
 from scripts.research.runner import tasks_ticks  # noqa: F401 -- side effect: registers ticks_mt5
 from scripts.research.runner import tasks_ticks_csv  # noqa: F401 -- side effect: registers ticks_csv_mt5
 from scripts.research.runner import tasks_ola1  # noqa: F401 -- side effect: registers ola1_paired
+from scripts.research.ola1 import tasks_sizing  # noqa: F401 -- side effect: registers ola1_sizing
 from scripts.research.runner.ledger import append_row
 from scripts.research.runner.manifest import load_manifest
 from scripts.research.runner.state import RunnerState, state_path_for
