@@ -363,13 +363,25 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
 
 
 # --------------------------------------------------------------------------- fills
-def resolve(pos: dict[str, Any], ticks: Ticks, bar_times: np.ndarray) -> dict[str, Any] | None:
+def resolve(pos: dict[str, Any], ticks: Ticks, bar_times: np.ndarray, *,
+            instrument: bool = False,
+            bars: list[dict[str, Any]] | None = None) -> dict[str, Any] | None:
     """Real-tick fill. net1/margin1 are per-1.0-lot (scale by LOT at report; RoM invariant).
 
     Entry = live close-driven spread retry: the reconciler re-desires the ficha every
     closed bar and OPENs only when spread <= 0.5. So we scan bar-closes from the signal
     bar up to the exit bar and enter at the FIRST whose post-close tick has spread 0.5.
-    If none in the window, the position never opened live -> dropped."""
+    If none in the window, the position never opened live -> dropped.
+
+    `instrument` (WP-1+2 Bloque 6, default False -> byte-identical no-op: the returned
+    dict has EXACTLY the same keys as before) attaches path instrumentation that decides
+    NOTHING -- it is computed strictly AFTER the fill/exit decision above, purely
+    observational: `path_mfe_mae` (MFE/MAE over time, not just their final value, sampled
+    tick-by-tick across the position's life), `bars_elapsed` (M15 bars from entry to
+    exit), `entry_context` (entry-bar OHLC snapshot, requires `bars`; None if `bars` is
+    not passed), and `spread_at_exit_decision` (bid/ask spread of the tick that actually
+    closed the position -- `spread_at_entry` is just an alias of the existing `spread`
+    key, kept explicit here because the brief flags spread-per-operation as a known gap)."""
     side_l = pos["side_l"]
     lo = int(np.searchsorted(bar_times, pos["t_in"], "left"))
     hi = int(np.searchsorted(bar_times, pos["t_out"], "right"))
@@ -409,20 +421,54 @@ def resolve(pos: dict[str, Any], ticks: Ticks, bar_times: np.ndarray) -> dict[st
             if cond.any():
                 j = int(np.argmax(cond))
                 exit_fill = float(parr[j]); t_exit = float(tt[j]); slipped = True
+    exit_bid_dec = exit_ask_dec = None                # tick that actually closed it (both sides)
     if exit_fill is None:                           # bar-close exit (or level un-crossed)
         x = ticks.first_at(t_out_close)
         if x is None:
             return None
         _, xbid, xask = x
         exit_fill = xbid if side_l == "L" else xask
+        exit_bid_dec, exit_ask_dec = xbid, xask
+    elif slipped:
+        exit_bid_dec = bb[j]; exit_ask_dec = aa[j]     # captured from the crossing tick above
 
     diff = (exit_fill - entry_fill) if pos["side"] == "LONG" else (entry_fill - exit_fill)
     net1 = diff * CONTRACT * USDCLP                 # per 1.0 lot, CLP
     margin1 = CONTRACT * entry_fill * USDCLP / LEVERAGE
-    return {**pos, "spread": spread, "band": band, "entry_fill": round(entry_fill, 3),
-            "exit_fill": round(exit_fill, 3), "t_in_exec": t_in_exec,
-            "entry_delay_bars": delay_bars,
-            "t_exit": t_exit, "net1": net1, "margin1": margin1, "level_slip": slipped}
+    out = {**pos, "spread": spread, "band": band, "entry_fill": round(entry_fill, 3),
+           "exit_fill": round(exit_fill, 3), "t_in_exec": t_in_exec,
+           "entry_delay_bars": delay_bars,
+           "t_exit": t_exit, "net1": net1, "margin1": margin1, "level_slip": slipped}
+    if not instrument:
+        return out                                   # byte-identical to pre-Bloque-6 behavior
+
+    # ---- path instrumentation (observational only -- computed AFTER the
+    # fill/exit decision above; never feeds back into it). ----
+    path: list[dict[str, float]] = []
+    tt_path, bb_path, aa_path = ticks.range(t_in_exec, t_exit)
+    if len(tt_path):
+        px_path = bb_path if side_l == "L" else aa_path
+        excursion = (px_path - entry_fill) if side_l == "L" else (entry_fill - px_path)
+        mfe = np.maximum.accumulate(np.maximum(excursion, 0.0))
+        mae = np.maximum.accumulate(np.maximum(-excursion, 0.0))
+        path = [{"t": float(t), "mfe": float(m), "mae": float(a)}
+                for t, m, a in zip(tt_path, mfe, mae)]
+    exit_idx = int(np.searchsorted(bar_times, pos["t_out"], "left"))
+    entry_context = None
+    if bars is not None and 0 <= lo < len(bars):
+        b0 = bars[lo]
+        entry_context = {"t": b0["t"], "open": b0["open"], "high": b0["high"],
+                          "low": b0["low"], "close": b0["close"]}
+    spread_at_exit_decision = (None if exit_bid_dec is None or exit_ask_dec is None
+                                else round(exit_ask_dec - exit_bid_dec, 3))
+    out.update({
+        "path_mfe_mae": path,
+        "bars_elapsed": exit_idx - lo,
+        "entry_context": entry_context,
+        "spread_at_entry": spread,
+        "spread_at_exit_decision": spread_at_exit_decision,
+    })
+    return out
 
 
 # --------------------------------------------------------------------------- metrics
@@ -471,8 +517,16 @@ def ym_of(t: float) -> str:
 
 
 # --------------------------------------------------------------------------- driver
-def build_all(ticks: Ticks, bars: list[dict[str, Any]]) -> dict[str, list[dict[str, Any]]]:
-    """Resolve every position of every strategy once (lot-invariant)."""
+def build_all(ticks: Ticks, bars: list[dict[str, Any]], *,
+              instrument: bool = False) -> dict[str, list[dict[str, Any]]]:
+    """Resolve every position of every strategy once (lot-invariant).
+
+    `instrument=False` (default) is byte-identical to pre-Bloque-6 behavior --
+    `resolve()` is called exactly as before, no extra args. `instrument=True`
+    (WP-1+2 Bloque 6) attaches per-position path instrumentation (see
+    `resolve()`'s docstring); it decides nothing, so `build_all(..., instrument=True)`
+    yields the SAME positions (same core keys, same values) as
+    `build_all(..., instrument=False)`, only with extra observational keys."""
     bar_times = np.array([b["t"] for b in bars], dtype="float64")
     resolved: dict[str, list[dict[str, Any]]] = {}
     for sid in STRATS:
@@ -482,7 +536,8 @@ def build_all(ticks: Ticks, bars: list[dict[str, Any]]) -> dict[str, list[dict[s
             raw = run_ladder(_GL[sid], bars)
         out = []
         for p in raw:
-            r = resolve(p, ticks, bar_times)
+            r = (resolve(p, ticks, bar_times, instrument=True, bars=bars) if instrument
+                 else resolve(p, ticks, bar_times))
             if r is not None:
                 out.append(r)
         resolved[sid] = out

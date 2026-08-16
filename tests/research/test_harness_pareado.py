@@ -354,3 +354,90 @@ def test_sl_offset_shifts_both_touch_test_and_exit_price_coherently():
     this_bar = [p for p in out if p["t_out"] == bars[j]["t"]]
     assert this_bar and this_bar[0]["reason"] == "EXIT_STLINE"
     assert abs(this_bar[0]["exit_bid"] - sl_widened) < 1e-9
+
+
+# --------------------------------------------------------------------- B6
+_INSTRUMENT_KEYS = ("path_mfe_mae", "bars_elapsed", "entry_context",
+                    "spread_at_entry", "spread_at_exit_decision")
+
+
+def _instrument_fixture():
+    from scripts.analysis.realtick_bt.backtest import resolve
+
+    bars = _trend_bars()
+    pos = {"side_l": "L", "side": "LONG", "ficha": "F1",
+           "t_in": bars[0]["t"], "t_out": bars[5]["t"],
+           "entry_bid": bars[0]["close"], "exit_bid": bars[5]["close"] - 1.0,
+           "reason": "EXIT_TRAIL", "same_bar": False}
+    bar_times = np.array([b["t"] for b in bars], dtype="float64")
+    entry_tc = bars[0]["t"] + BAR_SEC
+    exit_close = bars[5]["t"] + BAR_SEC
+    ticks = _FakeTicks([
+        (entry_tc, 99.75, 100.25),                          # entry retry tick, spread 0.5
+        (bars[5]["t"] + 5.0, pos["exit_bid"], pos["exit_bid"] + 0.5),  # crosses the level
+        (exit_close, pos["exit_bid"] - 0.1, pos["exit_bid"] + 0.4),
+    ])
+    return resolve, pos, ticks, bar_times, bars
+
+
+def test_instrumentation_off_by_default_no_extra_keys():
+    resolve, pos, ticks, bar_times, bars = _instrument_fixture()
+    r = resolve(pos, ticks, bar_times)
+    assert r is not None
+    for k in _INSTRUMENT_KEYS:
+        assert k not in r
+
+
+def test_instrumentation_on_does_not_change_the_decision():
+    resolve, pos, ticks, bar_times, bars = _instrument_fixture()
+    plain = resolve(pos, ticks, bar_times)
+    instrumented = resolve(pos, ticks, bar_times, instrument=True, bars=bars)
+    assert plain is not None and instrumented is not None
+    stripped = {k: v for k, v in instrumented.items() if k not in _INSTRUMENT_KEYS}
+    assert stripped == plain
+
+
+def test_instrumentation_on_populates_path_data():
+    resolve, pos, ticks, bar_times, bars = _instrument_fixture()
+    r = resolve(pos, ticks, bar_times, instrument=True, bars=bars)
+    assert r is not None
+    assert isinstance(r["path_mfe_mae"], list) and len(r["path_mfe_mae"]) > 0
+    assert set(r["path_mfe_mae"][0]) == {"t", "mfe", "mae"}
+    assert isinstance(r["bars_elapsed"], int) and r["bars_elapsed"] == 5
+    assert r["entry_context"] == {"t": bars[0]["t"], "open": bars[0]["open"],
+                                  "high": bars[0]["high"], "low": bars[0]["low"],
+                                  "close": bars[0]["close"]}
+    assert r["spread_at_entry"] == r["spread"]
+    assert r["spread_at_exit_decision"] is not None
+
+
+def test_instrumentation_entry_context_none_without_bars():
+    resolve, pos, ticks, bar_times, _bars = _instrument_fixture()
+    r = resolve(pos, ticks, bar_times, instrument=True)   # bars omitted
+    assert r is not None
+    assert r["entry_context"] is None
+
+
+def test_build_all_instrument_flag_default_off_and_inert_when_on(monkeypatch):
+    from scripts.analysis.realtick_bt import backtest as bt
+
+    bars = _trend_bars()
+    events = [
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+    ]
+    monkeypatch.setattr(bt, "simular_variant", lambda bars_, **kw: events)
+    ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                        (b["t"] + BAR_SEC for b in bars)])
+
+    off = bt.build_all(ticks, bars)
+    on = bt.build_all(ticks, bars, instrument=True)
+    for sid in off:
+        assert len(off[sid]) == len(on[sid])
+        for p_off, p_on in zip(off[sid], on[sid]):
+            for k in _INSTRUMENT_KEYS:
+                assert k not in p_off
+            stripped_on = {k: v for k, v in p_on.items() if k not in _INSTRUMENT_KEYS}
+            assert stripped_on == p_off

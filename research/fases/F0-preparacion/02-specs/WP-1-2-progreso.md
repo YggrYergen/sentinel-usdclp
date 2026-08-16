@@ -99,3 +99,35 @@ dos direcciones sobre la MISMA fixture — (a) un tick que toca el nivel ORIGINA
 el precio reportado); (b) un tick exactamente en el nivel ENSANCHADO sí dispara, y su
 `exit_bid` es el nivel ensanchado — total fichero 16 passed.
 Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+
+## Bloque 6 — Instrumentación de camino (2026-08-16)
+`resolve(pos, ticks, bar_times, *, instrument: bool = False, bars: list[dict] | None = None) ->
+dict | None` — con `instrument=False` (default) devuelve EXACTAMENTE el dict de antes (mismas
+claves, mismo cálculo; el `return out` temprano ocurre antes de tocar nada de instrumentación).
+Con `instrument=True` añade, DESPUÉS de la decisión de fill/exit (no la altera): `path_mfe_mae`
+(lista `{"t","mfe","mae"}` por tick entre `t_in_exec` y `t_exit`, corrida acumulada, no sólo el
+valor final), `bars_elapsed` (barras M15 entre la barra de señal de entrada y la de salida),
+`entry_context` (snapshot OHLC de la barra de entrada, `None` si no se pasa `bars`),
+`spread_at_entry` (alias explícito del `spread` ya existente) y `spread_at_exit_decision`
+(spread bid/ask del tick que efectivamente cerró la posición). `build_all(ticks, bars, *,
+instrument: bool = False)` — con `instrument=False` llama a `resolve()` con la misma firma de 3
+argumentos posicionales de siempre (byte-idéntico, incluye a `test_baseline_parity.py`, que no
+pasa `instrument`); con `True` pasa `instrument=True, bars=bars` a cada `resolve()`.
+Tests nuevos (6): apagado por defecto sin claves extra; encendido no cambia la decisión (quitar
+las claves de instrumentación del resultado instrumentado reproduce el resultado plano exacto);
+encendido sí puebla `path_mfe_mae`/`bars_elapsed`/`entry_context`/spreads; `entry_context` es
+`None` sin `bars`; `build_all(..., instrument=True)` es inerte sobre las posiciones de las 3
+estrategias (mismas claves core, mismos valores) — total fichero **21 passed**.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+
+## Cierre — verificación final (2026-08-16)
+`python -m pytest tests/analysis -q` → **306 passed, 1 failed** (mismo único rojo colateral ya
+reportado en Bloque 4, sin rojos nuevos desde entonces — línea citada verificada de nuevo:
+`grep -n "abs(sp - 0.5) <= 0.05" scripts/analysis/realtick_bt/backtest.py` → **`400:`**, el test
+espera `lineas[375]` = línea 376).
+`python -m pytest tests/research -q` → **300 passed, 4 deselected** (línea de partida Bloque 0:
+279 passed, 4 deselected; +21 son mis tests nuevos en `test_harness_pareado.py`, 0 regresiones).
+`python -m pytest tests/strategies -q` → **272 passed** (sin cambio, verificación extra fuera de
+mis rutas obligatorias, hecha porque toqué `emasar_ref.py`/`emasar_variant.py`).
+`python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed** (verde antes
+de empezar y después de cada uno de los 6 bloques, sin excepción).
