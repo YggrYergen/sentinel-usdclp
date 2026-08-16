@@ -1,0 +1,1322 @@
+{
+  "alignment_filled": {
+    "default->ac_off": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.50": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.75": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h1": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h10": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h20": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h3": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h5": {
+      "n_casadas": 624,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    }
+  },
+  "alignment_signal": {
+    "default->ac_off": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.50": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->factor0.75": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u10-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u100-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u150-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u25-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u50-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb1-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb2-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h1": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h10": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h20": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h3": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    },
+    "default->u75-lb3-h5": {
+      "n_casadas": 1872,
+      "n_solo_A": 0,
+      "n_solo_B": 0,
+      "no_casadas": [],
+      "no_casadas_total": 0
+    }
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "actualizado_en": "2026-08-16T03:25:15",
+  "completadas": 3,
+  "eta_iso": "2026-08-16T03:25:15",
+  "eta_segundos": 0.0,
+  "failed_run_keys": [
+    "P02-S6",
+    "P02-S7"
+  ],
+  "fallidas": 2,
+  "iniciado_en": "2026-08-16T03:24:39",
+  "pendientes": 0,
+  "run_key_actual": null,
+  "segundos_por_corrida_media": 7.27,
+  "segundos_transcurridos": 36.349,
+  "total": 5
+}

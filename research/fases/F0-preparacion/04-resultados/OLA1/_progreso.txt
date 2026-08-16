@@ -1,0 +1,8 @@
+5/5 corridas (100.0%) -- transcurrido 36.3s -- ETA 0.0s (2026-08-16T03:25:15) -- fallidas: P02-S6, P02-S7
+
+ultimas corridas:
+  [ok] P08-ST -- 9.953s
+  [ok] P05-ST -- 11.062s
+  [fallido] P02-S7 -- 11.437s
+  [fallido] P02-S6 -- 11.922s
+  [ok] P03-S6 -- 34.734s

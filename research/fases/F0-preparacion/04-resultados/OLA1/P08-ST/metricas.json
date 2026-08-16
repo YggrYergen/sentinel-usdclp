@@ -1,0 +1,742 @@
+{
+  "brazos": {
+    "default": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 1749397.1794628906,
+        "R_p25": 325205.0323629629,
+        "R_p75": 3364291.0019124947,
+        "avg_loss": -1153103.65,
+        "avg_win": 5453837.82,
+        "max_perdidas_consecutivas": 11,
+        "maxdd_lote1": 36809132.5,
+        "n": 153,
+        "n_R_no_computable": 0,
+        "n_flips": 153,
+        "n_por_reason": {
+          "EXIT_STLINE": 153
+        },
+        "n_posiciones_con_coste": 153,
+        "net_con_coste_lote1": 58201133.75000002,
+        "net_en_R_por_posicion": -0.11311104138356222,
+        "net_en_R_total": -17.30598933168502,
+        "net_lote1": 61425035.00000002,
+        "net_lote_grid": 41154773.45,
+        "net_por_posicion_lote1": 401470.8169934642,
+        "pf": 1.455,
+        "rom": 1196.84,
+        "sharpe_diario_ann": 1.9875347856372063,
+        "sharpe_por_posicion": 0.08767251629721173,
+        "wr": 23.53
+      },
+      "overlay": {}
+    },
+    "slo0.05": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 1783920.275996298,
+        "R_p25": 331341.9320090901,
+        "R_p75": 3543407.8996574967,
+        "avg_loss": -1178182.72,
+        "avg_win": 5450768.18,
+        "max_perdidas_consecutivas": 11,
+        "maxdd_lote1": 36944925.0,
+        "n": 150,
+        "n_R_no_computable": 0,
+        "n_flips": 150,
+        "n_por_reason": {
+          "EXIT_STLINE": 150
+        },
+        "n_posiciones_con_coste": 150,
+        "net_con_coste_lote1": 58754137.00000005,
+        "net_en_R_por_posicion": -0.08922919737822001,
+        "net_en_R_total": -13.384379606733,
+        "net_lote1": 61914824.50000005,
+        "net_lote_grid": 41482932.42,
+        "net_por_posicion_lote1": 412765.496666667,
+        "pf": 1.461,
+        "rom": 1206.38,
+        "sharpe_diario_ann": 2.016893362297944,
+        "sharpe_por_posicion": 0.08926779026896443,
+        "wr": 24.0
+      },
+      "overlay": {
+        "sl_offset": 0.05
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 8912.036452314493,
+        "ic95_alto": -1748.1123825519096,
+        "ic95_bajo": -4615.373004887822,
+        "ic_excluye_0": true,
+        "media_diff": -3090.4499999999125,
+        "media_diff_en_R": -0.011494993361032298,
+        "mediana_diff": 0.0,
+        "n_brazo": 150,
+        "n_casadas": 150,
+        "n_control": 153,
+        "n_dias_bloque": 69,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 3,
+        "p_bootstrap": 0.0,
+        "suma_diff": -463567.49999998685,
+        "tasa_emparejamiento": 0.9803921568627451
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 150,
+          "suma_delta": -463567.4999999868
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.10": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 1792663.9612491415,
+        "R_p25": 339287.3133293054,
+        "R_p75": 3606235.198905842,
+        "avg_loss": -1189835.68,
+        "avg_win": 5446371.83,
+        "max_perdidas_consecutivas": 11,
+        "maxdd_lote1": 36694879.5,
+        "n": 149,
+        "n_R_no_computable": 0,
+        "n_flips": 149,
+        "n_por_reason": {
+          "EXIT_STLINE": 149
+        },
+        "n_posiciones_con_coste": 149,
+        "net_con_coste_lote1": 58478337.75000007,
+        "net_en_R_por_posicion": -0.07467840903833539,
+        "net_en_R_total": -11.127082946711973,
+        "net_lote1": 61617954.00000007,
+        "net_lote_grid": 41284029.18,
+        "net_por_posicion_lote1": 413543.31543624203,
+        "pf": 1.458,
+        "rom": 1200.6,
+        "sharpe_diario_ann": 2.0080493915291058,
+        "sharpe_por_posicion": 0.08916506207502642,
+        "wr": 24.16
+      },
+      "overlay": {
+        "sl_offset": 0.1
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 13193.329254616681,
+        "ic95_alto": -5396.649426171713,
+        "ic95_bajo": -9469.767108513695,
+        "ic_excluye_0": true,
+        "media_diff": -7347.439597315163,
+        "media_diff_en_R": -0.0168219900572006,
+        "mediana_diff": 0.0,
+        "n_brazo": 149,
+        "n_casadas": 149,
+        "n_control": 153,
+        "n_dias_bloque": 69,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 4,
+        "p_bootstrap": 0.0,
+        "suma_diff": -1094768.4999999593,
+        "tasa_emparejamiento": 0.9738562091503268
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 149,
+          "suma_delta": -1094768.499999959
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.15": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 1797346.4612490735,
+        "R_p25": 343969.8133292372,
+        "R_p75": 3610917.698905774,
+        "avg_loss": -1193134.15,
+        "avg_win": 5442990.03,
+        "max_perdidas_consecutivas": 11,
+        "maxdd_lote1": 36857830.5,
+        "n": 149,
+        "n_R_no_computable": 0,
+        "n_flips": 149,
+        "n_por_reason": {
+          "EXIT_STLINE": 149
+        },
+        "n_posiciones_con_coste": 149,
+        "net_con_coste_lote1": 57983865.749999896,
+        "net_en_R_por_posicion": -0.0723037509491427,
+        "net_en_R_total": -10.773258891422262,
+        "net_lote1": 61123481.999999896,
+        "net_lote_grid": 40952732.94,
+        "net_por_posicion_lote1": 410224.71140939527,
+        "pf": 1.453,
+        "rom": 1190.96,
+        "sharpe_diario_ann": 1.9925849980873414,
+        "sharpe_por_posicion": 0.08848939226590301,
+        "wr": 24.16
+      },
+      "overlay": {
+        "sl_offset": 0.15
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 14535.010754668952,
+        "ic95_alto": -8407.329501475786,
+        "ic95_bajo": -13105.398236197618,
+        "ic_excluye_0": true,
+        "media_diff": -10666.043624161759,
+        "media_diff_en_R": -0.02707810796272374,
+        "mediana_diff": -6555.499999972759,
+        "n_brazo": 149,
+        "n_casadas": 149,
+        "n_control": 153,
+        "n_dias_bloque": 69,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 4,
+        "p_bootstrap": 0.0,
+        "suma_diff": -1589240.5000001022,
+        "tasa_emparejamiento": 0.9738562091503268
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 149,
+          "suma_delta": -1589240.500000102
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.20": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 1817731.1907996435,
+        "R_p25": 364657.61629026453,
+        "R_p75": 3624633.87684105,
+        "avg_loss": -1205124.99,
+        "avg_win": 5437397.04,
+        "max_perdidas_consecutivas": 11,
+        "maxdd_lote1": 37042321.0,
+        "n": 148,
+        "n_R_no_computable": 0,
+        "n_flips": 148,
+        "n_por_reason": {
+          "EXIT_STLINE": 148
+        },
+        "n_posiciones_con_coste": 148,
+        "net_con_coste_lote1": 57653749.499999546,
+        "net_en_R_por_posicion": -0.061762330377255155,
+        "net_en_R_total": -9.140824895833763,
+        "net_lote1": 60772294.499999546,
+        "net_lote_grid": 40717437.31,
+        "net_por_posicion_lote1": 410623.6114864834,
+        "pf": 1.45,
+        "rom": 1184.12,
+        "sharpe_diario_ann": 1.9818499590977643,
+        "sharpe_por_posicion": 0.08831317560699904,
+        "wr": 24.32
+      },
+      "overlay": {
+        "sl_offset": 0.2
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 19406.66573613715,
+        "ic95_alto": -11970.899993034416,
+        "ic95_bajo": -18396.908411458582,
+        "ic_excluye_0": true,
+        "media_diff": -15047.277027030274,
+        "media_diff_en_R": -0.03319340472823335,
+        "mediana_diff": -9364.999999991483,
+        "n_brazo": 148,
+        "n_casadas": 148,
+        "n_control": 153,
+        "n_dias_bloque": 68,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 5,
+        "p_bootstrap": 0.0,
+        "suma_diff": -2226997.0000004806,
+        "tasa_emparejamiento": 0.9673202614379085
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 148,
+          "suma_delta": -2226997.0000004796
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.25": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 1894040.9260422257,
+        "R_p25": 379996.2362479351,
+        "R_p75": 3656417.4106468433,
+        "avg_loss": -1203802.64,
+        "avg_win": 5524092.41,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 36823180.0,
+        "n": 145,
+        "n_R_no_computable": 0,
+        "n_flips": 145,
+        "n_por_reason": {
+          "EXIT_STLINE": 145
+        },
+        "n_posiciones_con_coste": 145,
+        "net_con_coste_lote1": 57869612.74999972,
+        "net_en_R_por_posicion": -0.0726020578074964,
+        "net_en_R_total": -10.527298382086977,
+        "net_lote1": 60924943.99999972,
+        "net_lote_grid": 40819712.48,
+        "net_por_posicion_lote1": 420172.02758620493,
+        "pf": 1.46,
+        "rom": 1187.09,
+        "sharpe_diario_ann": 1.988217284015908,
+        "sharpe_por_posicion": 0.08969839454805426,
+        "wr": 24.14
+      },
+      "overlay": {
+        "sl_offset": 0.25
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 225075.60272817098,
+        "ic95_alto": 40769.51753871275,
+        "ic95_bajo": -23819.42280947152,
+        "ic_excluye_0": false,
+        "media_diff": -2299.2689655197946,
+        "media_diff_en_R": -0.04126631873587072,
+        "mediana_diff": -18729.999999983003,
+        "n_brazo": 145,
+        "n_casadas": 145,
+        "n_control": 153,
+        "n_dias_bloque": 68,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 8,
+        "p_bootstrap": 0.6532,
+        "suma_diff": -333394.0000003702,
+        "tasa_emparejamiento": 0.9477124183006536
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 145,
+          "suma_delta": -333394.00000036997
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.30": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 1928355.8520861813,
+        "R_p25": 383348.48150528956,
+        "R_p75": 3664989.8465527804,
+        "avg_loss": -1207310.26,
+        "avg_win": 5561377.71,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 37028273.5,
+        "n": 144,
+        "n_R_no_computable": 0,
+        "n_flips": 144,
+        "n_por_reason": {
+          "EXIT_STLINE": 144
+        },
+        "n_posiciones_con_coste": 144,
+        "net_con_coste_lote1": 53248453.499999925,
+        "net_en_R_por_posicion": -0.12760243060804927,
+        "net_en_R_total": -18.374750007559093,
+        "net_lote1": 56282713.499999925,
+        "net_lote_grid": 37709418.04,
+        "net_por_posicion_lote1": 390852.1770833328,
+        "pf": 1.424,
+        "rom": 1096.64,
+        "sharpe_diario_ann": 1.8515832537848484,
+        "sharpe_por_posicion": 0.08333020456618967,
+        "wr": 23.61
+      },
+      "overlay": {
+        "sl_offset": 0.3
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 226141.48049812103,
+        "ic95_alto": 38148.2853752357,
+        "ic95_bajo": -26814.00457292328,
+        "ic_excluye_0": false,
+        "media_diff": -5313.3368055567325,
+        "media_diff_en_R": -0.056750928196240204,
+        "mediana_diff": -23412.5,
+        "n_brazo": 144,
+        "n_casadas": 144,
+        "n_control": 153,
+        "n_dias_bloque": 68,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 9,
+        "p_bootstrap": 0.5338,
+        "suma_diff": -765120.5000001695,
+        "tasa_emparejamiento": 0.9411764705882353
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 144,
+          "suma_delta": -765120.5000001702
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.40": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 1991736.8613043914,
+        "R_p25": 388722.71727725095,
+        "R_p75": 3686024.6542704897,
+        "avg_loss": -1226867.03,
+        "avg_win": 5529550.06,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 43572535.5,
+        "n": 141,
+        "n_R_no_computable": 0,
+        "n_flips": 141,
+        "n_por_reason": {
+          "EXIT_STLINE": 141
+        },
+        "n_posiciones_con_coste": 141,
+        "net_con_coste_lote1": 47002466.74999997,
+        "net_en_R_por_posicion": -0.1985891609665672,
+        "net_en_R_total": -28.001071696285976,
+        "net_lote1": 49973512.999999985,
+        "net_lote_grid": 33482253.71,
+        "net_por_posicion_lote1": 354422.0780141843,
+        "pf": 1.377,
+        "rom": 973.71,
+        "sharpe_diario_ann": 1.663544696937678,
+        "sharpe_por_posicion": 0.07516979254393882,
+        "wr": 23.4
+      },
+      "overlay": {
+        "sl_offset": 0.4
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 260265.99051889314,
+        "ic95_alto": 48550.80281084976,
+        "ic95_bajo": -34955.648638198014,
+        "ic_excluye_0": false,
+        "media_diff": -2929.0531914898324,
+        "media_diff_en_R": -0.08740324579693283,
+        "mediana_diff": -35587.000000010245,
+        "n_brazo": 141,
+        "n_casadas": 141,
+        "n_control": 153,
+        "n_dias_bloque": 67,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 12,
+        "p_bootstrap": 0.7914,
+        "suma_diff": -412996.50000006636,
+        "tasa_emparejamiento": 0.9215686274509803
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 141,
+          "suma_delta": -412996.500000066
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.50": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 2190558.0782623943,
+        "R_p25": 409831.17061289406,
+        "R_p75": 3810533.134651189,
+        "avg_loss": -1263203.43,
+        "avg_win": 5524895.94,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 43082746.0,
+        "n": 137,
+        "n_R_no_computable": 0,
+        "n_flips": 137,
+        "n_por_reason": {
+          "EXIT_STLINE": 137
+        },
+        "n_posiciones_con_coste": 137,
+        "net_con_coste_lote1": 48061648.24999996,
+        "net_en_R_por_posicion": -0.175422068678135,
+        "net_en_R_total": -24.032823408904495,
+        "net_lote1": 50948409.49999996,
+        "net_lote_grid": 34135434.37,
+        "net_por_posicion_lote1": 371886.20072992676,
+        "pf": 1.388,
+        "rom": 992.7,
+        "sharpe_diario_ann": 1.699524236182265,
+        "sharpe_por_posicion": 0.0777418389955484,
+        "wr": 24.09
+      },
+      "overlay": {
+        "sl_offset": 0.5
+      },
+      "pareado": {
+        "degradado_a_1B": true,
+        "desvio_diff": 263804.07823739486,
+        "ic95_alto": 40165.48699850923,
+        "ic95_bajo": -46030.56778296088,
+        "ic_excluye_0": false,
+        "media_diff": -13076.821167883858,
+        "media_diff_en_R": -0.10767736438615946,
+        "mediana_diff": -43079.000000003405,
+        "n_brazo": 137,
+        "n_casadas": 137,
+        "n_control": 153,
+        "n_dias_bloque": 67,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 16,
+        "p_bootstrap": 0.5024,
+        "suma_diff": -1791524.5000000885,
+        "tasa_emparejamiento": 0.8954248366013072
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 137,
+          "suma_delta": -1791524.5000000887
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo0.75": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 2313733.3287188592,
+        "R_p25": 483277.8800792551,
+        "R_p75": 4023355.9180115266,
+        "avg_loss": -1311378.17,
+        "avg_win": 5666439.58,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 44269291.5,
+        "n": 133,
+        "n_R_no_computable": 0,
+        "n_flips": 133,
+        "n_por_reason": {
+          "EXIT_STLINE": 133
+        },
+        "n_posiciones_con_coste": 133,
+        "net_con_coste_lote1": 46074395.24999972,
+        "net_en_R_por_posicion": -0.154295541648176,
+        "net_en_R_total": -20.521307039207407,
+        "net_lote1": 48876871.499999724,
+        "net_lote_grid": 32747503.9,
+        "net_por_posicion_lote1": 367495.27443608816,
+        "pf": 1.369,
+        "rom": 952.34,
+        "sharpe_diario_ann": 1.6301673681802233,
+        "sharpe_por_posicion": 0.07573755250846882,
+        "wr": 24.06
+      },
+      "overlay": {
+        "sl_offset": 0.75
+      },
+      "pareado": {
+        "degradado_a_1B": true,
+        "desvio_diff": 265211.5259169186,
+        "ic95_alto": 15426.952147687944,
+        "ic95_bajo": -71965.56606545245,
+        "ic_excluye_0": false,
+        "media_diff": -38347.21052631839,
+        "media_diff_en_R": -0.16389688026577195,
+        "mediana_diff": -67427.99999993853,
+        "n_brazo": 133,
+        "n_casadas": 133,
+        "n_control": 153,
+        "n_dias_bloque": 67,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 20,
+        "p_bootstrap": 0.1326,
+        "suma_diff": -5100179.000000346,
+        "tasa_emparejamiento": 0.869281045751634
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 133,
+          "suma_delta": -5100179.000000345
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    },
+    "slo1.00": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 2418879.491658944,
+        "R_p25": 533174.195433847,
+        "R_p75": 4117278.3703969535,
+        "avg_loss": -1352306.0,
+        "avg_win": 5583120.34,
+        "max_perdidas_consecutivas": 15,
+        "maxdd_lote1": 45149601.5,
+        "n": 129,
+        "n_R_no_computable": 0,
+        "n_flips": 129,
+        "n_por_reason": {
+          "EXIT_STLINE": 129
+        },
+        "n_posiciones_con_coste": 129,
+        "net_con_coste_lote1": 44767977.74999978,
+        "net_en_R_por_posicion": -0.17432501740140421,
+        "net_en_R_total": -22.487927244781144,
+        "net_lote1": 47486168.99999977,
+        "net_lote_grid": 31815733.23,
+        "net_por_posicion_lote1": 368109.83720930055,
+        "pf": 1.362,
+        "rom": 925.24,
+        "sharpe_diario_ann": 1.5818888597146201,
+        "sharpe_por_posicion": 0.07492520798931708,
+        "wr": 24.81
+      },
+      "overlay": {
+        "sl_offset": 1.0
+      },
+      "pareado": {
+        "degradado_a_1B": true,
+        "desvio_diff": 508378.79145217215,
+        "ic95_alto": 74132.58818104521,
+        "ic95_bajo": -92586.9376353656,
+        "ic_excluye_0": false,
+        "media_diff": -22693.790697676577,
+        "media_diff_en_R": -0.17336027953011077,
+        "mediana_diff": -93650.0,
+        "n_brazo": 129,
+        "n_casadas": 129,
+        "n_control": 153,
+        "n_dias_bloque": 67,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 24,
+        "p_bootstrap": 0.5494,
+        "suma_diff": -2927499.0000002785,
+        "tasa_emparejamiento": 0.8431372549019608
+      },
+      "secundaria": {
+        "mismo_stop_peor_fill": {
+          "n": 129,
+          "suma_delta": -2927499.0000002775
+        },
+        "otros": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "salvadas": {
+          "n": 0,
+          "suma_delta": 0.0
+        }
+      }
+    }
+  },
+  "control": {
+    "brazo": "default",
+    "identico": true,
+    "n_congelado": 153,
+    "n_control": 153
+  },
+  "lineage": {
+    "ampliacion": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-ampliacion-E04-ola1.md",
+    "clase": "1-A",
+    "engine_sha": "ad5b95d",
+    "estado_investigacion": "piloto-instrumento",
+    "etapa": "F0",
+    "generador": "runner:tasks_ola1.ola1_paired",
+    "git_sha": "ad5b95d",
+    "palanca": "P-08",
+    "preregistro": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-ola1.md",
+    "run_id": "P08-ST",
+    "sid": "SuperTrend-p14x3-M15",
+    "substrate_id": "capitaria-ticks-2026-preholdout",
+    "timestamp": "2026-08-16T03:24:50"
+  },
+  "sustrato": {
+    "holdout_excluido": 1778544000,
+    "n_barras": 8334,
+    "t0": 1767297600,
+    "t1": 1778543100
+  }
+}
