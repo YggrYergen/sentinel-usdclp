@@ -48,3 +48,51 @@
     `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed** (2.84s).
     Orden de despacho: WP-3 primero (módulo + inyección en `metrics`/`peak_margin` reservada para WP-4, no
     tocada aquí), luego WP-4, luego WP-5 (sin tocar núcleo). Commit por bloque verde, parity gate tras cada uno.
+
+## Bloque WP-3 — feed H1/H4 (2026-08-16)
+`scripts/analysis/realtick_bt/higher_tf.py` (módulo nuevo, cero cambios en `backtest.py`):
+`aggregate_closed_with_visibility(bars_m15, tf_sec, *, m15_sec=900) -> (closed_bars, visible_count)` — un
+bucket se marca cerrado la PRIMERA vez que una barra M15 propia alcanza/supera el borde de cierre de SU
+propio bucket (`b["t"]+m15_sec >= bucket_close`), sin mirar nunca la barra siguiente. `build_higher_series(
+bars_m15, tf_sec, *, ema_period=20, st_atr_period=10, st_mult=3.0, momentum_lookback=10) -> HigherSeries`
+(`.bars`, `.ema`, `.ema_slope`, `.st_dir`, `.momentum`, `.visible_count`, `.snapshot_at_m15_index(i) -> dict|
+None`, O(1)). EMA/ATR-Wilder/SuperTrend-dirección reimplementados localmente (self-contained, CERO import de
+`emasar_ref.py` — fuera de mis rutas, no leído). Tests: `tests/research/test_higher_tf.py`, **12 passed**
+— incluye el contrato antitrampa §1 (corte de prefijo == valor de la serie completa en `t`, H1 y H4) y el
+test explícito de que el bucket en curso nunca es visible (incluso a 15/16 barras M15 de su propio cierre).
+Parity gate: **4 passed**. Commit: `0dd14ec`.
+
+## Bloque WP-4 — hook de tamaño + estado de cuenta (2026-08-16)
+`scripts/analysis/realtick_bt/sizing.py` (módulo nuevo): `SizingConfig` (kelly_mult/kelly_payoff_default/
+kelly_clip, atr_target/atr_clip, dd_bands, ficha_factors, sharpe_window/sharpe_floor/sharpe_floor_factor,
+loss_streak_cutoff/loss_streak_factor, correlation_discount_per_extra, clip). `AccountState` (equity,
+equity_peak, `drawdown_pct` property, trade_returns por sid, current_day, consecutive_losses_today).
+`apply_sizing(resolved, cfg, *, atr_fn=None) -> resolved'` — `cfg=None` devuelve `resolved` SIN TOCAR
+(mismo objeto); si no, recorre TODAS las posiciones de las 3 estrategias en un único orden cronológico
+explícito `sorted(key=(t_exit,t_in_exec,sid,ficha,indice_plano))` — nunca el orden de iteración del dict —
+reconstruye `AccountState`, y adjunta `lot_mult` (clave nueva, `net1`/`margin1` intactos) preservando el
+orden ORIGINAL de cada lista por sid en la salida. `lot_multiplier()` combina factores multiplicativamente
+(Kelly, ATR-inverso vía `atr_fn` inyectado por el llamador, banda de drawdown, índice de ficha, piso de
+Sharpe rodante, corte de racha de pérdidas diaria, descuento de correlación por solape de aperturas —
+`_concurrency_at_open()`, sweep de eventos determinista), clip final configurable. `rolling_sharpe()`,
+`kelly_factor()`, `lot_fn(base_lot)` (adaptador para el punto de inyección de motor).
+**Punto de inyección en el núcleo** (único cambio en `backtest.py`, WP-4): `metrics(rows, lot, *, lot_fn=
+None)` y `peak_margin(rows, lot, *, lot_fn=None)` ganan el kwarg `lot_fn` — `None` (default) reproduce
+exactamente el `lot` global de siempre, byte-idéntico; con `lot_fn` da el tamaño por fila. Los 4 call-sites
+reales (`baseline_golden.py:92`, `backtest_largo_ava.py:461,468`, `ola1/metricas.py:55-56`) llaman con 2
+posicionales, retrocompatibles sin cambio.
+Bug atrapado por test propio antes de verde: el reseteo del contador de racha diaria ocurría DESPUÉS de
+decidir el multiplicador de la primera operación del día nuevo (usaba la racha de ayer) — corregido con
+`_roll_day()`, que avanza el borde de día ANTES de `lot_multiplier()` (el día de una operación se conoce de
+antemano por su propio `t_exit`, a diferencia de su PnL).
+Tests: `tests/research/test_sizing.py`, **15 passed** — apagado por defecto (mismo objeto, sin `lot_mult`),
+config neutra = `lot_mult=1.0` en todas + round-trip completo por `backtest.metrics`/`peak_margin` idéntico
+al `lot` global plano, `rolling_sharpe`/`kelly_factor` contra cálculo a mano, banda de drawdown, ficha,
+piso de Sharpe, racha de pérdidas con reseteo de día, descuento de correlación por solape real, clip, e
+independencia del orden de iteración del dict (`resolved` con las mismas 4 posiciones, claves de
+estrategia insertadas en orden distinto, mismos `lot_mult` resultantes).
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+Verificación extra (fuera de mandato estricto, porque toqué `backtest.py`): `tests/research -q` →
+**353 passed, 11 deselected**; `tests/analysis -q` → **307 passed** (0 rojos — el rojo colateral de cita
+`file:line` reportado en `WP-1-2-progreso.md` Bloque 4 ya no está presente, línea realineada por otro
+commit intermedio; verificado, no corregido por mí).

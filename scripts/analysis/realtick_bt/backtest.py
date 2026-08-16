@@ -30,7 +30,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import numpy as np
 import pandas as pd
@@ -472,11 +472,20 @@ def resolve(pos: dict[str, Any], ticks: Ticks, bar_times: np.ndarray, *,
 
 
 # --------------------------------------------------------------------------- metrics
-def peak_margin(rows: list[dict[str, Any]], lot: float) -> float:
+def peak_margin(rows: list[dict[str, Any]], lot: float, *,
+                 lot_fn: Callable[[dict[str, Any]], float] | None = None) -> float:
+    """`lot_fn` (WP-4, palancas P-13..P-18, default `None` -> byte-identical:
+    every row keeps using the single global `lot`, exactly as before) is the
+    per-position sizing hook / order-emission injection point: when given, it
+    OVERRIDES `lot` per row (`scripts/analysis/realtick_bt/sizing.py` builds
+    one from a reconstructed account-state walk, e.g. `sizing.lot_fn(lot)`
+    after `sizing.apply_sizing(resolved, cfg)` attached `lot_mult` to each
+    row)."""
     ev = []
     for r in rows:
-        ev.append((r["t_in_exec"], +r["margin1"] * lot))
-        ev.append((r["t_exit"], -r["margin1"] * lot))
+        L = lot if lot_fn is None else lot_fn(r)
+        ev.append((r["t_in_exec"], +r["margin1"] * L))
+        ev.append((r["t_exit"], -r["margin1"] * L))
     ev.sort(key=lambda x: (x[0], -x[1]))   # opens before closes at same instant
     cur = peak = 0.0
     for _, d in ev:
@@ -485,23 +494,28 @@ def peak_margin(rows: list[dict[str, Any]], lot: float) -> float:
     return peak
 
 
-def metrics(rows: list[dict[str, Any]], lot: float) -> dict[str, Any]:
+def metrics(rows: list[dict[str, Any]], lot: float, *,
+            lot_fn: Callable[[dict[str, Any]], float] | None = None) -> dict[str, Any]:
+    """`lot_fn` -- see `peak_margin()`'s docstring (same WP-4 injection point,
+    same byte-identical-by-default contract: `lot_fn=None` reproduces every
+    number this function returned before WP-4, unchanged)."""
     n = len(rows)
     if n == 0:
         return {"n": 0, "net": 0.0, "wr": None, "pf": None, "maxdd": 0.0,
                 "rom": None, "avg_win": 0.0, "avg_loss": 0.0, "peak_margin": 0.0}
-    nets = [r["net1"] * lot for r in rows]
+    lots = [lot if lot_fn is None else lot_fn(r) for r in rows]
+    nets = [r["net1"] * L for r, L in zip(rows, lots)]
     net = sum(nets)
     wins = [x for x in nets if x > 0]; losses = [x for x in nets if x < 0]
     gw = sum(wins); gl = -sum(losses)
     pf = (gw / gl) if gl > 0 else (float("inf") if gw > 0 else None)
     wr = 100.0 * len(wins) / n
-    ordered = sorted(rows, key=lambda r: r["t_exit"])
+    ordered = sorted(zip(rows, lots), key=lambda rl: rl[0]["t_exit"])
     cum = peak = maxdd = 0.0
-    for r in ordered:
-        cum += r["net1"] * lot
+    for r, L in ordered:
+        cum += r["net1"] * L
         peak = max(peak, cum); maxdd = max(maxdd, peak - cum)
-    pm = peak_margin(rows, lot)
+    pm = peak_margin(rows, lot, lot_fn=lot_fn)
     rom = (net / pm) if pm > 0 else None
     return {"n": n, "net": round(net, 2), "wr": round(wr, 2),
             "pf": (round(pf, 3) if pf not in (None, float("inf")) else pf),
