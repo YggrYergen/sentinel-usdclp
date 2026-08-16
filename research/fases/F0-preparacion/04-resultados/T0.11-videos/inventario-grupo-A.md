@@ -117,6 +117,129 @@
   "hindsight" explícito reconocido por el propio autor en al menos un trade ("that's hindsight
   talking"); producto vinculado (plataforma Ninja Trader, PDF de venta/lead-magnet).
 
+## 5. en8RMFRqSME
+
+- **Título (inferido):** "Brad Gold" (canal "Brad Trades") — estrategia de scalping en oro (XAUUSD)
+  basada en estructura de mercado y liquidez (estilo ICT/SMC), con recap de dos trades reales que
+  sumaron $566k.
+- **URL:** https://www.youtube.com/watch?v=en8RMFRqSME
+- **Duración/extensión:** 815 líneas, transcripción media.
+- **Qué cubre realmente:** único video del corpus grupo A hasta ahora **explícitamente sobre oro**,
+  con timeframes explícitos de **15 minutos y 1 hora** (coincide exactamente con el timeframe de
+  S6/ST). Estrategia de scalping direccional (no trend-following puro ni contra-tendencia clásico):
+  alinear tendencia 1H+15M, esperar a que el precio llegue a una zona de oferta/demanda, esperar un
+  barrido de liquidez (stop hunt) en esa zona como disparador, entrar en la dirección de la
+  tendencia mayor tras el barrido, con objetivo en el siguiente swing/zona de liquidez. Incluye
+  advertencia explícita: el oro se mueve muy rápido, respeta liquidez fuertemente (barre máximos y
+  mínimos antes de moverse con fuerza), y castiga a quien intenta "capturar todo el movimiento" o
+  usa stops demasiado ajustados. Fuerte venta cruzada de su app "Edge Flow" (planificación,
+  guardrails, journaling).
+- **Reglas/parámetros específicos y testeables:**
+  - **Paso 1 — Alineación de tendencia:** exige que la tendencia de **15M y 1H estén alineadas**
+    (ambas alcistas o ambas bajistas) antes de buscar cualquier entrada; si hay desalineación,
+    declara el setup de baja probabilidad (lo confirma él mismo: el trade "5/10" del video fue
+    justamente uno donde operó pese a desalineación 15M/1H, y casi lo pierde).
+  - **Paso 2 — Marcar zonas de liquidez y puntos de interés:** identificar zonas de oferta/demanda
+    (u order blocks / fair value gaps) en dirección de la tendencia mayor, y los "swing
+    lows/highs" internos como liquidez (donde se agrupan stops).
+  - **Paso 3 — Esperar (no operar) hasta que el precio llegue a un punto de interés en 15M.**
+  - **Paso 4 — Modelo de entrada, DOS variantes explícitas y comparadas:**
+    - *Agresiva:* entrar inmediatamente tras el **barrido de liquidez** (mecha que toma un swing
+      low/high previo) dentro/cerca de la zona de interés — mayor tasa de falsos breakouts pero
+      menor probabilidad de perderse el movimiento.
+    - *Conservadora:* esperar además una confirmación de **"market shift"** — que el precio rompa
+      el último swing interno opuesto tras el barrido — y esperar un **pullback a la zona que
+      generó ese shift** antes de entrar. Menos falsos positivos, más probabilidad de perder el
+      trade si no hay pullback.
+  - **Stop loss:** siempre bajo/sobre la vela de entrada, específicamente bajo/sobre el
+    máximo/mínimo que generó el barrido de liquidez ("protected low/high" — hay menor probabilidad
+    de que se vuelva a barrer ese nivel).
+  - **Take profit:** el siguiente swing high/low o zona de oferta/demanda en 15M — **no** usa
+    múltiplos R fijos grandes; ejemplo dado fue 1:3 R:R, con filosofía explícita de "capturar la
+    parte más limpia del movimiento", no todo el rango del día.
+  - **Anécdota de gestión discrecional (trade "5/10"):** durante ese trade quitó el stop loss
+    manualmente por "corazonada" al ver que el precio iba en contra, apostando a que era otro
+    barrido de liquidez — funcionó, pero él mismo lo señala como mala práctica para principiantes
+    ("si estás en tu primer año, no muevas tu stop; sé lo más mecánico posible").
+- **Relevancia a S6/SuperTrend:** HIGH. Es el video más directamente aplicable del grupo A hasta
+  ahora: mismo instrumento (XAUUSD/oro), mismos timeframes de referencia (15M/1H) que S6/ST, y
+  aborda exactamente la debilidad declarada de "regímenes de rango" mediante un filtro de
+  alineación multi-timeframe (no operar si 15M y 1H no coinciden) — esto es un candidato directo
+  de grid/filtro testeable para reducir falsas señales de S6/ST en lateral. El concepto de "esperar
+  el barrido de liquidez antes de la entrada" es una idea de timing de entrada potencialmente
+  aplicable a filtrar entradas de breakout prematuras. El uso de "protected high/low" como base del
+  stop (en vez de ATR fijo) es una alternativa de stop testeable. Limitación: la identificación de
+  zonas de oferta/demanda y "barrido de liquidez" es discrecional/visual (estilo ICT), sin
+  definición algorítmica precisa en el video — traducirlo a regla de código exacta requeriría
+  operacionalizar qué cuenta como swing y qué distancia de mecha cuenta como "sweep".
+- **Red flags:** cifra de resultado de altísimo impacto ($566k en un mes, con un trade de $292k en
+  1h20m) presentada sin contexto de tamaño de cuenta ni apalancamiento, lo que hace la cifra
+  absoluta no evaluable (podría ser cualquier % de retorno según el capital); no hay evidencia de
+  auditoría externa, solo capturas de su propio "trading journal"; venta cruzada activa de su app
+  Edge Flow y de una mentoría de 33 días; la anécdota de remover el stop loss por "gut feeling" es
+  presentada como válida por experiencia (7 años) pero es exactamente el tipo de manejo de riesgo
+  discrecional que el propio Charter de este programa prohíbe reproducir sin evidencia sistemática.
+
+## 4. PnIkSLm2yRk
+
+- **Título (inferido):** "Tori Trades" — sistema completo de trading basado únicamente en líneas
+  de tendencia (trend lines) multi-timeframe ("top-down analysis"), aplicable a cualquier
+  instrumento.
+- **URL:** https://www.youtube.com/watch?v=PnIkSLm2yRk
+- **Duración/extensión:** 955 líneas, transcripción media-larga, contenido denso y bien
+  estructurado (sin relleno de anécdotas de PnL como otros videos del grupo).
+- **Qué cubre realmente:** metodología discrecional completa de análisis técnico basada
+  exclusivamente en **líneas de tendencia** (sin indicadores), demostrada paso a paso sobre Bitcoin
+  en TradingView. Define un proceso reproducible: análisis top-down multi-timeframe → identificar
+  "action line" (línea rota = señal de entrada) → "safety line" (línea opuesta = stop/trailing) →
+  gestión de posición → mantenimiento diario de las líneas. Es agnóstico de instrumento y timeframe
+  (afirma poder aplicarse igual a oro, crudo, Nasdaq, Tesla, forex).
+- **Reglas/parámetros específicos y testeables:**
+  - **Top-down analysis:** dibujar trend lines en secuencia descendente de timeframes (mensual →
+    semanal → diario → 4H → 1H → [timeframe de ejecución]) usando la herramienta "ray" (dos puntos,
+    extensión indefinida). Reglas de construcción de la línea:
+    1. La primera trendline alcista debe iniciar en el **mínimo más bajo visible** en el timeframe,
+       con ángulo estrictamente positivo (nunca horizontal). Simétrico para la primera bajista
+       (máximo más alto).
+    2. Cada trendline nueva debe conectar con el punto B de la anterior (point A nuevo = point B
+       anterior) — construcción encadenada.
+    3. Maximizar el número de toques (touch points) por línea.
+    4. **Regla dura: el precio nunca puede haber perforado/cruzado la línea** — si lo hizo, la línea
+       es inválida y se debe ajustar.
+    5. Bajar de timeframe repitiendo el proceso hasta llegar al timeframe de ejecución elegido.
+  - **Entrada ("action line"):** se opera en la dirección de la ruptura de una trend line — ruptura
+    de una alcista → entrada en corto; ruptura de una bajista → entrada en largo. Es puramente
+    reactiva al quiebre de estructura, no anticipatoria.
+  - **Salida/stop/trailing ("safety line" = SL):** el stop inicial se coloca justo al otro lado de
+    la trend line opuesta a la que originó la entrada (la "safety line"). A medida que el precio
+    avanza y sigue respetando la safety line, el trader **desplaza manualmente el stop a lo largo de
+    esa línea** (trailing stop dinámico, no un ATR ni un múltiplo fijo). La salida ocurre única y
+    exclusivamente cuando el precio **viola/cruza la safety line** — no hay take-profit fijo ni
+    objetivo de R múltiplo.
+  - **Position sizing:** regla genérica de principiante — **arriesgar 1-2% del capital por
+    operación**, stop siempre determinado por la distancia a la safety line (no al revés).
+  - **Mantenimiento diario:** las líneas deben re-trazarse/ajustarse a diario conforme aparecen
+    nuevos máximos/mínimos, siguiendo las mismas 3 reglas de construcción.
+- **Relevancia a S6/SuperTrend:** MEDIUM-HIGH. La mecánica "safety line" es, en esencia, un
+  **trailing stop estructural basado en pendiente de tendencia** (equivalente conceptual a un
+  SuperTrend/Parabolic dibujado a mano con reglas de no-intersección) — es la pieza más
+  directamente comparable con el mecanismo de SuperTrend que se ha visto en el grupo hasta ahora, y
+  toca exactamente la debilidad declarada de exit/trailing management. Es completamente
+  implementable como regla algorítmica: la "safety line" puede formalizarse como la trendline de
+  regresión/pivotes conectados sin intersección de precio, y el trailing = mover el stop al valor
+  de esa línea en cada barra. La entrada por ruptura de trendline también es una idea de filtro de
+  régimen (invalidación de tendencia) potencialmente útil para decidir cuándo S6/ST deben cerrar o
+  no abrir posiciones. No es específico de oro ni M15, pero se declara explícitamente agnóstico de
+  instrumento/timeframe, lo cual reduce el riesgo de que la mecánica no traduzca.
+- **Red flags:** afirmación de resultado personal no verificable ("$5.000 → más de medio millón en
+  11 años" con "el mismo sistema exacto") sin mostrar track record auditado ni estadísticas
+  (win rate, drawdown, número de trades); ningún backtest cuantitativo, todo es demostración visual
+  cualitativa sobre un solo activo (Bitcoin) sin medir resultados; venta cruzada de prop firm
+  (Alpha Futures/Alpha Capital, código de descuento "Tory"); el trazado de trend lines es
+  inherentemente subjetivo/discrecional pese a presentarse como "sin ambigüedad" — dos traders
+  distintos trazarían líneas distintas, lo cual complica la traducción 1:1 a regla de código sin
+  definir un algoritmo determinista de pivotes.
+
 ## 3. xGIa8Vg0PWM
 
 - **Título (inferido):** "How to Day Trade" — Ross Cameron (Warrior Trading), clase de "momentum
