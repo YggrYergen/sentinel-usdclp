@@ -1,0 +1,603 @@
+# OLA1-palancas-de-salida -- manifiesto generado (OLA1-EXEC Bloque 8)
+#
+# Generado por: python -m scripts.research.ola1.manifiesto
+# Grillas HARDCODEADAS desde E-04 SS3 (pre-registro `1c7279d`, ampliacion `1c7279d`),
+# no configurables. 5 corridas, 157 brazos totales, 44 confirmatorios (subconjunto
+# exacto del pre-registro -- verificado por
+# test_ola1.py::test_los_44_preregistrados_son_subconjunto_exacto).
+#
+# Conversion de unidades P-03 (E-04 SS2.1): el umbral se pre-registro en PIPS y
+# pip_size("XAUUSD") = 0.01, luego ac_decel_umbral = umbral_pips * 0.01. El nombre
+# de cada brazo lleva los pips (u25-lb1-h3 = 25 pips); el overlay lleva el valor
+# ya convertido a unidades AC (ac_decel_umbral: 0.25). Las dos quedan en el YAML
+# para que la traza sea legible sin recalcular nada.
+#
+# PRE-INTERPRETACION -- este manifiesto no contiene resultados ni conclusiones.
+experimento: OLA1-palancas-de-salida
+area: B
+etapa: F0
+hipotesis: research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-ola1.md
+substrate_id: capitaria-ticks-2026-preholdout
+engine_sha: ad5b95d
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/OLA1/
+  ledger: append
+corridas:
+- run_key: P02-S6
+  tipo: ola1_paired
+  palanca: P-02
+  sid: S6-K2P0
+  clase: 1-A
+  brazo_control: default
+  secundaria: p02
+  brazos:
+    default: {}
+    mhb4:
+      max_hold_bars: 4
+    mhb6:
+      max_hold_bars: 6
+    mhb8:
+      max_hold_bars: 8
+    mhb10:
+      max_hold_bars: 10
+    mhb12:
+      max_hold_bars: 12
+    mhb15:
+      max_hold_bars: 15
+    mhb20:
+      max_hold_bars: 20
+    mhb25:
+      max_hold_bars: 25
+    mhb30:
+      max_hold_bars: 30
+    mhb40:
+      max_hold_bars: 40
+    mhb48:
+      max_hold_bars: 48
+    mhb56:
+      max_hold_bars: 56
+    mhb64:
+      max_hold_bars: 64
+    mhb80:
+      max_hold_bars: 80
+    mhb96:
+      max_hold_bars: 96
+    mhb128:
+      max_hold_bars: 128
+  confirmatorios:
+  - default
+  - mhb10
+  - mhb15
+  - mhb20
+  - mhb30
+  - mhb48
+  - mhb64
+- run_key: P02-S7
+  tipo: ola1_paired
+  palanca: P-02
+  sid: S7-TPNONE
+  clase: 1-A
+  brazo_control: default
+  secundaria: p02
+  brazos:
+    default: {}
+    mhb4:
+      max_hold_bars: 4
+    mhb6:
+      max_hold_bars: 6
+    mhb8:
+      max_hold_bars: 8
+    mhb10:
+      max_hold_bars: 10
+    mhb12:
+      max_hold_bars: 12
+    mhb15:
+      max_hold_bars: 15
+    mhb20:
+      max_hold_bars: 20
+    mhb25:
+      max_hold_bars: 25
+    mhb30:
+      max_hold_bars: 30
+    mhb40:
+      max_hold_bars: 40
+    mhb48:
+      max_hold_bars: 48
+    mhb56:
+      max_hold_bars: 56
+    mhb64:
+      max_hold_bars: 64
+    mhb80:
+      max_hold_bars: 80
+    mhb96:
+      max_hold_bars: 96
+    mhb128:
+      max_hold_bars: 128
+  confirmatorios:
+  - default
+  - mhb10
+  - mhb15
+  - mhb20
+  - mhb30
+  - mhb48
+  - mhb64
+- run_key: P03-S6
+  tipo: ola1_paired
+  palanca: P-03
+  sid: S6-K2P0
+  clase: 1-A
+  brazo_control: default
+  secundaria: p03
+  brazos:
+    default: {}
+    u10-lb1-h1:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u10-lb1-h3:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u10-lb1-h5:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u10-lb1-h10:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u10-lb1-h20:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u10-lb2-h1:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u10-lb2-h3:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u10-lb2-h5:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u10-lb2-h10:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u10-lb2-h20:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u10-lb3-h1:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u10-lb3-h3:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u10-lb3-h5:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u10-lb3-h10:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u10-lb3-h20:
+      ac_decel_umbral: 0.1
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    u25-lb1-h1:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u25-lb1-h3:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u25-lb1-h5:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u25-lb1-h10:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u25-lb1-h20:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u25-lb2-h1:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u25-lb2-h3:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u25-lb2-h5:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u25-lb2-h10:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u25-lb2-h20:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u25-lb3-h1:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u25-lb3-h3:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u25-lb3-h5:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u25-lb3-h10:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u25-lb3-h20:
+      ac_decel_umbral: 0.25
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    u50-lb1-h1:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u50-lb1-h3:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u50-lb1-h5:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u50-lb1-h10:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u50-lb1-h20:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u50-lb2-h1:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u50-lb2-h3:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u50-lb2-h5:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u50-lb2-h10:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u50-lb2-h20:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u50-lb3-h1:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u50-lb3-h3:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u50-lb3-h5:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u50-lb3-h10:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u50-lb3-h20:
+      ac_decel_umbral: 0.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    u75-lb1-h1:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u75-lb1-h3:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u75-lb1-h5:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u75-lb1-h10:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u75-lb1-h20:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u75-lb2-h1:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u75-lb2-h3:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u75-lb2-h5:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u75-lb2-h10:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u75-lb2-h20:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u75-lb3-h1:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u75-lb3-h3:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u75-lb3-h5:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u75-lb3-h10:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u75-lb3-h20:
+      ac_decel_umbral: 0.75
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    u100-lb1-h1:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u100-lb1-h3:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u100-lb1-h5:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u100-lb1-h10:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u100-lb1-h20:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u100-lb2-h1:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u100-lb2-h3:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u100-lb2-h5:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u100-lb2-h10:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u100-lb2-h20:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u100-lb3-h1:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u100-lb3-h3:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u100-lb3-h5:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u100-lb3-h10:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u100-lb3-h20:
+      ac_decel_umbral: 1.0
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    u150-lb1-h1:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 1
+    u150-lb1-h3:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 3
+    u150-lb1-h5:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 5
+    u150-lb1-h10:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 10
+    u150-lb1-h20:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 1
+      ac_modulate_hold_bars: 20
+    u150-lb2-h1:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 1
+    u150-lb2-h3:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 3
+    u150-lb2-h5:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 5
+    u150-lb2-h10:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 10
+    u150-lb2-h20:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 2
+      ac_modulate_hold_bars: 20
+    u150-lb3-h1:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 1
+    u150-lb3-h3:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 3
+    u150-lb3-h5:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 5
+    u150-lb3-h10:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 10
+    u150-lb3-h20:
+      ac_decel_umbral: 1.5
+      ac_decel_lookback: 3
+      ac_modulate_hold_bars: 20
+    ac_off:
+      ac_modulate: false
+    factor0.10:
+      ac_modulate_factor: 0.1
+    factor0.50:
+      ac_modulate_factor: 0.5
+    factor0.75:
+      ac_modulate_factor: 0.75
+  confirmatorios:
+  - default
+  - u25-lb1-h10
+  - u25-lb1-h3
+  - u25-lb1-h5
+  - u25-lb2-h10
+  - u25-lb2-h3
+  - u25-lb2-h5
+  - u50-lb1-h10
+  - u50-lb1-h3
+  - u50-lb1-h5
+  - u50-lb2-h10
+  - u50-lb2-h3
+  - u50-lb2-h5
+  - u75-lb1-h10
+  - u75-lb1-h3
+  - u75-lb1-h5
+  - u75-lb2-h10
+  - u75-lb2-h3
+  - u75-lb2-h5
+- run_key: P05-ST
+  tipo: ola1_paired
+  palanca: P-05
+  sid: SuperTrend-p14x3-M15
+  clase: 1-B
+  brazo_control: default
+  secundaria: none
+  brazos:
+    mult1.50:
+      mult: 1.5
+    mult1.75:
+      mult: 1.75
+    mult2.00:
+      mult: 2.0
+    mult2.25:
+      mult: 2.25
+    mult2.50:
+      mult: 2.5
+    mult2.75:
+      mult: 2.75
+    default: {}
+    mult3.25:
+      mult: 3.25
+    mult3.50:
+      mult: 3.5
+    mult3.75:
+      mult: 3.75
+    mult4.00:
+      mult: 4.0
+    mult4.25:
+      mult: 4.25
+    mult4.50:
+      mult: 4.5
+    mult4.75:
+      mult: 4.75
+    mult5.00:
+      mult: 5.0
+    mult5.50:
+      mult: 5.5
+    mult6.00:
+      mult: 6.0
+  confirmatorios:
+  - default
+  - mult2.00
+  - mult2.50
+  - mult3.50
+  - mult4.00
+  - mult4.50
+  - mult5.00
+- run_key: P08-ST
+  tipo: ola1_paired
+  palanca: P-08
+  sid: SuperTrend-p14x3-M15
+  clase: 1-A
+  brazo_control: default
+  secundaria: p08
+  brazos:
+    default: {}
+    slo0.05:
+      sl_offset: 0.05
+    slo0.10:
+      sl_offset: 0.1
+    slo0.15:
+      sl_offset: 0.15
+    slo0.20:
+      sl_offset: 0.2
+    slo0.25:
+      sl_offset: 0.25
+    slo0.30:
+      sl_offset: 0.3
+    slo0.40:
+      sl_offset: 0.4
+    slo0.50:
+      sl_offset: 0.5
+    slo0.75:
+      sl_offset: 0.75
+    slo1.00:
+      sl_offset: 1.0
+  confirmatorios:
+  - default
+  - slo0.10
+  - slo0.20
+  - slo0.30

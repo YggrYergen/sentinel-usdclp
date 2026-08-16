@@ -428,6 +428,199 @@ class TestSecundarias:
         assert abs(suma - esperado) < 1e-6
 
 
+# --------------------------------------------------------------------- Bloque 8
+class TestManifiesto:
+    def test_los_44_preregistrados_son_subconjunto_exacto(self, tmp_path):
+        """El test mas importante del fichero: codifica los 44 brazos
+        confirmatorios TAL COMO los lista el pre-registro (`22ee9fb`) +
+        ampliacion E-04 (`1c7279d`) y comprueba, contra el YAML generado,
+        que los 44 estan presentes con su overlay EXACTO y que hay 157
+        brazos en total."""
+        from scripts.research.ola1.manifiesto import construir_manifiesto
+
+        data = construir_manifiesto(engine_sha="test-sha")
+        por_run = {c["run_key"]: c for c in data["corridas"]}
+
+        # P-02, S6 y S7: off(default), 10, 15, 20, 30, 48, 64 -- 7 x 2 = 14
+        p02_confirm = {
+            "default": {}, "mhb10": {"max_hold_bars": 10}, "mhb15": {"max_hold_bars": 15},
+            "mhb20": {"max_hold_bars": 20}, "mhb30": {"max_hold_bars": 30},
+            "mhb48": {"max_hold_bars": 48}, "mhb64": {"max_hold_bars": 64},
+        }
+        for run_key in ("P02-S6", "P02-S7"):
+            corrida = por_run[run_key]
+            assert set(corrida["confirmatorios"]) == set(p02_confirm)
+            for nombre, overlay in p02_confirm.items():
+                assert corrida["brazos"][nombre] == overlay
+
+        # P-03, S6: default + {25,50,75}x{1,2}x{3,5,10} = 1 + 18 = 19
+        p03 = por_run["P03-S6"]
+        p03_confirm_esperados = {"default"}
+        for u in (25, 50, 75):
+            for lb in (1, 2):
+                for h in (3, 5, 10):
+                    nombre = f"u{u}-lb{lb}-h{h}"
+                    p03_confirm_esperados.add(nombre)
+                    assert p03["brazos"][nombre] == {
+                        "ac_decel_umbral": round(u * 0.01, 10),
+                        "ac_decel_lookback": lb,
+                        "ac_modulate_hold_bars": h,
+                    }
+        assert set(p03["confirmatorios"]) == p03_confirm_esperados
+        assert len(p03_confirm_esperados) == 19
+        assert p03["brazos"]["default"] == {}
+
+        # P-05, SuperTrend: {2.0,2.5,3.0(default),3.5,4.0,4.5,5.0} = 7
+        p05 = por_run["P05-ST"]
+        p05_confirm = {
+            "default": {}, "mult2.00": {"mult": 2.0}, "mult2.50": {"mult": 2.5},
+            "mult3.50": {"mult": 3.5}, "mult4.00": {"mult": 4.0},
+            "mult4.50": {"mult": 4.5}, "mult5.00": {"mult": 5.0},
+        }
+        assert set(p05["confirmatorios"]) == set(p05_confirm)
+        for nombre, overlay in p05_confirm.items():
+            assert p05["brazos"][nombre] == overlay
+
+        # P-08, SuperTrend: {0.00(default),0.10,0.20,0.30} = 4
+        p08 = por_run["P08-ST"]
+        p08_confirm = {
+            "default": {}, "slo0.10": {"sl_offset": 0.10}, "slo0.20": {"sl_offset": 0.20},
+            "slo0.30": {"sl_offset": 0.30},
+        }
+        assert set(p08["confirmatorios"]) == set(p08_confirm)
+        for nombre, overlay in p08_confirm.items():
+            assert p08["brazos"][nombre] == overlay
+
+        # totales: 44 confirmatorios, 157 brazos
+        n_confirm_total = sum(len(c["confirmatorios"]) for c in data["corridas"])
+        n_brazos_total = sum(len(c["brazos"]) for c in data["corridas"])
+        assert n_confirm_total == 44
+        assert n_brazos_total == 157
+        assert [len(c["brazos"]) for c in data["corridas"]] == [17, 17, 95, 17, 11]
+
+    def test_manifiesto_valida_contra_el_runner(self, tmp_path):
+        from scripts.research.ola1.manifiesto import construir_manifiesto, escribir_manifiesto
+        from scripts.research.runner import tasks_ola1  # noqa: F401 -- registra ola1_paired
+        from scripts.research.runner.manifest import load_manifest
+
+        data = construir_manifiesto(engine_sha="test-sha")
+        salida = tmp_path / "manifiesto.yaml"
+        escribir_manifiesto(data, salida)
+
+        cargado = load_manifest(salida)  # no debe lanzar
+        assert len(cargado["corridas"]) == 5
+        for c in cargado["corridas"]:
+            assert c["tipo"] == "ola1_paired"
+
+
+class TestTaskType:
+    def test_task_type_registrado_y_manifiesto_de_humo_corre(self, tmp_path):
+        from scripts.research.runner import tasks_ola1  # noqa: F401 -- registra ola1_paired
+        from scripts.research.runner import tasks
+        from scripts.research.runner.manifest import load_manifest
+        from scripts.research.runner.runner import run_manifest
+
+        assert "ola1_paired" in tasks.get_registry()
+
+        manifest_path = tmp_path / "humo.yaml"
+        resultados_dir = tmp_path / "resultados"
+        ledger_path = tmp_path / "LEDGER.jsonl"
+        manifest_path.write_text(f"""
+experimento: OLA1-humo
+area: B
+etapa: F0
+hipotesis: research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-ola1.md
+substrate_id: capitaria-ticks-2026-preholdout
+engine_sha: humo
+salidas:
+  resultados: {resultados_dir.as_posix()}
+  ledger: append
+corridas:
+  - run_key: HUMO-P08
+    tipo: ola1_paired
+    palanca: P-08
+    sid: SuperTrend-p14x3-M15
+    clase: "1-A"
+    brazo_control: default
+    secundaria: p08
+    brazos:
+      default: {{}}
+      slo0.10: {{sl_offset: 0.10}}
+    confirmatorios: [default, slo0.10]
+""", encoding="utf-8")
+
+        load_manifest(manifest_path)  # no debe lanzar; ve 1 corrida con tipo registrado
+
+        resultado = run_manifest(manifest_path, ledger_path=ledger_path,
+                                  on_error="continue", workers=1)
+        assert resultado["failed_run_keys"] == []
+
+        out_dir = resultados_dir / "HUMO-P08"
+        assert (out_dir / "metricas.json").exists()
+        assert (out_dir / "posiciones.csv").exists()
+        assert (out_dir / "alineacion.json").exists()
+        assert (out_dir / "_brazos.txt").exists()
+        assert ledger_path.exists()
+
+    def test_resolver_con_progreso_idem_run_paired_arms(self, monkeypatch, tmp_path):
+        """El camino propio de tasks_ola1 (resolucion brazo-a-brazo con
+        progreso) debe producir posiciones IDENTICAS a run_paired_arms para
+        un caso de 2 brazos (brief Bloque 6, sin divergencia silenciosa)."""
+        from scripts.analysis.realtick_bt import backtest
+        from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+        from scripts.research.runner.tasks_ola1 import _resolver_brazos_con_progreso
+
+        def _trend_bars(n=40):
+            bars = []
+            t0 = 1_700_000_000
+            price = 100.0
+            for i in range(n):
+                drift = 0.8 if i < n // 2 else -0.8
+                price += drift
+                o = price - drift
+                c = price
+                h = max(o, c) + 0.3
+                l = min(o, c) - 0.3
+                bars.append({"t": t0 + BAR_SEC * i, "open": o, "high": h, "low": l,
+                             "close": c, "volume": 1})
+            return bars
+
+        class _FakeTicks:
+            def __init__(self, ticks):
+                self._t = np.array([t for t, _, _ in ticks], dtype="float64")
+                self._bid = np.array([b for _, b, _ in ticks], dtype="float64")
+                self._ask = np.array([a for _, _, a in ticks], dtype="float64")
+
+            def first_at(self, t_sec):
+                i = int(np.searchsorted(self._t, t_sec, "left"))
+                if i < len(self._t):
+                    return float(self._t[i]), float(self._bid[i]), float(self._ask[i])
+                return None
+
+            def range(self, t0, t1):
+                lo = int(np.searchsorted(self._t, t0, "left"))
+                hi = int(np.searchsorted(self._t, t1, "left"))
+                return self._t[lo:hi], self._bid[lo:hi], self._ask[lo:hi]
+
+        bars = _trend_bars()
+        events = [
+            {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+            {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+            {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+            {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+        ]
+        monkeypatch.setattr(backtest, "simular_variant", lambda bars_, **kw: events)
+        ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                            (b["t"] + BAR_SEC for b in bars)])
+        sid = "S6-K2P0"
+        arms = {"default": {}, "mhb5": {"max_hold_bars": 5}}
+
+        expected = run_paired_arms(sid, arms, bars, ticks=ticks, pares="contra_control",
+                                    brazo_control="default")
+        _sig, resolved = _resolver_brazos_con_progreso(sid, arms, bars, ticks, tmp_path)
+        assert resolved == expected.arms
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])
