@@ -33,3 +33,8 @@ n_identidades_duplicadas contado), tasa de emparejamiento + degradado_a_1B (D-56
 diffs pareados + media_diff_en_R, bootstrap por bloques vectorizado (dia servidor, B=10000,
 seed 20260816). 5 tests nuevos (IC de diferencia cero, vectorizado==ingenuo, reproducible,
 no-evaluable, duplicadas). Parity gate 4 passed. VERDE.
+
+Bloque 5 -- secundarias.py: secundaria_p02 (podadas/amputadas sobre casadas+time_stop),
+secundaria_p03 (reflip 3 barras/2700s, por ficha en la escalera, pct=None si n_reflips=0),
+secundaria_p08 (salvadas/mismo_stop_peor_fill/otros, assert suma==diff_total). 5 tests
+nuevos verdes. Parity gate 4 passed. VERDE.

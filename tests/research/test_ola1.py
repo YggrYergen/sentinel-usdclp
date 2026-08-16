@@ -337,6 +337,97 @@ class TestPareado:
         assert resultado["media_diff"] == 40.0  # 50.0 - 10.0, la PRIMERA por t_exit
 
 
+# --------------------------------------------------------------------- Bloque 5
+class TestSecundarias:
+    def test_secundaria_p02_podadas_y_amputadas(self):
+        from scripts.research.ola1.secundarias import secundaria_p02
+
+        t0 = 1_700_000_000.0
+        posiciones_brazo = [
+            {"t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 900, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": -10.0, "reason": "time_stop"},
+            {"t_in": t0 + 3600, "t_in_exec": t0 + 3660, "t_exit": t0 + 4500, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 20.0, "reason": "time_stop"},
+            {"t_in": t0 + 7200, "t_in_exec": t0 + 7260, "t_exit": t0 + 8100, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 5.0, "reason": "EXIT_TP"},
+        ]
+        posiciones_control = [
+            {"t_in": t0, "t_in_exec": t0 + 60, "t_exit": t0 + 900, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": -50.0, "reason": "EXIT_INITSL"},
+            {"t_in": t0 + 3600, "t_in_exec": t0 + 3660, "t_exit": t0 + 4500, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 100.0, "reason": "EXIT_TRAIL"},
+            {"t_in": t0 + 7200, "t_in_exec": t0 + 7260, "t_exit": t0 + 8100, "side": "LONG",
+             "side_l": "L", "ficha": "F1", "net1": 5.0, "reason": "EXIT_TP"},
+        ]
+        r = secundaria_p02("S6-K2P0", posiciones_brazo, posiciones_control)
+        assert r["n_cerradas_por_time_stop"] == 2
+        assert r["podadas_perdedoras"] == {"n": 1, "suma_delta": 40.0}
+        assert r["amputadas_ganadoras"] == {"n": 1, "suma_delta": -80.0}
+        assert r["net_medio_time_stop_lote1"] == 5.0
+        assert r["wr_time_stop"] == 50.0
+
+    def test_reflip_definicion(self):
+        from scripts.research.ola1.secundarias import secundaria_p03
+
+        t0 = 1_700_000_000.0
+        posiciones = [
+            # dentro de 3 barras (2700s), sentido contrario, resultado negativo -> reflip FALSO
+            {"t_exit": t0, "t_in_exec": t0 + 100, "side": "LONG", "ficha": "F1", "net1": 5.0},
+            {"t_exit": t0 + 1000, "t_in_exec": t0 + 100, "side": "SHORT", "ficha": "F1",
+             "net1": -3.0},
+            # fuera de la ventana (>2700s) -> no cuenta como reflip
+            {"t_exit": t0 + 5000, "t_in_exec": t0 + 5000 + 3000, "side": "LONG", "ficha": "F1",
+             "net1": 1.0},
+            {"t_exit": t0 + 9000, "t_in_exec": t0 + 9000 + 3600, "side": "SHORT", "ficha": "F1",
+             "net1": 2.0},
+        ]
+        r = secundaria_p03("S6-K2P0", posiciones)
+        assert r["n_reflips"] == 1
+        assert r["n_reflips_falsos"] == 1
+        assert r["pct_reflip_falso"] == 1.0
+
+    def test_reflip_n_cero_es_none_no_cero(self):
+        from scripts.research.ola1.secundarias import secundaria_p03
+
+        t0 = 1_700_000_000.0
+        posiciones = [
+            {"t_exit": t0, "t_in_exec": t0 + 100, "side": "LONG", "ficha": "F1", "net1": 5.0},
+        ]
+        r = secundaria_p03("S6-K2P0", posiciones)
+        assert r["n_reflips"] == 0
+        assert r["pct_reflip_falso"] is None
+
+    def test_secundaria_p08_suma_exactamente_la_diferencia(self):
+        from scripts.research.ola1.secundarias import secundaria_p08
+
+        t0 = 1_700_000_000.0
+
+        def _pos(t_off, net1, reason):
+            return {"t_in": t0 + t_off, "t_in_exec": t0 + t_off + 60,
+                    "t_exit": t0 + t_off + 900, "side": "LONG", "side_l": "L",
+                    "ficha": "F1", "net1": net1, "reason": reason}
+
+        posiciones_brazo = [
+            _pos(0, 10.0, "EXIT_TRAIL"),      # salvadas: control salio STLINE, brazo no
+            _pos(3600, -20.0, "EXIT_STLINE"),  # mismo_stop_peor_fill: ambos STLINE
+            _pos(7200, 5.0, "EXIT_TP"),        # otros
+        ]
+        posiciones_control = [
+            _pos(0, -30.0, "EXIT_STLINE"),
+            _pos(3600, -15.0, "EXIT_STLINE"),
+            _pos(7200, 2.0, "EXIT_TP"),
+        ]
+        r = secundaria_p08("S6-K2P0", posiciones_brazo, posiciones_control)
+        assert r["salvadas"] == {"n": 1, "suma_delta": 40.0}
+        assert r["mismo_stop_peor_fill"] == {"n": 1, "suma_delta": -5.0}
+        assert r["otros"] == {"n": 1, "suma_delta": 3.0}
+        suma = (r["salvadas"]["suma_delta"] + r["mismo_stop_peor_fill"]["suma_delta"]
+                + r["otros"]["suma_delta"])
+        esperado = sum(pb["net1"] - pc["net1"]
+                       for pb, pc in zip(posiciones_brazo, posiciones_control))
+        assert abs(suma - esperado) < 1e-6
+
+
 class TestRiesgo:
     @pytest.mark.slow
     @pytest.mark.parametrize("sid", ["S6-K2P0", "S7-TPNONE", "SuperTrend-p14x3-M15"])
