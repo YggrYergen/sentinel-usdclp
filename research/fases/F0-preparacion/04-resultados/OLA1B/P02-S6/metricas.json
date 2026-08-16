@@ -1,0 +1,1197 @@
+{
+  "brazos": {
+    "default": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {}
+    },
+    "mhb10": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2720532.500000017,
+        "R_p75": 6594364.750000082,
+        "avg_loss": -1317953.2,
+        "avg_win": 2211521.34,
+        "max_perdidas_consecutivas": 27,
+        "maxdd_lote1": 140264287.5,
+        "n": 693,
+        "n_R_no_computable": 0,
+        "n_flips": 693,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 363,
+          "EXIT_TRAIL": 15,
+          "reverse": 81,
+          "time_stop": 222
+        },
+        "n_posiciones_con_coste": 390,
+        "net_con_coste_lote1": -74485463.99999975,
+        "net_en_R_por_posicion": -0.0486468104999775,
+        "net_en_R_total": -33.71223967648441,
+        "net_lote1": -66267676.49999976,
+        "net_lote_grid": -44399343.25,
+        "net_por_posicion_lote1": -95624.35281385247,
+        "pf": 0.889,
+        "rom": -227.21,
+        "sharpe_diario_ann": -0.9931508941238285,
+        "sharpe_por_posicion": -0.04359906748269351,
+        "wr": 34.63
+      },
+      "overlay": {
+        "max_hold_bars": 10
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1494150.369393849,
+        "ic95_alto": 6788.019571427992,
+        "ic95_bajo": -397158.8743499414,
+        "ic_excluye_0": false,
+        "media_diff": -169488.22682926964,
+        "media_diff_en_R": -0.007459210100456585,
+        "mediana_diff": 0.0,
+        "n_brazo": 693,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 78,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.0628,
+        "suma_diff": -104235259.50000083,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 60,
+          "suma_delta": -202446951.0000007
+        },
+        "n_cerradas_por_time_stop": 204,
+        "net_medio_time_stop_lote1": 1440157.9632352958,
+        "podadas_perdedoras": {
+          "n": 54,
+          "suma_delta": 32786865.000000212
+        },
+        "wr_time_stop": 80.88235294117646
+      }
+    },
+    "mhb12": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4548580.499999972,
+        "R_p25": 2794515.9999999283,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1304906.18,
+        "avg_win": 2317083.44,
+        "max_perdidas_consecutivas": 27,
+        "maxdd_lote1": 116285205.0,
+        "n": 666,
+        "n_R_no_computable": 0,
+        "n_flips": 666,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 396,
+          "EXIT_TRAIL": 15,
+          "reverse": 87,
+          "time_stop": 156
+        },
+        "n_posiciones_con_coste": 423,
+        "net_con_coste_lote1": -41301054.74999897,
+        "net_en_R_por_posicion": -0.034573041954937295,
+        "net_en_R_total": -23.025645941988238,
+        "net_lote1": -32387915.999998964,
+        "net_lote_grid": -21699903.72,
+        "net_por_posicion_lote1": -48630.50450450295,
+        "pf": 0.943,
+        "rom": -111.19,
+        "sharpe_diario_ann": -0.5168226350487604,
+        "sharpe_por_posicion": -0.021128254205798107,
+        "wr": 34.68
+      },
+      "overlay": {
+        "max_hold_bars": 12
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1303075.5800196838,
+        "ic95_alto": 18743.724305066553,
+        "ic95_bajo": -336356.4081086612,
+        "ic_excluye_0": false,
+        "media_diff": -136920.86829268304,
+        "media_diff_en_R": -0.005929519426678254,
+        "mediana_diff": 0.0,
+        "n_brazo": 666,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 51,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.0866,
+        "suma_diff": -84206334.00000007,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 57,
+          "suma_delta": -154415739.00000048
+        },
+        "n_cerradas_por_time_stop": 141,
+        "net_medio_time_stop_lote1": 2213268.3085106453,
+        "podadas_perdedoras": {
+          "n": 27,
+          "suma_delta": 18980982.000000115
+        },
+        "wr_time_stop": 91.48936170212765
+      }
+    },
+    "mhb128": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 128
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 0.0,
+        "ic95_alto": 0.0,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 0.0,
+        "media_diff_en_R": 0.0,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 1.0,
+        "suma_diff": 0.0,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 0,
+        "net_medio_time_stop_lote1": null,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": null
+      }
+    },
+    "mhb15": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4548580.499999972,
+        "R_p25": 2829868.875000083,
+        "R_p75": 6603144.4374999115,
+        "avg_loss": -1308987.89,
+        "avg_win": 2962809.01,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 105075300.0,
+        "n": 636,
+        "n_R_no_computable": 0,
+        "n_flips": 636,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 402,
+          "EXIT_TRAIL": 15,
+          "reverse": 84,
+          "time_stop": 123
+        },
+        "n_posiciones_con_coste": 429,
+        "net_con_coste_lote1": 68336873.25000136,
+        "net_en_R_por_posicion": -0.003457540765736256,
+        "net_en_R_total": -2.1989959270082586,
+        "net_lote1": 77376439.50000134,
+        "net_lote_grid": 51842214.47,
+        "net_por_posicion_lote1": 121661.06839622853,
+        "pf": 1.14,
+        "rom": 263.9,
+        "sharpe_diario_ann": 0.9997868658920132,
+        "sharpe_por_posicion": 0.042985841736648205,
+        "wr": 33.49
+      },
+      "overlay": {
+        "max_hold_bars": 15
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1292680.3777159904,
+        "ic95_alto": 183441.57443367553,
+        "ic95_bajo": -174635.20832363085,
+        "ic_excluye_0": false,
+        "media_diff": 24983.992682926248,
+        "media_diff_en_R": 0.018688734163305725,
+        "mediana_diff": 0.0,
+        "n_brazo": 636,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 21,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7266,
+        "suma_diff": 15365155.499999642,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 24,
+          "suma_delta": -86046556.50000037
+        },
+        "n_cerradas_por_time_stop": 114,
+        "net_medio_time_stop_lote1": 3368245.473684218,
+        "podadas_perdedoras": {
+          "n": 12,
+          "suma_delta": 8049217.4999998985
+        },
+        "wr_time_stop": 94.73684210526316
+      }
+    },
+    "mhb20": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4472489.875000015,
+        "R_p25": 2794515.9999999283,
+        "R_p75": 6575166.499999918,
+        "avg_loss": -1276104.82,
+        "avg_win": 3102184.63,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 103957119.0,
+        "n": 630,
+        "n_R_no_computable": 0,
+        "n_flips": 630,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 453,
+          "EXIT_TRAIL": 15,
+          "reverse": 90,
+          "time_stop": 60
+        },
+        "n_posiciones_con_coste": 480,
+        "net_con_coste_lote1": 52841076.00000027,
+        "net_en_R_por_posicion": -0.01900451451393399,
+        "net_en_R_total": -11.972844143778413,
+        "net_lote1": 62955276.00000029,
+        "net_lote_grid": 42180034.92,
+        "net_por_posicion_lote1": 99929.00952380999,
+        "pf": 1.114,
+        "rom": 216.12,
+        "sharpe_diario_ann": 0.8610671280234787,
+        "sharpe_por_posicion": 0.03602651559657089,
+        "wr": 31.43
+      },
+      "overlay": {
+        "max_hold_bars": 20
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 565630.6505273856,
+        "ic95_alto": 127967.99499637529,
+        "ic95_bajo": -52316.30963973674,
+        "ic_excluye_0": false,
+        "media_diff": 35861.09756097396,
+        "media_diff_en_R": 0.007851331729677854,
+        "mediana_diff": 0.0,
+        "n_brazo": 630,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 15,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.4096,
+        "suma_diff": 22054574.999998987,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 12,
+          "suma_delta": -26030017.50000015
+        },
+        "n_cerradas_por_time_stop": 57,
+        "net_medio_time_stop_lote1": 4954479.315789473,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": 100.0
+      }
+    },
+    "mhb25": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2794515.9999999283,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1265364.26,
+        "avg_win": 2949024.31,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 105831055.5,
+        "n": 621,
+        "n_R_no_computable": 0,
+        "n_flips": 621,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 480,
+          "EXIT_TRAIL": 15,
+          "reverse": 90,
+          "time_stop": 27
+        },
+        "n_posiciones_con_coste": 504,
+        "net_con_coste_lote1": 38037820.50000088,
+        "net_en_R_por_posicion": -0.017180422867226597,
+        "net_en_R_total": -10.669042600547717,
+        "net_lote1": 48657730.50000089,
+        "net_lote_grid": 32600679.44,
+        "net_por_posicion_lote1": 78353.83333333475,
+        "pf": 1.091,
+        "rom": 167.04,
+        "sharpe_diario_ann": 0.6857312859438297,
+        "sharpe_por_posicion": 0.02928709382161321,
+        "wr": 31.88
+      },
+      "overlay": {
+        "max_hold_bars": 25
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 330876.7859120671,
+        "ic95_alto": 29154.4518408233,
+        "ic95_bajo": -59525.288343647735,
+        "ic_excluye_0": false,
+        "media_diff": -6045.93382353028,
+        "media_diff_en_R": 0.0024391640983293474,
+        "mediana_diff": 0.0,
+        "n_brazo": 621,
+        "n_casadas": 612,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 9,
+        "n_solo_control": 3,
+        "p_bootstrap": 0.8868,
+        "suma_diff": -3700111.500000532,
+        "tasa_emparejamiento": 0.9951219512195122
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 9,
+          "suma_delta": -15387631.500000123
+        },
+        "n_cerradas_por_time_stop": 27,
+        "net_medio_time_stop_lote1": 4692177.1666666595,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": 100.0
+      }
+    },
+    "mhb30": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4472489.875000015,
+        "R_p25": 2794515.9999999283,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271554.46,
+        "avg_win": 2920136.67,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 113725750.5,
+        "n": 618,
+        "n_R_no_computable": 0,
+        "n_flips": 618,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 492,
+          "EXIT_TRAIL": 15,
+          "reverse": 90,
+          "time_stop": 12
+        },
+        "n_posiciones_con_coste": 516,
+        "net_con_coste_lote1": 20686348.500001688,
+        "net_en_R_por_posicion": -0.02540907154510069,
+        "net_en_R_total": -15.702806214872226,
+        "net_lote1": 31559113.50000172,
+        "net_lote_grid": 21144606.05,
+        "net_por_posicion_lote1": 51066.526699031914,
+        "pf": 1.059,
+        "rom": 108.34,
+        "sharpe_diario_ann": 0.4506796610013121,
+        "sharpe_por_posicion": 0.01901282425955771,
+        "wr": 31.55
+      },
+      "overlay": {
+        "max_hold_bars": 30
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 236560.41045835908,
+        "ic95_alto": 9634.529268293569,
+        "ic95_bajo": -49361.322664698855,
+        "ic_excluye_0": false,
+        "media_diff": -12087.702439023995,
+        "media_diff_en_R": -0.0010950970388564716,
+        "mediana_diff": 0.0,
+        "n_brazo": 618,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 3,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.672,
+        "suma_diff": -7433936.999999757,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 6,
+          "suma_delta": -10147913.999999715
+        },
+        "n_cerradas_por_time_stop": 12,
+        "net_medio_time_stop_lote1": 6897088.375000025,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": 100.0
+      }
+    },
+    "mhb4": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2688691.5000000885,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1187423.83,
+        "avg_win": 1438003.43,
+        "max_perdidas_consecutivas": 27,
+        "maxdd_lote1": 150844864.5,
+        "n": 849,
+        "n_R_no_computable": 0,
+        "n_flips": 849,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 201,
+          "EXIT_TRAIL": 9,
+          "reverse": 48,
+          "time_stop": 582
+        },
+        "n_posiciones_con_coste": 219,
+        "net_con_coste_lote1": -51831060.7500001,
+        "net_en_R_por_posicion": -0.05074577374311834,
+        "net_en_R_total": -43.08316190790747,
+        "net_lote1": -47216457.00000003,
+        "net_lote_grid": -31635026.19,
+        "net_por_posicion_lote1": -55614.201413427596,
+        "pf": 0.918,
+        "rom": -161.48,
+        "sharpe_diario_ann": -0.7415927531521277,
+        "sharpe_por_posicion": -0.027120131039919004,
+        "wr": 43.11
+      },
+      "overlay": {
+        "max_hold_bars": 4
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 2352000.3805966848,
+        "ic95_alto": 121839.32251725742,
+        "ic95_bajo": -451440.20874811325,
+        "ic_excluye_0": false,
+        "media_diff": -145735.92647058947,
+        "media_diff_en_R": -0.023107514194524947,
+        "mediana_diff": 0.0,
+        "n_brazo": 849,
+        "n_casadas": 612,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 237,
+        "n_solo_control": 3,
+        "p_bootstrap": 0.3266,
+        "suma_diff": -89190387.00000076,
+        "tasa_emparejamiento": 0.9951219512195122
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 123,
+          "suma_delta": -381223864.50000024
+        },
+        "n_cerradas_por_time_stop": 423,
+        "net_medio_time_stop_lote1": 436369.1489361738,
+        "podadas_perdedoras": {
+          "n": 222,
+          "suma_delta": 224394764.9999998
+        },
+        "wr_time_stop": 58.156028368794324
+      }
+    },
+    "mhb40": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2956256.75,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 498,
+          "EXIT_TRAIL": 15,
+          "reverse": 90,
+          "time_stop": 3
+        },
+        "n_posiciones_con_coste": 522,
+        "net_con_coste_lote1": 31547875.50000134,
+        "net_en_R_por_posicion": -0.022098572334075688,
+        "net_en_R_total": -13.590621985456547,
+        "net_lote1": 42547068.00000138,
+        "net_lote_grid": 28506535.56,
+        "net_por_posicion_lote1": 69182.22439024615,
+        "pf": 1.08,
+        "rom": 146.06,
+        "sharpe_diario_ann": 0.5998214567519263,
+        "sharpe_por_posicion": 0.025268870964678135,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 40
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 9076.892184958699,
+        "ic95_alto": 0.0,
+        "ic95_bajo": -2044.6099476444765,
+        "ic_excluye_0": false,
+        "media_diff": -634.9926829269838,
+        "media_diff_en_R": -6.626423459447614e-05,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7296,
+        "suma_diff": -390520.500000095,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 3,
+          "suma_delta": -390520.500000095
+        },
+        "n_cerradas_por_time_stop": 3,
+        "net_medio_time_stop_lote1": 11829867.999999972,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": 100.0
+      }
+    },
+    "mhb48": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2981700.74,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 498,
+          "EXIT_TRAIL": 15,
+          "reverse": 90,
+          "time_stop": 3
+        },
+        "n_posiciones_con_coste": 522,
+        "net_con_coste_lote1": 36509452.50000132,
+        "net_en_R_por_posicion": -0.02125668284994752,
+        "net_en_R_total": -13.072859952717724,
+        "net_lote1": 47508645.00000133,
+        "net_lote_grid": 31830792.15,
+        "net_por_posicion_lote1": 77249.82926829485,
+        "pf": 1.089,
+        "rom": 163.09,
+        "sharpe_diario_ann": 0.6611144980892798,
+        "sharpe_por_posicion": 0.027840427095595404,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 48
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 106245.34953182572,
+        "ic95_alto": 23932.232984292492,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 7432.612195121733,
+        "media_diff_en_R": 0.0007756252495336927,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.7296,
+        "suma_diff": 4571056.499999866,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 3,
+        "net_medio_time_stop_lote1": 13483726.99999996,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": 100.0
+      }
+    },
+    "mhb56": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 56
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 0.0,
+        "ic95_alto": 0.0,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 0.0,
+        "media_diff_en_R": 0.0,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 1.0,
+        "suma_diff": 0.0,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 0,
+        "net_medio_time_stop_lote1": null,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": null
+      }
+    },
+    "mhb6": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4548580.499999972,
+        "R_p25": 2769230.4999999725,
+        "R_p75": 6575166.499999918,
+        "avg_loss": -1371453.63,
+        "avg_win": 1668298.13,
+        "max_perdidas_consecutivas": 27,
+        "maxdd_lote1": 88662201.0,
+        "n": 774,
+        "n_R_no_computable": 0,
+        "n_flips": 774,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 276,
+          "EXIT_TRAIL": 12,
+          "reverse": 63,
+          "time_stop": 411
+        },
+        "n_posiciones_con_coste": 300,
+        "net_con_coste_lote1": -64708404.00000176,
+        "net_en_R_por_posicion": -0.03845549596882436,
+        "net_en_R_total": -29.764553879870057,
+        "net_lote1": -58387029.00000179,
+        "net_lote_grid": -39119309.43,
+        "net_por_posicion_lote1": -75435.43798449844,
+        "pf": 0.904,
+        "rom": -200.44,
+        "sharpe_diario_ann": -0.8558373266000575,
+        "sharpe_por_posicion": -0.03456679059863194,
+        "wr": 42.64
+      },
+      "overlay": {
+        "max_hold_bars": 6
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 2334192.666831018,
+        "ic95_alto": 159751.1785627987,
+        "ic95_bajo": -512253.38926646614,
+        "ic_excluye_0": false,
+        "media_diff": -143464.41871921584,
+        "media_diff_en_R": -0.00678120876789017,
+        "mediana_diff": 0.0,
+        "n_brazo": 774,
+        "n_casadas": 609,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 165,
+        "n_solo_control": 6,
+        "p_bootstrap": 0.4018,
+        "suma_diff": -87369831.00000244,
+        "tasa_emparejamiento": 0.9902439024390244
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 93,
+          "suma_delta": -327096037.50000113
+        },
+        "n_cerradas_por_time_stop": 327,
+        "net_medio_time_stop_lote1": 800638.7660550454,
+        "podadas_perdedoras": {
+          "n": 138,
+          "suma_delta": 149549684.99999925
+        },
+        "wr_time_stop": 74.31192660550458
+      }
+    },
+    "mhb64": {
+      "confirmatorio": true,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 64
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 0.0,
+        "ic95_alto": 0.0,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 0.0,
+        "media_diff_en_R": 0.0,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 1.0,
+        "suma_diff": 0.0,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 0,
+        "net_medio_time_stop_lote1": null,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": null
+      }
+    },
+    "mhb8": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2767357.499999932,
+        "R_p75": 6594364.750000082,
+        "avg_loss": -1317053.91,
+        "avg_win": 2049998.5,
+        "max_perdidas_consecutivas": 27,
+        "maxdd_lote1": 111166296.0,
+        "n": 723,
+        "n_R_no_computable": 0,
+        "n_flips": 723,
+        "n_por_reason": {
+          "EXIT_INITSL": 12,
+          "EXIT_SL_RAISED": 324,
+          "EXIT_TRAIL": 12,
+          "reverse": 84,
+          "time_stop": 291
+        },
+        "n_posiciones_con_coste": 348,
+        "net_con_coste_lote1": -50458620.0000001,
+        "net_en_R_por_posicion": -0.03887359713380804,
+        "net_en_R_total": -28.105610727743212,
+        "net_lote1": -43125825.00000005,
+        "net_lote_grid": -28894302.75,
+        "net_por_posicion_lote1": -59648.44398340256,
+        "pf": 0.928,
+        "rom": -148.05,
+        "sharpe_diario_ann": -0.6735435124652007,
+        "sharpe_por_posicion": -0.02761200729555457,
+        "wr": 37.34
+      },
+      "overlay": {
+        "max_hold_bars": 8
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 1824316.471464644,
+        "ic95_alto": 99593.01611238634,
+        "ic95_bajo": -394031.1702092928,
+        "ic_excluye_0": false,
+        "media_diff": -116980.27073170799,
+        "media_diff_en_R": 0.008593800166840372,
+        "mediana_diff": 0.0,
+        "n_brazo": 723,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 108,
+        "n_solo_control": 0,
+        "p_bootstrap": 0.353,
+        "suma_diff": -71942866.50000042,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 69,
+          "suma_delta": -244845115.50000072
+        },
+        "n_cerradas_por_time_stop": 258,
+        "net_medio_time_stop_lote1": 1227969.2906976799,
+        "podadas_perdedoras": {
+          "n": 93,
+          "suma_delta": 78637905.00000012
+        },
+        "wr_time_stop": 80.23255813953489
+      }
+    },
+    "mhb80": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 80
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 0.0,
+        "ic95_alto": 0.0,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 0.0,
+        "media_diff_en_R": 0.0,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 1.0,
+        "suma_diff": 0.0,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 0,
+        "net_medio_time_stop_lote1": null,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": null
+      }
+    },
+    "mhb96": {
+      "confirmatorio": false,
+      "metricas": {
+        "R_mediana": 4489581.000000133,
+        "R_p25": 2820738.000000075,
+        "R_p75": 6687078.249999891,
+        "avg_loss": -1271245.24,
+        "avg_win": 2958259.42,
+        "max_perdidas_consecutivas": 30,
+        "maxdd_lote1": 109781212.5,
+        "n": 615,
+        "n_R_no_computable": 0,
+        "n_flips": 615,
+        "n_por_reason": {
+          "EXIT_INITSL": 9,
+          "EXIT_SL_RAISED": 501,
+          "EXIT_TRAIL": 15,
+          "reverse": 90
+        },
+        "n_posiciones_con_coste": 525,
+        "net_con_coste_lote1": 31875182.25000144,
+        "net_en_R_por_posicion": -0.022032308099481212,
+        "net_en_R_total": -13.549869481180945,
+        "net_lote1": 42937588.500001475,
+        "net_lote_grid": 28768184.3,
+        "net_por_posicion_lote1": 69817.21707317313,
+        "pf": 1.08,
+        "rom": 147.4,
+        "sharpe_diario_ann": 0.6047400752598239,
+        "sharpe_por_posicion": 0.025475253457752464,
+        "wr": 31.71
+      },
+      "overlay": {
+        "max_hold_bars": 96
+      },
+      "pareado": {
+        "degradado_a_1B": false,
+        "desvio_diff": 0.0,
+        "ic95_alto": 0.0,
+        "ic95_bajo": 0.0,
+        "ic_excluye_0": false,
+        "media_diff": 0.0,
+        "media_diff_en_R": 0.0,
+        "mediana_diff": 0.0,
+        "n_brazo": 615,
+        "n_casadas": 615,
+        "n_control": 615,
+        "n_dias_bloque": 90,
+        "n_excluidas_por_R": 0,
+        "n_identidades_duplicadas": 0,
+        "n_solo_brazo": 0,
+        "n_solo_control": 0,
+        "p_bootstrap": 1.0,
+        "suma_diff": 0.0,
+        "tasa_emparejamiento": 1.0
+      },
+      "secundaria": {
+        "amputadas_ganadoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "n_cerradas_por_time_stop": 0,
+        "net_medio_time_stop_lote1": null,
+        "podadas_perdedoras": {
+          "n": 0,
+          "suma_delta": 0.0
+        },
+        "wr_time_stop": null
+      }
+    }
+  },
+  "control": {
+    "brazo": "default",
+    "identico": true,
+    "n_congelado_recortado": 615,
+    "n_control": 615
+  },
+  "lineage": {
+    "ampliacion": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-ampliacion-E04-ola1.md",
+    "clase": "1-A",
+    "engine_sha": "fe6ffca",
+    "estado_investigacion": "piloto-instrumento",
+    "etapa": "F0",
+    "generador": "runner:tasks_ola1.ola1_paired",
+    "git_sha": "fe6ffca",
+    "palanca": "P-02",
+    "preregistro": "research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-ola1.md",
+    "run_id": "P02-S6",
+    "sid": "S6-K2P0",
+    "substrate_id": "capitaria-ticks-2026-preholdout",
+    "timestamp": "2026-08-16T13:29:11"
+  },
+  "sustrato": {
+    "holdout_excluido": 1778544000,
+    "margen_extra_s": 116100.0,
+    "n_barras": 8218,
+    "t0": 1767297600,
+    "t1": 1778258700
+  }
+}

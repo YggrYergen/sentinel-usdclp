@@ -1,0 +1,233 @@
+# OLA1B -- manifiesto generado (BLOCK-3 de OLA1B-reporte.md)
+#
+# Generado por: python -m scripts.research.ola1.manifiesto_ola1b
+# Grillas HARDCODEADAS desde el pre-registro OLA1B (commit `8e9d708`), no configurables.
+# 3 corridas: P02-S6/P02-S7 (re-run, sustrato recortado D-60) + P03FLOOR-S6 (NUEVO,
+# ac_modulate_floor_relief_k x ac_decel_umbral) + P34-S6 (NUEVO LEVER, trail_atr_floor_k).
+#
+# PRE-INTERPRETACION -- este manifiesto no contiene resultados ni conclusiones.
+experimento: OLA1B-palancas-de-salida
+area: B
+etapa: F0
+hipotesis: research/fases/F0-preparacion/01-hipotesis/2026-08-16-preregistro-OLA1B.md
+substrate_id: capitaria-ticks-2026-preholdout
+engine_sha: fe6ffca
+salidas:
+  resultados: research/fases/F0-preparacion/04-resultados/OLA1B/
+  ledger: append
+corridas:
+- run_key: P02-S6
+  tipo: ola1_paired
+  palanca: P-02
+  sid: S6-K2P0
+  clase: 1-A
+  brazo_control: default
+  secundaria: p02
+  margen_extra_s: 116100
+  brazos:
+    default: {}
+    mhb4:
+      max_hold_bars: 4
+    mhb6:
+      max_hold_bars: 6
+    mhb8:
+      max_hold_bars: 8
+    mhb10:
+      max_hold_bars: 10
+    mhb12:
+      max_hold_bars: 12
+    mhb15:
+      max_hold_bars: 15
+    mhb20:
+      max_hold_bars: 20
+    mhb25:
+      max_hold_bars: 25
+    mhb30:
+      max_hold_bars: 30
+    mhb40:
+      max_hold_bars: 40
+    mhb48:
+      max_hold_bars: 48
+    mhb56:
+      max_hold_bars: 56
+    mhb64:
+      max_hold_bars: 64
+    mhb80:
+      max_hold_bars: 80
+    mhb96:
+      max_hold_bars: 96
+    mhb128:
+      max_hold_bars: 128
+  confirmatorios:
+  - default
+  - mhb10
+  - mhb15
+  - mhb20
+  - mhb30
+  - mhb48
+  - mhb64
+- run_key: P02-S7
+  tipo: ola1_paired
+  palanca: P-02
+  sid: S7-TPNONE
+  clase: 1-A
+  brazo_control: default
+  secundaria: p02
+  margen_extra_s: 116100
+  brazos:
+    default: {}
+    mhb4:
+      max_hold_bars: 4
+    mhb6:
+      max_hold_bars: 6
+    mhb8:
+      max_hold_bars: 8
+    mhb10:
+      max_hold_bars: 10
+    mhb12:
+      max_hold_bars: 12
+    mhb15:
+      max_hold_bars: 15
+    mhb20:
+      max_hold_bars: 20
+    mhb25:
+      max_hold_bars: 25
+    mhb30:
+      max_hold_bars: 30
+    mhb40:
+      max_hold_bars: 40
+    mhb48:
+      max_hold_bars: 48
+    mhb56:
+      max_hold_bars: 56
+    mhb64:
+      max_hold_bars: 64
+    mhb80:
+      max_hold_bars: 80
+    mhb96:
+      max_hold_bars: 96
+    mhb128:
+      max_hold_bars: 128
+  confirmatorios:
+  - default
+  - mhb10
+  - mhb15
+  - mhb20
+  - mhb30
+  - mhb48
+  - mhb64
+- run_key: P03FLOOR-S6
+  tipo: ola1_paired
+  palanca: P-03-floor
+  sid: S6-K2P0
+  clase: 1-A
+  brazo_control: relief1.00-u0
+  secundaria: p03
+  brazos:
+    relief1.00-u0: {}
+    relief1.00-u25:
+      ac_decel_umbral: 0.25
+    relief1.00-u50:
+      ac_decel_umbral: 0.5
+    relief1.00-u75:
+      ac_decel_umbral: 0.75
+    relief0.75-u0:
+      ac_modulate_floor_relief_k: 0.75
+    relief0.75-u25:
+      ac_modulate_floor_relief_k: 0.75
+      ac_decel_umbral: 0.25
+    relief0.75-u50:
+      ac_modulate_floor_relief_k: 0.75
+      ac_decel_umbral: 0.5
+    relief0.75-u75:
+      ac_modulate_floor_relief_k: 0.75
+      ac_decel_umbral: 0.75
+    relief0.50-u0:
+      ac_modulate_floor_relief_k: 0.5
+    relief0.50-u25:
+      ac_modulate_floor_relief_k: 0.5
+      ac_decel_umbral: 0.25
+    relief0.50-u50:
+      ac_modulate_floor_relief_k: 0.5
+      ac_decel_umbral: 0.5
+    relief0.50-u75:
+      ac_modulate_floor_relief_k: 0.5
+      ac_decel_umbral: 0.75
+    relief0.25-u0:
+      ac_modulate_floor_relief_k: 0.25
+    relief0.25-u25:
+      ac_modulate_floor_relief_k: 0.25
+      ac_decel_umbral: 0.25
+    relief0.25-u50:
+      ac_modulate_floor_relief_k: 0.25
+      ac_decel_umbral: 0.5
+    relief0.25-u75:
+      ac_modulate_floor_relief_k: 0.25
+      ac_decel_umbral: 0.75
+    relief0.00-u0:
+      ac_modulate_floor_relief_k: 0.0
+    relief0.00-u25:
+      ac_modulate_floor_relief_k: 0.0
+      ac_decel_umbral: 0.25
+    relief0.00-u50:
+      ac_modulate_floor_relief_k: 0.0
+      ac_decel_umbral: 0.5
+    relief0.00-u75:
+      ac_modulate_floor_relief_k: 0.0
+      ac_decel_umbral: 0.75
+  confirmatorios:
+  - relief0.00-u0
+  - relief0.00-u25
+  - relief0.00-u50
+  - relief0.00-u75
+  - relief0.25-u0
+  - relief0.25-u25
+  - relief0.25-u50
+  - relief0.25-u75
+  - relief0.50-u0
+  - relief0.50-u25
+  - relief0.50-u50
+  - relief0.50-u75
+  - relief0.75-u0
+  - relief0.75-u25
+  - relief0.75-u50
+  - relief0.75-u75
+  - relief1.00-u0
+  - relief1.00-u25
+  - relief1.00-u50
+  - relief1.00-u75
+- run_key: P34-S6
+  tipo: ola1_paired
+  palanca: P-34
+  sid: S6-K2P0
+  clase: 1-A
+  brazo_control: default
+  secundaria: none
+  brazos:
+    default: {}
+    floork1.75:
+      trail_atr_floor_k: 1.75
+    floork1.50:
+      trail_atr_floor_k: 1.5
+    floork1.25:
+      trail_atr_floor_k: 1.25
+    floork1.00:
+      trail_atr_floor_k: 1.0
+    floork0.75:
+      trail_atr_floor_k: 0.75
+    floork0.50:
+      trail_atr_floor_k: 0.5
+    floork0.25:
+      trail_atr_floor_k: 0.25
+    floork0.00:
+      trail_atr_floor_k: 0.0
+  confirmatorios:
+  - default
+  - floork0.00
+  - floork0.25
+  - floork0.50
+  - floork0.75
+  - floork1.00
+  - floork1.25
+  - floork1.50
+  - floork1.75
