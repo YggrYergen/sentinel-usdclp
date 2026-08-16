@@ -141,6 +141,7 @@ def simular_variant(
     trail_arm_r: float = 0.0,
     ac_decel_lookback: int = 1,
     ac_decel_umbral: float = 0.0,
+    ac_modulate_hold_bars: int = 1,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -195,6 +196,15 @@ def simular_variant(
     trailing distance for the bar is multiplied by `ac_modulate_factor`
     (tighter stop). Applies to the whole per-ficha ladder (F1/F2/F3), unlike
     `emasar_ref`'s `ac_modulate_trail` which only ever applied to F3.
+    `ac_modulate_hold_bars` (default 1 = EXACT current behavior) controls how
+    many bars the tightened trail persists once triggered: with the default,
+    the tightening lasts exactly the bar where `ac_desacelerando` fires (today's
+    behavior, bit-identical). With `ac_modulate_hold_bars=N > 1`, the tightened
+    trail persists for N bars from the trigger and re-arms (resets to N) if the
+    deceleration condition fires again while the hold counter is still active.
+    Per-ficha (`tag`-keyed), reset on every new entry. `ac_modulate_hold_bars <
+    1` raises `ValueError` (a silent 0 would disable the tightening without
+    saying so).
 
     Runner exit on sustained AC deceleration (V-07; `f3_ac_decel_exit`,
     default False = disabled = EXACT current behavior): F3 only. Each bar, if
@@ -552,6 +562,14 @@ def simular_variant(
             "wait_mae_atr_k > 0 requires max_hold_bars (bounded waiting only: "
             "the price bound and the time bound are hard-required together); "
             f"got wait_mae_atr_k={wait_mae_atr_k!r}, max_hold_bars=None")
+    # ac_modulate_hold_bars (V-06 hold duration, P-03 3rd dimension): must be
+    # >= 1. A 0 would silently disable the AC-modulated tightening instead of
+    # explicitly disabling it via ac_modulate=False -- fail loud instead.
+    if ac_modulate_hold_bars < 1:
+        raise ValueError(
+            "ac_modulate_hold_bars must be >= 1 (a value < 1 would silently "
+            f"disable the AC-modulated trail tightening); got "
+            f"ac_modulate_hold_bars={ac_modulate_hold_bars!r}")
     n = len(bars)
     highs = [b["high"] for b in bars]
     lows = [b["low"] for b in bars]
@@ -664,6 +682,9 @@ def simular_variant(
     tp_by_tag = {"F1": f1_tp_r, "F2": f2_tp_r}
     # V-07: consecutive-bar AC-deceleration-against-position counter, F3 only.
     ac_decel_consec_by_tag: dict[str, int] = {}
+    # P-03 (ac_modulate_hold_bars): bars remaining that the AC-modulated trail
+    # tightening (V-06) stays applied, keyed by tag. Reset on every new entry.
+    ac_modulate_hold_by_tag: dict[str, int] = {}
     # P51 (max_hold_bars): the ENTRY bar index per open ficha, keyed by tag and
     # reset on every new entry (1:1 with `fichas` while a position is open).
     # `_Ficha` is frozen (__slots__), so bars-held is derived from this
@@ -963,10 +984,18 @@ def simular_variant(
             # AC-modulated trailing (V-06; ac_modulate=False disables this
             # block entirely, preserving current behavior byte-for-byte):
             # when AC is decelerating against this ficha's favorable
-            # direction on the current bar, tighten the trail distance.
-            if ac_modulate and ac_desacelerando(ac, i, f.lado, lookback=ac_decel_lookback,
-                                                 umbral=ac_decel_umbral):
-                trail_efectivo = trail_efectivo * ac_modulate_factor
+            # direction on the current bar, tighten the trail distance for
+            # ac_modulate_hold_bars bars (P-03; default 1 = the tightening
+            # applies for exactly the triggering bar, byte-identical to the
+            # pre-P-03 block). Re-arms to hold_bars if the condition fires
+            # again while the hold counter is still active.
+            if ac_modulate:
+                if ac_desacelerando(ac, i, f.lado, lookback=ac_decel_lookback,
+                                     umbral=ac_decel_umbral):
+                    ac_modulate_hold_by_tag[tag] = ac_modulate_hold_bars
+                if ac_modulate_hold_by_tag.get(tag, 0) > 0:
+                    trail_efectivo = trail_efectivo * ac_modulate_factor
+                    ac_modulate_hold_by_tag[tag] -= 1
             # ATR14 trail floor (trail_atr_floor_k=0.0 default -> atr14_floor is
             # None -> this block is skipped entirely, byte-identical no-op).
             if atr14_floor is not None and atr14_floor[i] is not None:
@@ -1207,6 +1236,7 @@ def simular_variant(
                 r_dist = abs(reentry_px - sl)
                 r_by_tag = {t: r_dist for t in active_tags}
                 ac_decel_consec_by_tag = {}
+                ac_modulate_hold_by_tag = {}
                 entry_bar_by_tag = {t: i for t in active_tags}
                 signal_exit_motivos = []
                 reentry_count += 1
@@ -1420,6 +1450,7 @@ def simular_variant(
             r_dist = abs(px_long - sl)
             r_by_tag = {t: r_dist for t in active_tags}
             ac_decel_consec_by_tag = {}
+            ac_modulate_hold_by_tag = {}
             entry_bar_by_tag = {t: i for t in active_tags}
             # V-13: a fresh STRICT-gate entry starts a brand-new lineage --
             # any previous re-entry arm/count is unrelated to this signal.
@@ -1436,6 +1467,7 @@ def simular_variant(
             r_dist = abs(px_short - sl)
             r_by_tag = {t: r_dist for t in active_tags}
             ac_decel_consec_by_tag = {}
+            ac_modulate_hold_by_tag = {}
             entry_bar_by_tag = {t: i for t in active_tags}
             signal_exit_motivos = []
             reentry_armed = False
