@@ -35,6 +35,7 @@ from typing import Any
 import numpy as np
 
 from scripts.analysis.realtick_bt import backtest
+from scripts.analysis.realtick_bt import regime as regime_mod
 from scripts.analysis.realtick_bt.overlay import overlay_kwargs
 from scripts.analysis.realtick_bt.paired_harness import PairedResult, _align, entry_identity
 from scripts.research.ola1 import metricas as metricas_mod
@@ -95,17 +96,49 @@ def _expandir_htf_en_brazos(brazos: dict[str, dict[str, Any]],
     return out
 
 
+def _extraer_regime_de_brazos(
+    brazos: dict[str, dict[str, Any]]
+) -> tuple[dict[str, dict[str, Any]], dict[str, "regime_mod.RegimeGateConfig | None"]]:
+    """OLA2 (P-09) hook, mismo patron que `_expandir_htf_en_brazos`: un overlay
+    de brazo puede llevar una clave `_regime` (kwargs LOGICOS de
+    `regime.RegimeGateConfig`, sin `enabled` -- se fuerza `enabled=True` aqui)
+    en vez de que el gate viaje como kwarg real del motor (no lo es: ni
+    `run_ladder` ni `run_supertrend` aceptan un `regime_cfg`). Se extrae ANTES
+    de `overlay_kwargs`/`run_supertrend`, nunca llega a esas llamadas.
+    Overlays sin `_regime` devuelven `None` en el segundo dict -- no-op para
+    el resto de brazos/palancas (P-02/P-03/P-05/P-08/P-19/P-20/P-21/P-28/
+    P-34/etc.)."""
+    out: dict[str, dict[str, Any]] = {}
+    cfg_por_brazo: dict[str, "regime_mod.RegimeGateConfig | None"] = {}
+    for arm_name, overlay in brazos.items():
+        if "_regime" not in overlay:
+            out[arm_name] = overlay
+            cfg_por_brazo[arm_name] = None
+            continue
+        spec = dict(overlay["_regime"])
+        cfg_por_brazo[arm_name] = regime_mod.RegimeGateConfig(enabled=True, **spec)
+        out[arm_name] = {k: v for k, v in overlay.items() if k != "_regime"}
+    return out, cfg_por_brazo
+
+
 def _resolver_brazos_con_progreso(sid: str, arms: dict[str, dict[str, Any]],
                                    bars: list[dict[str, Any]], ticks: "backtest.Ticks",
-                                   out_dir: Path) -> tuple[dict, dict]:
+                                   out_dir: Path, *,
+                                   regime_cfg_por_brazo: dict[str, "regime_mod.RegimeGateConfig | None"] | None = None,
+                                   regime_series: "regime_mod.RegimeSeries | None" = None) -> tuple[dict, dict]:
     """Corre cada brazo UNA vez, en el orden del dict `arms`, escribiendo una
     linea en <out_dir>/_brazos.txt (append atomico, flush) segun cada uno
     termina -- visibilidad de progreso DENTRO de la corrida (95 brazos en
     P-03 no mueven el _progreso.txt del runner hasta el final).
 
     Misma logica exacta que paired_harness.run_paired_arms (mismo orden,
-    mismos call-sites de backtest.run_supertrend/run_ladder/resolve) --
-    probado idéntico en test_ola1.py::test_resolver_con_progreso_idem_run_paired_arms.
+    mismos call-sites de backtest.run_supertrend/run_ladder/resolve), MAS
+    (OLA2, P-09) un post-filtro opcional de regimen sobre las posiciones de
+    SENAL (antes de resolve()) cuando `regime_cfg_por_brazo[arm_name]` no es
+    `None` -- `backtest.apply_regime_gate_by_entry_bar`, harness-level, nunca
+    toca `sentinel_engine` (WP-5). Byte-identico cuando `regime_cfg_por_brazo`
+    es `None`/vacio o todas sus entradas son `None` -- probado idéntico en
+    test_ola1.py::test_resolver_con_progreso_idem_run_paired_arms.
     """
     bar_times = np.array([b["t"] for b in bars], dtype="float64")
     signal_positions: dict[str, list[dict[str, Any]]] = {}
@@ -119,6 +152,9 @@ def _resolver_brazos_con_progreso(sid: str, arms: dict[str, dict[str, Any]],
         else:
             eff_kwargs = overlay_kwargs(sid, overlay)
             raw = backtest.run_ladder(eff_kwargs, bars)
+        cfg = (regime_cfg_por_brazo or {}).get(arm_name)
+        if cfg is not None:
+            raw = backtest.apply_regime_gate_by_entry_bar(raw, bars, regime_series, cfg)
         signal_positions[arm_name] = raw
         out = []
         for p in raw:
@@ -198,9 +234,21 @@ def ola1_paired(params: dict, out_dir: Path) -> dict:
 
     bars = sustrato_mod.cargar_barras(margen_extra_s=margen_extra_s)
     brazos = _expandir_htf_en_brazos(brazos, bars)
+    brazos, regime_cfg_por_brazo = _extraer_regime_de_brazos(brazos)
+    regime_series = None
+    if any(c is not None for c in regime_cfg_por_brazo.values()):
+        # OLA2 (P-09): periodos FIJOS del pre-registro -- ADX(14), VR(lag=5,
+        # ventana=100), ER(20), CHOP(14) -- nunca barridos, solo los umbrales
+        # y k_of_m lo son (ver preregistro-OLA2.md SS P-09).
+        regime_series = regime_mod.compute_regime_series(
+            bars, adx_period=14, vr_window=100, vr_q=5, er_period=20, chop_period=14
+        )
     ticks = backtest.Ticks()
 
-    signal_positions, resolved = _resolver_brazos_con_progreso(sid, brazos, bars, ticks, out_dir)
+    signal_positions, resolved = _resolver_brazos_con_progreso(
+        sid, brazos, bars, ticks, out_dir,
+        regime_cfg_por_brazo=regime_cfg_por_brazo, regime_series=regime_series,
+    )
     result = _construir_paired_result(sid, brazos, signal_positions, resolved, brazo_control)
 
     todas_las_posiciones = [p for positions in result.arms.values() for p in positions]
