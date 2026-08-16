@@ -941,6 +941,66 @@ class TestConsolidarMarcaPositivo:
         assert "CLP" in texto
         assert "DIFERENCIA PAREADA" in texto
 
+    def _escribir_metricas_con_generador(self, out_dir, run_key, *, generador, variantes):
+        """variantes: lista de (arm, p_bootstrap) -- todas confirmatorias,
+        p distinto por brazo para que BH-FDR pueda diferir entre lotes."""
+        import json
+
+        d = out_dir / run_key
+        d.mkdir(parents=True)
+        brazos = {
+            "default": {"overlay": {}, "confirmatorio": True,
+                        "metricas": {"n": 10, "net_lote1": 1.0}},
+        }
+        for arm, p in variantes:
+            brazos[arm] = {
+                "overlay": {"x": 1}, "confirmatorio": True,
+                "metricas": {"n": 10, "net_lote1": 1.0},
+                "pareado": {"tasa_emparejamiento": 1.0, "media_diff": 1.0,
+                            "ic95_bajo": 0.0, "ic95_alto": 2.0, "p_bootstrap": p},
+            }
+        doc = {
+            "lineage": {"palanca": "P-TEST", "sid": "S6-K2P0", "clase": "1-A",
+                        "generador": generador},
+            "sustrato": {}, "control": {"brazo": "default"}, "brazos": brazos,
+        }
+        (d / "metricas.json").write_text(json.dumps(doc), encoding="utf-8")
+
+    def test_bh_fdr_se_corrige_por_lote_generador_no_mezclado(self, tmp_path):
+        """OLA2 BLOCK-D: dos corridas de generadores distintos (ola1_paired vs
+        ola1_sizing) deben corregirse POR SEPARADO -- un p-valor muy pequeno
+        en un lote no debe ayudar a rechazar un brazo del OTRO lote."""
+        from scripts.research.ola1.consolidar import construir_consolidado
+
+        # lote A: un solo brazo con p muy pequeno -> BH lo rechaza dentro de su lote.
+        self._escribir_metricas_con_generador(
+            tmp_path, "RUN-A", generador="runner:tasks_ola1.ola1_paired",
+            variantes=[("a1", 0.001)],
+        )
+        # lote B: un brazo con p mediocre que NO se rechazaria solo -- si los
+        # lotes se mezclaran con RUN-A, el m mas chico compartido podria
+        # cambiar su resultado; aislado en su propio lote de tamano 1, BH-FDR
+        # con m=1 rechaza sii p <= alpha, aqui p=0.04 <= 0.05 -> rechaza.
+        # Se usa un p claramente > alpha (0.20) para que NUNCA se rechace en
+        # solitario, y se comprueba que mezclar lotes no lo cambia.
+        self._escribir_metricas_con_generador(
+            tmp_path, "RUN-B", generador="runner:tasks_sizing.ola1_sizing",
+            variantes=[("b1", 0.20)],
+        )
+        filas, resumen = construir_consolidado(tmp_path)
+        por_arm = {f["arm"]: f for f in filas}
+
+        assert set(resumen["lotes"]) == {"runner:tasks_ola1.ola1_paired",
+                                          "runner:tasks_sizing.ola1_sizing"}
+        assert por_arm["a1"]["p_bh_confirmatorio"] is True
+        assert por_arm["b1"]["p_bh_confirmatorio"] is False
+        # los totales agregados suman los de cada lote.
+        lote_a = resumen["bh_por_lote"]["runner:tasks_ola1.ola1_paired"]
+        lote_b = resumen["bh_por_lote"]["runner:tasks_sizing.ola1_sizing"]
+        assert lote_a["n_confirmatorio_rechazados"] == 1
+        assert lote_b["n_confirmatorio_rechazados"] == 0
+        assert resumen["n_confirmatorio_rechazados"] == 1
+
 
 class TestRiesgo:
     @pytest.mark.slow

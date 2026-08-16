@@ -103,12 +103,21 @@ def construir_consolidado(resultados_dir: Path) -> tuple[list[dict[str, Any]], d
     filas: list[dict[str, Any]] = []
     for run_key, doc in corridas.items():
         lineage = doc["lineage"]
+        # OLA2 (BLOCK-D): BH-FDR se corrige POR LOTE, nunca mezclando familias
+        # de corridas distintas dentro de la misma consolidacion (pre-registro
+        # OLA2 SS8) -- el lote lo identifica `lineage.generador` (ya presente
+        # en todo metricas.json de ola1_paired/ola1_sizing); ausente ->
+        # "sin_generador" (fallback, preserva el comportamiento de un unico
+        # lote implicito para consolidaciones anteriores a este cambio, p.ej.
+        # los fixtures de TestConsolidarMarcaPositivo).
+        lote = lineage.get("generador") or "sin_generador"
         for arm_name, brazo in doc["brazos"].items():
             filas.append({
                 "run_key": run_key,
                 "palanca": lineage["palanca"],
                 "sid": lineage["sid"],
                 "clase": lineage["clase"],
+                "lote_bh": lote,
                 "arm": arm_name,
                 "es_control": arm_name == doc["control"]["brazo"],
                 "confirmatorio": brazo["confirmatorio"],
@@ -118,8 +127,8 @@ def construir_consolidado(resultados_dir: Path) -> tuple[list[dict[str, Any]], d
                 "secundaria": brazo.get("secundaria"),
             })
 
-    pvalues_confirm: dict[str, float] = {}
-    pvalues_total: dict[str, float] = {}
+    pvalues_confirm_por_lote: dict[str, dict[str, float]] = {}
+    pvalues_total_por_lote: dict[str, dict[str, float]] = {}
     n_sin_p = 0
     for fila in filas:
         if fila["es_control"]:
@@ -130,29 +139,44 @@ def construir_consolidado(resultados_dir: Path) -> tuple[list[dict[str, Any]], d
         if p is None:
             n_sin_p += 1
             continue
-        pvalues_total[clave] = p
+        pvalues_total_por_lote.setdefault(fila["lote_bh"], {})[clave] = p
         if fila["confirmatorio"]:
-            pvalues_confirm[clave] = p
+            pvalues_confirm_por_lote.setdefault(fila["lote_bh"], {})[clave] = p
 
-    rechazo_confirm = _bh_fdr(pvalues_confirm)
-    rechazo_total = _bh_fdr(pvalues_total)
+    rechazo_confirm_por_lote = {l: _bh_fdr(d) for l, d in pvalues_confirm_por_lote.items()}
+    rechazo_total_por_lote = {l: _bh_fdr(d) for l, d in pvalues_total_por_lote.items()}
 
     for fila in filas:
         clave = f"{fila['run_key']}::{fila['arm']}"
-        fila["p_bh_confirmatorio"] = rechazo_confirm.get(clave)
-        fila["p_bh_total"] = rechazo_total.get(clave)
+        lote = fila["lote_bh"]
+        fila["p_bh_confirmatorio"] = rechazo_confirm_por_lote.get(lote, {}).get(clave)
+        fila["p_bh_total"] = rechazo_total_por_lote.get(lote, {}).get(clave)
         # Coordinador (clarificacion mid-task): marcar hecho (signo), nunca
         # veredicto -- ver BANNER para la prioridad diff_positivo > net_positivo.
         fila["net_positivo"] = fila["metricas"]["net_lote1"] > 0
         media_diff = (fila["pareado"] or {}).get("media_diff") if fila["pareado"] else None
         fila["diff_positivo"] = None if (fila["es_control"] or media_diff is None) else media_diff > 0
 
+    lotes = sorted(set(pvalues_confirm_por_lote) | set(pvalues_total_por_lote))
+    bh_por_lote = {
+        l: {
+            "n_confirmatorio_evaluados": len(pvalues_confirm_por_lote.get(l, {})),
+            "n_confirmatorio_rechazados": sum(
+                1 for v in rechazo_confirm_por_lote.get(l, {}).values() if v
+            ),
+            "n_total_evaluados": len(pvalues_total_por_lote.get(l, {})),
+            "n_total_rechazados": sum(1 for v in rechazo_total_por_lote.get(l, {}).values() if v),
+        }
+        for l in lotes
+    }
     resumen_bh = {
         "alpha": ALPHA_BH,
-        "n_confirmatorio_evaluados": len(pvalues_confirm),
-        "n_confirmatorio_rechazados": sum(1 for v in rechazo_confirm.values() if v),
-        "n_total_evaluados": len(pvalues_total),
-        "n_total_rechazados": sum(1 for v in rechazo_total.values() if v),
+        "lotes": lotes,
+        "bh_por_lote": bh_por_lote,
+        "n_confirmatorio_evaluados": sum(v["n_confirmatorio_evaluados"] for v in bh_por_lote.values()),
+        "n_confirmatorio_rechazados": sum(v["n_confirmatorio_rechazados"] for v in bh_por_lote.values()),
+        "n_total_evaluados": sum(v["n_total_evaluados"] for v in bh_por_lote.values()),
+        "n_total_rechazados": sum(v["n_total_rechazados"] for v in bh_por_lote.values()),
         "n_sin_p_bootstrap_fuera_del_denominador": n_sin_p,
         "corridas_presentes": sorted(corridas),
         "corridas_faltantes": _corridas_faltantes(resultados_dir, set(corridas)),
@@ -176,13 +200,22 @@ def escribir_consolidado_md(filas: list[dict[str, Any]], resumen_bh: dict[str, A
 
     lineas = [BANNER, "", f"# OLA1 -- consolidado ({sum(len(v) for v in por_run.values())} brazos "
               f"en {len(por_run)} corridas)", "",
-              f"BH-FDR alpha={resumen_bh['alpha']}: confirmatorio "
+              f"BH-FDR alpha={resumen_bh['alpha']} (agregado de {len(resumen_bh.get('lotes', []))} "
+              "lote(s), NUNCA mezclados entre si -- ver desglose por lote abajo): confirmatorio "
               f"{resumen_bh['n_confirmatorio_rechazados']}/{resumen_bh['n_confirmatorio_evaluados']} "
               f"rechazados; total {resumen_bh['n_total_rechazados']}/{resumen_bh['n_total_evaluados']} "
               f"rechazados; {resumen_bh['n_sin_p_bootstrap_fuera_del_denominador']} brazos sin "
-              "p_bootstrap (fuera del denominador de BH).", "",
-              f"Corridas presentes: {', '.join(resumen_bh['corridas_presentes'])}.",
-              f"Corridas faltantes: {', '.join(resumen_bh['corridas_faltantes']) or '(ninguna)'}.", ""]
+              "p_bootstrap (fuera del denominador de BH).", ""]
+    for lote in resumen_bh.get("lotes", []):
+        b = resumen_bh["bh_por_lote"][lote]
+        lineas.append(
+            f"- lote `{lote}`: confirmatorio {b['n_confirmatorio_rechazados']}/"
+            f"{b['n_confirmatorio_evaluados']} rechazados; total {b['n_total_rechazados']}/"
+            f"{b['n_total_evaluados']} rechazados."
+        )
+    lineas += ["",
+               f"Corridas presentes: {', '.join(resumen_bh['corridas_presentes'])}.",
+               f"Corridas faltantes: {', '.join(resumen_bh['corridas_faltantes']) or '(ninguna)'}.", ""]
 
     for run_key in sorted(por_run):
         grupo = sorted(por_run[run_key], key=lambda f: _valor_orden(f["arm"], f["overlay"]))
