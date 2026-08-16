@@ -30,3 +30,18 @@ dict[str, Any]` — `copy.deepcopy(backtest._GL[sid])` + `.update(overlay)` sobr
 valor a `_GL[sid]`, distinto por identidad (deep copy). Tests nuevos: 3 (no-mutación, overlay
 vacío, overlay aplica sobre la copia) → total fichero 5 passed.
 Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+
+## Bloque 3 — Harness pareado + tabla de alineación (2026-08-16)
+`scripts/analysis/realtick_bt/paired_harness.py`: `entry_identity(sid, pos) -> tuple` (SuperTrend:
+`(t_in, side)`; ladder: `(sid, ficha, t_in, side)`); `run_paired_arms(sid, arms: dict[str, dict],
+bars, ticks=None) -> PairedResult` corre cada brazo una sola vez (ladder vía `overlay_kwargs` +
+`run_ladder`; SuperTrend vía `run_supertrend(bars, ticks, **overlay)`), resuelve una sola vez, y
+mide (nunca asume) el solape par-a-par en `alignment_signal`/`alignment_filled`
+(`dict[(armA,armB), {"n_casadas","n_solo_A","n_solo_B","no_casadas"}]`), en los dos niveles
+exigidos (señal pre-`resolve()`, rellenado post-`resolve()`). `PairedResult.rows()` da salida
+columnar con `pos_id` (identidad serializada) unible sin ambigüedad. Tests nuevos: 5 (brazo
+default reproduce `run_ladder`+`resolve` de hoy exacto — no-regresión; tabla mide solape real con
+un caso donde S6 con `stop_and_reverse` diverge aguas abajo — 3 casadas / 3 solo-B / 0 solo-A;
+identidad SuperTrend sin ficha; identidad ladder con sid+ficha; filas unibles por `pos_id`) →
+total fichero 10 passed.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.

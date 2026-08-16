@@ -114,3 +114,116 @@ def test_overlay_kwargs_applies_on_top_of_deepcopy():
         if k != "max_hold_bars":
             assert out[k] == v
     assert backtest._GL[sid].get("max_hold_bars") != 7
+
+
+# --------------------------------------------------------------------- B3
+def test_default_arm_reproduces_todays_run_ladder_exactly(monkeypatch):
+    """The default arm (empty overlay) run alone must reproduce
+    run_ladder(_GL[sid], bars) + resolve() exactly -- the non-regression test
+    the brief requires for Bloque 3."""
+    from scripts.analysis.realtick_bt.backtest import resolve, run_ladder
+    from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+
+    bars = _trend_bars()
+    events = [
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+    ]
+    monkeypatch.setattr(backtest, "simular_variant", lambda bars_, **kw: events)
+
+    ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                        (b["t"] + BAR_SEC for b in bars)])
+    sid = "S6-K2P0"
+    result = run_paired_arms(sid, {"default": {}}, bars, ticks=ticks)
+
+    bar_times = np.array([b["t"] for b in bars], dtype="float64")
+    expected = [r for p in run_ladder(backtest._GL[sid], bars)
+                for r in [resolve(p, ticks, bar_times)] if r is not None]
+    assert result.arms["default"] == expected
+
+
+def test_alignment_table_measures_not_assumes_overlap(monkeypatch):
+    """Two arms whose exits diverge produce DIFFERENT downstream entries
+    (stop_and_reverse-style divergence): the alignment table must report the
+    real n_casadas/n_solo_A/n_solo_B at both levels, never assume overlap."""
+    from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+
+    bars = _trend_bars()
+
+    events_a = [   # single entry, no reverse
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+    ]
+    events_b = [   # exits earlier AND reverses -> a genuinely different 2nd entry
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 2, "lado": "L", "precio": 102.0, "motivo": "reverse", "ficha": "F1"},
+        {"idx": 2, "lado": "L", "precio": 102.0, "motivo": "reverse", "ficha": "F2"},
+        {"idx": 2, "lado": "L", "precio": 102.0, "motivo": "reverse", "ficha": "F3"},
+        {"idx": 2, "lado": "S", "precio": 102.0, "motivo": "ENTRY_S"},
+        {"idx": 6, "lado": "S", "precio": 99.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+        {"idx": 6, "lado": "S", "precio": 99.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+        {"idx": 6, "lado": "S", "precio": 99.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+    ]
+
+    def fake_simular_variant(bars_, **kw):
+        return events_a if kw.get("_marker") == "A" else events_b
+
+    monkeypatch.setattr(backtest, "simular_variant", fake_simular_variant)
+
+    ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                        (b["t"] + BAR_SEC for b in bars)])
+    sid = "S6-K2P0"
+    arms = {"A": {"_marker": "A"}, "B": {"_marker": "B"}}
+    result = run_paired_arms(sid, arms, bars, ticks=ticks)
+
+    table_signal = result.alignment_signal[("A", "B")]
+    table_filled = result.alignment_filled[("A", "B")]
+
+    # A has ONE entry (LONG @ idx0, 3 fichas); B has TWO entries (LONG @ idx0,
+    # SHORT @ idx2 from the reverse) -- they can only casar on the shared
+    # LONG@idx0 entries (one per ficha: F1/F2/F3 -> 3 casadas).
+    assert table_signal["n_casadas"] == 3
+    assert table_signal["n_solo_B"] == 3        # the 3 SHORT@idx2 fichas, B-only
+    assert table_signal["n_solo_A"] == 0
+    assert len(table_signal["no_casadas"]) == 3
+
+    assert "n_casadas" in table_filled and "n_solo_A" in table_filled and "n_solo_B" in table_filled
+
+
+def test_entry_identity_supertrend_has_no_ficha_axis():
+    from scripts.analysis.realtick_bt.paired_harness import entry_identity
+
+    pos = {"t_in": 1000.0, "side": "LONG"}
+    assert entry_identity("SuperTrend-p14x3-M15", pos) == (1000.0, "LONG")
+
+
+def test_entry_identity_ladder_includes_sid_ficha_t_in_side():
+    from scripts.analysis.realtick_bt.paired_harness import entry_identity
+
+    pos = {"t_in": 1000.0, "side": "LONG", "ficha": "F2"}
+    assert entry_identity("S6-K2P0", pos) == ("S6-K2P0", "F2", 1000.0, "LONG")
+
+
+def test_paired_result_rows_are_joinable_by_pos_id(monkeypatch):
+    from scripts.analysis.realtick_bt.paired_harness import run_paired_arms
+
+    bars = _trend_bars()
+    events = [
+        {"idx": 0, "lado": "L", "precio": 100.0, "motivo": "ENTRY_L"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F1"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F2"},
+        {"idx": 5, "lado": "L", "precio": 105.0, "motivo": "EXIT_TRAIL", "ficha": "F3"},
+    ]
+    monkeypatch.setattr(backtest, "simular_variant", lambda bars_, **kw: events)
+    ticks = _FakeTicks([(t0, 99.75, 100.25) for t0 in
+                        (b["t"] + BAR_SEC for b in bars)])
+    result = run_paired_arms("S6-K2P0", {"default": {}}, bars, ticks=ticks)
+    rows = result.rows()
+    assert len(rows) == 3
+    for r in rows:
+        assert r["arm"] == "default" and r["sid"] == "S6-K2P0"
+        assert r["pos_id"] == f"S6-K2P0|{r['ficha']}|{r['t_in']}|{r['side']}"
