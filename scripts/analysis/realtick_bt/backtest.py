@@ -304,7 +304,8 @@ def run_ladder(kwargs: dict[str, Any], bars: list[dict[str, Any]]) -> list[dict[
 
 
 def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
-                    atr_period: int = 14, mult: float = 3.0) -> list[dict[str, Any]]:
+                    atr_period: int = 14, mult: float = 3.0,
+                    sl_offset: float = 0.0) -> list[dict[str, Any]]:
     """Always-in SuperTrend(atr_period, mult) with the LINE as a server-side SL (live
     semantics). Defaults (14, 3.0) are EXACTLY today's hardcoded values (WP-1+2 Bloque 1;
     build_all() calls this with no extra args, so behavior is byte-identical).
@@ -314,7 +315,14 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
     server-side stop is line[j-1] (set at end of bar j-1). We walk the real ticks of bar j:
     if the line is touched -> EXIT_STLINE at that level (resolver prices it on the tick);
     else if the trend flipped at bar j close without a prior line-touch -> EXIT_STFLIP at
-    the close. After either, the always-in position re-opens on trend[j]'s side."""
+    the close. After either, the always-in position re-opens on trend[j]'s side.
+
+    `sl_offset` (WP-1+2 Bloque 5, palanca P-08, USD, default 0.0 -> byte-identical no-op)
+    WIDENS the stop level before it is used for anything: for LONG the effective level is
+    `line[j-1] - sl_offset` (lower = further from price = more room); for SHORT it is
+    `line[j-1] + sl_offset` (higher). The SAME shifted level feeds BOTH the touch test and
+    the reported exit price -- shifting only one of the two would make touch/exit
+    incoherent (brief SS2 Bloque 5)."""
     highs = [b["high"] for b in bars]; lows = [b["low"] for b in bars]; closes = [b["close"] for b in bars]
     atr = _atr_wilder(highs, lows, closes, atr_period)
     atrf = [a if a is not None else 0.0 for a in atr]
@@ -330,17 +338,18 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
         sl = line[j - 1]
         if sl is None:
             continue
+        sl_eff = (sl - sl_offset) if side_l == "L" else (sl + sl_offset)
         t0 = bars[j]["t"]; t1 = t0 + BAR_SEC
         tt, bb, aa = ticks.range(t0, t1)
         hit = False
         if len(tt):
-            cond = (bb <= sl) if side_l == "L" else (aa >= sl)
+            cond = (bb <= sl_eff) if side_l == "L" else (aa >= sl_eff)
             hit = bool(cond.any())
         flipped = (trend[j] == 1) != (side_l == "L")
         if not (hit or flipped):
             continue
         if hit:
-            reason, exit_bid = "EXIT_STLINE", sl          # server-side stop at the line
+            reason, exit_bid = "EXIT_STLINE", sl_eff       # server-side stop at the shifted line
         else:
             reason, exit_bid = "EXIT_STFLIP", closes[j]   # flip at bar close (no line touch)
         positions.append({

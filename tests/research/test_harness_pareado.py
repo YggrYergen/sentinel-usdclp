@@ -284,3 +284,73 @@ def test_simular_variant_ac_decel_kwargs_change_result_when_active():
     tightened = simular_variant(bars, **{**{"symbol": "XAUUSD"}, **kwargs,
                                           "ac_decel_umbral": 1e6})
     assert base != tightened
+
+
+# --------------------------------------------------------------------- B5
+def test_sl_offset_default_zero_byte_identical():
+    bars = _trend_bars()
+    ticks = _FakeTicks([])
+    base = run_supertrend(bars, ticks)
+    explicit = run_supertrend(bars, ticks, sl_offset=0.0)
+    assert base == explicit
+
+
+def test_sl_offset_shifts_both_touch_test_and_exit_price_coherently():
+    """sl_offset must widen BOTH the touch test and the exit price using the
+    SAME shifted level -- if only one were shifted, touch/exit would be
+    incoherent (brief SS2, Bloque 5). Proven two ways on the SAME fixture:
+    (a) a tick that touches the ORIGINAL line does NOT trigger once widened
+        (the touch test itself uses the shifted level, not just the reported
+        price); (b) a tick placed exactly at the WIDENED level DOES trigger,
+        and its reported exit_bid equals the widened level, not the original."""
+    from sentinel_engine.strategies._supertrend_ref import supertrend
+    from sentinel_engine.strategies.emasar_ref import _atr_wilder
+
+    bars = _trend_bars()
+    highs = [b["high"] for b in bars]; lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr = _atr_wilder(highs, lows, closes, 14)
+    atrf = [a if a is not None else 0.0 for a in atr]
+    trend, line = supertrend(highs, lows, closes, atrf, 3.0)
+    fv = next(i for i in range(len(atr)) if atr[i] is not None)
+
+    # find the first bar j > fv where the trend has NOT flipped (so the
+    # active stop is the line, and a touch is what would fire EXIT_STLINE).
+    j = fv + 1
+    side_l = "L" if trend[fv] == 1 else "S"
+    while (trend[j] == 1) != (side_l == "L"):
+        j += 1
+    sl = line[j - 1]
+    offset = 0.5
+    t0 = bars[j]["t"]
+    touch_tick_ts = t0 + 1.0
+
+    # (a) tick exactly at the ORIGINAL line: touches with offset=0, must NOT
+    # touch (no EXIT_STLINE at this bar) once widened.
+    if side_l == "L":
+        ticks_at_original = _FakeTicks([(touch_tick_ts, sl, sl + 0.2)])
+    else:
+        ticks_at_original = _FakeTicks([(touch_tick_ts, sl - 0.2, sl)])
+
+    base = run_supertrend(bars, ticks_at_original, sl_offset=0.0)
+    widened = run_supertrend(bars, ticks_at_original, sl_offset=offset)
+    base_this_bar = [p for p in base if p["t_out"] == bars[j]["t"]]
+    widened_this_bar = [p for p in widened if p["t_out"] == bars[j]["t"]]
+    assert base_this_bar and base_this_bar[0]["reason"] == "EXIT_STLINE"
+    assert base_this_bar[0]["exit_bid"] == sl
+    assert not (widened_this_bar and widened_this_bar[0]["reason"] == "EXIT_STLINE"), (
+        "touch test must use the WIDENED level -- an original-line touch must not "
+        "fire EXIT_STLINE once sl_offset widens the stop"
+    )
+
+    # (b) tick exactly at the WIDENED level: must touch, and exit_bid must be
+    # the widened level (not the original sl).
+    sl_widened = (sl - offset) if side_l == "L" else (sl + offset)
+    if side_l == "L":
+        ticks_at_widened = _FakeTicks([(touch_tick_ts, sl_widened, sl_widened + 0.2)])
+    else:
+        ticks_at_widened = _FakeTicks([(touch_tick_ts, sl_widened - 0.2, sl_widened)])
+    out = run_supertrend(bars, ticks_at_widened, sl_offset=offset)
+    this_bar = [p for p in out if p["t_out"] == bars[j]["t"]]
+    assert this_bar and this_bar[0]["reason"] == "EXIT_STLINE"
+    assert abs(this_bar[0]["exit_bid"] - sl_widened) < 1e-9

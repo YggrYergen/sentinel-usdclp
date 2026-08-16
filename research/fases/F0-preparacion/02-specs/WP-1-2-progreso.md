@@ -87,3 +87,15 @@ agente actualice esa cita (`lineas[375]` → `lineas[378]`, y el comentario de r
 ficheros, o lo hace el dueño de `faulty/`. `tests/research -q` no tiene regresión: **293 passed,
 4 deselected** (línea de partida Bloque 0: 279 passed, 4 deselected — la diferencia +14 son mis
 tests nuevos en `test_harness_pareado.py`).
+
+## Bloque 5 — Offset de SL consciente del fill (2026-08-16)
+`run_supertrend(bars, ticks, *, atr_period=14, mult=3.0, sl_offset: float = 0.0)` —
+`sl_eff = sl - sl_offset` (LONG) / `sl + sl_offset` (SHORT), calculado UNA vez por barra y
+usado TANTO en el test de toque (`cond = (bb <= sl_eff) ...`) COMO en `exit_bid` cuando
+`hit=True` (`reason, exit_bid = "EXIT_STLINE", sl_eff`). Default `0.0` ⇒ `sl_eff == sl` ⇒
+byte-idéntico. Tests nuevos (2): default cero byte-idéntico; coherencia toque/precio probada en
+dos direcciones sobre la MISMA fixture — (a) un tick que toca el nivel ORIGINAL no dispara
+`EXIT_STLINE` una vez ensanchado (prueba que el test de toque usa el nivel desplazado, no sólo
+el precio reportado); (b) un tick exactamente en el nivel ENSANCHADO sí dispara, y su
+`exit_bid` es el nivel ensanchado — total fichero 16 passed.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
