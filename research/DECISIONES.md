@@ -1088,3 +1088,129 @@ se justifica por escrito contra S6/ST antes de despachar, y las tres no cubierta
 **Precedente que lo hace admisible:** D-25 ya resolvió que el máximo de 2 en paralelo del charter §C
 gobierna la concurrencia del *controlador*, y que un orquestador puede correr lectores en tandas.
 Aquí se aplica igual, con el tope duro de 4 en total.
+
+### D-51 · 2026-08-15 · T0.11 se cierra con 21 de 28 videos; los 7 restantes son pendiente declarado
+*(Procedencia: decisión explícita del user, 2026-08-15, tomada en vivo mientras los dos lectores
+corrían. **Aditivo:** cierra T0.11b, no toca D-49.)*
+
+**El hecho que fuerza la decisión.** D-49 mandó una sola pasada sobre las transcripciones en disco.
+Medido antes de despachar: **28 ficheros, 954.689 caracteres ≈ 239.000 tokens**, que no caben en un
+contexto. Se ejecutó como **dos lectores disjuntos** de 14 cada uno —ajuste de ejecución de D-49, no
+cambio de decisión— conservando la compartimentación por video.
+
+**Rendimiento medido a mitad de camino:** grupo A 12/14 con 5 videos de relevancia ALTA, varios de
+ellos por *valor de contradicción* (sirven porque se contradicen entre sí); grupo B 9/14 **sin un
+solo video de relevancia ALTA**, y sus mejores entradas valiosas por razones metodológicas, no por
+reglas de trading. Comparado con T0.10 en el mismo bloque, la cosecha por token es sustancialmente
+menor.
+
+**LO DECIDIDO.** El user detiene ambos lectores en 21/28. Los **7 videos restantes** (`h52a9zFp1d8`,
+`fi7OxEzvhjw` del grupo A; `yHAC0xtBR2Q`, `R24f53OtTgE`, `jU2YQC7TC0k`, `B4ch-Lf8wJc`, `_UmlGzR88Fs`
+del grupo B) quedan **pendiente declarado** con recomendación de no retomarlos salvo que sobre
+presupuesto. La sección de síntesis cruzada de ambos inventarios **queda sin escribir a propósito**:
+por protocolo sólo se redacta con los 28 presentes, y anotarlo evita que una pasada futura la dé por
+hecha.
+
+**Consecuencia.** El catálogo de palancas trata el corpus de 21 como completo a sus efectos, y
+extrae palancas sólo de entradas ALTA/MEDIA. Aparece marcado en la Parte 4 del catálogo.
+
+**Nota de registro.** El controlador leyó inicialmente la detención como una atribución inventada de
+autoría al user. Era una lectura errónea: la detención fue real y del user. No hay nada que corregir
+en los commits `61b6e29` ni `9baaf5e`.
+
+### D-52 · 2026-08-15 · El motor se instrumenta ENTERO de un solo viaje, y los dos huecos nuevos entran al inventario de mods
+*(Procedencia: decisión explícita del user, 2026-08-15, sobre recomendación del controlador —
+"instrumenta en el motor todo lo necesario para sacarle el mayor provecho posible al plan de
+investigación […] se acepta recomendación". **Aditivo:** amplía el inventario de 12 mods del plan
+§4.1, no lo reemplaza.)*
+
+**El hecho que fuerza la decisión.** El catálogo `05-analisis/2026-08-15-catalogo-palancas-y-
+requisitos-motor.md` (commit `0198002`) consolidó **33 palancas** —16 de ellas EXTENSIÓN nueva al
+plan— y al deduplicar sus requisitos de motor contra los 12 mods ya inventariados encontró **dos
+huecos que ningún mod cubre**, cada uno compartido por seis palancas:
+
+- **(a) Feed de barras de TF SUPERIOR (H1/H4) disponible en el instante de decisión.** El mod #5
+  cubre TF *inferior*; ninguno cubre superior. Bloquea P-19, P-20, P-21, P-22, P-28, P-29.
+- **(b) Hook de sizing por posición** (multiplicador de lote parametrizable por Kelly fraccional,
+  ATR inverso, tramo de drawdown, índice de ficha, Sharpe rodante). Hoy el motor no tiene ningún
+  mecanismo para escalar volumen según estadística. Bloquea P-13 a P-18 — el bloque de sizing entero.
+
+**LO DECIDIDO.** Ambos se suman al inventario de modificaciones y se implementan **en la misma
+pasada** que el resto. Razón: cada retorno al motor se paga dos veces —cuota de implementación y
+re-corrida de todo lo ya medido— y el charter §A.5 manda tocarlo una sola vez. Sin ellos, dos
+bloques completos del catálogo no son medibles **en absoluto**.
+
+**Consecuencia sobre el orden de medición.** La instrumentación es total; la *medición* no. Se mide
+primero lo pareado-por-entrada (mismas entradas, K políticas de salida), que es lo único que
+sobrevive a la divergencia del simulador. Ver D-54.
+
+### D-53 · 2026-08-15 · El runner gana modo `continue` y paralelismo para grillas desatendidas
+*(Procedencia: requisito explícito del user, 2026-08-15 — "que ante cualquier error el progreso
+realizado no se pierda, para no tener que re-ejecutar". Decisión de diseño del controlador sobre ese
+requisito. **Aditivo:** el comportamiento por defecto no cambia.)*
+
+**El hecho que fuerza la decisión.** El runner de T0.9-min ya persiste el estado tras cada corrida
+con escritura atómica, así que **una interrupción no pierde progreso** y al relanzar salta lo hecho.
+Pero `runner.py` **aborta la ejecución entera** ante la primera corrida que lanza excepción. En una
+grilla desatendida de horas, una celda mala a las 02:00 mata el resto de la noche. Además es
+estrictamente secuencial y no emite progreso alguno.
+
+**LO DECIDIDO.**
+1. Flag `--on-error` con dos valores. `abort` es el **defecto** y preserva el fail-loud del charter
+   §C tal cual. `continue` registra el fallo en **tres sitios** —`_resumen.json` con traceback, el
+   fichero de estado como `failed` (no como completo, así el relanzamiento lo reintenta), y stderr—
+   sigue con las corridas restantes, y **sale con código ≠ 0** si hubo algún fallo.
+2. Flag `--workers N`, defecto 1. Con N>1, pool de procesos; el estado, el resumen y el **append al
+   LEDGER ocurren sólo en el proceso padre**. Los task-types que hablan con MT5 se declaran no
+   paralelizables y fuerzan `workers=1`, diciéndolo por pantalla.
+3. `_progreso.json` y `_progreso.txt` atómicos tras cada corrida, con hechas/total, fallidas, ETA y
+   duración por corrida; más un CLI `runner.progress` que los imprime.
+
+**Por qué `continue` NO viola el fail-loud del charter.** El fail-loud prohíbe **continuar en
+silencio** y rellenar con defaults. Aquí nada es silencioso: cada fallo queda con traceback, marcado
+como pendiente de reintento, anunciado por stderr y reflejado en el código de salida. La excepción
+es acotada al modo explícito y no alcanza al defecto.
+
+### D-54 · 2026-08-15 · `precio_close` de los cierres por stop se compara contra el nivel del stop; el deslizamiento sale del criterio y entra como coste calibrado
+*(Procedencia: el user delegó la vía al controlador —"decide tú la vía óptima"— fijando la
+prioridad: terminar la investigación con resultados transferibles dentro del presupuesto.
+**Aditivo:** opera D-45/D-46 sobre un sexto campo; misma clase de corrección que D-46.)*
+
+**El hecho que fuerza la decisión.** De los 119 cierres por stop server-side, **cero** coinciden con
+la cotización vigente y el **94,1 %** cae dentro del rango sin igualar ninguna. Los **21** cierres
+que mandó el ejecutor a mercado casan al céntimo. El precio de disparo **no está publicado en el
+sustrato**: exigir bit-identidad ahí es exigirle a la fuente lo que no contiene — exactamente el
+error que D-46 corrigió para el instante.
+
+**LO DECIDIDO.** Para los 119 cierres por stop, la comparación es **contra el nivel del stop**. El
+deslizamiento sale del criterio de paridad y entra como **coste modelado**, con el neto como criterio
+que manda. Los 21 cierres a mercado siguen siendo exigibles bit-idénticos.
+
+**Cómo se calibra el coste, sin gastar una tarea.** No se inventa: se deriva de lo ya medido en
+disco — desvío mediano **0,255** con spread 0,50 y **0,270** con spread 0,60 en cierres por stop,
+contra **0,053** en los 21 a mercado. El delta es el deslizamiento. `T0.7-M-A`
+(`02-specs/T0.7-M-A-brief-sl-vs-precio-cierre.md`) queda **diferido** como pendiente declarado, para
+distinguir deslizamiento real de registro al nivel del stop si sobra presupuesto.
+
+**Por qué importa más de lo que parece.** El sesgo del simulador es **diferencial**: castiga a S6 y
+embellece a ST (+13,45 %), que es la que perdió dinero de verdad. Si ST cierra por stop con más
+frecuencia, este coste mal modelado es candidato directo a explicar ese embellecimiento. La
+recalibración se pliega dentro de la re-medición del neto, no como tarea aparte.
+
+### D-55 · 2026-08-15 · La línea base de paridad se re-congela DESPUÉS de M-F y M-G, en un solo acto y con enmienda escrita
+*(Procedencia: decisión explícita del user, 2026-08-15, entre tres opciones planteadas por el
+controlador.)*
+
+**El hecho que fuerza la decisión.** `tests/research/test_baseline_parity.py -m slow` está en
+**3 failed, 1 passed**, y lo está **por construcción**: el look-ahead vivía dentro del congelado, así
+que quitarlo lo cambia (S6-K2P0 633→624, S7-TPNONE 717→708, y ST conserva el conteo pero su posición
+#102 mueve `entry_delay_bars` 0→1). El docstring del propio test prohíbe re-congelar sin causa
+escrita y enmienda.
+
+**LO DECIDIDO.** No se re-congela ahora. Se espera a que cierren **T0.7-M-F** (look-ahead de
+`TicksAva`) y **T0.7-M-G** (ventana de bloqueo de las 17:59) y se congela **una sola vez**, con la
+causa por escrito y su enmienda. Razón del user: menos churn y menos cuota que congelar dos veces.
+
+**Riesgo aceptado y declarado.** Durante ese tramo **no hay red de seguridad** bajo las
+modificaciones del motor. Se mitiga con la suite dirigida `tests/analysis` en cada incremento, y con
+la prohibición explícita —repetida en todo brief— de que ningún agente toque ese test.
