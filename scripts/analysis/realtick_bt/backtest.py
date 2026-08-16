@@ -41,8 +41,11 @@ from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E
 from sentinel_engine.strategies.live_configs_20 import _GOLIVE_M15  # noqa: E402
 from sentinel_engine.strategies._supertrend_ref import supertrend, flips  # noqa: E402
 from sentinel_engine.strategies.emasar_ref import _atr_wilder  # noqa: E402
+from scripts.analysis.realtick_bt import higher_tf as _higher_tf  # noqa: E402
 
 BAR_SEC = 900          # M15
+H1_SEC = 3600
+H4_SEC = 14400
 MAX_RETRY_BARS = 1     # close-driven spread retry cap: signal bar + this many next bars.
 #                        (>1-bar delays pair a late entry with the sim's stale SL -> artifact.)
 USDCLP = 936.50
@@ -77,6 +80,53 @@ def load_bars() -> list[dict[str, Any]]:
     return [{"t": int(r.t), "open": float(r.o), "high": float(r.h),
              "low": float(r.l), "close": float(r.c), "volume": int(r.v)}
             for r in df.itertuples()]
+
+
+# --------------------------------------------------------------------------- BLOCK-1 (WP-3 wiring)
+def build_htf_mask(bars: list[dict[str, Any]], tf_sec: int, *, field: str = "ema_slope",
+                    **higher_tf_kwargs: Any) -> list[int | None]:
+    """The `punto de inyeccion` WP-3 asks for: an M15-index-aligned mask
+    (SAME semantics as `emasar_variant.simular_variant`'s `direction_mask`/
+    `htf_mask`: `+1`=long-only, `-1`=short-only, `0`/`None`=both allowed),
+    built off `scripts.analysis.realtick_bt.higher_tf.build_higher_series`.
+
+    `field` selects which snapshot field drives the sign:
+      - "ema_slope" (P-19/P-28): sign of the higher-TF EMA's bar-over-bar
+        slope. Positive slope -> +1 (long-only), negative -> -1.
+      - "st_dir" (P-20): the higher-TF SuperTrend direction verbatim (already
+        +1/-1, never needs a sign step).
+      - "momentum" (P-21): sign of the higher-TF momentum series.
+    `**higher_tf_kwargs` forwards to `build_higher_series` (e.g. `ema_period`,
+    `st_atr_period`, `st_mult`, `momentum_lookback`) -- the grid knobs for
+    P-19 (EMA period), P-20 (ATR period/mult), P-21 (momentum lookback).
+
+    Anti-look-ahead: entirely delegated to `HigherSeries.snapshot_at_m15_index`
+    (see higher_tf.py's module docstring for the contract) -- this function
+    adds no additional lookup of its own, so the guarantee "the in-progress
+    higher-TF bar is never visible" carries through unchanged. `None` (both
+    sides allowed, i.e. a NO-OP for that bar) is returned wherever no higher
+    bar has closed yet, or the requested field's warm-up has not finished
+    (e.g. `momentum` needs `momentum_lookback` closed higher bars).
+
+    `field not in {'ema_slope','st_dir','momentum'}` raises `ValueError`.
+    """
+    if field not in ("ema_slope", "st_dir", "momentum"):
+        raise ValueError(f"field must be 'ema_slope', 'st_dir' or 'momentum', got {field!r}")
+    series = _higher_tf.build_higher_series(bars, tf_sec, **higher_tf_kwargs)
+    mask: list[int | None] = []
+    for i in range(len(bars)):
+        snap = series.snapshot_at_m15_index(i)
+        if snap is None:
+            mask.append(None)
+            continue
+        v = snap[field]
+        if v is None:
+            mask.append(None)
+        elif field == "st_dir":
+            mask.append(int(v))
+        else:
+            mask.append(+1 if v > 0 else (-1 if v < 0 else 0))
+    return mask
 
 
 # --------------------------------------------------------------------------- ticks
