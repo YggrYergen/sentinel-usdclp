@@ -825,6 +825,40 @@ corridas:
             assert (out_dir / "posiciones.csv").exists()
 
 
+class TestExpandirHtfEnBrazos:
+    """BLOCK-1 'siguiente ola' hook: overlay `_htf` (params logicos) se
+    expande a `htf_mask` real via backtest.build_htf_mask, ANTES de que el
+    overlay llegue a overlay_kwargs/run_ladder -- para que P-19/P-21/P-28
+    puedan declararse en un manifiesto YAML pequeno (sin serializar el
+    array de 8.334 posiciones)."""
+
+    def test_overlay_sin_htf_pasa_intacto(self):
+        from scripts.research.runner.tasks_ola1 import _expandir_htf_en_brazos
+
+        brazos = {"default": {}, "mhb10": {"max_hold_bars": 10}}
+        bars = [{"t": 0, "open": 1, "high": 1, "low": 1, "close": 1}]
+        out = _expandir_htf_en_brazos(brazos, bars)
+        assert out == brazos
+
+    def test_overlay_con_htf_se_expande_a_htf_mask_real(self):
+        from scripts.research.ola1.sustrato import cargar_barras
+        from scripts.research.runner.tasks_ola1 import _expandir_htf_en_brazos
+
+        bars = cargar_barras()[:2000]
+        brazos = {
+            "h4ema20": {"_htf": {"tf_sec": 14400, "field": "ema_slope", "ema_period": 20}},
+            "otro_param": {"max_hold_bars": 5, "_htf": {"tf_sec": 3600, "field": "momentum"}},
+        }
+        out = _expandir_htf_en_brazos(brazos, bars)
+        assert "_htf" not in out["h4ema20"]
+        assert "htf_mask" in out["h4ema20"]
+        assert len(out["h4ema20"]["htf_mask"]) == len(bars)
+        assert any(m is not None for m in out["h4ema20"]["htf_mask"])
+        # otras claves del overlay original se preservan.
+        assert out["otro_param"]["max_hold_bars"] == 5
+        assert "htf_mask" in out["otro_param"]
+
+
 class TestConsolidarMarcaPositivo:
     """BLOCK-4 (coordinador, clarificacion mid-task #2): net_positivo/
     diff_positivo deben marcar el signo de cada brazo, con diff_positivo

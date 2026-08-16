@@ -66,6 +66,35 @@ class Ola1IdentidadDuplicadaError(Exception):
     identidades de entrada duplicadas -- anomalia inesperada, no un dato."""
 
 
+def _expandir_htf_en_brazos(brazos: dict[str, dict[str, Any]],
+                             bars: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """BLOCK-1 'siguiente ola' hook: un overlay de brazo puede llevar una
+    clave `_htf` (params LOGICOS, nunca el array crudo -- el YAML del
+    manifiesto no tiene que serializar 8.334 floats) en vez de `htf_mask`
+    directamente:
+
+        brazos:
+          h4ema20: {_htf: {tf_sec: 14400, field: ema_slope, ema_period: 20}}
+
+    Se expande AQUI, contra el `bars` YA recortado de esta corrida (respeta
+    D-60 si `margen_extra_s>0`), a `backtest.build_htf_mask(bars, tf_sec,
+    field=field, **resto)` y se sustituye por la clave `htf_mask` real que
+    `simular_variant` consume (BLOCK-1, commit `a6a6979`/`877e5cd`). Overlays
+    sin `_htf` pasan sin tocar -- no-op para P-02/P-03/P-05/P-08/P-34/etc.
+    """
+    out: dict[str, dict[str, Any]] = {}
+    for arm_name, overlay in brazos.items():
+        if "_htf" not in overlay:
+            out[arm_name] = overlay
+            continue
+        spec = dict(overlay["_htf"])
+        tf_sec = spec.pop("tf_sec")
+        field = spec.pop("field")
+        mask = backtest.build_htf_mask(bars, tf_sec, field=field, **spec)
+        out[arm_name] = {**{k: v for k, v in overlay.items() if k != "_htf"}, "htf_mask": mask}
+    return out
+
+
 def _resolver_brazos_con_progreso(sid: str, arms: dict[str, dict[str, Any]],
                                    bars: list[dict[str, Any]], ticks: "backtest.Ticks",
                                    out_dir: Path) -> tuple[dict, dict]:
@@ -168,6 +197,7 @@ def ola1_paired(params: dict, out_dir: Path) -> dict:
     margen_extra_s = float(params.get("margen_extra_s", 0.0))
 
     bars = sustrato_mod.cargar_barras(margen_extra_s=margen_extra_s)
+    brazos = _expandir_htf_en_brazos(brazos, bars)
     ticks = backtest.Ticks()
 
     signal_positions, resolved = _resolver_brazos_con_progreso(sid, brazos, bars, ticks, out_dir)
