@@ -288,12 +288,23 @@ def _toque_short(bars, ema_pull, i):
     return False, None
 
 
-def ac_desacelerando(ac, idx, direccion):
-    """AC_ExitEnable/AC_ModulateTrail (spec Fase1 S1): AC[i]<AC[i-1] (long) / AC[i]>AC[i-1]
-    (short) -> la aceleracion se apaga. direccion: +1 long, -1 short."""
-    if idx < 1 or ac[idx] is None or ac[idx - 1] is None:
+def ac_desacelerando(ac, idx, direccion, *, lookback: int = 1, umbral: float = 0.0):
+    """AC_ExitEnable/AC_ModulateTrail (spec Fase1 S1): AC[i]<AC[i-lookback] (long) /
+    AC[i]>AC[i-lookback] (short) -> la aceleracion se apaga. direccion: +1 long, -1 short.
+
+    `lookback` y `umbral` son ADITIVOS (WP-1+2 Bloque 4, palanca P-03): con los
+    defaults `lookback=1, umbral=0.0` esta funcion es byte-identica a la
+    version original -- `ac[idx] < ac[idx-1]` / `ac[idx] > ac[idx-1]`, sin piso
+    de magnitud. `lookback` generaliza que barra de referencia se usa
+    (`idx-lookback` en vez de `idx-1` fijo); `umbral` exige que la caida/subida
+    supere ese margen en valor absoluto (magnitud de la desaceleracion), no
+    solo el signo. El guard `idx < 1` original generaliza a `idx < lookback`
+    (con `lookback=1` es exactamente el guard de hoy)."""
+    if idx < lookback or ac[idx] is None or ac[idx - lookback] is None:
         return False
-    return (ac[idx] < ac[idx - 1]) if direccion == +1 else (ac[idx] > ac[idx - 1])
+    if direccion == +1:
+        return (ac[idx - lookback] - ac[idx]) > umbral
+    return (ac[idx] - ac[idx - lookback]) > umbral
 
 
 def centro_masa(bar):

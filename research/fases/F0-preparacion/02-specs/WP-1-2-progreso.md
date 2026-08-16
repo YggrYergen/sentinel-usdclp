@@ -45,3 +45,45 @@ un caso donde S6 con `stop_and_reverse` diverge aguas abajo — 3 casadas / 3 so
 identidad SuperTrend sin ficha; identidad ladder con sid+ficha; filas unibles por `pos_id`) →
 total fichero 10 passed.
 Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+
+## Bloque 4 — Umbral y lookback de desaceleración de AC (2026-08-16)
+`sentinel_engine/strategies/emasar_ref.py:291`
+`ac_desacelerando(ac, idx, direccion, *, lookback: int = 1, umbral: float = 0.0)` —
+generaliza `idx-1` fijo → `idx-lookback`, y añade exigencia de magnitud (`umbral`); con
+`lookback=1, umbral=0.0` es byte-idéntica a la versión original (`ac[idx] < ac[idx-1]` /
+`ac[idx] > ac[idx-1]`). `sentinel_engine/strategies/emasar_variant.py`: `simular_variant` gana
+`ac_decel_lookback: int = 1`, `ac_decel_umbral: float = 0.0` (aditivos, al final de la firma),
+enhebrados en los DOS call-sites de `ac_desacelerando` (línea ~965 bloque `ac_modulate`, línea
+~1053 bloque `f3_ac_decel_exit`). No se tocó `live_configs_20.py` ni ningún dict de config viva.
+⚠️ Nota de recon: `emasar_ref.py` lleva un docstring de módulo "DO NOT EDIT ... vendored frozen
+copy" (líneas 1-18) que en principio prohíbe tocar el fichero; el brief (§Bloque 4) nombra este
+mismo `emasar_ref.py:291` como objetivo explícito, aclara que R1-bis se hace cumplir aquí **por
+comportamiento** vía la puerta de paridad, y da instrucción de PARAR sólo si hiciera falta
+cambiar un default o una config viva — no es el caso (cambio 100% aditivo). Se procedió conforme
+al brief cerrado, citando la tensión aquí para que quede trazada.
+Tests nuevos (4): defaults byte-idénticos a la versión legacy; lookback/umbral cambian el
+resultado; `simular_variant` con los kwargs nuevos explícitos en su default es byte-idéntico
+(con `ac_modulate=True, f3_ac_decel_exit=True` para ejercitar ambos call-sites, sobre 400 barras
+reales); `ac_decel_umbral` grande sí cambia el resultado cuando el bloque está activo → total
+fichero 18 passed.
+Parity gate: `python -m pytest tests/research/test_baseline_parity.py -m slow -q` → **4 passed**.
+Extra (fuera de mis rutas, verificación de seguridad porque toqué ficheros compartidos):
+`python -m pytest tests/strategies -q` → **272 passed**.
+
+🔴 **REGRESIÓN COLATERAL DETECTADA (fuera de mis rutas, NO corregida por mí):**
+`python -m pytest tests/analysis -q` → **306 passed, 1 failed** (línea de partida Bloque 0: 307
+passed). El único rojo es
+`tests/analysis/test_borde_del_dia.py::test_cita_gate_spread_harness_verificada_contra_el_fichero_real`,
+que lee `scripts/analysis/realtick_bt/backtest.py` y afirma `"abs(sp - 0.5) <= 0.05" in
+lineas[375]` (línea 376 hardcodeada). Mi edición del Bloque 1 (docstring de `run_supertrend`,
++3 líneas) desplazó esa línea a **379** (verificado: `grep -n "abs(sp - 0.5) <= 0.05"
+scripts/analysis/realtick_bt/backtest.py` → `379:`). Es una cita `file:line` frágil, NO deriva de
+comportamiento (R1-bis no aplica: ninguna estrategia viva cambió), y hay precedente idéntico ya
+documentado en el propio test (comentario línea 308-310: T0.7-M-E ya desplazó esta misma cita de
+358→376 y la actualizó). El fichero que falla (`tests/analysis/test_borde_del_dia.py`) y el
+módulo que cita la constante (`scripts/analysis/realtick_bt/faulty/borde_del_dia.py`) están
+**fuera de mis TUS RUTAS** del brief — no los toqué. Queda para el controlador: o autoriza que un
+agente actualice esa cita (`lineas[375]` → `lineas[378]`, y el comentario de rango) en esos dos
+ficheros, o lo hace el dueño de `faulty/`. `tests/research -q` no tiene regresión: **293 passed,
+4 deselected** (línea de partida Bloque 0: 279 passed, 4 deselected — la diferencia +14 son mis
+tests nuevos en `test_harness_pareado.py`).

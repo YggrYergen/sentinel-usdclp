@@ -139,6 +139,8 @@ def simular_variant(
     wait_mae_atr_k: float = 0.0,
     wait_be_exit: bool = False,
     trail_arm_r: float = 0.0,
+    ac_decel_lookback: int = 1,
+    ac_decel_umbral: float = 0.0,
 ) -> list[dict[str, Any]] | tuple[list[dict[str, Any]], dict[str, Any]]:
     """Simulate EMASAR V1 with a per-ficha trailing ladder.
 
@@ -962,7 +964,8 @@ def simular_variant(
             # block entirely, preserving current behavior byte-for-byte):
             # when AC is decelerating against this ficha's favorable
             # direction on the current bar, tighten the trail distance.
-            if ac_modulate and ac_desacelerando(ac, i, f.lado):
+            if ac_modulate and ac_desacelerando(ac, i, f.lado, lookback=ac_decel_lookback,
+                                                 umbral=ac_decel_umbral):
                 trail_efectivo = trail_efectivo * ac_modulate_factor
             # ATR14 trail floor (trail_atr_floor_k=0.0 default -> atr14_floor is
             # None -> this block is skipped entirely, byte-identical no-op).
@@ -1050,7 +1053,8 @@ def simular_variant(
             # precedence over this (the `continue` statements above already
             # skip this ficha for the rest of the bar in that case).
             if f3_ac_decel_exit and tag == "F3":
-                if ac_desacelerando(ac, i, f.lado):
+                if ac_desacelerando(ac, i, f.lado, lookback=ac_decel_lookback,
+                                     umbral=ac_decel_umbral):
                     ac_decel_consec_by_tag[tag] = ac_decel_consec_by_tag.get(tag, 0) + 1
                 else:
                     ac_decel_consec_by_tag[tag] = 0

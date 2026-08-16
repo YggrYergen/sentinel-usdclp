@@ -227,3 +227,60 @@ def test_paired_result_rows_are_joinable_by_pos_id(monkeypatch):
     for r in rows:
         assert r["arm"] == "default" and r["sid"] == "S6-K2P0"
         assert r["pos_id"] == f"S6-K2P0|{r['ficha']}|{r['t_in']}|{r['side']}"
+
+
+# --------------------------------------------------------------------- B4
+def test_ac_desacelerando_defaults_match_legacy_behavior():
+    from sentinel_engine.strategies.emasar_ref import ac_desacelerando
+
+    ac = [None, 1.0, 0.5, 0.6, 0.4]
+    for idx in range(1, len(ac)):
+        for direccion in (1, -1):
+            if ac[idx] is None or ac[idx - 1] is None:
+                legacy = False
+            else:
+                legacy = (ac[idx] < ac[idx - 1]) if direccion == 1 else (ac[idx] > ac[idx - 1])
+            assert ac_desacelerando(ac, idx, direccion) == legacy
+            assert (ac_desacelerando(ac, idx, direccion, lookback=1, umbral=0.0)
+                    == ac_desacelerando(ac, idx, direccion))
+
+
+def test_ac_desacelerando_lookback_and_umbral_change_result():
+    from sentinel_engine.strategies.emasar_ref import ac_desacelerando
+
+    ac = [1.0, 0.9, 0.85, 0.80, 0.95]
+    assert ac_desacelerando(ac, 3, 1) is True          # 0.80 < 0.85 -> decel
+    assert ac_desacelerando(ac, 3, 1, umbral=1.0) is False   # tiny drop, big umbral suppresses
+    assert ac_desacelerando(ac, 3, 1, lookback=3) is True    # 0.80 vs ac[0]=1.0 -> still decel
+    assert ac_desacelerando(ac, 2, 1, lookback=3) is False   # idx < lookback -> guard False
+
+
+def test_simular_variant_ac_decel_kwargs_default_byte_identical():
+    """Threading ac_decel_lookback/ac_decel_umbral through simular_variant
+    with defaults must not change emitted events at all -- the parity gate
+    enforces this at the whole-engine level; this pins the same invariant
+    directly at the kwarg-threading site (ac_modulate=True + f3_ac_decel_exit=
+    True so both call sites of ac_desacelerando actually execute)."""
+    from sentinel_engine.strategies.emasar_variant import simular_variant
+    from scripts.analysis.realtick_bt import backtest as bt
+
+    bars = bt.load_bars()[:400]
+    kwargs = {**bt._GL["S6-K2P0"], "ac_modulate": True, "f3_ac_decel_exit": True}
+    base = simular_variant(bars, **{**{"symbol": "XAUUSD"}, **kwargs})
+    explicit = simular_variant(bars, **{**{"symbol": "XAUUSD"}, **kwargs,
+                                         "ac_decel_lookback": 1, "ac_decel_umbral": 0.0})
+    assert base == explicit
+
+
+def test_simular_variant_ac_decel_kwargs_change_result_when_active():
+    """Sanity: the new kwargs are actually wired, not silently ignored, when
+    the AC-consuming blocks are active."""
+    from sentinel_engine.strategies.emasar_variant import simular_variant
+    from scripts.analysis.realtick_bt import backtest as bt
+
+    bars = bt.load_bars()[:400]
+    kwargs = {**bt._GL["S6-K2P0"], "ac_modulate": True, "f3_ac_decel_exit": True}
+    base = simular_variant(bars, **{**{"symbol": "XAUUSD"}, **kwargs})
+    tightened = simular_variant(bars, **{**{"symbol": "XAUUSD"}, **kwargs,
+                                          "ac_decel_umbral": 1e6})
+    assert base != tightened
