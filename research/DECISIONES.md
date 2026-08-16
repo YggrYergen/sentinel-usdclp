@@ -1215,6 +1215,45 @@ causa por escrito y su enmienda. Razón del user: menos churn y menos cuota que 
 modificaciones del motor. Se mitiga con la suite dirigida `tests/analysis` en cada incremento, y con
 la prohibición explícita —repetida en todo brief— de que ningún agente toque ese test.
 
+### D-60 · 2026-08-16 · La colisión `max_hold_bars` × borde del holdout se resuelve acortando el sustrato de P-02, no relajando la guarda
+*(Procedencia: decisión de diseño del controlador sobre la pregunta escalada en
+`OLA1-EXEC-reporte.md` §3 y §6.1. **Aditivo:** no toca la semántica fail-loud del Bloque 6.)*
+
+**El hecho que fuerza la decisión, medido.** Con `max_hold_bars=10` (brazo confirmatorio `mhb10`)
+una posición SHORT que entra en `t_in=1778534100` se fuerza a cerrar por `time_stop` diez barras
+después (`t_out=1778543100`); `resolve()` calcula `t_exit = t_out + 900 = 1778544000`, que es
+**exactamente igual** a `HOLDOUT_INI`. La guarda usa `>=` y aborta la corrida entera. La misma
+posición, con los mismos valores, aparece en S6-K2P0 y en S7-TPNONE — consistente con que ambas
+comparten el mecanismo de señal EMASAR.
+
+**Por qué la guarda NO se relaja, aunque tenga pinta de defecto de borde.** El sustrato se construye
+con `b['t'] < HOLDOUT_INI`, así que la última barra legal **cierra** justo en `HOLDOUT_INI`. Tienta
+concluir que ese cierre es inocuo porque sus ticks son todos anteriores al sello. No lo es: el motor
+resuelve el precio con `first_at(t_exit)`, que devuelve el primer tick **en o después** de
+`t_exit` — es decir, un tick del holdout. La guarda está haciendo exactamente su trabajo. Ceder aquí
+sería la cuarta entrada de look-ahead de este programa, después de los fills en la misma barra
+(−121 %), el `first_at` sin cota y el reloj reconstruido de T0.7-M-G.
+
+**LO DECIDIDO — opción (a), acotada a P-02.** El sustrato de las corridas de P-02 se recorta de modo
+que la última barra empiece al menos `(max(max_hold_bars de la grilla) + 1) × 900 s` antes de
+`HOLDOUT_INI`. Ningún brazo puede entonces empujar una salida hasta el sello.
+
+**Por qué esto no rompe nada, y por qué las otras dos opciones sí.**
+- El recorte se aplica **por igual al brazo de control y a todos los brazos** de P-02. La
+  comparación de P-02 es **pareada y dentro de la propia palanca**, así que acortar el sustrato
+  cuesta un poco de potencia estadística y **no introduce ningún sesgo**. La validez se conserva
+  entera.
+- El sustrato de P-02 queda distinto del de P-05/P-08, y eso es **admisible**: el pre-registro no
+  contempla ninguna comparación entre palancas, y las que sí contempla son intra-palanca.
+- Opción (b) —excluir la posición intrusa en vez de abortar— se rechaza: cambia la semántica
+  fail-loud, exige enmienda, y **descarta justamente la posición que el time-stop creó**, sesgando
+  contra la palanca que se está midiendo.
+- Opción (c) —correr P-02 sin el brazo `mhb10`— se rechaza: elimina un brazo confirmatorio de una
+  grilla **pre-registrada**, que es exactamente lo que el pre-registro existe para impedir.
+
+**Consecuencia sobre el reporte.** El `n` de P-02 será menor que el de P-05/P-08 y hay que decirlo
+al citarlo, junto con el número exacto de barras recortadas.
+
 ### D-56 · 2026-08-16 · La Ola 1 NO es toda pareada-por-entrada: se parte en 1-A y 1-B, y P-33 no corre
 *(Procedencia: decisión del CONTROLADOR sobre una **contradicción interna del propio catálogo**,
 detectada al construir el pre-registro. Aditiva: no cambia ninguna grilla, cambia qué se puede
