@@ -389,7 +389,8 @@ def apply_regime_gate_by_entry_bar(positions: list[dict[str, Any]], bars: list[d
 
 def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
                     atr_period: int = 14, mult: float = 3.0,
-                    sl_offset: float = 0.0) -> list[dict[str, Any]]:
+                    sl_offset: float = 0.0,
+                    htf_mask: list[int | None] | None = None) -> list[dict[str, Any]]:
     """Always-in SuperTrend(atr_period, mult) with the LINE as a server-side SL (live
     semantics). Defaults (14, 3.0) are EXACTLY today's hardcoded values (WP-1+2 Bloque 1;
     build_all() calls this with no extra args, so behavior is byte-identical).
@@ -406,7 +407,19 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
     `line[j-1] - sl_offset` (lower = further from price = more room); for SHORT it is
     `line[j-1] + sl_offset` (higher). The SAME shifted level feeds BOTH the touch test and
     the reported exit price -- shifting only one of the two would make touch/exit
-    incoherent (brief SS2 Bloque 5)."""
+    incoherent (brief SS2 Bloque 5).
+
+    `htf_mask` (OLA2, palanca P-20, default `None` -> byte-identical no-op) gates the
+    ALWAYS-IN FLIP itself, not entries: SAME semantics as `emasar_variant.simular_variant`'s
+    `htf_mask` (`+1`=long-only, `-1`=short-only, `0`/`None`=both allowed, index-aligned with
+    `bars`). At bar `j`, when the M15 trend would flip (`flipped=True` below) AND
+    `htf_mask[j]` disagrees with the NEW side (e.g. mask says long-only but the M15 trend
+    just flipped short), the flip is SUPPRESSED for that bar -- the always-in position keeps
+    its current side, exactly as if no flip had happened; the line-touch check (`hit`) is
+    NOT affected by the mask (a stop-out on the current side always fires regardless of
+    what the higher TF says). Re-evaluated bar by bar, never latched -- if the M15 trend
+    keeps pointing the disallowed way, the flip stays suppressed for as long as `htf_mask`
+    disagrees, and fires the first bar the mask allows it (or goes `None`/0)."""
     highs = [b["high"] for b in bars]; lows = [b["low"] for b in bars]; closes = [b["close"] for b in bars]
     atr = _atr_wilder(highs, lows, closes, atr_period)
     atrf = [a if a is not None else 0.0 for a in atr]
@@ -430,6 +443,13 @@ def run_supertrend(bars: list[dict[str, Any]], ticks: Ticks, *,
             cond = (bb <= sl_eff) if side_l == "L" else (aa >= sl_eff)
             hit = bool(cond.any())
         flipped = (trend[j] == 1) != (side_l == "L")
+        if flipped and htf_mask is not None:
+            new_side_l = "L" if trend[j] == 1 else "S"
+            m = htf_mask[j]
+            if m is not None and m != 0:
+                allowed = (m > 0 and new_side_l == "L") or (m < 0 and new_side_l == "S")
+                if not allowed:
+                    flipped = False
         if not (hit or flipped):
             continue
         if hit:

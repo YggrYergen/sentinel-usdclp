@@ -418,6 +418,86 @@ def test_instrumentation_entry_context_none_without_bars():
     assert r["entry_context"] is None
 
 
+# --------------------------------------------------------------------- B7 (OLA2, P-20)
+def test_htf_mask_default_none_byte_identical():
+    bars = _trend_bars()
+    ticks = _FakeTicks([])
+    base = run_supertrend(bars, ticks)
+    explicit = run_supertrend(bars, ticks, htf_mask=None)
+    assert base == explicit
+
+
+def test_htf_mask_all_zero_or_none_is_a_no_op():
+    bars = _trend_bars()
+    ticks = _FakeTicks([])
+    base = run_supertrend(bars, ticks)
+    mask_none = [None] * len(bars)
+    mask_zero = [0] * len(bars)
+    assert run_supertrend(bars, ticks, htf_mask=mask_none) == base
+    assert run_supertrend(bars, ticks, htf_mask=mask_zero) == base
+
+
+def test_htf_mask_suppresses_a_flip_that_disagrees_and_the_line_touch_still_fires():
+    """A mask that forbids the M15 flip's new side must suppress the flip (fewer
+    exits than the unmasked run) while a genuine line-touch (EXIT_STLINE) is
+    unaffected by the mask -- the mask only gates FLIPS, never stop-outs."""
+    bars = _trend_bars()
+    ticks = _FakeTicks([])
+    unmasked = run_supertrend(bars, ticks)
+    flips = [p for p in unmasked if p["reason"] == "EXIT_STFLIP"]
+    assert flips, "fixture must produce at least one flip for this test to be meaningful"
+    # the flip's NEW side is the opposite of the closed position's own side_l.
+    new_side_l = "S" if flips[0]["side_l"] == "L" else "L"
+    forbid = -1 if new_side_l == "L" else +1   # mask disagreeing with the new side
+    masked = run_supertrend(bars, ticks, htf_mask=[forbid] * len(bars))
+    n_flips_unmasked = len(flips)
+    n_flips_masked = sum(1 for p in masked if p["reason"] == "EXIT_STFLIP")
+    assert n_flips_masked < n_flips_unmasked
+
+
+def test_htf_mask_agreeing_direction_does_not_suppress_the_flip():
+    bars = _trend_bars()
+    ticks = _FakeTicks([])
+    unmasked = run_supertrend(bars, ticks)
+    # mask = +1 everywhere AND -1 everywhere, both applied: union must reproduce
+    # the unmasked flip count (every flip agrees with ONE of the two masks).
+    long_only = run_supertrend(bars, ticks, htf_mask=[1] * len(bars))
+    short_only = run_supertrend(bars, ticks, htf_mask=[-1] * len(bars))
+    n_unmasked = sum(1 for p in unmasked if p["reason"] == "EXIT_STFLIP")
+    n_long = sum(1 for p in long_only if p["reason"] == "EXIT_STFLIP")
+    n_short = sum(1 for p in short_only if p["reason"] == "EXIT_STFLIP")
+    assert n_long + n_short == n_unmasked
+
+
+def test_htf_mask_never_suppresses_a_genuine_line_touch():
+    from sentinel_engine.strategies._supertrend_ref import supertrend
+    from sentinel_engine.strategies.emasar_ref import _atr_wilder
+
+    bars = _trend_bars()
+    highs = [b["high"] for b in bars]; lows = [b["low"] for b in bars]
+    closes = [b["close"] for b in bars]
+    atr = _atr_wilder(highs, lows, closes, 14)
+    atrf = [a if a is not None else 0.0 for a in atr]
+    trend, line = supertrend(highs, lows, closes, atrf, 3.0)
+    fv = next(i for i in range(len(atr)) if atr[i] is not None)
+    j = fv + 1
+    side_l = "L" if trend[fv] == 1 else "S"
+    while (trend[j] == 1) != (side_l == "L"):
+        j += 1
+    sl = line[j - 1]
+    t0 = bars[j]["t"]
+    touch_tick_ts = t0 + 1.0
+    if side_l == "L":
+        ticks = _FakeTicks([(touch_tick_ts, sl, sl + 0.2)])
+    else:
+        ticks = _FakeTicks([(touch_tick_ts, sl - 0.2, sl)])
+    # mask forbids BOTH sides' flips (impossible value, but must not touch `hit`).
+    mask_forbid_all = [-1 if side_l == "L" else 1] * len(bars)
+    out = run_supertrend(bars, ticks, htf_mask=mask_forbid_all)
+    this_bar = [p for p in out if p["t_out"] == bars[j]["t"]]
+    assert this_bar and this_bar[0]["reason"] == "EXIT_STLINE"
+
+
 def test_build_all_instrument_flag_default_off_and_inert_when_on(monkeypatch):
     from scripts.analysis.realtick_bt import backtest as bt
 
