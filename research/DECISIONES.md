@@ -1291,3 +1291,91 @@ piloto corre **ahora** y la firma se pide **en paralelo**, no antes.
 **Riesgo aceptado y declarado.** Si el user rechaza cerrar la Fase 0, las cifras de la Ola 1 quedan
 como validación de instrumento y **no** como resultado del programa. Se declara así en el memo desde
 el primer día, no a posteriori.
+
+### D-58 · 2026-08-16 · La Ola 1 se corre DENSA, de UNA sola pasada por script, y sus resultados nacen PRE-INTERPRETACIÓN
+*(Procedencia: directiva explícita del user, 2026-08-16 — «corre completa toda la ola vía script,
+una vez tenga sus deps listas y testeadas […] cada una de las variantes, sus grillas,
+granularidades, distintos parámetros, todo», con trabajo agéntico **cero** mientras corre, y
+«PRE-INTERPRETACIÓN debe estar claramente marcado». Diseño de ejecución: controlador.
+**Aditiva:** no cambia ninguna hipótesis ni regla de decisión del pre-registro `22ee9fb`.)*
+
+**Los dos hechos que la fuerzan.**
+1. **El cómputo es gratis, medido:** `build_all()` sobre las tres estrategias y las 8.334 barras
+   del sustrato tarda **1,55 s**. Una grilla de 44 brazos y una de 157 cuestan lo mismo. Correr la
+   grilla mínima habría sido una decisión de coste sin coste que la justifique.
+2. **El propio pre-registro obliga a densificar** en dos de sus reglas: «meseta ⇒ refinar paso
+   ≤0,25» (P-05) y «si el óptimo cae en un extremo, se extiende la grilla» (P-08). Aplicarlas
+   *después* de ver resultados exige una segunda pasada y deja la elección del refinamiento
+   contaminada por lo ya visto.
+
+**LO DECIDIDO.**
+1. **Grilla densa, partida en dos clases**, especificada en
+   `01-hipotesis/2026-08-16-ampliacion-E04-ola1.md` (**commit `1c7279d`, escrito y commiteado
+   ANTES de correr un solo brazo** — sin esa precedencia el documento no valdría nada):
+   **44 brazos CONFIRMATORIOS** (los del pre-registro, intactos, únicos que producen veredicto) +
+   **113 EXPLORATORIOS** (describen la superficie de respuesta; **jamás** revierten ni rescatan un
+   veredicto confirmatorio) = **157 brazos**. Se verifica **por código** que los 44 son subconjunto
+   exacto de los 157.
+2. **Todos los brazos entran en el conteo de intentos** para la corrección por comparaciones
+   múltiples. Densificar **encarece** el haircut y se acepta a sabiendas. Se publican las dos
+   correcciones BH-FDR: sobre los confirmatorios y sobre el total.
+3. **Una sola orden, desatendida:** `python -m scripts.research.ola1.correr_ola1 --workers N`
+   corre el manifiesto (`--on-error continue`, D-53), consolida y escribe el estado. Entre el
+   inicio y el final **no interviene ningún agente**.
+4. **Régimen de interpretación:** todo artefacto de datos nace y se queda **PRE-INTERPRETACIÓN**,
+   con banner literal en `_ESTADO.md` y en la cabecera del consolidado. **Ninguna interpretación es
+   válida hasta discutirla en profundidad con el user y ser aprobada por él**; lo que el
+   controlador escriba antes es **propuesta de lectura**, en fichero aparte de los datos
+   (charter §A.4).
+5. **Negativos, neutros y positivos se publican con el mismo detalle**, los 157 brazos, no el
+   mejor (charter §A.2). Al cerrar se registra explícitamente qué hallazgos son **componibles**
+   entre sí y cuáles no, con el mecanismo por el que lo son o no. **No se presupone aditividad
+   entre palancas en ningún caso.**
+6. **Ninguna mejora se descarta por improbable.** Toda mejora observada, por remota que sea, se
+   consigna y se propone para segunda etapa o prueba en demo: el coste de probar en demo es ~0 y
+   el de no registrar una pista es perderla.
+
+**Tres resoluciones técnicas que la ampliación cierra ANTES de correr** (detalle en E-04):
+- 🔴 **El umbral de P-03 va en pips y un pip son 0,01.** Medido sobre las 8.334 barras: leyendo
+  `{25,50,75}` como unidades AC crudas, el trigger se dispara en el **0,1 % / 0,0 % / 0,0 %** de
+  las barras — los tres brazos serían idénticos entre sí y a «AC-modulate apagado», y P-03 habría
+  salido plana **por un error de unidades disfrazado de resultado**. Con pips × 0,01 se dispara en
+  el **89,3 % / 78,9 % / 68,9 %**.
+- **`ac_modulate_hold_bars`** (la duración del apriete, tercera dimensión de la grilla
+  pre-registrada de P-03) **no existía en el motor**: se añade en WP-2b, aditiva, default `1` =
+  byte-idéntico, bajo la puerta de paridad. Sin ella, 12 de los 44 brazos pre-registrados serían
+  duplicados exactos de otros 6.
+- **R queda definido** (el charter §A.1 lo exige y el repo no lo tenía):
+  `R_i = |entrada_rellenada − SL_inicial| × 100 oz × 936,50`, por posición, con los **mismos
+  helpers del motor** (`_sl_inicial_genuine` para la escalera, `supertrend` para ST). Lo no
+  computable se declara y se cuenta; jamás se rellena.
+
+### D-59 · 2026-08-16 · Se resuelven las tres dudas que los implementadores dejaron al controlador
+*(Procedencia: decisiones del controlador sobre preguntas explícitas de los reportes T0.7-M-H §6 y
+T0.9-B §"Necesita decisión". Ninguna requiere firma del user: son criterios de método dentro de
+decisiones ya firmadas.)*
+
+**(a) Mediana vs media en el coste de deslizamiento de D-54.** El recálculo de T0.7-M-H da
+**0,03** con mediana y **0,053** con media para el desvío de los 21 cierres a mercado; D-54 citó
+0,053, que corresponde a la **media**, mientras el brief especificaba **mediana**.
+**Manda la mediana ⇒ coste 0,225** (no 0,202). Razón: la fórmula estaba **pre-especificada por
+escrito antes de calcularla**, y cambiarla después de ver que la otra coincide con el texto de
+D-54 sería elegir el estadístico por su resultado. La media queda como **sensibilidad declarada**:
+el coste alternativo 0,202 es un −10 % sobre el aplicado, y ningún resultado que dependa de esa
+diferencia puede declararse robusto. El texto de D-54 queda **corregido en el registro**: donde
+dice «desvío mediano 0,053» debe leerse «desvío **medio** 0,053; mediano 0,03».
+
+**(b) `FALLBACK_CLOSE_INVALID_SL` y `CLOSE_RECONCILER` NO reciben coste de deslizamiento.** El
+coste modela lo que un **stop server-side** hace y el feed no publica. Esas dos categorías son
+cierres **a mercado enviados por el ejecutor**, y los cierres a mercado son exactamente la
+población de referencia con la que el coste se calibró (`dist_min` p50 = **0,000**, máx 0,03).
+Aplicarles el coste sería restarles dos veces la misma corrección. Se mantiene la definición
+estricta `motivo_cierre == 'SL'` que usó T0.7-M-H. Consecuencia para la Ola 1: el overlay de coste
+alcanza sólo a `EXIT_INITSL`, `EXIT_SL_RAISED`, `EXIT_TRAIL` y `EXIT_STLINE`.
+
+**(c) `ticks_csv_mt5` se queda `parallelizable=False`, con la razón corregida.** El spec del
+controlador lo llamó «respaldado por MT5» y no lo es: es ingesta de un CSV exportado a mano, sin
+conexión viva — el agente lo detectó y lo ejecutó igual, declarándolo. **El flag se conserva**,
+pero por otra razón: el CSV son **8,65 GB** y dos lecturas concurrentes se pelean el disco. Es una
+errata de justificación del controlador, no del implementador, y no afecta a la Ola 1 (su
+task-type `ola1_paired` sí es paralelizable).
