@@ -378,6 +378,191 @@ mismo bloque, ambas positivas, ambas sobre las mismas posiciones — y por tanto
 
 ---
 
+# PARTE III-B — Composición de resultados: cómo combinar lo que superó a la línea base
+
+Esta sección trata **únicamente** los brazos que quedaron **por encima de su control**, aunque
+ninguno alcance significancia. El criterio para incluirlos no es que sean creíbles por separado —
+no lo son — sino que **componerlos es, estadísticamente, la forma correcta de averiguar si son
+reales**. La justificación está en III-B.4.
+
+## III-B.1 · Inventario completo de lo que superó a su control
+
+| # | brazo | familia | Δ neto | Δ USD/pos | p | n | base de comparación |
+|---|---|---|---|---|---|---|---|
+| C1 | P-16 freno DD **continuo** | sizing | +25,6 % | +16,18 | 0,88 | 1485 | control sizing 93.691 |
+| C2 | P-16 freno DD **escalonado** | sizing | +15,5 % | +9,81 | 0,93 | 1485 | control sizing 93.691 |
+| C3 | P-17 **peso adelante** 40/35/25 | sizing | +14,0 % | +8,83 | 0,25 | 1485 | control sizing 93.691 |
+| C4 | P-02 **15 barras** (S6) | salidas | +80,2 % | +26,68 | 0,73 | 636 | control S6 45.850 |
+| C5 | P-02 **20 barras** (S6) | salidas | +46,6 % | +38,29 | 0,41 | 630 | control S6 45.850 |
+| C6 | P-02 **48 barras** (S6) | salidas | +10,6 % | +7,94 | 0,73 | 615 | control S6 45.850 |
+| C7 | P-02 **20 barras** (S7) | salidas | +3,1 % | +7,75 | 0,80 | 702 | control S7 −10.305 |
+| C8 | P-02 **30 barras** (S7) | salidas | +25,4 % | +3,76 | 0,74 | 696 | control S7 −10.305 |
+| C9 | P-05 **mult 2,50** (ST) | geometría ST | +5,3 % | n/a | n/a | 208 | control ST 65.590 · **no pareado** |
+| C10 | P-09 **ADX>25, k=2** (S6) | entradas | +240 % | n/a | n/a | 330 | control S6 42.976 · **instrumento inválido** |
+
+🔴 **Advertencia de base, crítica para no sumar peras con manzanas.** Los porcentajes **no comparten
+denominador**. El bloque de sizing corre sobre **n = 1485** con control 93.691 USD; P-02 corre sobre
+**n ≈ 615–636** con control 45.850 USD (S6) y −10.305 (S7); P-05 sobre 153 posiciones de SuperTrend.
+**Los porcentajes no se suman ni se multiplican entre bloques.** Lo único comparable entre familias
+es la **diferencia por posición**, y aun esa está medida sobre poblaciones distintas.
+
+## III-B.2 · Taxonomía: en qué dimensión actúa cada uno
+
+Componer es seguro cuando dos palancas actúan sobre dimensiones ortogonales, y peligroso cuando
+compiten por la misma decisión. Ordenadas por punto de intervención:
+
+| palanca | ¿qué decide? | ¿cuándo actúa? | ¿es de suma cero? |
+|---|---|---|---|
+| **P-09** (entradas) | si la operación se abre o no | antes de abrir | reduce el conteo |
+| **P-16** (freno DD) | **cuánto** volumen, según el drawdown de la cuenta | al abrir | **reduce el total** |
+| **P-17** (pesos de ficha) | **cómo se reparte** el volumen entre las tres fichas | al abrir | **suma cero: 40+35+25 = 33+33+33** |
+| **P-02** (stop temporal) | cuándo se cierra | durante la vida | cambia el conteo (libera reentradas) |
+| **P-05** (mult ST) | geometría de entrada y salida de SuperTrend | continuo | otra estrategia, otro sustrato |
+
+**El hecho técnico que hace de C1 × C3 el mejor par, y conviene entenderlo bien:**
+**P-17 es una reasignación de suma cero** — mueve volumen entre fichas sin cambiar el total.
+**P-16 es un estrangulador** — reduce el total sin tocar el reparto.
+**No compiten por el mismo presupuesto de volumen.** Actúan sobre ejes matemáticamente independientes
+del mismo multiplicador de lote: uno fija su magnitud, el otro su distribución. Es la única pareja
+del inventario de la que se puede decir eso.
+
+## III-B.3 · Cómo se compone cada par, uno por uno
+
+### C1 × C3 — freno por drawdown × peso adelante · **la pareja limpia**
+**Mecánica:** los dos son multiplicadores de lote, así que en el motor **se multiplican
+literalmente**: `lote = base × f_drawdown(estado_cuenta) × w_ficha(índice)`. No hay conflicto de
+precedencia ni orden de aplicación que decidir.
+**Aritmética si fueran independientes:** 1,256 × 1,140 = **1,432**, o sea **+43,2 %** → 134.164 USD
+sobre el control de 93.691.
+**Por qué esa cifra es un techo, no una predicción:** exige que ambos efectos sean reales, aditivos
+en logaritmo, y no correlacionados con las mismas posiciones. Ninguna de las tres cosas está
+demostrada. Trátese como la **cota superior** de lo que el experimento conjunto podría devolver.
+**Riesgo concreto:** ambos reducen exposición en algún régimen — P-16 en drawdown, P-17 en las fichas
+tardías — y las fichas tardías tienden a abrirse cuando el movimiento ya se extendió, que es
+correlacionado con los tramos que generan drawdown. **El solapamiento no es cero.**
+**Coste:** ninguno. Mismas posiciones, `task-type` de sizing ya construido, brazo pareado adicional.
+
+### C1 × C5 — freno por drawdown × stop temporal de 20 barras
+**Mecánica:** ortogonales en apariencia (uno dimensiona, otro cierra), **pero no separables**. P-02
+cambia el número y la secuencia de posiciones, y esa secuencia **es la entrada de P-16**: el
+drawdown de la cuenta es una función del camino. Cambiar el camino cambia cuándo se dispara el freno.
+**Dirección esperada de la interacción, y es ambigua a propósito:** si el stop temporal produce más
+posiciones perdedoras (lo hace en el tramo corto), el drawdown se profundiza y **P-16 frena más**,
+lo que podría **amortiguar el daño** de P-02 — o, si el stop temporal mejora el camino, P-16 frena
+menos y **aporta menos**. Ambos signos son defendibles a priori. **Solo el brazo conjunto lo decide.**
+**Coste:** medio. Exige correr el sizing sobre las posiciones que produce P-02, no sobre las del
+control.
+
+### C3 × C5 — peso adelante × stop temporal · **la pareja con más contenido teórico**
+**Por qué interesa más que las otras:** las dos dicen algo sobre **qué parte de la operación vale**.
+P-17 dice que la primera ficha es la buena. P-02 (en su tramo positivo) insinúa que la exposición
+prolongada no aporta. P-08 dice que las posiciones que van en contra siguen yendo en contra.
+**Las tres podrían ser la misma cosa vista desde tres sitios.**
+🔴 **Y de ahí sale el riesgo más sutil de toda esta sección: el doble conteo.** Si el beneficio de
+C3 y el de C5 provienen del **mismo hecho subyacente** —que la exposición tardía es peor—, entonces
+sumarlos cuenta dos veces un solo efecto, y el brazo conjunto rendirá **cerca del máximo individual,
+no de la suma**.
+**Eso es medible, y es el diagnóstico más valioso disponible:**
+- efecto conjunto ≈ suma de los individuales ⇒ **causas independientes**, ambas palancas valen;
+- efecto conjunto ≈ máximo de los individuales ⇒ **una sola causa**, y sobra una de las dos;
+- efecto conjunto < máximo ⇒ **interfieren**, y hay que elegir.
+
+### C3 × P-34 — peso de fichas × suelo del trailing · **confundidos por diseño**
+P-34 fija el suelo del trailing **común a las tres fichas**. Si el beneficio de C3 viene de
+despriorizar la ficha más expuesta a ese suelo, entonces el crédito pertenece al suelo, no al peso.
+**Medirlos juntos o la atribución será incorrecta.** No es una composición para ganar: es una
+composición para **saber a quién atribuir la ganancia**.
+
+### C10 (P-09) × sizing — **substitutos, probablemente, no complementos**
+Aquí está la predicción no obvia más importante de la sección. P-09 filtra los regímenes malos.
+P-16 frena el tamaño **cuando el drawdown ya se produjo**, y ese drawdown se genera mayoritariamente
+en los regímenes malos.
+**Si P-09 funciona, elimina la causa de los drawdowns a los que P-16 reacciona.** Un filtro que
+evita el mal tramo y un freno que reacciona al mal tramo **atacan el mismo dinero**. Compuestos
+rendirían **menos que la suma**, posiblemente mucho menos.
+**Predicción falsable, y la dejo escrita para poder equivocarme:** el brazo conjunto P-09 × P-16
+rendirá **por debajo** de la suma de sus efectos individuales. Si rinde por encima, esta lectura
+está mal y hay una complementariedad que no veo.
+**No componer hasta validar el instrumento de P-09** (re-análisis no pareado).
+
+### C9 (P-05 mult 2,50) — **pista separada, no componible con lo anterior**
+Es de SuperTrend, otra estrategia, otro sustrato, y **no pareada**. No entra en ninguna combinación
+con las palancas de S6. Se anota porque es el único brazo de SuperTrend por encima de su control,
+con un margen modesto (+5,3 %) y dentro de la meseta ya identificada. **Prioridad baja.**
+
+### Lo que no entra en ninguna combinación
+**P-08** (refutada con evidencia fuerte, la única con significancia), **P-03-alivio** (16 de 16
+negativos), **P-34 por debajo de 2,0** (8 de 8 negativos), **P-13 Kelly**, **P-15 descuento**,
+**P-18 freno por Sharpe** (los tres negativos). Y **P-16 × P-13 × P-18** en conjunto está
+explícitamente desaconsejado: los tres son multiplicadores que reaccionan al desempeño, componerlos
+multiplica el encogimiento del tamaño, y dos de ellos midieron negativo.
+
+## III-B.4 · Por qué componer efectos no significativos es legítimo — y cuándo deja de serlo
+
+Esta es la parte que decide si toda la sección vale algo.
+
+**El argumento a favor: potencia, no confirmación.** Un brazo conjunto pre-registrado —«C1 y C3
+juntos contra el control»— es **una sola prueba**, no dos. No paga penalización por multiplicidad, y
+si los efectos son reales y aproximadamente aditivos, **el tamaño del efecto conjunto es mayor
+respecto al mismo ruido**. Una diferencia de +16,18 y otra de +8,83 USD por posición, cada una
+ahogada en su propio intervalo, pueden dar juntas ~+25 contra la misma varianza. **Componer es la
+forma barata de ganar potencia sin recolectar más datos.**
+
+**El argumento en contra, y es el que mata programas enteros: seleccionar sobre ruido.** Si de cada
+palanca se toma **el mejor brazo** y se apilan cinco, se han hecho cinco selecciones sobre datos
+ruidosos. La pila se verá espléndida dentro de la muestra y se evaporará fuera. Es exactamente el
+mecanismo por el que el máximo de la grilla de P-05 es 4,75 con n=77 — un número que no significa
+nada y que parecería un hallazgo si se apilara con otros.
+
+**Las tres condiciones que separan una cosa de la otra, y son obligatorias:**
+1. **La combinación se pre-registra ANTES de correrla**, con su hipótesis y su regla de decisión —
+   igual que se hizo con los 157 brazos de la Ola 1 (`1c7279d`). Una combinación elegida después de
+   ver los resultados no es evidencia, es una descripción de los resultados.
+2. **Se declaran los contrastes de interacción por adelantado**, no solo el efecto conjunto. Sin
+   ellos no se puede distinguir «dos causas» de «una causa contada dos veces» (III-B.3, C3 × C5).
+3. **La combinación ganadora, si aparece, se confirma en el holdout**, que sigue **intacto**. Es la
+   única defensa real contra la selección sobre ruido, y es el motivo por el que el holdout no se ha
+   tocado.
+
+**Y una restricción que sobrevive a todo lo anterior:** el simulador diverge 3,28 % con signo opuesto
+por estrategia. **Nada de esto autoriza a citar una cifra absoluta de dinero.** Lo que la composición
+puede entregar es un **veredicto comparativo** —esta combinación supera al control sobre las mismas
+entradas— con banda de error declarada. No un pronóstico de beneficio.
+
+## III-B.5 · Diseño concreto propuesto: factorial 2×2×2
+
+Ocho brazos, todos pareados sobre las mismas entradas, pre-registrados en bloque:
+
+| factor | nivel 0 | nivel 1 |
+|---|---|---|
+| **A · freno por drawdown** (P-16) | apagado | continuo, `1 − DD/20 %`, suelo 25 % |
+| **B · pesos de ficha** (P-17) | 33 / 33 / 33 | 40 / 35 / 25 |
+| **C · stop temporal** (P-02) | sin límite | 20 barras |
+
+**Qué entrega, y por qué un factorial y no ocho pruebas sueltas:**
+- Los **efectos principales** de A, B y C se estiman cada uno usando **los ocho brazos**, no dos —
+  cuatro veces más datos por efecto que probándolos por separado.
+- Las **interacciones** A×B, A×C, B×C salen del mismo experimento sin coste adicional. La
+  interacción B×C es precisamente el diagnóstico de doble conteo de III-B.3.
+- El **brazo A1B1C1** es la combinación completa, y su comparación contra A0B0C0 es una única prueba
+  pre-registrada.
+
+**Reglas de decisión a fijar antes de correr:**
+- efecto conjunto ≈ suma de los tres principales ⇒ causas independientes, se conservan las tres;
+- efecto conjunto ≈ el mayor de los principales ⇒ una sola causa; se conserva la palanca más simple
+  y se descartan las otras dos como redundantes;
+- cualquier interacción negativa relevante ⇒ las palancas implicadas **no** se combinan y se elige
+  una.
+
+**Coste:** A y B no cuestan motor —son multiplicadores sobre las mismas posiciones—; C exige correr
+el sustrato de P-02, ya construido y con el recorte de D-60 aplicado. **Es el experimento de mayor
+margen por unidad de esfuerzo que existe hoy en el programa.**
+
+**Fuera de este factorial, por decisión explícita:** P-09 (instrumento sin validar), P-05 (otra
+estrategia y no pareada), y todo lo refutado.
+
+---
+
 # PARTE IV — Avance del plan
 
 | pieza | estado |
