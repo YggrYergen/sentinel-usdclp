@@ -1254,6 +1254,38 @@ que la última barra empiece al menos `(max(max_hold_bars de la grilla) + 1) × 
 **Consecuencia sobre el reporte.** El `n` de P-02 será menor que el de P-05/P-08 y hay que decirlo
 al citarlo, junto con el número exacto de barras recortadas.
 
+### D-61 · 2026-08-19 · CERRADA la pregunta de seguridad sobre los cierres manuales de la 902
+*(Procedencia: respuesta explícita del user, 2026-08-19, ante la alerta que el controlador venía
+arrastrando abierta desde el 2026-08-15.)*
+
+**El hecho que forzó la pregunta.** En la ventana viva de la cuenta 902 se midieron **once cierres
+manuales** (`reason=CLIENT`, `magic=0`) sobre posiciones abiertas por las estrategias, **diez de
+ellos ganadores**, dos en el mismo segundo (`2026-08-10 22:35:24`), moviendo **+30.965,39 USD** —
+sin los cuales las estrategias solas quedan en **−14.543,69**. Más un take-profit el
+`2026-08-04 03:33:18` a 4065,91 con comentario nativo `[tp 4065.91]` que el motor no puso (sus
+cuatro `order_send` no llevan clave `tp`). Aperturas: **cero humanas, medido** — las 152 llevan
+magic de estrategia. La vía de atribución por magic está cerrada por diseño: MT5 lo hereda de la
+orden original en cualquier cierre server-side.
+
+**LO RESPONDIDO POR EL USER, textual en sustancia:** los cierres manuales **los hizo el equipo
+humano de desarrollo**. **No hay terceros con acceso no autorizado** a ninguna cuenta — ni real, ni
+demo, ni ninguna.
+
+**LO DECIDIDO.** La alerta queda **CERRADA**. No es incidente de seguridad. Ningún artefacto futuro
+debe reabrirla ni volver a plantearla como hipótesis de acceso no autorizado; quien la encuentre
+citada como abierta en un documento anterior debe remitirse a esta entrada.
+
+**Lo que NO cambia, y conviene no confundir.** El dato sigue siendo válido y sigue importando para
+la investigación, por una razón distinta de la seguridad: **las dos estrategias, solas, perdieron
+dinero en la ventana medida, y la cuenta terminó en verde por intervención humana discrecional.**
+Eso contradice la premisa «logran neto positivo consistente» que el plan §1 da por punto de partida,
+y hay que seguir declarándolo al citar cualquier resultado de esa ventana. Con 135 posiciones en dos
+semanas no cruza ninguna puerta estadística del §9: es dato real, no veredicto.
+
+**Consecuencia sobre D-43.** Refuerza, no contradice, la instrucción de **simular los cierres
+manuales**: ahora se sabe que son intervención del propio equipo, no ruido externo, así que
+modelarlos es reproducir una parte real del sistema.
+
 ### D-56 · 2026-08-16 · La Ola 1 NO es toda pareada-por-entrada: se parte en 1-A y 1-B, y P-33 no corre
 *(Procedencia: decisión del CONTROLADOR sobre una **contradicción interna del propio catálogo**,
 detectada al construir el pre-registro. Aditiva: no cambia ninguna grilla, cambia qué se puede
