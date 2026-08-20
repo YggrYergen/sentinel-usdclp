@@ -15,5 +15,12 @@
     "terminal_marker": "capitaria mt5 terminal"
   },
 
-  "_note": "demo_login MUST be a member of sentinel_engine.live.guard_cuenta.SANCTIONED_DEMO_LOGINS -- machine_local.json can only SELECT a sanctioned login, never add a new one. If machine_local.json is absent entirely, Machine 1's values above are used as the default (see sentinel_engine/live/machine_profile.py)."
+  "_machine_example__AVA_deployment_D62_2026-08-20": {
+    "terminal_path": "D:\\FOREX\\MT5_Tester\\terminal64.exe",
+    "portable": false,
+    "demo_login": 101744074,
+    "terminal_marker": "mt5_tester"
+  },
+
+  "_note": "demo_login MUST be a member of sentinel_engine.live.guard_cuenta.SANCTIONED_DEMO_LOGINS -- machine_local.json can only SELECT a sanctioned login, never add a new one. If machine_local.json is absent entirely, Machine 1's values above are used as the default (see sentinel_engine/live/machine_profile.py). The AVA block above was verified empirically 2026-08-20: the running terminal64.exe process for D:\\FOREX\\MT5_Tester carries NO /portable flag on its command line (`wmic`/CIM inspection), hence portable=false; terminal_marker is the derived default (lower-cased parent dir name) and does not need to be set explicitly, shown here only for clarity."
 }

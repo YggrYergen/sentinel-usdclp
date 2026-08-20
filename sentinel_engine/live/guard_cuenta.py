@@ -2,12 +2,14 @@
 executor (SENTINEL, 2026-07-13). ORDER-CAPABLE SAFETY MODULE.
 
 SINGLE SOURCE OF TRUTH: `D:/FOREX/CUENTAS.md`.
-  Two machines share this branch, each with its OWN sanctioned DEMO login:
+  Sanctioned DEMO logins (each machine expects exactly ONE of them):
     - 2883015767 (Machine 1, portable install
       `D:\\FOREX\\MT5_Portable\\terminal64.exe`)
     - 2883016567 (Machine "TOMACHINE", 30M CLP demo, server Capitaria-All,
       standard install `C:\\Program Files\\Capitaria MT5 Terminal\\terminal64.exe`)
-  Both are permitted logins; which ONE is expected on a given machine is
+    - 101744074 (AVA demo, server `Ava-Demo 1-MT5`, broker Ava Trade Ltd.,
+      symbol `GOLD` -- NOT `XAUUSD`). Added 2026-08-20, D-62.
+  All are permitted logins; which ONE is expected on a given machine is
   selected by `sentinel_engine.live.machine_profile` (see that module) --
   but the profile can only SELECT within this hard-coded set, never EXTEND
   it. A malicious or corrupted `machine_local.json` cannot make an
@@ -42,6 +44,14 @@ from typing import Any
 SANCTIONED_DEMO_LOGINS = frozenset({
     2883015767,  # Machine 1 -- portable install D:\FOREX\MT5_Portable
     2883016567,  # Machine "TOMACHINE" -- standard Capitaria install, 30M CLP demo
+    101744074,   # AVA demo (broker Ava Trade Ltd., server Ava-Demo 1-MT5,
+                 # symbol GOLD not XAUUSD). Added 2026-08-20 under EXPLICIT
+                 # user authorization (D-62) so S6/SuperTrend can run live
+                 # there for the backtest<->live parity calibration that gates
+                 # the engine freeze. Supersedes the earlier "download-only"
+                 # purpose recorded for this login (D-19/D-20 retired B5 on
+                 # the premise that AVA would never be traded -- that premise
+                 # no longer holds).
 })
 REAL_LOGIN = 2883011573
 

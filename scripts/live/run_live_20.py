@@ -61,9 +61,9 @@ from sentinel_engine.live.risk_gates import GateInput, evaluate_open_gates  # no
 from sentinel_engine.live.spread_store import SpreadStore  # noqa: E402
 from sentinel_engine.strategies.emasar_variant import simular_variant  # noqa: E402
 from sentinel_engine.strategies.live_configs_20 import (  # noqa: E402
-    CONFIGS_20, CONFIGS_CHALLENGER, CONFIGS_GOLIVE, CONFIGS_GOLIVE_DEDUP,
-    CONFIGS_LIVE, CONFIGS_LOCAL, CONFIGS_SHADOW, CONFIGS_TK, CONFIGS_TOMACHINE,
-    LIVE_ROSTER, supertrend_always_in_target)
+    CONFIGS_20, CONFIGS_AVA, CONFIGS_CHALLENGER, CONFIGS_GOLIVE,
+    CONFIGS_GOLIVE_DEDUP, CONFIGS_LIVE, CONFIGS_LOCAL, CONFIGS_SHADOW,
+    CONFIGS_TK, CONFIGS_TOMACHINE, LIVE_ROSTER, supertrend_always_in_target)
 from sentinel_engine.strategies.tk_bw2_live import (  # noqa: E402
     tk_bw2_fix2atr_target)
 from sentinel_engine.strategies.tk_momentum import (  # noqa: E402
@@ -315,6 +315,20 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
             kwargs["direction_mask"] = _direction_mask(bars)
         _events, desired = simular_variant(bars, return_state=True, **kwargs)
 
+    # SINGLE-POSITION INVARIANT (AVA roster, user directive 2026-08-20 "una
+    # sola posicion por estrategia"): OPT-IN via cfg["single_position_only"]
+    # (see sentinel_engine.strategies.live_configs_20.CONFIGS_AVA). Mirrors
+    # the pre-existing tk_momentum assert above -- fail LOUD (AssertionError)
+    # rather than silently truncate, because for S6-K2P0-AVA this should be
+    # STRUCTURALLY guaranteed by active_fichas=1 already (this is
+    # defense-in-depth against a future config-level regression, not the
+    # primary mechanism). A config without the key never reaches this check.
+    if cfg.get("single_position_only"):
+        _open_now = desired.get("open", {}) if isinstance(desired, dict) else {}
+        assert len(_open_now) <= 1, (
+            f"{cfg['id']}: single_position_only config must never desire more "
+            f"than one open position (got {list(_open_now)})")
+
     live = fetch_live_positions(mt5, cfg["magic"])
     # PER-CONFIG VOLUME (2026-07-22): an OPTIONAL `cfg["volume"]` overrides the
     # global `--volume` for THIS config's OPENs only (the reconciler stamps it
@@ -326,21 +340,46 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
                     volume=cfg_volume, bar_t=bars[-1]["t"], kill_switch=kill_switch,
                     total_open_fichas=total_open_fichas)
     # SINGLE-POSITION EXECUTION GUARD (tk_momentum, trader 2026-07-21 "solo una
-    # posicion"): NEVER send an OPEN while any live position already exists on
-    # this magic. On a side-flip the reconciler emits CLOSE+OPEN in the same
-    # cycle (it optimistically assumes the close lands); if that close
-    # transiently fails the reopen would DOUBLE the book. Here we only allow an
-    # OPEN from a genuinely FLAT book (len(live)==0) -- so a flip becomes
-    # "close this cycle, open once the book is confirmed flat next cycle", and
-    # the live count can never exceed 1 even if a close fails. Defense-in-depth
+    # posicion"; extended 2026-08-20 to any cfg["single_position_only"] config
+    # -- the AVA roster's S6-K2P0/SuperTrend, both stop_and_reverse-capable):
+    # NEVER send an OPEN while any live position already exists on this magic.
+    # On a side-flip the reconciler emits CLOSE+OPEN in the same cycle (it
+    # optimistically assumes the close lands); if that close transiently fails
+    # the reopen would DOUBLE the book. Here we only allow an OPEN from a
+    # genuinely FLAT book (len(live)==0) -- so a flip becomes "close this
+    # cycle, open once the book is confirmed flat next cycle", and the live
+    # count can never exceed 1 even if a close fails. Defense-in-depth
     # complementing the CLOSE retry in execute_action.
-    if cfg.get("engine") == "tk_momentum" and res is not None and len(live) >= 1:
+    if ((cfg.get("engine") == "tk_momentum" or cfg.get("single_position_only"))
+            and res is not None and len(live) >= 1):
         dropped = [a for a in res.actions if a.kind == "OPEN"]
         if dropped:
             res.actions = [a for a in res.actions if a.kind != "OPEN"]
             logger.info("[%s] single-position guard: suppressed %d OPEN(s) while "
                         "%d live position(s) still on the book (open only when flat)",
                         cfg["id"], len(dropped), len(live))
+
+    # AVA WINDOW GATE (R1 opening blackout + R2 operating window, D-62
+    # 2026-08-20): OPT-IN via cfg["window_gate"] (see
+    # sentinel_engine.strategies.live_configs_20.CONFIGS_AVA) -- a config
+    # without this key never imports/touches ava_window_gate, so every other
+    # roster (champion/challenger/tomachine/local/shadow) is byte-unchanged.
+    # Evaluated on the LAST CLOSED bar (bars[-1]["t"], same convention the
+    # reconciler already uses for bar_t above) -- suppresses OPEN only;
+    # CLOSE/MODIFY of an already-open position are NEVER gated (risk
+    # management must always be free to run, same principle as the spread
+    # gate and the challenger risk_gates).
+    if cfg.get("window_gate") and res is not None:
+        from sentinel_engine.live import ava_window_gate
+        calendario = ava_window_gate.cargar_calendario_ava()
+        broker = cfg["window_gate"].get("broker", ava_window_gate.DEFAULT_BROKER)
+        if not ava_window_gate.open_allowed(bars[-1]["t"], calendario, broker=broker):
+            dropped = [a for a in res.actions if a.kind == "OPEN"]
+            if dropped:
+                res.actions = [a for a in res.actions if a.kind != "OPEN"]
+                logger.info("[%s] window-gate (R1/R2) SKIP: suppressed %d OPEN(s) -- "
+                            "outside the AVA operating window / opening blackout "
+                            "(bar_t=%s)", cfg["id"], len(dropped), bars[-1]["t"])
     return res, bars[-1]["t"]
 
 
@@ -349,6 +388,34 @@ def reconcile_config(mt5: Any, cfg: dict[str, Any], *, window: int,
 # --------------------------------------------------------------------------
 def _side_to_order_type(mt5: Any, side: str) -> Any:
     return mt5.ORDER_TYPE_BUY if side == "L" else mt5.ORDER_TYPE_SELL
+
+
+# SYMBOL_FILLING_* bit flags on `symbol_info().filling_mode` (stable API).
+_SYMBOL_FILLING_FOK = 1
+_SYMBOL_FILLING_IOC = 2
+
+
+def _resolve_filling(mt5: Any, symbol: str) -> Any:
+    """Pick an order filling mode THIS symbol actually accepts.
+
+    Until 2026-08-20 all three order sites hard-coded `ORDER_FILLING_IOC`,
+    which every Capitaria symbol permits. AVA's `GOLD` advertises
+    `filling_mode == 1` (FOK only) and rejects IOC with retcode 10030
+    (INVALID_FILL) -- the orders come back rejected and nothing opens.
+
+    We therefore ask the symbol, and keep IOC whenever it is allowed, so
+    every pre-existing roster keeps byte-identical behaviour; only symbols
+    that refuse IOC (AVA GOLD) get FOK. Unknown/missing symbol info falls
+    back to IOC, i.e. the historical behaviour.
+    """
+    ioc = getattr(mt5, "ORDER_FILLING_IOC", 1)
+    info = mt5.symbol_info(symbol)
+    mask = int(getattr(info, "filling_mode", 0) or 0) if info is not None else 0
+    if mask & _SYMBOL_FILLING_IOC:
+        return ioc
+    if mask & _SYMBOL_FILLING_FOK:
+        return getattr(mt5, "ORDER_FILLING_FOK", 0)
+    return ioc
 
 
 def _stops_level_points(mt5: Any, symbol: str) -> float:
@@ -614,7 +681,7 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                "type": mt5.ORDER_TYPE_SELL if is_long else mt5.ORDER_TYPE_BUY,
                "position": int(a.ticket), "price": price, "deviation": deviation,
                "magic": int(a.magic), "comment": f"{a.config_id}:{a.ficha}:close",
-               "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
+               "type_filling": _resolve_filling(mt5, symbol)}
         # CLOSE is NOT fire-and-forget (2026-07-21 incident): mt5.order_send can
         # transiently return None (e.g. "trade context busy" when a close fires
         # right after another config's order in the same cycle). A dropped close
@@ -683,7 +750,7 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                              "position": int(a.ticket), "price": value,
                              "deviation": deviation, "magic": int(a.magic),
                              "comment": f"{a.config_id}:{a.ficha}:fallback_close",
-                             "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
+                             "type_filling": _resolve_filling(mt5, symbol)}
                 r = mt5.order_send(close_req)
                 gap = abs(desired_sl - value) * float(getattr(pos, "volume", a.volume or 0.0)) \
                     * contract_size
@@ -739,7 +806,7 @@ def execute_action(mt5: Any, a: Any, *, symbol: str, dry_run: bool,
                    "price": price, "sl": float(sl_to_send),
                    "deviation": deviation, "magic": int(a.magic),
                    "comment": f"{a.config_id}:{a.ficha}",
-                   "type_filling": getattr(mt5, "ORDER_FILLING_IOC", 1)}
+                   "type_filling": _resolve_filling(mt5, symbol)}
             r = mt5.order_send(req)
             retcode = getattr(r, "retcode", None)
             if retcode == getattr(mt5, "TRADE_RETCODE_INVALID_STOPS", 10016):
@@ -980,7 +1047,13 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
                           "2026-07-22: S6-K2P0 + S7-TPNONE + "
                           "SuperTrend-p14x3-M15 @0.1 lot/ficha + "
                           "TK-Momentum-5-8-short @0.01 lot, 4 configs, NO "
-                          "V11-M2/shadow; per-config volume) "
+                          "V11-M2/shadow; per-config volume), "
+                          "'ava' (D-62 2026-08-20: S6-K2P0-AVA + "
+                          "SuperTrend-p14x3-M15-AVA ORIGINALS on the AVA demo "
+                          "101744074, symbol GOLD, 0.01 lot, active_fichas=1, "
+                          "single-position guard, R1/R2 window_gate; NO S7, "
+                          "parity calibration only, requires machine_local.json "
+                          "to select the AVA login) "
                           "or comma ids e.g. SS-M5,V10-M15")
     ap.add_argument("--arm", action="store_true", help="SEND real orders (default: dry-run)")
     ap.add_argument("--once", action="store_true", help="one reconcile cycle then exit")
@@ -1082,6 +1155,16 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
         # V11-M2 and NO FIXED4 shadow. Independent deep COPIES so machine-2's
         # tomachine lot is never touched.
         configs = list(CONFIGS_LOCAL)
+    elif roster == "ava":
+        # AVA DEMO ROSTER (D-62, 2026-08-20): S6-K2P0-AVA + SuperTrend-p14x3-
+        # M15-AVA ORIGINALS (byte-identical signal to CONFIGS_GOLIVE, R7),
+        # redeployed on the AVA demo (101744074, symbol GOLD) for
+        # backtest<->live parity calibration -- NOT a profitability test.
+        # S7 deliberately excluded (R4). 0.01 lot, active_fichas=1 (S6),
+        # single_position_only guard, R1/R2 window_gate. See
+        # sentinel_engine.strategies.live_configs_20.CONFIGS_AVA for the full
+        # deviation list from the Capitaria originals.
+        configs = list(CONFIGS_AVA)
     elif roster == "local+challenger":
         # MACHINE-1 CHAMPION + CHALLENGER (2026-07-25 Monday delivery): the
         # untouched `local` champion (S6/S7/ST @0.1 + TK-Momentum @0.01) PLUS

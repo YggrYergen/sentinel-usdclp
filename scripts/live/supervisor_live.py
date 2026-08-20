@@ -63,6 +63,7 @@ USAGE
 """
 from __future__ import annotations
 
+import functools
 import logging
 import os
 import subprocess
@@ -112,6 +113,13 @@ SUPERVISOR_CONFIGS = os.environ.get("SUPERVISOR_CONFIGS", "live")
 # OPEN only at XAUUSD's observed 0.5 minimum spread and simply pause (skip
 # the OPEN, retry next cycle) whenever the spread is wider than that.
 SUPERVISOR_MAX_SPREAD_OPEN = os.environ.get("SUPERVISOR_MAX_SPREAD_OPEN")
+
+# Symbol the PREFLIGHT probes for fresh bars / tradability (D-62, 2026-08-20).
+# Default `preflight_live.SYMBOL` == "XAUUSD" keeps every pre-existing machine
+# byte-identical. The AVA deployment sets SUPERVISOR_SYMBOL=GOLD, because AVA
+# has no XAUUSD at all: without this the preflight FAILS ("symbol_info('XAUUSD')
+# returned None") and the supervisor correctly-but-uselessly refuses to arm.
+SUPERVISOR_SYMBOL = os.environ.get("SUPERVISOR_SYMBOL") or preflight_live.SYMBOL
 
 # OPTIONAL env-gated AUTO-RECYCLE of a stale executor (P1, 2026-07-22). UNSET /
 # empty / a falsey value (default) preserves the ORIGINAL alarm-only behavior
@@ -559,7 +567,8 @@ def main(argv: list[str] | None = None) -> int:
     try:
         run_supervised(
             cfg,
-            preflight_fn=preflight_live.run_all_checks,
+            preflight_fn=functools.partial(preflight_live.run_all_checks,
+                                           symbol=SUPERVISOR_SYMBOL),
             launcher=_default_launcher,
             mtime_fn=_default_mtime,
             watcher_keepalive=_watcher_keepalive,

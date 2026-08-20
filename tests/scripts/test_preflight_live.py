@@ -33,12 +33,22 @@ class _Rate(dict):
     pass
 
 
+class _SymbolInfo:
+    def __init__(self, *, volume_min=0.01, volume_step=0.01, volume_max=150.0,
+                 visible=True):
+        self.volume_min = volume_min
+        self.volume_step = volume_step
+        self.volume_max = volume_max
+        self.visible = visible
+
+
 class FakeMt5:
     TIMEFRAME_M2 = 2
 
     def __init__(self, *, login=guard_cuenta.DEMO_LOGIN, mode=guard_cuenta.TRADE_MODE_DEMO,
                  n_bars=101, bar_step=120, last_bar_t=None, tick_time=None,
-                 initialize_ok=True, rates_override="unset"):
+                 initialize_ok=True, rates_override="unset",
+                 symbol_info_override="unset"):
         self.login = login
         self.mode = mode
         self.initialize_ok = initialize_ok
@@ -53,6 +63,10 @@ class FakeMt5:
                                   "open": 2000.0, "high": 2001.0, "low": 1999.0,
                                   "close": 2000.5}) for k in range(n_bars)]
         self._tick_time = tick_time if tick_time is not None else base
+        # symbol-tradable check (D-62): a legal-by-default 0.01/0.01 symbol,
+        # same shape/defaults every OTHER live roster already trades at.
+        self._symbol_info = (symbol_info_override if symbol_info_override != "unset"
+                            else _SymbolInfo())
 
     def initialize(self, path=None, portable=None):
         self.initialized = True
@@ -71,6 +85,9 @@ class FakeMt5:
 
     def symbol_info_tick(self, symbol):
         return _Tick(self._tick_time)
+
+    def symbol_info(self, symbol):
+        return self._symbol_info
 
     def shutdown(self):
         self.shutdown_calls += 1
@@ -186,6 +203,80 @@ def test_fresh_bars_fresh_bar_passes():
     report = pf.PreflightReport()
     ok = pf.check_fresh_bars(report, mt5, min_bars=100, max_age_s=300, now_server=now)
     assert ok is True
+
+
+# --------------------------------------------------------------------------
+# symbol-tradable (D-62, 2026-08-20 -- AVA/GOLD 0.01-lot deployment)
+# --------------------------------------------------------------------------
+def test_symbol_tradable_default_xauusd_passes():
+    mt5 = FakeMt5()
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5)
+    assert ok is True
+    assert report.checks[-1].name == "symbol-tradable"
+
+
+def test_symbol_tradable_gold_passes():
+    mt5 = FakeMt5(symbol_info_override=_SymbolInfo(volume_min=0.01, volume_step=0.01))
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5, symbol="GOLD")
+    assert ok is True
+    assert "GOLD" in report.checks[-1].detail
+
+
+def test_symbol_tradable_fails_when_symbol_info_is_none():
+    mt5 = FakeMt5(symbol_info_override=None)
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5, symbol="NOSUCHSYMBOL")
+    assert ok is False
+    assert "not found" in report.checks[-1].detail.lower()
+
+
+def test_symbol_tradable_fails_when_volume_min_too_high():
+    mt5 = FakeMt5(symbol_info_override=_SymbolInfo(volume_min=0.10, volume_step=0.01))
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5, min_volume=0.01)
+    assert ok is False
+
+
+def test_symbol_tradable_fails_when_not_a_multiple_of_step():
+    # min_volume 0.01 is not a multiple of a 0.03 volume_step.
+    mt5 = FakeMt5(symbol_info_override=_SymbolInfo(volume_min=0.01, volume_step=0.03))
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5, min_volume=0.01)
+    assert ok is False
+
+
+def test_symbol_tradable_fails_when_not_visible():
+    mt5 = FakeMt5(symbol_info_override=_SymbolInfo(visible=False))
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, mt5)
+    assert ok is False
+
+
+def test_symbol_tradable_survives_symbol_info_raising():
+    class _Boom:
+        def symbol_info(self, symbol):
+            raise RuntimeError("boom")
+
+    report = pf.PreflightReport()
+    ok = pf.check_symbol_tradable(report, _Boom())
+    assert ok is False
+    assert "boom" in report.checks[-1].detail
+
+
+def test_run_all_checks_threads_symbol_into_fresh_bars_and_symbol_tradable(tmp_path, monkeypatch):
+    monkeypatch.setattr(pf, "STOP_FILE", tmp_path / "STOP")
+    monkeypatch.setattr(pf, "AUDIT_LOG", tmp_path / "run_live_20.audit.log")
+    (tmp_path / "run_live_20.audit.log").write_text("x", encoding="utf-8")
+    mt5 = FakeMt5(symbol_info_override=_SymbolInfo(volume_min=0.01, volume_step=0.01))
+    report = pf.run_all_checks(mt5_module=mt5, attach_checker=_always,
+                              now_server=datetime(2026, 7, 15, 12, 0, tzinfo=timezone.utc),
+                              symbol="GOLD")
+    by_name = {c.name: c for c in report.checks}
+    assert "GOLD" in by_name["fresh-bars"].detail
+    assert "GOLD" in by_name["symbol-tradable"].detail
+    assert report.ok is True
 
 
 # --------------------------------------------------------------------------

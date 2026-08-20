@@ -77,7 +77,18 @@ def test_account_info_raising_is_refused():
 # (via expected_login), never extend it.
 # --------------------------------------------------------------------------
 def test_sanctioned_set_has_both_machines():
-    assert SANCTIONED_DEMO_LOGINS == frozenset({2883015767, 2883016567})
+    # 2026-08-20 (D-62): AVA demo 101744074 added under explicit user
+    # authorization so S6/SuperTrend can run live there for the
+    # backtest<->live parity calibration that gates the engine freeze.
+    assert SANCTIONED_DEMO_LOGINS == frozenset(
+        {2883015767, 2883016567, 101744074})
+
+
+def test_real_and_902_stay_outside_the_sanctioned_set():
+    # Regression guard on the D-62 widening: adding AVA must NOT have let
+    # the REAL account or the read-only 902 slip into order authority.
+    assert 2883011573 not in SANCTIONED_DEMO_LOGINS  # REAL, never operate
+    assert 2883016902 not in SANCTIONED_DEMO_LOGINS  # 902, NO-R&D read-only
 
 
 def test_other_sanctioned_login_rejected_when_not_expected_by_this_machine():

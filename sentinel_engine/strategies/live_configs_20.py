@@ -698,3 +698,139 @@ assert all(not (722000 <= m <= 723999) for m in _challenger_band), \
     "challenger band must stay clear of the reserved 722xxx/723xxx blocks"
 assert min(_challenger_band) == 726010 and max(_challenger_band) == 726073, \
     "challenger band must be the fresh 726010..726073 block"
+
+# --- AVA DEMO ROSTER "ava" (D-62, 2026-08-20) ------------------------------
+# S6-K2P0 + SuperTrend-p14x3-M15 ORIGINALES (byte-identical signal/kwargs to
+# CONFIGS_GOLIVE -- R7), redeployed on the AVA demo (101744074, broker Ava
+# Trade Ltd., symbol GOLD not XAUUSD) purely to calibrate backtest<->live
+# parity (D-62; NOT a profitability test). S7-TPNONE is DELIBERATELY EXCLUDED
+# (R4: "S7 no va a vivo", it is a clean-comparison control only).
+#
+# DEVIATIONS FROM THE CAPITARIA ORIGINALS, each an INDEPENDENT DEEP COPY
+# (R1-bis/R7: the shared CONFIGS_GOLIVE dicts are NEVER mutated):
+#   * `kwargs["symbol"] = "GOLD"` -- required so the EXECUTOR routes MT5 calls
+#     (copy_rates_from_pos/positions_get/order_send) to the right instrument.
+#   * S6-K2P0 ONLY: `kwargs["pipsize_input"] = 0.01` -- CRITICAL, do not drop.
+#     `emasar_ref.pip_size(symbol, pipsize_input)` auto-detects pip size ONLY
+#     from a `symbol.upper().startswith("XAU")` string match
+#     (emasar_ref.py:244-250); "GOLD" does not start with "XAU", so WITHOUT
+#     this override pip_size() would silently fall back to its generic
+#     default 1.0 instead of 0.01 -- a 100x blowout of every
+#     f{1,2,3}_trail_pips / be_offset_pips distance (implementer finding,
+#     2026-08-20, see the Fase-2 report). `pipsize_input` is an EXISTING
+#     simular_variant kwarg (see signature) that bypasses the symbol-string
+#     lookup entirely when non-zero -- this restores byte-identical trail
+#     math to the live XAUUSD original with a config-only change, no engine
+#     edit. SuperTrend does not need this: `supertrend_always_in_target`
+#     never calls `pip_size` (its SL is the raw-price SuperTrend line).
+#   * S6-K2P0 ONLY: `kwargs["active_fichas"] = 1` -- user directive 2026-08-20
+#     ("una sola posicion por estrategia, nada de las 3 fichas por ahora").
+#     `active_fichas` is an EXISTING `simular_variant` lever (P46 escalera,
+#     default 3); with N=1 every entry site opens ONLY F1 -- per the engine's
+#     own docstring (emasar_variant.py:440-454) this is NOT post-hoc filtering
+#     of a 3-ficha run (which the fichas' SHARED trail/BE/SL/reentry state
+#     would corrupt, emasar_variant.py:443-445) but a from-scratch simulation
+#     with just F1, "byte-identical to how F1 would price in the full
+#     ladder". SuperTrend is already single-position BY CONSTRUCTION
+#     (`supertrend_always_in_target` always returns at most one "F1" key) --
+#     no lever needed, only the defense-in-depth assert wired below via
+#     `single_position_only`.
+#   * `volume = 0.01` -- user directive 2026-08-20, mandatory, no exception.
+#     AVA GOLD `volume_min=0.01`/`volume_step=0.01` verified live by the
+#     implementer 2026-08-20 (read-only symbol_info probe) -- 0.01 is legal.
+#   * `window_gate` (NEW, opt-in) -- R1 (opening blackout, first 3 M15 candles
+#     after the 18:00 ET Globex reopen) + R2 (operating window, the D-36/D-37
+#     measured calendar) via `sentinel_engine.live.ava_window_gate`. A config
+#     WITHOUT this key never touches that module (see its docstring) -- the
+#     Capitaria champion/challenger/tomachine/local rosters are UNCHANGED.
+#   * `single_position_only` (NEW, opt-in) -- defense-in-depth assert in
+#     `run_live_20.reconcile_config` (mirrors the existing TK-Momentum
+#     single-position guard) verifying the desired state never carries more
+#     than one open ficha, regardless of engine.
+#
+# MAGICS -- fresh 7270xx block: S6-K2P0-AVA magic 727010 (band 727011-727013,
+# F1 only ever fires), SuperTrend-p14x3-M15-AVA magic 727020 (band
+# 727021-727023). Clear of every other block in use (720/721/724/725/726xxx,
+# legacy Sapitos 33xxxx, EMASAR EA 710000, IA 900xxx, TK's 999999998+) and of
+# the plan-reserved 722xxx/723xxx.
+AVA_MAGIC_BASE = 727000
+_AVA_GOLIVE_IDS: tuple[str, ...] = ("S6-K2P0", "SuperTrend-p14x3-M15")
+
+AVA_WINDOW_GATE: dict[str, Any] = {"broker": "ava"}
+
+
+def _ava_copy(cid: str, magic: int) -> dict[str, Any]:
+    """Independent deep COPY of a shared go-live config, redeployed for the
+    AVA demo. NEVER mutates the source dict (same immutability invariant as
+    `_local_copy`/`_challenger_copy` above)."""
+    c = copy.deepcopy(_golive_by_id_for_local[cid])
+    c["id"] = f"{cid}-AVA"
+    c["magic"] = magic
+    c["volume"] = 0.01
+    c["kwargs"]["symbol"] = "GOLD"
+    if cid == "S6-K2P0":
+        c["kwargs"]["pipsize_input"] = 0.01
+        c["kwargs"]["active_fichas"] = 1
+    c["window_gate"] = dict(AVA_WINDOW_GATE)
+    c["single_position_only"] = True
+    return c
+
+
+CONFIGS_AVA: list[dict[str, Any]] = [
+    _ava_copy(cid, AVA_MAGIC_BASE + 10 * (i + 1))
+    for i, cid in enumerate(_AVA_GOLIVE_IDS)
+]
+
+assert len(CONFIGS_AVA) == 2, \
+    "AVA roster must be exactly 2 configs -- S6-K2P0 + SuperTrend (S7 excluded, R4)"
+assert [c["id"] for c in CONFIGS_AVA] == ["S6-K2P0-AVA", "SuperTrend-p14x3-M15-AVA"], \
+    "AVA roster ids must be the 2 champion ids suffixed -AVA, in order"
+assert [c["magic"] for c in CONFIGS_AVA] == [727010, 727020], \
+    "AVA magics must be the fresh 7270x0 block"
+assert all(c["volume"] == 0.01 for c in CONFIGS_AVA), \
+    "AVA lot must be 0.01 -- mandatory, no exception"
+assert all(c["kwargs"]["symbol"] == "GOLD" for c in CONFIGS_AVA), \
+    "AVA configs must route to symbol GOLD, not XAUUSD"
+assert all(c["single_position_only"] is True for c in CONFIGS_AVA)
+assert all(c["window_gate"] == {"broker": "ava"} for c in CONFIGS_AVA)
+_s6_ava = next(c for c in CONFIGS_AVA if c["id"] == "S6-K2P0-AVA")
+assert _s6_ava["kwargs"]["pipsize_input"] == 0.01, \
+    "S6-K2P0-AVA must pin pipsize_input=0.01 (pip_size('GOLD') would else be 1.0, not 0.01)"
+assert _s6_ava["kwargs"]["active_fichas"] == 1, \
+    "S6-K2P0-AVA must run active_fichas=1 (user directive: one position per strategy)"
+_st_ava = next(c for c in CONFIGS_AVA if c["id"] == "SuperTrend-p14x3-M15-AVA")
+assert _st_ava["engine"] == "supertrend_always_in"
+assert "pipsize_input" not in _st_ava["kwargs"] and "active_fichas" not in _st_ava["kwargs"], \
+    "SuperTrend-AVA has no simular_variant kwargs to begin with -- nothing to pin"
+# SAME SIGNAL (minus the declared symbol/pipsize/active_fichas deviations
+# above): every other kwarg must be identical to the champion's.
+for _c in CONFIGS_AVA:
+    _src = _golive_by_id_for_local[_c["id"][:-4]]  # strip "-AVA"
+    _ignore = {"symbol", "pipsize_input", "active_fichas"}
+    _got = {k: v for k, v in _c["kwargs"].items() if k not in _ignore}
+    _want = {k: v for k, v in _src["kwargs"].items() if k not in _ignore}
+    assert _got == _want, \
+        f"AVA {_c['id']} must mirror the champion signal exactly (minus declared deviations)"
+# IMMUTABILITY: the SHARED source objects must NOT have gained any AVA-only key.
+for _cid in _AVA_GOLIVE_IDS:
+    _src = _golive_by_id_for_local[_cid]
+    assert "window_gate" not in _src and "single_position_only" not in _src, \
+        f"AVA-only keys leaked into the shared {_cid} dict"
+    assert _src["kwargs"]["symbol"] == "XAUUSD", \
+        f"AVA's GOLD symbol leaked into the shared {_cid} kwargs (Capitaria original corrupted)"
+    assert "pipsize_input" not in _src["kwargs"] and "active_fichas" not in _src["kwargs"], \
+        f"AVA's pipsize_input/active_fichas leaked into the shared {_cid} kwargs"
+# BAND DISJOINTNESS: 727xxx vs every other band, and clear of reserved 722xxx/723xxx.
+_ava_band: set[int] = set()
+for _c in CONFIGS_AVA:
+    _band = {_c["magic"] + _o for _o in range(4)}
+    assert _ava_band.isdisjoint(_band), f"AVA magic band overlap at {_c['id']}"
+    _ava_band |= _band
+assert _ava_band.isdisjoint(_live_band) and _ava_band.isdisjoint(_shadow_band) \
+    and _ava_band.isdisjoint(_golive_band) and _ava_band.isdisjoint(_tk_band) \
+    and _ava_band.isdisjoint(_tk_bw2_band) and _ava_band.isdisjoint(_challenger_band), \
+    "AVA magic band must be disjoint from live/shadow/go-live/TK/TK-BW2/challenger"
+assert all(not (722000 <= m <= 723999) for m in _ava_band), \
+    "AVA band must stay clear of the reserved 722xxx/723xxx blocks"
+assert min(_ava_band) == 727010 and max(_ava_band) == 727023, \
+    "AVA band must be the fresh 727010..727023 block"

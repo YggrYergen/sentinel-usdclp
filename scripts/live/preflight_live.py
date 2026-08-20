@@ -79,6 +79,14 @@ SYMBOL = "XAUUSD"
 MIN_BARS = 100
 MAX_BAR_AGE_S = 15 * 60  # M2 bars close every 120s; 15 min is generously stale
 
+# AVA/GOLD PARAMETERIZATION (D-62, 2026-08-20): the checks below take an
+# explicit `symbol=` (defaulting to SYMBOL == "XAUUSD", so every EXISTING call
+# site/behavior is byte-unchanged) so this module can ALSO preflight the AVA
+# deployment (symbol "GOLD") without a second copy of the file. `--symbol` on
+# the CLI threads through to both the fresh-bars check and the new
+# symbol-tradable check below.
+MIN_VOLUME_REQUIRED = 0.01  # task directive: lot must be legal at 0.01, no exception.
+
 
 @dataclass
 class CheckResult:
@@ -250,7 +258,7 @@ def check_fresh_bars(report: PreflightReport, mt5: Any, *,
 
     closed_bar_t = int(rates[-2]["time"])
     if now_server is None:
-        server_ts = _server_now_ts(mt5)
+        server_ts = _server_now_ts(mt5, symbol=symbol)
     else:
         server_ts = now_server.timestamp()
     age_s = server_ts - closed_bar_t
@@ -260,19 +268,59 @@ def check_fresh_bars(report: PreflightReport, mt5: Any, *,
         age_s = 0.0
     ok = age_s <= max_age_s
     bar_iso = datetime.fromtimestamp(closed_bar_t, tz=timezone.utc).isoformat()
-    detail = (f"{len(rates)} M2 bars available; newest CLOSED bar {bar_iso} "
+    detail = (f"{symbol}: {len(rates)} M2 bars available; newest CLOSED bar {bar_iso} "
              f"is {age_s:.0f}s old (limit {max_age_s:.0f}s)")
     report.add("fresh-bars", ok, detail)
     return ok
 
 
-def _server_now_ts(mt5: Any) -> float:
+def check_symbol_tradable(report: PreflightReport, mt5: Any, *,
+                          symbol: str = SYMBOL,
+                          min_volume: float = MIN_VOLUME_REQUIRED) -> bool:
+    """NEW (D-62, 2026-08-20): `symbol_info(symbol)` exists, is visible, and
+    `min_volume` (the mandated lot, 0.01) is legal -- `volume_min <=
+    min_volume` AND `min_volume` is an exact multiple of `volume_step`
+    (accounting for float rounding). Read-only; never sends an order.
+
+    Runs for EVERY symbol (default XAUUSD too), not just AVA/GOLD -- it is a
+    pure read, and the existing Capitaria live rosters already trade at 0.01
+    lot, so this should pass unchanged for them; it exists mainly to catch a
+    broker/symbol where 0.01 would be illegal BEFORE the executor ever tries
+    to open a position at that size."""
+    try:
+        info = mt5.symbol_info(symbol)
+    except Exception as exc:  # noqa: BLE001
+        report.add("symbol-tradable", False, f"symbol_info({symbol!r}) raised {exc!r}")
+        return False
+    if info is None:
+        report.add("symbol-tradable", False,
+                   f"symbol_info({symbol!r}) returned None -- symbol not found/not "
+                   "subscribed on this account")
+        return False
+    vol_min = float(getattr(info, "volume_min", 0.0) or 0.0)
+    vol_step = float(getattr(info, "volume_step", 0.0) or 0.0)
+    visible = bool(getattr(info, "visible", True))
+    steps_ok = vol_step <= 0 or abs(round(min_volume / vol_step) * vol_step - min_volume) < 1e-9
+    ok = visible and vol_min <= min_volume and steps_ok
+    detail = (f"symbol={symbol} visible={visible} volume_min={vol_min} "
+             f"volume_step={vol_step} volume_max={getattr(info, 'volume_max', None)} "
+             f"-- required lot {min_volume} {'IS' if ok else 'is NOT'} legal")
+    report.add("symbol-tradable", ok, detail)
+    return ok
+
+
+def _server_now_ts(mt5: Any, *, symbol: str = SYMBOL) -> float:
     """Best-effort broker server clock. `account_info()` doesn't carry a
     server timestamp in the MT5 API, so the most reliable read-only proxy is
     the last tick's time; falls back to naive UTC now if unavailable (only
-    matters for the staleness margin, which is generous)."""
+    matters for the staleness margin, which is generous).
+
+    `symbol` defaults to the module constant (byte-identical to every
+    existing call site); an AVA preflight passes `symbol="GOLD"` so the clock
+    proxy reads GOLD's own tick instead of an XAUUSD tick that may not even
+    exist on that account/broker."""
     try:
-        tick = mt5.symbol_info_tick(SYMBOL)
+        tick = mt5.symbol_info_tick(symbol)
         if tick is not None:
             t = getattr(tick, "time", None)
             if t:
@@ -334,12 +382,17 @@ def check_audit_log_writable(report: PreflightReport, *,
 # --------------------------------------------------------------------------
 def run_all_checks(*, mt5_module: Any = None,
                    attach_checker: Callable[[], bool] = portable_running,
-                   now_server: datetime | None = None) -> PreflightReport:
+                   now_server: datetime | None = None,
+                   symbol: str = SYMBOL) -> PreflightReport:
     """Run every check in order, short-circuiting the MT5-dependent checks
-    (attach/guard/fresh-bars) if the terminal isn't running -- we NEVER call
-    `mt5.initialize()` otherwise (ATTACH-ONLY). Roster/STOP/audit-log checks
-    always run regardless (they don't touch MT5). Always returns a full
-    report; never raises for expected failure modes."""
+    (attach/guard/fresh-bars/symbol-tradable) if the terminal isn't running --
+    we NEVER call `mt5.initialize()` otherwise (ATTACH-ONLY). Roster/STOP/
+    audit-log checks always run regardless (they don't touch MT5). Always
+    returns a full report; never raises for expected failure modes.
+
+    `symbol` (D-62, 2026-08-20; default SYMBOL == "XAUUSD", byte-identical to
+    every pre-existing call site) lets the AVA deployment preflight GOLD's own
+    bars/tradability instead of XAUUSD's."""
     report = PreflightReport()
 
     terminal_ok = check_portable_running(report, checker=attach_checker)
@@ -351,7 +404,8 @@ def run_all_checks(*, mt5_module: Any = None,
         attach_ok = check_mt5_attach(report, mt5)
         if attach_ok:
             check_account_guard(report, mt5)
-            check_fresh_bars(report, mt5, now_server=now_server)
+            check_fresh_bars(report, mt5, symbol=symbol, now_server=now_server)
+            check_symbol_tradable(report, mt5, symbol=symbol)
             try:
                 mt5.shutdown()
             except Exception:  # noqa: BLE001
@@ -359,10 +413,12 @@ def run_all_checks(*, mt5_module: Any = None,
         else:
             report.add("account-guard", False, "skipped: mt5-attach failed")
             report.add("fresh-bars", False, "skipped: mt5-attach failed")
+            report.add("symbol-tradable", False, "skipped: mt5-attach failed")
     else:
         report.add("mt5-attach", False, "skipped: portable terminal not running")
         report.add("account-guard", False, "skipped: portable terminal not running")
         report.add("fresh-bars", False, "skipped: portable terminal not running")
+        report.add("symbol-tradable", False, "skipped: portable terminal not running")
 
     check_roster_resolves(report)
     check_stop_file_absent(report)
@@ -376,9 +432,14 @@ def main(argv: list[str] | None = None, *, mt5_module: Any = None,
     ap = argparse.ArgumentParser(
         description="Read-only preflight checklist for the live executor.")
     ap.add_argument("--json", action="store_true", help="machine-readable JSON output")
+    ap.add_argument("--symbol", default=SYMBOL,
+                    help=f"symbol to preflight (fresh-bars + symbol-tradable "
+                         f"checks); default {SYMBOL!r}. AVA deployment (D-62): "
+                         "pass --symbol GOLD.")
     args = ap.parse_args(argv)
 
-    report = run_all_checks(mt5_module=mt5_module, attach_checker=attach_checker)
+    report = run_all_checks(mt5_module=mt5_module, attach_checker=attach_checker,
+                            symbol=args.symbol)
 
     if args.json:
         print(json.dumps(report.to_dict(), indent=2))

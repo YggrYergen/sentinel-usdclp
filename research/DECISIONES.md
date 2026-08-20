@@ -1450,3 +1450,46 @@ conexión viva — el agente lo detectó y lo ejecutó igual, declarándolo. **E
 pero por otra razón: el CSV son **8,65 GB** y dos lecturas concurrentes se pelean el disco. Es una
 errata de justificación del controlador, no del implementador, y no afecta a la Ola 1 (su
 task-type `ola1_paired` sí es paralelizable).
+
+---
+
+### D-62 · 2026-08-20 · La demo AVA `101744074` pasa a ser cuenta OPERABLE, y el despliegue vivo de S6+ST originales arranca con reglas propias
+
+**Contexto.** El controlador iba a despachar el despliegue en vivo sobre AVA y **paró antes de
+hacerlo**, porque `sentinel_engine/live/guard_cuenta.py:42` tenía
+`SANCTIONED_DEMO_LOGINS = {2883015767, 2883016567}` — sin `101744074` — y `CUENTAS.md` decía de esa
+cuenta «propósito ÚNICO: descarga de histórico real-tick. NO se opera en ella». El bloqueo **B5**
+del TRACKER existía exactamente para autorizar esta ampliación y había sido **retirado por D-20**
+sobre la premisa de que AVA nunca se operaría. Tercera vez en el programa que se para ante una
+contradicción de seguridad en vez de resolverla por cuenta propia (cf. D-28).
+
+**Decisión del user (explícita, en sesión).** «*independiente a que no esté, si no está anotado por
+favor agregalo — lo de la cuenta ava ES PARA ESO; de ahora en adelante por favor utilizar la cuenta
+ava disponible, esa 101744074*». Queda por tanto:
+
+1. **`101744074` añadida a `SANCTIONED_DEMO_LOGINS`** (autoridad de ORDEN). La premisa de D-20 ya no
+   se sostiene y se declara superada en este punto concreto. La ampliación es de **código de
+   seguridad** y por eso queda aquí registrada, con su motivo y su fecha.
+2. **NO se amplía `extract_ticks.py:34`** (`SANCTIONED_DEMO` de **ingesta**, autoridad distinta). La
+   ingesta AVA sigue siendo CSV manual: no hay requisito, no se toca. Se preserva la separación de
+   autoridades de **D-28** (leer ≠ ordenar) y el principio de D-20 (no ampliar seguridad por una
+   necesidad inexistente).
+3. **AVA es la cuenta de trabajo en vivo de aquí en adelante.** Símbolo **`GOLD`**, no `XAUUSD`.
+
+**Propósito del despliegue: paridad, no rentabilidad.** Se despliegan **S6 y SuperTrend ORIGINALES**
+(sin ninguna modificación del programa de investigación) para medir la paridad backtest↔live y poder
+**congelar el motor** con la paridad confirmada — el gate que hoy bloquea todo el programa (R5, A6).
+
+**Reglas de ejecución fijadas por el user:**
+- **Lote `0.01` por posición, obligatorio.**
+- **UNA sola posición por estrategia** — nada de las 3 fichas por ahora (S6 vía `active_fichas=1`).
+- **R1** (blackout de apertura): primera posición elegible en la **4.ª vela M15**, 18:45, con ancla
+  de mercado (CME Globex 18:00 ET), no reloj local — el DST ya causó un artefacto real (D-36/D-37).
+- **R2** (ventana operativa): replicar el **horario** que el gate de spread 0,5/0,6 de Capitaria
+  definía de facto, porque es el horario en que las vivas produjeron su desempeño. El gate de spread
+  **no es transferible** a AVA.
+- **R1-bis/R7 intactos:** los módulos vivos de S6/S7/ST no se editan; el despliegue va sobre copia
+  profunda + banda de magic propia.
+
+**Ficheros tocados por el controlador en este acto:** `sentinel_engine/live/guard_cuenta.py`
+(frozenset + docstring) · `CUENTAS.md` (fila y credenciales de la 101744074) · este registro.
