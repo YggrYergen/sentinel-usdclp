@@ -1,0 +1,30 @@
+{
+  "_README": "PLANTILLAS DEL EQUIPO 3 (runner oficial, 2026-09-24). Este fichero es SOLO documentacion -- no lo lee ningun codigo. Copia cada bloque a su fichero real, que SI se lee y esta gitignoreado. Ver docs/EQUIPO3-INSTALACION.md paso 6.",
+
+  "_stack_1__copiar_a__scripts/live/machine_local.json": {
+    "_que_es": "MT5 #1 -- el runner ARMADO. Cuenta AVA 101744074 migrada desde el equipo 1. Roster `ava`: S6-K2P0-AVA (magic 727010) + SuperTrend-p14x3-M15-AVA (magic 727020), simbolo GOLD, lote 0.01, una posicion por estrategia, ventana R1/R2. Config de estrategia IDENTICA a la del equipo 1: no se toca ni un parametro.",
+    "_lo_lee": "run_live_20.py, supervisor_live.py, preflight_live.py, run_deals_watcher.py, run_bars_ingester.py, watchdog_equipo3.ps1 -- todos via machine_profile.load_profile() SIN la env var puesta.",
+    "terminal_path": "C:\\MT5_AVA1\\terminal64.exe",
+    "portable": false,
+    "demo_login": 101744074,
+    "terminal_marker": "mt5_ava1"
+  },
+
+  "_stack_2__copiar_a__scripts/live/machine_local.ava2.json": {
+    "_que_es": "MT5 #2 -- campo de pruebas, MONITORIZACION SOLAMENTE por ahora. Segunda demo AVA (login que aporta el usuario). NO tiene ejecutor, NO tiene supervisor, NO arma nada: solo terminal vivo + deals watcher capturando su historial a una base separada. Cuando existan candidatos de estrategia se decide como armarlo.",
+    "_lo_lee": "SOLO el proceso lanzado con SENTINEL_MACHINE_PROFILE=scripts\\live\\machine_local.ava2.json -- es decir, el watcher #2 y nada mas.",
+    "terminal_path": "C:\\MT5_AVA2\\terminal64.exe",
+    "portable": false,
+    "demo_login": 0,
+    "_demo_login_PENDIENTE": "Pon aqui el login de la segunda demo AVA. ANTES tiene que estar anadido a sentinel_engine/live/guard_cuenta.py::SANCTIONED_DEMO_LOGINS, o load_profile() lo rechaza (MachineProfileError) -- por diseno: la config mutable solo SELECCIONA logins ya sancionados, nunca introduce uno nuevo. Ver docs/EQUIPO3-INSTALACION.md paso 7.",
+    "terminal_marker": "mt5_ava2"
+  },
+
+  "_REGLAS": [
+    "1. terminal_marker DEBE ser distinto entre los dos stacks y DEBE coincidir con el nombre de la carpeta padre del exe en minusculas. Es lo que usan _portable_running() y el watchdog para saber QUE terminal esta vivo. Si los dos marcadores fueran iguales, cada stack creeria que el terminal del otro es el suyo y nunca relanzaria el propio.",
+    "2. Los dos terminales DEBEN ser instalaciones SEPARADAS (carpetas distintas). MT5 no abre dos instancias de la misma instalacion. Ver docs/EQUIPO3-INSTALACION.md paso 4.",
+    "3. portable: pon true SOLO si arrancas ese terminal con /portable. Un desajuste aqui hace que mt5.initialize() no logre engancharse y levante un terminal fantasma (incidente diagnosticado el 2026-07-24).",
+    "4. demo_login solo puede ser un miembro de guard_cuenta.SANCTIONED_DEMO_LOGINS. Este fichero no puede hacer operable una cuenta que no lo sea ya.",
+    "5. NUNCA hagas setx de SENTINEL_MACHINE_PROFILE. Es por-proceso. Un valor persistido repuntaria TODOS los procesos -- incluido el ejecutor armado -- al terminal y la cuenta equivocados. setup_autostart_equipo3.ps1 se niega a correr si la encuentra persistida."
+  ]
+}

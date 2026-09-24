@@ -1,0 +1,33 @@
+# requirements-equipo3.txt -- dependencias del runner en vivo (SENTINEL, 2026-09-24)
+#
+# El repo no tenia manifiesto de dependencias: hasta ahora cada maquina se
+# monto a mano. Estas versiones son las EXACTAMENTE VERIFICADAS en el equipo 1
+# el 2026-09-24 (pip freeze), que es la maquina desde la que se migra el stack
+# AVA. Fijarlas aqui es lo que hace que el equipo 3 corra el mismo codigo sobre
+# las mismas librerias, en vez de sobre lo que pip resuelva ese dia.
+#
+# Python 3.11 (el equipo 1 corre 3.11.9). MetaTrader5 es Windows-only.
+#
+# Instalar:
+#     python -m pip install -r scripts\live\requirements-equipo3.txt
+
+# --- imprescindible para operar ---
+MetaTrader5==5.0.5735
+
+# --- nucleo de calculo (estrategias, motor, registry) ---
+numpy==2.3.3
+pandas==2.3.3
+scipy==1.17.1
+PyYAML==6.0.2
+
+# --- dashboard de monitorizacion (scripts/run_service.py, puerto 8501) ---
+streamlit==1.57.0
+plotly==6.7.0
+altair==6.1.0
+
+# --- red (calendario de noticias y utilidades) ---
+requests==2.32.4
+
+# --- pruebas (para correr la verificacion del paso 9 del runbook) ---
+pytest==8.4.1
+pytest-asyncio==1.1.0

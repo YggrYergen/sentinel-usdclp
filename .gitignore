@@ -127,6 +127,19 @@ scripts/live/*.bak
 # Per-machine profile (terminal path/portable/login selection) -- see
 # scripts/live/machine_local.example.json for the tracked template.
 scripts/live/machine_local.json
+# equipo 3 runs a SECOND stack from the same clone (MT5 #2, monitoring only);
+# its profile is selected per-process via $SENTINEL_MACHINE_PROFILE and is just
+# as machine-local as the one above. Template:
+# scripts/live/machine_local.equipo3.example.json (tracked -- the negation below
+# keeps every *.example.json visible).
+scripts/live/machine_local.*.json
+!scripts/live/machine_local.*example.json
+scripts/live/watchdog_equipo3.log
+scripts/live/watchdog_equipo3.log.1
+scripts/live/watchdog_equipo3.lock
+scripts/live/deals_watcher_ava2.log
+scripts/live/deals_watcher_ava2.log.err
+scripts/live/deals_watcher_ava2.pid
 scripts/live/run_live_20.audit.log
 scripts/live/watchdog.log
 scripts/live/executor_console.log
