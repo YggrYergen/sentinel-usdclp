@@ -63,6 +63,39 @@ $LogFile  = Join-Path $LiveDir "watchdog_equipo3.log"
 $LockFile = Join-Path $LiveDir "watchdog_equipo3.lock"
 $StopFile = Join-Path $LiveDir "STOP"
 
+# ---------------------------------------------------------------------
+# INTERPRETE CLAVADO (2026-09-24). Cumple DOS funciones:
+#
+#  a) Arregla el riesgo D1 del acta de instalacion: esta maquina tiene un
+#     Python 3.14.5 ademas del 3.11.9, y `python` a secas resolvia a 3.14 en
+#     consola interactiva y a 3.11 bajo la tarea programada, segun el PATH.
+#     Con 3.14 faltaria PyYAML y pandas/numpy serian otras versiones.
+#
+#  b) Impide que este watchdog vea los procesos del stack CAPITARIA, que corre
+#     desde OTRO clon sobre su propio venv. Sin este filtro,
+#     `Find-ProcByCmdline 'supervisor_live'` encontraria el supervisor de
+#     Capitaria y no relanzaria nunca el de AVA; y la siega de huerfanos
+#     mataria el ejecutor armado de Capitaria. Es el simetrico del filtro que
+#     watchdog_capitaria.ps1 aplica en el otro sentido.
+#
+# Orden de resolucion: venv propio del clon -> py -3.11 -> `python` a secas.
+# ---------------------------------------------------------------------
+function Resolve-PythonExe {
+    $venv = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+    if (Test-Path $venv) { return (Resolve-Path $venv).Path }
+    try {
+        $out = & py -3.11 -c "import sys; print(sys.executable)" 2>&1
+        if ($LASTEXITCODE -eq 0 -and $out) {
+            $cand = ($out | Select-Object -First 1).ToString().Trim()
+            if ($cand -and (Test-Path $cand)) { return $cand }
+        }
+    } catch {}
+    $cmd = Get-Command python -ErrorAction SilentlyContinue
+    if ($cmd) { return $cmd.Source }
+    return "python"
+}
+$PythonExe = Resolve-PythonExe
+
 $Profile1 = Join-Path $LiveDir "machine_local.json"
 $Profile2 = Join-Path $LiveDir "machine_local.ava2.json"
 # Ruta RELATIVA al repo para el hijo: machine_profile la resuelve contra
@@ -143,7 +176,7 @@ print("PROFILES=" + json.dumps(out))
     $tmp = Join-Path $env:TEMP "sentinel_eq3_profiles_$PID.py"
     Set-Content -Path $tmp -Value $py -Encoding UTF8
     try {
-        $out = & python $tmp 2>&1
+        $out = & $PythonExe $tmp 2>&1
         $code = $LASTEXITCODE
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
@@ -228,8 +261,11 @@ function Release-Singleton {
 
 function Find-ProcByCmdline {
     param([string]$Pattern)
+    $want = $PythonExe.ToLower()
     Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and $_.CommandLine -match $Pattern
+        $_.Name -match '^python(\.exe)?$' -and
+        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $want -and
+        $_.CommandLine -match $Pattern
     } | Select-Object -First 1
 }
 
@@ -290,7 +326,7 @@ sys.exit(0)
     $tmp = Join-Path $env:TEMP "sentinel_eq3_acct_$($ExpectedLogin)_$PID.py"
     Set-Content -Path $tmp -Value $py -Encoding UTF8
     try {
-        $out = & python $tmp 2>&1
+        $out = & $PythonExe $tmp 2>&1
         $code = $LASTEXITCODE
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
@@ -339,7 +375,7 @@ function Ensure-Watcher1 {
         return
     }
     Write-Log "stack #1 : watcher CAIDO -- relanzando."
-    Start-Hidden "python -m scripts.live.run_deals_watcher --db $Db1 --poll 5 >> `"$WatcherLog1`" 2>> `"$WatcherLog1.err`""
+    Start-Hidden "`"$PythonExe`" -m scripts.live.run_deals_watcher --db $Db1 --poll 5 >> `"$WatcherLog1`" 2>> `"$WatcherLog1.err`""
     Start-Sleep -Seconds 2
     $p = Find-ProcByCmdline 'run_deals_watcher.*research\.db'
     if ($p) {
@@ -362,7 +398,7 @@ function Ensure-Watcher2 {
     # proceso vea el terminal y el login del stack #2 en vez de los del #1.
     # OJO cmd: 'set VAR=valor&& ...' SIN espacio antes de && (un espacio ahi
     # quedaria DENTRO del valor de la variable).
-    Start-Hidden "set SENTINEL_MACHINE_PROFILE=$Profile2Rel&& python -m scripts.live.run_deals_watcher --db $Db2 --poll 5 >> `"$WatcherLog2`" 2>> `"$WatcherLog2.err`""
+    Start-Hidden "set SENTINEL_MACHINE_PROFILE=$Profile2Rel&& `"$PythonExe`" -m scripts.live.run_deals_watcher --db $Db2 --poll 5 >> `"$WatcherLog2`" 2>> `"$WatcherLog2.err`""
     Start-Sleep -Seconds 2
     $p = Find-ProcByCmdline 'run_deals_watcher.*research_ava2\.db'
     if ($p) {
@@ -387,8 +423,13 @@ function Ensure-Supervisor {
     # ANTI-DUPLICADO: si el supervisor esta caido, cualquier run_live_20 vivo
     # es HUERFANO (matar al padre en Windows no mata al hijo). Hay que segarlo
     # antes de relanzar o el nuevo supervisor armaria un SEGUNDO ejecutor.
+    # SOLO ejecutores de ESTE stack. Sin el filtro por interprete, esto
+    # mataria el ejecutor armado del stack CAPITARIA (otro clon, otro venv).
+    $wantExe = $PythonExe.ToLower()
     $orphans = Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and $_.CommandLine -match 'run_live_20'
+        $_.Name -match '^python(\.exe)?$' -and
+        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $wantExe -and
+        $_.CommandLine -match 'run_live_20'
     }
     foreach ($o in $orphans) {
         Write-Log "stack #1 : segando ejecutor HUERFANO PID $($o.ProcessId) antes de relanzar."
@@ -409,7 +450,7 @@ function Ensure-Supervisor {
     #   SUPERVISOR_STALE_AUTORESTART=1-> recicla el ejecutor si el audit log
     #                                    se queda rancio.
     $envPrefix = "set SUPERVISOR_CONFIGS=ava&& set SUPERVISOR_SYMBOL=GOLD&& set SUPERVISOR_MAX_SPREAD_OPEN=&& set SUPERVISOR_STALE_AUTORESTART=1&& "
-    Start-Hidden ($envPrefix + "python -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`"")
+    Start-Hidden ($envPrefix + "`"$PythonExe`" -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`"")
     Start-Sleep -Seconds 2
     $p = Find-ProcByCmdline 'supervisor_live'
     if ($p) {
@@ -426,7 +467,7 @@ function Ensure-Dashboard {
         if (Get-NetTCPConnection -LocalPort 8501 -State Listen -ErrorAction SilentlyContinue) { return }
     } catch {}
     Write-Log "dashboard CAIDO (nadie escucha en 8501) -- relanzando."
-    Start-Hidden "python scripts\run_service.py --host 127.0.0.1 --port 8501 >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
+    Start-Hidden "`"$PythonExe`" scripts\run_service.py --host 127.0.0.1 --port 8501 >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
     Start-Sleep -Seconds 3
     $p = Find-ProcByCmdline 'run_service\.py'
     if ($p) {
@@ -439,6 +480,7 @@ function Ensure-Dashboard {
 Assert-NoPersistedProfileVar
 Acquire-Singleton
 Write-Log "watchdog_equipo3.ps1 ARRANCADO (PID $PID). Sondeo cada ${PollSec}s. Repo: $RepoRoot"
+Write-Log "interprete clavado: $PythonExe"
 Resolve-Profiles
 
 try {

@@ -147,3 +147,4 @@ scripts/live/supervisor_console.log
 scripts/live/supervisor_console.err
 scripts/live/watcher_console.log
 scripts/live/watcher_console.err
+scripts/live/bars_ingester_console.log

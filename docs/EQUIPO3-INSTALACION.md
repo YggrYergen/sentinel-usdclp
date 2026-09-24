@@ -103,9 +103,19 @@ distintas**.
    C:\MT5_AVA2
    ```
 
-   Si el instalador no te deja elegir carpeta la segunda vez, la alternativa es
-   copiar la carpeta entera:
-   `Copy-Item -Recurse C:\MT5_AVA1 C:\MT5_AVA2`
+   > 🔴 **NO copies la carpeta** (`Copy-Item -Recurse`). Se probo el 2026-09-24
+   > y **rompe las dos instalaciones**: el instalador de marca guarda
+   > `Config\servers.dat` + `Config	erminal.lic`, y duplicar esa carpeta no
+   > produce dos instalaciones validas -- ambas pierden la lista de servidores de
+   > Ava y caen a modo generico, donde `Ava-Demo 1-MT5` no existe.
+   >
+   > **Metodo que si funciona:** ejecutar `ava5setup.exe /auto` (instala en
+   > `C:\Program Files\Ava Trade MT5 Terminal`) y **MOVER** -- no copiar -- esa
+   > carpeta a su destino. Repetir el instalador desde cero para la segunda.
+   > Cada terminal necesita su propia instalacion.
+   >
+   > El instalador de marca de AvaTrade **no tiene URL publica**: se descarga del
+   > portal de AvaTrade con sesion iniciada.
 
 4. Abre **`C:\MT5_AVA1\terminal64.exe`** e inicia sesión en la cuenta
    **101744074**, servidor `Ava-Demo 1-MT5`.
@@ -116,6 +126,13 @@ distintas**.
    mandar órdenes.
 7. En **cada** terminal, abre el símbolo **`GOLD`** en Observación de Mercado
    (AVA no tiene `XAUUSD`, se llama `GOLD`).
+
+   > 🔴 **Hazlo DESPUES de mover la carpeta, no antes.** MT5 guarda la
+   > Observacion de Mercado en `%APPDATA%\MetaQuotes\Terminal\<hash>`, y ese hash
+   > deriva de la **ruta de instalacion**: al mover el terminal se crea una carpeta
+   > de datos nueva y vacia, y la seleccion no viaja. El 2026-09-24 esto costo 11
+   > ciclos de preflight fallido. El sintoma exacto en `scripts\live\watchdog.log`:
+   > `[FAIL] symbol-tradable: symbol=GOLD visible=False`
 
 > **Por qué carpetas distintas y no `/portable`:** una instalación MT5 normal
 > guarda sus datos en `%APPDATA%\MetaQuotes\Terminal\<hash>`, y ese hash se
@@ -320,7 +337,8 @@ cd C:\FOREX
 python -m pytest tests\live\ -q
 ```
 
-Deben pasar todas. Dos avisos sobre el resultado esperado:
+Deben pasar **229** (verificado en el equipo 3 el 2026-09-24). Si corres tambien
+`tests\golden\` son 235 en total. Dos avisos sobre el resultado esperado:
 
 - En el equipo 1, `tests/live/test_news_calendar.py` falla **porque allí se
   borró `data/live/news_calendar.csv` del árbol de trabajo**. En un clon nuevo
