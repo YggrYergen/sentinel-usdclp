@@ -1,0 +1,1267 @@
+/* SENTINEL UI v2 — left replica (v2 exact palette) + futuristic chrome/right/Lab. */
+:root {
+  /* left (v2 exact) */
+  --v2-bg: #0e1117;
+  --v2-card: #151820;
+  --v2-card2: #1a1d23;
+  --v2-green: #52b788;
+  --v2-red: #ef476f;
+  --v2-amber: #ffd166;
+  --v2-cyan: #4cc9f0;
+  --v2-border: #333;
+  /* chrome/right/lab (futuristic) */
+  --fx-bg: #0a0d12;
+  --fx-border: #1e2330;
+  --fx-accent: #4cc9f0;
+  --fx-text: #d7dde5;
+  --fx-muted: #7a8394;
+  --mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  margin: 0;
+  height: 100%;
+  background: var(--fx-bg);
+  color: var(--fx-text);
+  font-family: system-ui, -apple-system, "Segoe UI", Arial, sans-serif;
+}
+
+/* -- top bar -- */
+#topbar {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.4rem 0.9rem;
+  border-bottom: 1px solid var(--fx-border);
+  background: var(--fx-bg);
+  font-size: 0.8rem;
+}
+#topbar-logo { font-weight: 700; color: var(--fx-accent); margin-right: 0.5rem; }
+.chip {
+  font-size: 0.72rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  border: 1px solid var(--fx-border);
+  color: var(--fx-muted);
+}
+.chip.mono { font-family: var(--mono); }
+.chip.connected { color: var(--v2-green); border-color: var(--v2-green); }
+.chip.disconnected { color: var(--v2-red); border-color: var(--v2-red); }
+.chip.connecting { color: var(--v2-amber); border-color: var(--v2-amber); }
+.chip.stale-warn { color: var(--v2-amber); border-color: var(--v2-amber); }
+.chip.stale-crit { color: var(--v2-red); border-color: var(--v2-red); }
+
+/* -- overall layout -- */
+#app-body {
+  display: grid;
+  grid-template-columns: minmax(360px, 1fr) 52px 2fr;
+  height: calc(100vh - 2.4rem);
+}
+
+#left-column {
+  overflow-y: auto;
+  background: var(--v2-bg);
+  padding: 0.3rem;
+}
+
+#navbar {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.4rem;
+  padding-top: 0.6rem;
+  background: var(--fx-bg);
+  border-left: 1px solid var(--fx-border);
+  border-right: 1px solid var(--fx-border);
+}
+.nav-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--fx-border);
+  background: transparent;
+  color: var(--fx-muted);
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.nav-btn.active, .nav-btn:hover { color: var(--fx-accent); border-color: var(--fx-accent); }
+
+#right-pane {
+  overflow-y: auto;
+  padding: 0.9rem 1.2rem;
+}
+.right-section { animation: none; }
+.right-section[hidden] { display: none; }
+/* REVIEW must be capped to the pane so its chart+control-bar column doesn't
+   grow with the (virtualized) trade list — otherwise posnav/playback get
+   pushed far below the viewport. height:100% gives .review-section's own
+   height:100% something to resolve against; min-height:0 lets flex children
+   shrink instead of forcing overflow. */
+#section-review { height: 100%; min-height: 0; }
+/* POSITIONS/Estrategia needs the same viewport anchor as REVIEW: its 2-column
+   live layout puts a flex:1 chart in the right column, whose height chains up
+   through .positions-section { height:100% }. Without height:100% here that
+   percentage has nothing to resolve against, so the chart grows to the LEFT
+   column's content height (the long positions list) and overflows the viewport
+   (~1064px). height:100% + min-height:0 bounds the whole chain to the pane, so
+   the chart fills a viewport-sized area like Trade View (multi-resolution). */
+#section-positions { height: 100%; min-height: 0; }
+
+/* -- placeholder (gated capability) -- */
+.gated-placeholder {
+  border: 1px dashed var(--fx-border);
+  border-radius: 8px;
+  padding: 1.2rem;
+  color: var(--fx-muted);
+  font-size: 0.85rem;
+  text-align: center;
+}
+.gated-placeholder b { color: var(--fx-accent); }
+
+/* -- v2 replica: tooltip system (ported verbatim from dashboard_v2.py) -- */
+.tt-wrap { position: relative; cursor: help; z-index: 100; display: inline-block; width: 100%; }
+.tt-wrap .tt-pop {
+  visibility: hidden; opacity: 0; position: absolute; z-index: 9999;
+  bottom: 105%; left: 50%; transform: translateX(-50%); width: 380px;
+  padding: 12px 14px; background: #1e2130; color: #c8ccd4;
+  border: 1px solid #3a3f55; border-radius: 10px; font-size: 13px;
+  line-height: 1.45; font-family: -apple-system, sans-serif;
+  font-style: normal; font-weight: 400;
+  max-height: 500px; overflow-y: auto;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+  pointer-events: none;
+  transition: opacity 0.2s;
+}
+.tt-wrap .tt-pop::after {
+  content: ''; position: absolute; top: 100%; left: 50%;
+  transform: translateX(-50%); border: 7px solid transparent;
+  border-top-color: #3a3f55;
+}
+.tt-wrap:hover .tt-pop { visibility: visible; opacity: 1; pointer-events: auto; }
+.tt-pop b { color: #fff; }
+.tt-pop .tt-title { font-size: 14px; font-weight: 700; color: #fff;
+  margin-bottom: 5px; padding-bottom: 4px; border-bottom: 1px solid #333850; }
+.tt-down .tt-pop { bottom: auto; top: 105%; }
+.tt-down .tt-pop::after { top: auto; bottom: 100%;
+  border-color: transparent transparent #3a3f55 transparent; }
+
+/* -- v2 replica: asset panel shell -- */
+.asset-panel { margin-bottom: 6px; }
+.v2-mount table { border-collapse: collapse; table-layout: fixed; }
+.macro-votes-wrap { display: flex; flex-direction: column; justify-content: space-between; }
+.macro-votes-wrap table { flex: 1; }
+
+/* -- Lab (futuristic minimal) -- */
+.lab-grid {
+  display: grid;
+  grid-template-columns: 280px 1fr 280px;
+  gap: 0.8rem;
+}
+.lab-zone {
+  border: 1px solid var(--fx-border);
+  border-radius: 8px;
+  padding: 0.7rem;
+  background: rgba(255,255,255,0.015);
+}
+.lab-zone h3 {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--fx-muted);
+  margin: 0 0 0.6rem 0;
+}
+.lever-group { border-top: 1px solid var(--fx-border); padding-top: 0.4rem; margin-top: 0.4rem; }
+.lever-row { display: flex; flex-direction: column; gap: 0.15rem; margin-bottom: 0.5rem; }
+.lever-row label { font-size: 0.72rem; color: var(--fx-muted); display: flex; justify-content: space-between; }
+.lever-row input[type=range] { accent-color: var(--fx-accent); }
+.hash-chip { font-family: var(--mono); font-size: 0.7rem; color: var(--fx-accent); }
+
+@media (max-width: 1100px) {
+  .lab-grid { grid-template-columns: 1fr; }
+}
+
+/* ============================================================
+   M1.1 — SENTINEL V2+TOKATA design tokens (spec D.2, EXACT).
+   Additive only: does not remove/override existing --fx- and --v2-
+   vars used by #left-column/asset-panels (D.9 preservation gate).
+   ============================================================ */
+:root {
+  --bg-0:#0a0e14; --bg-1:#0d1117; --bg-2:#131a24; --bg-3:#1a2332;
+  --text-0:#c9d4e3; --text-1:#8b98ab; --text-2:#5c6a7d;
+  --accent-celeste:#00bfff; --accent-green:#26a69a; --accent-red:#ef5350; --accent-amber:#ffb020;
+  --long:#26a69a; --short:#ef5350; --neutral:#8b98ab;
+  --border:1px solid rgba(0,191,255,.18); --radius:6px;
+  --glow-sm:0 0 6px; /* SOLO interactivo/activo; blur max 8px */
+  --font-mono:'Cascadia Mono',Consolas,monospace; --font-ui:'Segoe UI',system-ui,sans-serif;
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-6:24px;
+}
+
+/* -- navbar active-state reskin: celeste eléctrico dominante (D.2) --
+   Scoped to .nav-btn only; does not touch #left-column/.asset-panel. */
+.nav-btn.active, .nav-btn:hover {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+
+/* -- new right-pane sections (charts/review/runs/positions): celeste accent -- */
+#section-charts, #section-review, #section-runs, #section-positions {
+  font-family: var(--font-ui);
+  color: var(--text-0);
+}
+#section-charts .section-placeholder,
+#section-review .section-placeholder,
+#section-runs .section-placeholder,
+#section-positions .section-placeholder {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+}
+.section-placeholder h2 {
+  color: var(--accent-celeste);
+  margin: 0 0 var(--sp-2) 0;
+  font-size: 1rem;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.section-placeholder p {
+  margin: 0;
+  color: var(--text-2);
+  font-size: 0.85rem;
+}
+
+/* -- strategy/fidelity badges (D.3), reused across all new sections -- */
+.sentinel-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 0.72rem;
+  padding: 1px var(--sp-1);
+  border-radius: 4px;
+  font-variant-numeric: tabular-nums;
+}
+.sentinel-badge-strategy .sentinel-badge-swatch {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+}
+.sentinel-badge-strategy .sentinel-badge-familia {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--text-1);
+}
+.sentinel-badge-strategy .sentinel-badge-name { color: var(--text-0); }
+.sentinel-badge-fidelity {
+  border: 1px solid currentColor;
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+
+/* -- numbers/ids/prices: mono tabular (D.2 hard rule) -- */
+.mono, .sentinel-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* -- toasts (lib/toast.js), bottom-right -- */
+#sentinel-toast-container {
+  position: fixed;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  z-index: 9999;
+  pointer-events: none;
+}
+.sentinel-toast {
+  pointer-events: auto;
+  background: var(--bg-3);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.8rem;
+  opacity: 0;
+  transform: translateY(6px);
+  transition: opacity 0.2s, transform 0.2s;
+}
+.sentinel-toast-visible { opacity: 1; transform: translateY(0); }
+.sentinel-toast-error { border-color: var(--accent-red); color: var(--accent-red); }
+.sentinel-toast-success { border-color: var(--accent-green); color: var(--accent-green); }
+.sentinel-toast-warn { border-color: var(--accent-amber); color: var(--accent-amber); }
+
+@media (prefers-reduced-motion: reduce) {
+  .sentinel-toast { transition: none; }
+}
+
+/* ============================================================
+   M2.1 — RUNS section (spec D.7-RUNS): filter bar, virtualized
+   table (lib/vtable.js), right drawer, uPlot compare modal.
+   Additive only; celeste accent, mono tabular numbers, green/red
+   only for net/PF sign (D.2 hard rule).
+   ============================================================ */
+.runs-section { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; }
+
+.sentinel-sign-pos { color: var(--accent-green); }
+.sentinel-sign-neg { color: var(--accent-red); }
+
+/* -- filter bar -- */
+.runs-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.runs-filter-group { display: flex; flex-direction: column; gap: 2px; }
+.runs-filter-group label {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.runs-filter-input {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 3px 6px;
+  font-size: 0.78rem;
+}
+.runs-strategy-chips { display: flex; flex-wrap: wrap; gap: var(--sp-1); max-width: 460px; }
+.runs-strategy-chip {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 2px 6px;
+  cursor: pointer;
+}
+.runs-strategy-chip.active {
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.3);
+}
+.runs-strategy-chip:focus-visible, .runs-filter-input:focus-visible {
+  outline: 1px solid var(--accent-celeste);
+}
+
+/* -- compare bar -- */
+.runs-compare-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.runs-compare-count { color: var(--text-1); font-size: 0.78rem; }
+.runs-compare-btn, .runs-drawer-review-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 10px;
+  cursor: pointer;
+  font-size: 0.78rem;
+}
+.runs-compare-btn:hover, .runs-drawer-review-btn:hover {
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+
+/* -- vtable (generic component, lib/vtable.js) -- */
+.runs-table-host { flex: 1; min-height: 320px; overflow: hidden; }
+.vtable-root { display: flex; flex-direction: column; height: 100%; border: var(--border); border-radius: var(--radius); overflow: hidden; }
+.vtable-head {
+  display: grid;
+  background: var(--bg-2);
+  border-bottom: var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+.vtable-th {
+  padding: 6px var(--sp-2);
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--text-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vtable-th-sortable { cursor: pointer; }
+.vtable-th-sortable:hover { color: var(--accent-celeste); }
+.vtable-th-active { color: var(--accent-celeste); }
+.vtable-th-check { width: 28px; }
+.vtable-viewport { flex: 1; overflow-y: auto; background: var(--bg-1); }
+.vtable-row {
+  display: grid;
+  border-bottom: 1px solid rgba(0,191,255,.08);
+  align-items: center;
+  cursor: pointer;
+}
+.vtable-row:hover { background: var(--bg-2); }
+.vtable-cell {
+  padding: 0 var(--sp-2);
+  font-size: 0.78rem;
+  color: var(--text-0);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.vtable-td-numeric { text-align: right; }
+.vtable-td-check { display: flex; align-items: center; justify-content: center; padding: 0; }
+.vtable-empty {
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-2);
+}
+
+.runs-empty, .runs-skeleton, .runs-error {
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.runs-skeleton { animation: sentinel-pulse 1.4s ease-in-out infinite; }
+@keyframes sentinel-pulse { 0%, 100% { opacity: 0.55; } 50% { opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .runs-skeleton { animation: none; }
+}
+.runs-error button {
+  margin-top: var(--sp-2);
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+/* -- right drawer -- */
+.runs-drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.35);
+  display: flex;
+  justify-content: flex-end;
+  z-index: 500;
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+.runs-drawer-overlay.visible { opacity: 1; }
+.runs-drawer {
+  width: 380px;
+  max-width: 90vw;
+  height: 100%;
+  background: var(--bg-2);
+  border-left: var(--border);
+  padding: var(--sp-4);
+  overflow-y: auto;
+  transform: translateX(0);
+}
+.runs-drawer-header {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-3);
+  border-bottom: var(--border);
+  margin-bottom: var(--sp-3);
+  position: relative;
+}
+.runs-drawer-close {
+  position: absolute;
+  right: 0;
+  top: -4px;
+  background: transparent;
+  border: none;
+  color: var(--text-1);
+  font-size: 1.2rem;
+  cursor: pointer;
+}
+.runs-drawer-close:hover { color: var(--accent-celeste); }
+.runs-drawer-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-2) var(--sp-3); }
+.runs-drawer-metric { display: flex; flex-direction: column; gap: 1px; }
+.runs-drawer-metric-label { font-size: 0.68rem; color: var(--text-2); text-transform: uppercase; }
+.runs-drawer-metric-value { font-size: 0.85rem; }
+.runs-drawer-evidence {
+  display: inline-block;
+  margin-top: var(--sp-4);
+  color: var(--accent-celeste);
+  text-decoration: none;
+  font-size: 0.8rem;
+}
+.runs-drawer-evidence:hover { text-decoration: underline; }
+.runs-drawer-review-btn { display: block; margin-top: var(--sp-4); width: 100%; }
+.runs-drawer-loading, .runs-drawer-error { color: var(--text-1); padding: var(--sp-4) 0; }
+
+/* -- compare modal (uPlot) -- */
+.runs-compare-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 600;
+}
+.runs-compare-modal {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  width: min(720px, 92vw);
+}
+.runs-compare-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
+.runs-compare-header h3 { margin: 0; color: var(--accent-celeste); font-size: 0.95rem; }
+.runs-compare-close { background: transparent; border: none; color: var(--text-1); font-size: 1.3rem; cursor: pointer; }
+.runs-compare-close:hover { color: var(--accent-celeste); }
+.runs-compare-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); margin-bottom: var(--sp-3); }
+.runs-compare-legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.75rem; color: var(--text-1); }
+.runs-compare-dash-label { color: var(--text-2); }
+.runs-compare-chart { width: 100%; min-height: 320px; }
+
+/* ============================================================
+   M1.3 — shared chart module (lib/chart.js) + CHARTS section
+   (spec D.7-CHARTS, D.4 trade markers). Celeste accent, mono
+   tabular numbers, long/short tokens for candles (D.2 hard rule).
+   ============================================================ */
+.charts-section { display: flex; flex-direction: column; gap: var(--sp-3); height: 100%; }
+
+.charts-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: var(--sp-4);
+  padding: var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.charts-toolbar-group { display: flex; flex-direction: column; gap: 2px; }
+.charts-toolbar-group label {
+  font-size: 0.68rem;
+  color: var(--text-2);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.charts-symbol-select {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 3px 6px;
+  font-size: 0.78rem;
+}
+.charts-tf-buttons { display: flex; gap: 2px; }
+.charts-tf-btn {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.charts-tf-btn:hover { color: var(--accent-celeste); }
+.charts-tf-btn.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.charts-live-toggle {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-size: 0.78rem;
+  color: var(--text-1);
+  cursor: pointer;
+}
+.charts-overlay-chips { display: flex; gap: 4px; flex-wrap: wrap; }
+.charts-overlay-chip {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.charts-overlay-chip:hover { color: var(--accent-celeste); }
+.charts-overlay-chip.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.3);
+}
+.charts-tf-btn:focus-visible, .charts-overlay-chip:focus-visible, .charts-symbol-select:focus-visible {
+  outline: 1px solid var(--accent-celeste);
+}
+
+.charts-chart-host { flex: 1; min-height: 420px; }
+
+.chart-root {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: 420px;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  overflow: hidden;
+}
+.chart-canvas-host { width: 100%; height: 100%; min-height: 420px; }
+
+.chart-tooltip {
+  position: absolute;
+  z-index: 20;
+  background: var(--bg-3);
+  border: var(--border);
+  border-radius: var(--radius);
+  /* 2026-07-13 user request: popup ~30% bigger (box + font) — was
+     var(--sp-1) var(--sp-2) / 0.72rem / 220px, unreadable. */
+  padding: var(--sp-2) var(--sp-3);
+  font-size: 0.94rem;
+  color: var(--text-0);
+  pointer-events: none;
+  max-width: 290px;
+}
+.chart-tooltip-row { line-height: 1.4; }
+.chart-tooltip-ts { color: var(--text-1); }
+/* Wave-2b req 5: per-signal hover mini-table (ficha/exit_reason/px/pnl/dur) */
+.chart-tooltip-signal-header { color: var(--text-0); font-weight: 600; }
+.chart-tooltip-signal-total { border-top: 1px solid rgba(0,191,255,.18); margin-top: 2px; padding-top: 2px; }
+.chart-tooltip-pos { color: var(--long, #26a69a); }
+.chart-tooltip-neg { color: var(--short, #ef5350); }
+
+.chart-state-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(10,14,20,.55);
+  z-index: 10;
+}
+/* ROOT-CAUSE FIX (2026-07-11b7): `display:flex` above overrides the `hidden`
+ * attribute (the UA `[hidden]{display:none}` rule has lower specificity), so
+ * stateOverlay.hidden=true left this full-chart, z-index:10, inset:0 DIV in the
+ * layout. document.elementFromPoint over the chart returned .chart-state-overlay
+ * -- it intercepted EVERY mouse event, so lightweight-charts never received a
+ * pointer move: no crosshair, no tooltip, no hover-driven glow. This restores
+ * real hiding. (Same guard on .chart-tooltip for safety.) */
+.chart-state-overlay[hidden] { display: none; }
+.chart-skeleton, .chart-empty {
+  padding: var(--sp-4) var(--sp-6);
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.chart-skeleton { animation: sentinel-pulse 1.4s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .chart-skeleton { animation: none; }
+}
+.chart-error-box {
+  padding: var(--sp-4) var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.chart-error-box button, .chart-retry-btn {
+  margin-top: var(--sp-2);
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+.chart-error { color: var(--accent-red); padding: var(--sp-4); }
+
+/* -- TRADE REVIEW (M2.2, plan §D.7-REVIEW: 2 columns 320px | 1fr) -- */
+.review-section {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.review-left {
+  display: grid;
+  /* 3 rows: runs pane | drag divider | trades pane. Default 50/50 is set
+     inline by review.js (setupPaneDivider); this is the pre-JS fallback. */
+  grid-template-rows: 1fr 6px 1fr;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow: hidden;
+}
+/* legacy focus presets (unused now; kept for a future preset toggle) */
+.review-left.focused-top { grid-template-rows: 3fr 6px 1fr; }
+.review-left.focused-bottom { grid-template-rows: 1fr 6px 3fr; }
+.review-pane-divider {
+  cursor: row-resize;
+  background: rgba(0,191,255,.12);
+  border-radius: 3px;
+  align-self: stretch;
+}
+.review-pane-divider:hover { background: rgba(0,191,255,.35); }
+.review-right {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  min-height: 0;
+}
+
+.review-selector-host { min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+.review-run-selector {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  height: 100%;
+  min-height: 0;
+}
+.review-run-search {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 4px 8px;
+  font-size: 0.78rem;
+}
+.review-run-search:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-run-groups {
+  overflow-y: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+}
+.review-run-group { border-bottom: 1px solid rgba(0,191,255,.08); }
+.review-run-group:last-child { border-bottom: none; }
+.review-run-group-header { padding: var(--sp-1) var(--sp-2); }
+.review-run-item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-left: 2px solid transparent;
+  color: var(--text-1);
+  padding: 3px var(--sp-2) 3px var(--sp-3);
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.review-run-item:hover { color: var(--text-0); background: var(--bg-3); }
+.review-run-item.active {
+  color: var(--accent-celeste);
+  border-left-color: var(--accent-celeste);
+  background: var(--bg-3);
+}
+
+/* REV-2 fix 2: vlist.js re-stamps this class on scroll/re-render; without a
+   rule the selection highlight vanished once a selected row scrolled out
+   and back into the viewport. Visually equivalent to .review-run-item.active. */
+.vlist-selected {
+  color: var(--accent-celeste);
+  border-left-color: var(--accent-celeste);
+  background: var(--bg-3);
+}
+
+/* -- POSICIONES (M2.3, plan §D.7-POSICIONES: tabs + forward_session cards) -- */
+.positions-section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.positions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  flex: 0 0 auto;
+}
+.positions-tabs { display: flex; gap: var(--sp-2); }
+.positions-tab {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 4px var(--sp-3);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+}
+.positions-tab:hover { color: var(--text-0); }
+.positions-tab.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.positions-tab:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-reimport-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.positions-reimport-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.positions-reimport-btn:disabled { opacity: 0.6; cursor: default; }
+.positions-reimport-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+.positions-body { flex: 1; min-height: 0; overflow: auto; }
+.positions-empty-future,
+.positions-empty,
+.positions-loading,
+.positions-error {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-2);
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-1);
+  font-size: 0.85rem;
+}
+.positions-error { color: var(--accent-red); }
+.positions-retry-btn {
+  display: block;
+  margin: var(--sp-2) auto 0;
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  cursor: pointer;
+}
+
+.positions-estrategia-wrap {
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  gap: var(--sp-3);
+  height: 100%;
+  min-height: 0;
+}
+.positions-cards {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  overflow-y: auto;
+}
+.positions-session-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  text-align: left;
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  cursor: pointer;
+}
+.positions-session-card:hover { background: var(--bg-3); }
+.positions-session-card.active {
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.positions-session-card:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-card-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.72rem;
+  color: var(--text-1);
+}
+.positions-card-perfil, .positions-card-estado { color: var(--text-1); }
+.positions-card-pnl { font-weight: 600; }
+
+.positions-detail {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  min-height: 0;
+  overflow: hidden;
+}
+.positions-detail-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.positions-view-review-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 4px 12px;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+.positions-view-review-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.positions-view-review-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.positions-detail-empty,
+.positions-detail-loading,
+.positions-detail-error {
+  color: var(--text-1);
+  font-size: 0.85rem;
+  padding: var(--sp-3);
+}
+.positions-detail-error { color: var(--accent-red); }
+.positions-vtable { flex: 1; min-height: 0; }
+.review-run-item:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-run-empty { padding: var(--sp-3); color: var(--text-2); font-size: 0.78rem; }
+
+.review-tradelist-host {
+  flex: 1;
+  min-height: 0;
+  border: var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.review-vtable { height: 100%; }
+.review-tradelist-loading, .review-tradelist-empty, .review-tradelist-error {
+  padding: var(--sp-4);
+  color: var(--text-1);
+}
+.review-row-selected {
+  background: rgba(0,191,255,.14) !important;
+  box-shadow: inset 2px 0 0 var(--accent-celeste);
+}
+
+/* Wave-2b req 7: signal-grouped trade list -- header row (signal summary)
+   + 3 ficha sub-rows (F1/F2/F3), styled distinctly. */
+.vtable-row[data-key$="::hdr"] {
+  background: var(--bg-2);
+  font-weight: 600;
+}
+.vtable-row:not([data-key$="::hdr"]) {
+  padding-left: var(--sp-3);
+  opacity: 0.92;
+}
+.review-ficha-label {
+  color: var(--accent-celeste);
+  font-size: 0.72rem;
+  letter-spacing: 0.03em;
+}
+.review-ficha-exit-reason { color: var(--text-1); }
+
+.review-header-host {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.review-header-row { display: flex; align-items: center; gap: var(--sp-3); flex-wrap: wrap; }
+.review-header-window, .review-header-modelo { color: var(--text-1); font-size: 0.74rem; }
+.review-header-summary { display: flex; gap: var(--sp-4); font-size: 0.78rem; color: var(--text-0); }
+.review-header-loading, .review-header-empty, .review-header-error { color: var(--text-1); }
+
+/* ============================================================
+   M2.6 — variable-speed forward-walk playback (CHARTS + REVIEW)
+   + folded-in REVIEW TF-switcher fix. Celeste accent, mono
+   tabular ts label (D.2 hard rule).
+   ============================================================ */
+.review-toolbar { display: flex; align-items: center; gap: var(--sp-3); flex: 0 0 auto; }
+.review-tf-buttons { display: flex; gap: 2px; }
+.review-tf-btn {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 3px 8px;
+  font-size: 0.75rem;
+  cursor: pointer;
+  font-family: var(--font-mono);
+}
+.review-tf-btn:hover { color: var(--accent-celeste); }
+.review-tf-btn.active {
+  color: var(--accent-celeste);
+  border-color: var(--accent-celeste);
+  box-shadow: var(--glow-sm) rgba(0,191,255,.35);
+}
+.review-tf-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-tf-btn.native-tf { position: relative; }
+.review-tf-btn.native-tf::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  left: -2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent-celeste);
+}
+
+/* position nav bar (◀ Anterior / counter / Siguiente ▶) under the chart */
+.review-posnav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+.review-posnav-btn {
+  background: var(--bg-1);
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 5px 14px;
+  font-size: 0.82rem;
+  cursor: pointer;
+  font-family: var(--font-ui);
+}
+.review-posnav-btn:hover:not(:disabled) { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.review-posnav-btn:disabled { opacity: 0.4; cursor: default; border-color: var(--border); color: var(--text-2); }
+.review-posnav-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.review-posnav-counter { min-width: 84px; text-align: center; color: var(--text-1); font-size: 0.85rem; }
+
+.playback-host { flex: 0 0 auto; }
+.playback-bar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.playback-play-btn {
+  background: transparent;
+  border: 1px solid var(--accent-celeste);
+  color: var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 2px 10px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  min-width: 32px;
+}
+.playback-play-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.3); }
+.playback-play-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.playback-speed-select {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 2px 6px;
+  font-size: 0.75rem;
+  font-family: var(--font-mono);
+}
+.playback-speed-select:focus-visible { outline: 1px solid var(--accent-celeste); }
+.playback-scrub {
+  flex: 1;
+  accent-color: var(--accent-celeste);
+}
+.playback-ts-label {
+  color: var(--text-1);
+  font-size: 0.75rem;
+  min-width: 140px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.review-chart-host { flex: 1; min-height: 380px; }
+
+/* ---- M2.7: management UI (create variant, run backtest, graduate) ---- */
+.runs-toolbar { display: flex; justify-content: flex-end; margin-bottom: var(--sp-2); }
+.manage-add-variant-btn,
+.manage-submit-btn {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--accent-celeste);
+  padding: 4px 12px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+.manage-add-variant-btn:hover,
+.manage-submit-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.35); }
+.manage-add-variant-btn:focus-visible,
+.manage-submit-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+.manage-submit-btn:disabled { opacity: 0.6; cursor: default; box-shadow: none; }
+
+.runs-backtest-btn {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--accent-celeste);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.runs-backtest-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.3); }
+.runs-backtest-btn:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+/* generic modal shell reused by "+ Variante" and "Backtest" (D.2 tokens).
+   z-index must sit ABOVE the left column's .tt-wrap tooltips (z-index 100),
+   which create root-level stacking contexts — at the original z-index 50 the
+   left panel rendered on top and the modal appeared "behind"/invisible.
+   Kept just below the toast layer (9999) so toasts still surface over it. */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 14, 20, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.modal-box {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-4);
+  width: 420px;
+  max-width: calc(100vw - 2 * var(--sp-4));
+  max-height: calc(100vh - 2 * var(--sp-4));
+  overflow: auto;
+}
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--sp-3); }
+.modal-header h3 { margin: 0; color: var(--accent-celeste); font-size: 0.95rem; font-weight: 600; }
+.modal-close { background: transparent; border: none; color: var(--text-1); font-size: 1.3rem; cursor: pointer; line-height: 1; }
+.modal-close:hover { color: var(--accent-celeste); }
+.modal-close:focus-visible { outline: 1px solid var(--accent-celeste); }
+
+.manage-form { display: flex; flex-direction: column; gap: var(--sp-2); }
+.manage-field { display: flex; flex-direction: column; gap: 2px; font-size: 0.78rem; color: var(--text-1); }
+.manage-input {
+  background: var(--bg-1);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-0);
+  padding: 4px 8px;
+  font-size: 0.8rem;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+.manage-input:focus-visible { outline: 1px solid var(--accent-celeste); }
+.manage-params-editor { display: flex; flex-direction: column; gap: var(--sp-1); border-top: var(--border); padding-top: var(--sp-2); }
+.manage-params-title { color: var(--text-2); font-size: 0.7rem; text-transform: uppercase; }
+.manage-param-field { flex-direction: row; align-items: center; justify-content: space-between; gap: var(--sp-2); }
+.manage-param-field span { min-width: 120px; }
+.manage-param-input { flex: 1; }
+.manage-form-error { color: var(--accent-red); font-size: 0.78rem; }
+.manage-job-progress { color: var(--text-1); font-size: 0.78rem; font-family: var(--font-mono); }
+.manage-form-actions { display: flex; justify-content: flex-end; margin-top: var(--sp-2); }
+
+/* strategy state panel (POSICIONES tab ESTRATEGIA) */
+.manage-strategy-panel { margin-bottom: var(--sp-4); }
+.manage-strategy-panel-title { color: var(--text-2); font-size: 0.75rem; text-transform: uppercase; margin-bottom: var(--sp-2); }
+.manage-strategy-cards { display: flex; flex-direction: column; gap: var(--sp-2); }
+.manage-strategy-card {
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.manage-strategy-card-top { display: flex; align-items: center; gap: var(--sp-2); }
+.manage-graduated-star { color: var(--accent-amber); font-size: 0.9rem; }
+.manage-estado-badge {
+  margin-left: auto;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  padding: 1px 6px;
+  border-radius: var(--radius);
+  border: var(--border);
+  color: var(--text-1);
+}
+.manage-estado-activa { color: var(--long); border-color: var(--long); }
+.manage-estado-pausada { color: var(--accent-amber); border-color: var(--accent-amber); }
+.manage-estado-graduada { color: var(--accent-celeste); border-color: var(--accent-celeste); }
+.manage-estado-controls { display: flex; gap: var(--sp-1); }
+.manage-estado-btn {
+  background: transparent;
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-1);
+  padding: 2px 8px;
+  font-size: 0.72rem;
+  cursor: pointer;
+}
+.manage-estado-btn.active { color: var(--accent-celeste); border-color: var(--accent-celeste); }
+.manage-estado-btn:hover { box-shadow: var(--glow-sm) rgba(0,191,255,.25); }
+.manage-estado-btn:disabled { opacity: 0.5; cursor: default; box-shadow: none; }
+
+/* CHAT — CT-6 model dropdown / gated-unlock prompt / usage meter (A9) */
+.llm-model-select {
+  background: var(--bg-1);
+  color: var(--text-0);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+}
+.llm-unlock-slot:empty { display: none; }
+.llm-unlock-prompt {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-2);
+  border: var(--border);
+  border-radius: var(--radius);
+}
+.llm-unlock-label { color: var(--text-2); font-size: 0.78rem; }
+.llm-unlock-input {
+  background: var(--bg-1);
+  color: var(--text-0);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 3px 6px;
+  font-family: var(--font-mono);
+}
+.llm-unlock-btn {
+  background: transparent;
+  color: var(--accent-celeste);
+  border: 1px solid var(--accent-celeste);
+  border-radius: var(--radius);
+  padding: 3px 10px;
+  cursor: pointer;
+}
+.llm-unlock-error { color: var(--accent-red); font-size: 0.75rem; }
+.llm-usage-meter {
+  color: var(--text-2);
+  font-size: 0.72rem;
+  font-family: var(--font-mono);
+  margin-bottom: var(--sp-2);
+}
+
+@keyframes shake-error {
+  10%, 90% { transform: translateX(-1px); }
+  20%, 80% { transform: translateX(2px); }
+  30%, 50%, 70% { transform: translateX(-4px); }
+  40%, 60% { transform: translateX(4px); }
+}
+.shake-error { animation: shake-error 0.4s linear; border-color: var(--accent-red) !important; }
+.manage-estado-btn:focus-visible { outline: 1px solid var(--accent-celeste); }

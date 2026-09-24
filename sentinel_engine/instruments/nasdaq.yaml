@@ -1,0 +1,58 @@
+instrument: nasdaq
+target: NQ100
+symbols:
+  sp500: SP
+  vix: VIX_Jun26
+  dxy: USDX_Jun26
+  usdjpy: USDJPY
+  bitcoin: BTCUSD
+  wti: WTI
+  eurusd: EURUSD
+  gold: XAUUSD
+expected_correlations:
+  sp500: 0.92
+  vix: -0.80
+  dxy: -0.50
+  usdjpy: 0.45
+  bitcoin: 0.55
+  wti: -0.35
+  eurusd: 0.35
+  gold: -0.15
+asset_weights:
+  sp500: 3.0
+  vix: 3.0
+  dxy: 2.5
+  usdjpy: 2.0
+  bitcoin: 1.5
+  wti: 0.7
+  eurusd: 1.0
+  gold: 0.5
+macro:
+  tanh_sensitivity: 5.0
+  tracker: {lambda_var: 0.85, lambda_cov: 0.97, concordance_window: 60}
+  warmup_threshold: 30
+  direction_threshold: 0.15
+technical:
+  tf_weights: {M15: 0.10, M5: 0.20, M2: 0.35, M1: 0.35}
+  indicators:
+    ema_fast: 9
+    ema_mid: 21
+    ema_slow: 50
+    ema_trend: 200
+    rsi_period: 14
+    rsi_overbought: 70
+    rsi_oversold: 30
+    macd_fast: 12
+    macd_slow: 26
+    macd_signal: 9
+    bb_period: 20
+    bb_std: 2.0
+    atr_period: 14
+composite:
+  weights: {technical: 0.50, correlation: 0.50}
+  direction_vote_weights: {technical: 2, macro: 3}
+  score_alert_threshold: 65
+  score_strong_threshold: 75
+data:
+  bars_to_fetch: 200
+  timeframes: {M1: 1, M2: 2, M5: 5, M15: 15}

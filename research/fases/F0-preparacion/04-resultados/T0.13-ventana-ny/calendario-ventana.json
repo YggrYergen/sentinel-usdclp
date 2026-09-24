@@ -1,0 +1,397 @@
+{
+  "generado": "2026-08-12T08:04:06Z",
+  "git_sha": "9fc6693cddfa83b8767e013f6807094115008e0c",
+  "broker": "capitaria",
+  "substrate_id": "capitaria-ticks-2026-preholdout-y-postholdout",
+  "sustrato": "data/lake_ticks/XAUUSD/ (ticks reales Capitaria)",
+  "condicion_estrecho": "abs((ask-bid) - 0.5) <= 0.05  (backtest.py:358, verbatim)",
+  "resolucion_borde": "15 minutos (bucket donde el % estrecho cruza 50%)",
+  "tramos_medidos": [
+    [
+      "2026-01-01",
+      "2026-05-12"
+    ],
+    [
+      "2026-07-27",
+      "2026-08-13"
+    ]
+  ],
+  "holdout_excluido": [
+    "2026-05-12",
+    "2026-07-27"
+  ],
+  "rango_medido": {
+    "desde": "2026-01-01",
+    "hasta": "2026-08-13"
+  },
+  "umbral_min_ticks_semana": 500000,
+  "n_ticks_totales_cargados": 34004053,
+  "n_semanas_medidas": 23,
+  "n_semanas_baja_cobertura": 2,
+  "periodos": [
+    {
+      "desde": "2026-01-01",
+      "hasta": "2026-03-06",
+      "semana_desde": "2025-12-28",
+      "semana_hasta": "2026-03-01",
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00",
+      "n_ticks": 9496269,
+      "semanas": [
+        "2025-12-28",
+        "2026-01-04",
+        "2026-01-11",
+        "2026-01-18",
+        "2026-01-25",
+        "2026-02-01",
+        "2026-02-08",
+        "2026-02-15",
+        "2026-02-22",
+        "2026-03-01"
+      ],
+      "n_semanas": 10,
+      "n_semanas_baja_cobertura": 1,
+      "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 2,
+        "apertura_utc": 2,
+        "apertura_srv": 2,
+        "cierre_utc": 2,
+        "cierre_srv": 2
+      },
+      "ticks_estrechos_dentro": 2926521,
+      "ticks_estrechos_fuera": 45336,
+      "pct_acierto": 98.4745
+    },
+    {
+      "desde": "2026-03-08",
+      "hasta": "2026-04-02",
+      "semana_desde": "2026-03-08",
+      "semana_hasta": "2026-03-29",
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "06:00",
+      "apertura_srv": "19:00",
+      "cierre_srv": "03:00",
+      "n_ticks": 7212138,
+      "semanas": [
+        "2026-03-08",
+        "2026-03-15",
+        "2026-03-22",
+        "2026-03-29"
+      ],
+      "n_semanas": 4,
+      "n_semanas_baja_cobertura": 0,
+      "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 1,
+        "apertura_utc": 1,
+        "apertura_srv": 1,
+        "cierre_utc": 1,
+        "cierre_srv": 1
+      },
+      "ticks_estrechos_dentro": 1803376,
+      "ticks_estrechos_fuera": 51264,
+      "pct_acierto": 97.2359
+    },
+    {
+      "desde": "2026-04-05",
+      "hasta": "2026-05-11",
+      "semana_desde": "2026-04-05",
+      "semana_hasta": "2026-05-10",
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:00",
+      "n_ticks": 11529443,
+      "semanas": [
+        "2026-04-05",
+        "2026-04-12",
+        "2026-04-19",
+        "2026-04-26",
+        "2026-05-03",
+        "2026-05-10"
+      ],
+      "n_semanas": 6,
+      "n_semanas_baja_cobertura": 1,
+      "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 3,
+        "apertura_utc": 2,
+        "apertura_srv": 2,
+        "cierre_utc": 3,
+        "cierre_srv": 3
+      },
+      "ticks_estrechos_dentro": 3395022,
+      "ticks_estrechos_fuera": 203313,
+      "pct_acierto": 94.3498
+    },
+    {
+      "desde": "2026-07-26",
+      "hasta": "2026-08-11",
+      "semana_desde": "2026-07-26",
+      "semana_hasta": "2026-08-09",
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15",
+      "n_ticks": 5766203,
+      "semanas": [
+        "2026-07-26",
+        "2026-08-02",
+        "2026-08-09"
+      ],
+      "n_semanas": 3,
+      "n_semanas_baja_cobertura": 0,
+      "n_semanas_bordes_discrepantes": {
+        "cierre_ny": 1,
+        "apertura_utc": 0,
+        "apertura_srv": 0,
+        "cierre_utc": 1,
+        "cierre_srv": 1
+      },
+      "ticks_estrechos_dentro": 1986054,
+      "ticks_estrechos_fuera": 27490,
+      "pct_acierto": 98.6347
+    }
+  ],
+  "bordes_por_semana": {
+    "2025-12-28": {
+      "n_ticks_semana": 168969,
+      "baja_cobertura": true,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:15",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:15"
+    },
+    "2026-01-04": {
+      "n_ticks_semana": 894744,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-01-11": {
+      "n_ticks_semana": 922797,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-01-18": {
+      "n_ticks_semana": 940041,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-01-25": {
+      "n_ticks_semana": 1375860,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-02-01": {
+      "n_ticks_semana": 1324336,
+      "baja_cobertura": false,
+      "apertura_ny": "18:15",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:15",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:15",
+      "cierre_srv": "04:00"
+    },
+    "2026-02-08": {
+      "n_ticks_semana": 1001234,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-02-15": {
+      "n_ticks_semana": 776895,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-02-22": {
+      "n_ticks_semana": 917203,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:15",
+      "apertura_utc": "23:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "20:00",
+      "cierre_srv": "04:15"
+    },
+    "2026-03-01": {
+      "n_ticks_semana": 1174190,
+      "baja_cobertura": false,
+      "apertura_ny": "18:15",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:15",
+      "cierre_utc": "07:00",
+      "apertura_srv": "20:15",
+      "cierre_srv": "04:00"
+    },
+    "2026-03-08": {
+      "n_ticks_semana": 1041138,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "19:00",
+      "cierre_srv": "04:00"
+    },
+    "2026-03-15": {
+      "n_ticks_semana": 1108452,
+      "baja_cobertura": false,
+      "apertura_ny": "19:15",
+      "cierre_ny": "02:00",
+      "apertura_utc": "23:15",
+      "cierre_utc": "06:00",
+      "apertura_srv": "20:15",
+      "cierre_srv": "03:00"
+    },
+    "2026-03-22": {
+      "n_ticks_semana": 2595227,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "06:00",
+      "apertura_srv": "19:00",
+      "cierre_srv": "03:00"
+    },
+    "2026-03-29": {
+      "n_ticks_semana": 2467321,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "02:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "06:00",
+      "apertura_srv": "19:00",
+      "cierre_srv": "03:00"
+    },
+    "2026-04-05": {
+      "n_ticks_semana": 2326342,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:00"
+    },
+    "2026-04-12": {
+      "n_ticks_semana": 2128800,
+      "baja_cobertura": false,
+      "apertura_ny": "18:15",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:15",
+      "cierre_utc": "07:00",
+      "apertura_srv": "18:15",
+      "cierre_srv": "03:00"
+    },
+    "2026-04-19": {
+      "n_ticks_semana": 2217126,
+      "baja_cobertura": false,
+      "apertura_ny": "18:15",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:15",
+      "cierre_utc": "07:00",
+      "apertura_srv": "18:15",
+      "cierre_srv": "03:00"
+    },
+    "2026-04-26": {
+      "n_ticks_semana": 2291512,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15"
+    },
+    "2026-05-03": {
+      "n_ticks_semana": 2135091,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15"
+    },
+    "2026-05-10": {
+      "n_ticks_semana": 430572,
+      "baja_cobertura": true,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15"
+    },
+    "2026-07-26": {
+      "n_ticks_semana": 2441215,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15"
+    },
+    "2026-08-02": {
+      "n_ticks_semana": 2336189,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:00",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:00",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:00"
+    },
+    "2026-08-09": {
+      "n_ticks_semana": 988799,
+      "baja_cobertura": false,
+      "apertura_ny": "18:00",
+      "cierre_ny": "03:15",
+      "apertura_utc": "22:00",
+      "cierre_utc": "07:15",
+      "apertura_srv": "18:00",
+      "cierre_srv": "03:15"
+    }
+  },
+  "regla_extrapolacion": "Para fechas anteriores a rango_medido.desde: se conserva la apertura 18:00 ET (ancla de mercado) y se aplica el cierre del periodo medido mas cercano en el calendario, respetando el DST vigente en esa fecha (D-36). Aplicado por scripts/research/ventana_calendario.py, marcado via es_extrapolado()."
+}

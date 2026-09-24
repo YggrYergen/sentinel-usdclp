@@ -1,0 +1,1416 @@
+{
+  "parse_stats": {
+    "total_lines": 1858,
+    "cycles_parsed": 900,
+    "parse_skipped": 0
+  },
+  "configs": {
+    "SS-M2": {
+      "cycles": 45,
+      "bars_checked": 6772,
+      "hard": 12,
+      "counts_by_kind": {
+        "BAR_LAG": 10,
+        "SIGNAL_MISMATCH": 12
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1347,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1392,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1437,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1482,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1527,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1572,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1617,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1617,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1617,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1617,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1677,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1677,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1677,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1677,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1737,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1737,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1737,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1737,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1797,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1797,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1797,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1797,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        }
+      ]
+    },
+    "V06D-M2": {
+      "cycles": 45,
+      "bars_checked": 6772,
+      "hard": 33,
+      "counts_by_kind": {
+        "SIGNAL_MISMATCH": 33,
+        "BAR_LAG": 10
+      },
+      "findings": [
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 991,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 991,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 991,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1042,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1042,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1042,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1093,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1093,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1093,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1144,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1144,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1144,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1195,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1195,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1195,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1246,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1246,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1246,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1297,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1297,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1297,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1348,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1393,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1438,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1483,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1528,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1573,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1621,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1621,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1621,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1621,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1681,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1681,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1681,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1681,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1741,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1741,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1741,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1741,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1801,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1801,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1801,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1801,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        }
+      ]
+    },
+    "V15-M2": {
+      "cycles": 45,
+      "bars_checked": 6772,
+      "hard": 12,
+      "counts_by_kind": {
+        "BAR_LAG": 10,
+        "SIGNAL_MISMATCH": 12
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1349,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1394,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1439,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1484,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1529,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1574,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1625,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1625,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1625,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1625,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1685,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1685,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1685,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1685,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1745,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1745,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1745,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1745,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1805,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1805,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1805,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1805,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        }
+      ]
+    },
+    "SS-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 3,
+      "counts_by_kind": {
+        "BAR_LAG": 1,
+        "SIGNAL_MISMATCH": 3
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1809,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1809,
+          "bar_t": 1783990200,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783989900"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1809,
+          "bar_t": 1783990200,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783989900"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1809,
+          "bar_t": 1783990200,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783989900"
+        }
+      ]
+    },
+    "V06D-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 1
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1813,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        }
+      ]
+    },
+    "V13-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 1
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1814,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        }
+      ]
+    },
+    "SS-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V13-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V06D-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V06C-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 1
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1827,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        }
+      ]
+    },
+    "V06C-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V06B-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V15-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V10-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 1
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1840,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        }
+      ]
+    },
+    "V10-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "V13-M2": {
+      "cycles": 45,
+      "bars_checked": 6772,
+      "hard": 33,
+      "counts_by_kind": {
+        "SIGNAL_MISMATCH": 33,
+        "BAR_LAG": 10
+      },
+      "findings": [
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1029,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1029,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1029,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1080,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1080,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1080,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1131,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1131,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1131,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1182,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1182,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1182,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1233,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1233,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1233,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1284,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1284,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1284,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1335,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1335,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1335,
+          "bar_t": 1783990080,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1383,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1428,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1473,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1518,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1563,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1608,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1662,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1662,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1662,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1662,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1722,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1722,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1722,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1722,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1782,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1782,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1782,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1782,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1845,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1845,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1845,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990080"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1845,
+          "bar_t": 1783990320,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990080"
+        }
+      ]
+    },
+    "V09-CTRL-M5": {
+      "cycles": 45,
+      "bars_checked": 6751,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 1
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1849,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783989900, executor bar t=1783990200 (gap=300s, 1.00 bars)"
+        }
+      ]
+    },
+    "V09-CTRL-M15": {
+      "cycles": 45,
+      "bars_checked": 6701,
+      "hard": 0,
+      "counts_by_kind": {},
+      "findings": []
+    },
+    "SS-M1": {
+      "cycles": 45,
+      "bars_checked": 6958,
+      "hard": 12,
+      "counts_by_kind": {
+        "BAR_LAG": 14,
+        "SIGNAL_MISMATCH": 12
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1191,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990200 (gap=60s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1242,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990200 (gap=60s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1293,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990200 (gap=60s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1344,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990200 (gap=60s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1389,
+          "bar_t": 1783990260,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990260 (gap=120s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1434,
+          "bar_t": 1783990260,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990260 (gap=120s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1479,
+          "bar_t": 1783990260,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990260 (gap=120s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1524,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990320 (gap=180s, 3.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1569,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990320 (gap=180s, 3.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1614,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990320 (gap=180s, 3.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1671,
+          "bar_t": 1783990380,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990380 (gap=240s, 4.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1671,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1671,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1671,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990140"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1731,
+          "bar_t": 1783990380,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990380 (gap=240s, 4.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1731,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1731,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1731,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990140"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1791,
+          "bar_t": 1783990380,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990380 (gap=240s, 4.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1791,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1791,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1791,
+          "bar_t": 1783990380,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990140"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1854,
+          "bar_t": 1783990440,
+          "detail": "lake last bar <= cycle time is t=1783990140, executor bar t=1783990440 (gap=300s, 5.00 bars)"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1854,
+          "bar_t": 1783990440,
+          "detail": "executor logged OPEN/F1 but lake-recomputed desired state has no open ficha F1 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1854,
+          "bar_t": 1783990440,
+          "detail": "executor logged OPEN/F2 but lake-recomputed desired state has no open ficha F2 at bar t=1783990140"
+        },
+        {
+          "kind": "SIGNAL_MISMATCH",
+          "hard": true,
+          "line_no": 1854,
+          "bar_t": 1783990440,
+          "detail": "executor logged OPEN/F3 but lake-recomputed desired state has no open ficha F3 at bar t=1783990140"
+        }
+      ]
+    },
+    "V11-M2": {
+      "cycles": 45,
+      "bars_checked": 6772,
+      "hard": 0,
+      "counts_by_kind": {
+        "BAR_LAG": 10
+      },
+      "findings": [
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1390,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1435,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1480,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1525,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1570,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1615,
+          "bar_t": 1783990200,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990200 (gap=120s, 1.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1675,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1735,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1795,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        },
+        {
+          "kind": "BAR_LAG",
+          "hard": false,
+          "line_no": 1858,
+          "bar_t": 1783990320,
+          "detail": "lake last bar <= cycle time is t=1783990080, executor bar t=1783990320 (gap=240s, 2.00 bars)"
+        }
+      ]
+    }
+  }
+}

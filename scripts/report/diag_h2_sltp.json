@@ -1,0 +1,398 @@
+{
+  "session": {
+    "window_broker_time": "2026-07-14 01:03:00 -> 07:57:06 (broker server time == audit-log clock; broker = PC-UTC - 4h)",
+    "clock_note": "Mission labeled the window 'UTC'. Measured: MT5 symbol_info_tick.time showed 09:17:09 while PC UTC clock showed 13:17:09 (offset exactly -4h). Audit-log line timestamps equal broker time: first IN deal SS-M2:F1 at broker 01:06:02 matches audit line '2026-07-14 01:06:01,520 [SENT OPEN] SS-M2 F1'. The daemon's own '=== cycle ... +00:00' lines use the PC clock (true UTC): armed session spans true UTC 05:03:32 -> 11:57:05.",
+    "account_login_verified": 2883015767,
+    "account_currency": "CLP",
+    "symbol": "XAUUSD",
+    "magic_band": [
+      720011,
+      720203
+    ],
+    "usd_clp_rate_used": 933.5
+  },
+  "part_a_code_facts": {
+    "reconciler_action_kinds": [
+      "OPEN",
+      "CLOSE",
+      "MODIFY",
+      "NOOP",
+      "REJECT_VOLUME",
+      "REJECT_CAP",
+      "SUPPRESSED_OPEN",
+      "SAME_BAR_EXIT_FALLBACK",
+      "MISSING_SL_ALARM"
+    ],
+    "any_action_carries_tp": false,
+    "modify_desired_sl_source": "open_state[tag]['sl'] from simular_variant(return_state=True); reconciler.py:223 desired_sl = d.get('sl')",
+    "executor_open_request_fields": [
+      "action=TRADE_ACTION_DEAL",
+      "symbol",
+      "volume",
+      "type",
+      "price",
+      "sl",
+      "deviation",
+      "magic",
+      "comment",
+      "type_filling"
+    ],
+    "executor_modify_request_fields": [
+      "action=TRADE_ACTION_SLTP",
+      "symbol",
+      "position",
+      "sl",
+      "magic"
+    ],
+    "tp_field_ever_sent": false,
+    "configs_with_nonzero_tp_r": [],
+    "configs_that_can_emit_EXIT_TP": [],
+    "sim_sl_trigger_long": "bar['low'] <= sl_check  (emasar_variant.py:452, also 425, 523)",
+    "sim_sl_trigger_short": "bar['high'] >= sl_check  (emasar_variant.py:457, also 426, 551)",
+    "bars_are_bid_based": true,
+    "broker_sl_semantics_flagged_from_mt5_docs": "long SL executes when BID <= SL; short SL executes when ASK >= SL"
+  },
+  "part_b_measured": {
+    "q5_out_deal_reason_histogram_overall": {
+      "EXPERT": 1002,
+      "SL": 9
+    },
+    "q5_out_deal_reason_histogram_per_config": {
+      "SS-M1": {
+        "EXPERT": 162,
+        "SL": 9
+      },
+      "SS-M2": {
+        "EXPERT": 93
+      },
+      "V15-M2": {
+        "EXPERT": 84
+      },
+      "V06D-M2": {
+        "EXPERT": 102
+      },
+      "V13-M2": {
+        "EXPERT": 102
+      },
+      "V11-M2": {
+        "EXPERT": 81
+      },
+      "SS-M5": {
+        "EXPERT": 42
+      },
+      "V06D-M5": {
+        "EXPERT": 51
+      },
+      "V13-M5": {
+        "EXPERT": 54
+      },
+      "V06C-M5": {
+        "EXPERT": 51
+      },
+      "V10-M5": {
+        "EXPERT": 27
+      },
+      "V09-CTRL-M5": {
+        "EXPERT": 51
+      },
+      "V09-CTRL-M15": {
+        "EXPERT": 15
+      },
+      "SS-M15": {
+        "EXPERT": 12
+      },
+      "V13-M15": {
+        "EXPERT": 12
+      },
+      "V06D-M15": {
+        "EXPERT": 15
+      },
+      "V06C-M15": {
+        "EXPERT": 15
+      },
+      "V06B-M15": {
+        "EXPERT": 15
+      },
+      "V15-M15": {
+        "EXPERT": 9
+      },
+      "V10-M15": {
+        "EXPERT": 9
+      }
+    },
+    "q5_totals": {
+      "out_deals": 1011,
+      "in_deals": 1011,
+      "positions": 1011,
+      "positions_matched_in_out": 1011
+    },
+    "q5_orders": {
+      "orders_total": 2022,
+      "tp_nonzero": 0,
+      "sl_nonzero": 1011,
+      "opening_orders": 1011,
+      "opening_orders_sl_nonzero": 1011,
+      "opening_orders_tp_nonzero": 0,
+      "closing_orders": 1011,
+      "closing_orders_sl_nonzero": 0,
+      "closing_orders_tp_nonzero": 0
+    },
+    "q6_modify_fidelity": {
+      "modify_order_send_attempts": 297,
+      "modify_succeeded_retcode_10009": 198,
+      "modify_failed_attempts_retcode_10016": 99,
+      "sl_clamped": 0,
+      "fallback_close_invalid_sl": 0,
+      "open_skipped_sl_crossed": 0,
+      "missing_sl_alarms": 0,
+      "alarm_exhausted_retries_lines": 33,
+      "alarm_exhausted_distinct_tickets": 18,
+      "alarm_tickets_all_config": "SS-M1 (magics 720191/720192/720193 only)",
+      "alarm_tickets_later_modify_succeeded": 12,
+      "alarm_tickets_never_modified_before_close": 6,
+      "open_sends": {
+        "retcode_10009": 1011,
+        "retcode_10027_client_disables_at": 21,
+        "retcode_10016_invalid_stops": 12
+      },
+      "close_sends": {
+        "SENT_CLOSE_10009": 48,
+        "SAME_BAR_EXIT_FALLBACK_10009": 954
+      }
+    },
+    "q7_long_short": {
+      "long": {
+        "n": 552,
+        "pnl_clp": -293503.32,
+        "pnl_usd_at_933.5": -314.41,
+        "sl_reason_exits": 6,
+        "gap_vs_opening_order_sl_usd": {
+          "avg": -9.44,
+          "median": -9.44,
+          "values": [
+            -10.34,
+            -10.34,
+            -10.34,
+            -8.54,
+            -8.54,
+            -8.54
+          ]
+        },
+        "gap_vs_last_installed_sl_usd": {
+          "avg": 0.0,
+          "median": 0.0
+        }
+      },
+      "short": {
+        "n": 459,
+        "pnl_clp": -418638.57,
+        "pnl_usd_at_933.5": -448.46,
+        "sl_reason_exits": 3,
+        "gap_vs_opening_order_sl_usd": {
+          "avg": -13.37,
+          "median": -13.37,
+          "values": [
+            -13.37,
+            -13.37,
+            -13.37
+          ]
+        },
+        "gap_vs_last_installed_sl_usd": {
+          "avg": 0.0,
+          "median": 0.0
+        }
+      },
+      "total": {
+        "n": 1011,
+        "pnl_clp": -712141.89,
+        "pnl_usd_at_933.5": -762.87
+      },
+      "sl_executions_detail": [
+        {
+          "pos": 55111230,
+          "cfg": "SS-M1",
+          "ficha": "F1",
+          "side": "L",
+          "out_t_broker": "02:46:26",
+          "out_price": 4024.36,
+          "opening_sl": 4014.02,
+          "last_installed_sl": 4024.36,
+          "installed_at": "02:46:11",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55111231,
+          "cfg": "SS-M1",
+          "ficha": "F2",
+          "side": "L",
+          "out_t_broker": "02:46:26",
+          "out_price": 4024.36,
+          "opening_sl": 4014.02,
+          "last_installed_sl": 4024.36,
+          "installed_at": "02:46:11",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55111232,
+          "cfg": "SS-M1",
+          "ficha": "F3",
+          "side": "L",
+          "out_t_broker": "02:46:26",
+          "out_price": 4024.36,
+          "opening_sl": 4014.02,
+          "last_installed_sl": 4024.36,
+          "installed_at": "02:46:11",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55111431,
+          "cfg": "SS-M1",
+          "ficha": "F1",
+          "side": "L",
+          "out_t_broker": "03:20:13",
+          "out_price": 4026.38,
+          "opening_sl": 4017.84,
+          "last_installed_sl": 4026.38,
+          "installed_at": "03:19:14",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55111432,
+          "cfg": "SS-M1",
+          "ficha": "F2",
+          "side": "L",
+          "out_t_broker": "03:20:13",
+          "out_price": 4026.38,
+          "opening_sl": 4017.84,
+          "last_installed_sl": 4026.38,
+          "installed_at": "03:19:14",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55111433,
+          "cfg": "SS-M1",
+          "ficha": "F3",
+          "side": "L",
+          "out_t_broker": "03:20:13",
+          "out_price": 4026.38,
+          "opening_sl": 4017.84,
+          "last_installed_sl": 4026.38,
+          "installed_at": "03:19:15",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55112547,
+          "cfg": "SS-M1",
+          "ficha": "F1",
+          "side": "S",
+          "out_t_broker": "05:17:28",
+          "out_price": 4019.74,
+          "opening_sl": 4033.11,
+          "last_installed_sl": 4019.74,
+          "installed_at": "05:17:26",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55112548,
+          "cfg": "SS-M1",
+          "ficha": "F2",
+          "side": "S",
+          "out_t_broker": "05:17:28",
+          "out_price": 4019.74,
+          "opening_sl": 4033.11,
+          "last_installed_sl": 4019.74,
+          "installed_at": "05:17:26",
+          "adverse_gap": 0.0
+        },
+        {
+          "pos": 55112549,
+          "cfg": "SS-M1",
+          "ficha": "F3",
+          "side": "S",
+          "out_t_broker": "05:17:28",
+          "out_price": 4019.74,
+          "opening_sl": 4033.11,
+          "last_installed_sl": 4019.74,
+          "installed_at": "05:17:26",
+          "adverse_gap": 0.0
+        }
+      ]
+    },
+    "q8_spread_proxy_abs_out_minus_m1_close_usd": {
+      "matched": 999,
+      "unmatched_no_bar": 3,
+      "per_hour": {
+        "h01_long_exit_sell_at_bid": {
+          "n": 72,
+          "median_usd": 0.8,
+          "p90_usd": 1.258
+        },
+        "h01_short_exit_buy_at_ask": {
+          "n": 18,
+          "median_usd": 0.435,
+          "p90_usd": 0.83
+        },
+        "h02_long_exit_sell_at_bid": {
+          "n": 21,
+          "median_usd": 0.74,
+          "p90_usd": 0.97
+        },
+        "h02_short_exit_buy_at_ask": {
+          "n": 60,
+          "median_usd": 1.4,
+          "p90_usd": 1.741
+        },
+        "h03_long_exit_sell_at_bid": {
+          "n": 93,
+          "median_usd": 0.42,
+          "p90_usd": 0.91
+        },
+        "h03_short_exit_buy_at_ask": {
+          "n": 60,
+          "median_usd": 0.92,
+          "p90_usd": 1.902
+        },
+        "h04_long_exit_sell_at_bid": {
+          "n": 24,
+          "median_usd": 0.34,
+          "p90_usd": 0.69
+        },
+        "h04_short_exit_buy_at_ask": {
+          "n": 153,
+          "median_usd": 1.04,
+          "p90_usd": 2.282
+        },
+        "h05_long_exit_sell_at_bid": {
+          "n": 75,
+          "median_usd": 0.62,
+          "p90_usd": 1.22
+        },
+        "h05_short_exit_buy_at_ask": {
+          "n": 87,
+          "median_usd": 0.58,
+          "p90_usd": 0.988
+        },
+        "h06_long_exit_sell_at_bid": {
+          "n": 96,
+          "median_usd": 0.46,
+          "p90_usd": 1.03
+        },
+        "h06_short_exit_buy_at_ask": {
+          "n": 42,
+          "median_usd": 0.695,
+          "p90_usd": 1.24
+        },
+        "h07_long_exit_sell_at_bid": {
+          "n": 162,
+          "median_usd": 0.91,
+          "p90_usd": 1.859
+        },
+        "h07_short_exit_buy_at_ask": {
+          "n": 36,
+          "median_usd": 0.995,
+          "p90_usd": 1.58
+        }
+      }
+    }
+  }
+}

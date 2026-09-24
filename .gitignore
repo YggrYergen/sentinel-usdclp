@@ -1,0 +1,149 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# Virtual environments
+venv/
+.env
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# MT5 installers and binaries
+*.exe
+MT5_Portable/
+
+# Data files (generated — real market data lake + research.db, regenerable via scripts/mt5_dump_history.py)
+# lake/ (150M), raw/ (378M), research.db (5.8M) etc. are all regenerable.
+# NOTE: "data/*" (not "data/") so git still recurses into data/ -- a trailing-slash
+# "data/" pattern excludes the directory itself and git never looks inside it, which
+# would make the data/live/ negation below silently no-op (a well-known gitignore trap).
+data/*
+sentinel_log.txt
+
+# Exception: the B2 news-blackout calendar is COMMITTED DATA, not a regenerable
+# market-data artifact (sentinel_engine/live/news_calendar.py reads it at runtime).
+!data/live/
+data/live/*
+!data/live/news_calendar.csv
+!data/live/news_calendar.README.md
+
+# Exception: Monday champion/challenger Track-A audit artifacts are COMMITTED
+# DATA (spec R5 -- every JSON figure must be traceable to a file on disk, not
+# regenerable market data). Task 8 / A2 overlap-and-correlation output.
+!data/analysis/
+data/analysis/*
+!data/analysis/monday_audit/
+data/analysis/monday_audit/*
+!data/analysis/monday_audit/a2_overlap.json
+!data/analysis/monday_audit/a1_maxdd.json
+!data/analysis/monday_audit/a3_exit_reason.json
+!data/analysis/monday_audit/a4_serial.json
+!data/analysis/monday_audit/a5_spread_gate.json
+!data/analysis/monday_audit/b6_mask_verdicts.json
+!data/analysis/monday_audit/b1_wait_window.json
+!data/analysis/monday_audit/b1_robustness.json
+# Snapshot INMUTABLE del substrato PRE-reparacion (Task R3a, 2026-07-27). Es la
+# unica base de comparacion del diff de R3: sin el, regenerar destruye el "antes"
+# (ya paso una vez con el reporte mensual). Se versiona entero, nunca se muta.
+!data/analysis/pre_repair_snapshot/
+!data/analysis/pre_repair_snapshot/**
+# El substrato real-tick (2347 posiciones, ~250 KB) es la base de TODO numero de
+# Track A. Versionarlo es requisito de R5 (cifra trazable a un archivo en disco).
+# Los ticks/barras de origen siguen fuera (cientos de MB, regenerables desde MT5).
+!data/analysis/realtick_bt/
+data/analysis/realtick_bt/*
+!data/analysis/realtick_bt/positions_*.csv
+
+# MT5 Strategy Tester working copies (multi-GB portable terminals — NEVER commit)
+MT5_Tester/
+MT5_Tester_2/
+MT5_Tester*/
+
+# graphify knowledge-graph outputs (regenerable via /graphify; ~18M incl. cache)
+graphify-out/
+
+# Dev/diagnostic scratch dir (per-machine logs)
+temp/
+
+# MT5 account source-of-truth (Capa-4) — contains DEMO master password in cleartext. NEVER commit.
+CUENTAS.md
+
+# Runtime tick logs (Task 0.6 — generated, never committed)
+logs/
+
+# Chat history (local per-operator, never committed)
+sentinel/chat_history/
+
+# Portable Python & Git (auto-downloaded, sandboxed)
+_python/
+_git/
+_update.zip
+_update_tmp/
+_get_pip.py
+
+# Scratch/temp/dev files
+scratch_*.py
+test_*.py
+# ...but the committed test suite under tests/ is the parity gate — keep it tracked
+!tests/**/test_*.py
+deep_reserach_one.md
+
+# Legacy scripts (replaced by SENTINEL.bat)
+INICIAR_SENTINEL.bat
+ACTUALIZAR_SENTINEL.bat
+INSTALAR_SENTINEL.bat
+
+# MT5 personal launchers (local paths + account context — Capa-4 safety, never committed)
+MT5_PAPA_SOLO_LECTURA.bat
+MT5_DEMO_TRADING.bat
+MT5_DEMO_TOMAS.bat
+MT5_REAL_PAPA_SOLO_LECTURA.bat
+
+# Live runtime artifacts (per-machine: PIDs, locks, local logs — never committed)
+scripts/live/*.pid
+scripts/live/*.lock
+scripts/live/*_local.log
+scripts/live/*_local.log.err
+scripts/live/*_local.out
+scripts/live/*_local.err
+scripts/live/dryrun_local.log
+scripts/live/dryrun_local.log.err
+scripts/live/watchdog.log
+scripts/live/*.bak
+
+# Per-machine profile (terminal path/portable/login selection) -- see
+# scripts/live/machine_local.example.json for the tracked template.
+scripts/live/machine_local.json
+# equipo 3 runs a SECOND stack from the same clone (MT5 #2, monitoring only);
+# its profile is selected per-process via $SENTINEL_MACHINE_PROFILE and is just
+# as machine-local as the one above. Template:
+# scripts/live/machine_local.equipo3.example.json (tracked -- the negation below
+# keeps every *.example.json visible).
+scripts/live/machine_local.*.json
+!scripts/live/machine_local.*example.json
+scripts/live/watchdog_equipo3.log
+scripts/live/watchdog_equipo3.log.1
+scripts/live/watchdog_equipo3.lock
+scripts/live/deals_watcher_ava2.log
+scripts/live/deals_watcher_ava2.log.err
+scripts/live/deals_watcher_ava2.pid
+scripts/live/run_live_20.audit.log
+scripts/live/watchdog.log
+scripts/live/executor_console.log
+scripts/live/supervisor_console.log
+scripts/live/supervisor_console.err
+scripts/live/watcher_console.log
+scripts/live/watcher_console.err

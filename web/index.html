@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>SENTINEL</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="stylesheet" href="/style.css?v=__ASSET_V__" />
+  <link rel="stylesheet" href="/vendor/uplot/uPlot.min.css" />
+</head>
+<body>
+  <header id="topbar">
+    <span id="topbar-logo">&#9889;SENTINEL</span>
+    <span id="topbar-cfg-hash" class="chip mono">cfg#--------</span>
+    <span id="topbar-status" class="chip connecting">connecting&hellip;</span>
+    <span id="topbar-stale" class="chip mono">stale: --s</span>
+    <span id="topbar-news-countdown" class="chip" hidden>&#9203; --</span>
+  </header>
+
+  <div id="app-body">
+    <div id="left-column">
+      <section class="asset-panel" id="panel-usdclp" data-instrument="usdclp">
+        <div class="v2-mount"></div>
+      </section>
+      <section class="asset-panel" id="panel-nasdaq" data-instrument="nasdaq">
+        <div class="v2-mount"></div>
+      </section>
+      <section class="asset-panel" id="panel-gold" data-instrument="gold">
+        <div class="v2-mount"></div>
+      </section>
+    </div>
+
+    <nav id="navbar">
+      <button data-section="chat" class="nav-btn active" title="Chat">&#128172;</button>
+      <button data-section="lab" class="nav-btn" title="Lab">&#129514;</button>
+      <button data-section="regime" class="nav-btn" title="Regime">&#128200;</button>
+      <button data-section="news" class="nav-btn" title="News">&#128240;</button>
+      <button data-section="study" class="nav-btn" title="Study">&#128202;</button>
+      <button data-section="charts" class="nav-btn" title="Charts">&#128201;</button>
+      <button data-section="review" class="nav-btn" title="Trade Review">&#128269;</button>
+      <button data-section="runs" class="nav-btn" title="Runs">&#127919;</button>
+      <button data-section="positions" class="nav-btn" title="Posiciones">&#128188;</button>
+    </nav>
+
+    <main id="right-pane">
+      <section class="right-section" id="section-chat"></section>
+      <section class="right-section" id="section-lab" hidden></section>
+      <section class="right-section" id="section-regime" hidden></section>
+      <section class="right-section" id="section-news" hidden></section>
+      <section class="right-section" id="section-study" hidden></section>
+      <section class="right-section" id="section-charts" hidden></section>
+      <section class="right-section" id="section-review" hidden></section>
+      <section class="right-section" id="section-runs" hidden></section>
+      <section class="right-section" id="section-positions" hidden></section>
+    </main>
+  </div>
+
+  <script src="/vendor/uplot/uPlot.iife.min.js"></script>
+  <script src="/vendor/lightweight-charts/lightweight-charts.standalone.production.js"></script>
+  <script src="/app.js?v=__ASSET_V__"></script>
+  <script src="/lab.js?v=__ASSET_V__"></script>
+  <script src="/chat.js?v=__ASSET_V__"></script>
+  <script src="/lib/fmt.js?v=__ASSET_V__"></script>
+  <script src="/lib/badge.js?v=__ASSET_V__"></script>
+  <script src="/lib/toast.js?v=__ASSET_V__"></script>
+  <script src="/lib/vtable.js?v=__ASSET_V__"></script>
+  <script src="/lib/vlist.js?v=__ASSET_V__"></script>
+  <script src="/lib/chartData.js?v=__ASSET_V__"></script>
+  <script src="/lib/adapters.js?v=__ASSET_V__"></script>
+  <script src="/lib/chart.js?v=__ASSET_V__"></script>
+  <script src="/lib/goto.js?v=__ASSET_V__"></script>
+  <script src="/sections/charts.js?v=__ASSET_V__"></script>
+  <script src="/sections/review.js?v=__ASSET_V__"></script>
+  <script src="/sections/runs.js?v=__ASSET_V__"></script>
+  <script src="/sections/positions.js?v=__ASSET_V__"></script>
+  <script src="/sections/news.js?v=__ASSET_V__"></script>
+</body>
+</html>

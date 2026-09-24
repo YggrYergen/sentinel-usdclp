@@ -1,0 +1,232 @@
+{
+  "rows": [
+    {
+      "id": "SS-M2",
+      "tf": "M2",
+      "magic": 720010,
+      "real_clp": -29756.65,
+      "real_usd": -31.88,
+      "sim_usd": 21.0,
+      "gap_usd": -52.88,
+      "real_pos": 93,
+      "sim_entries": 7
+    },
+    {
+      "id": "V06D-M2",
+      "tf": "M2",
+      "magic": 720020,
+      "real_clp": -50475.14,
+      "real_usd": -54.07,
+      "sim_usd": 11.76,
+      "gap_usd": -65.83,
+      "real_pos": 102,
+      "sim_entries": 7
+    },
+    {
+      "id": "V15-M2",
+      "tf": "M2",
+      "magic": 720030,
+      "real_clp": -25330.79,
+      "real_usd": -27.14,
+      "sim_usd": 17.67,
+      "gap_usd": -44.81,
+      "real_pos": 84,
+      "sim_entries": 5
+    },
+    {
+      "id": "SS-M5",
+      "tf": "M5",
+      "magic": 720040,
+      "real_clp": -14942.15,
+      "real_usd": -16.01,
+      "sim_usd": 10.53,
+      "gap_usd": -26.54,
+      "real_pos": 42,
+      "sim_entries": 4
+    },
+    {
+      "id": "V06D-M5",
+      "tf": "M5",
+      "magic": 720050,
+      "real_clp": -58655.36,
+      "real_usd": -62.83,
+      "sim_usd": 6.42,
+      "gap_usd": -69.25,
+      "real_pos": 51,
+      "sim_entries": 2
+    },
+    {
+      "id": "V13-M5",
+      "tf": "M5",
+      "magic": 720060,
+      "real_clp": -66965.97,
+      "real_usd": -71.74,
+      "sim_usd": 5.7,
+      "gap_usd": -77.44,
+      "real_pos": 54,
+      "sim_entries": 2
+    },
+    {
+      "id": "SS-M15",
+      "tf": "M15",
+      "magic": 720070,
+      "real_clp": -11244.59,
+      "real_usd": -12.05,
+      "sim_usd": 0.0,
+      "gap_usd": -12.05,
+      "real_pos": 12,
+      "sim_entries": 0
+    },
+    {
+      "id": "V13-M15",
+      "tf": "M15",
+      "magic": 720080,
+      "real_clp": -11795.02,
+      "real_usd": -12.64,
+      "sim_usd": 0.0,
+      "gap_usd": -12.64,
+      "real_pos": 12,
+      "sim_entries": 0
+    },
+    {
+      "id": "V06D-M15",
+      "tf": "M15",
+      "magic": 720090,
+      "real_clp": -22316.24,
+      "real_usd": -23.91,
+      "sim_usd": 0.0,
+      "gap_usd": -23.91,
+      "real_pos": 15,
+      "sim_entries": 0
+    },
+    {
+      "id": "V06C-M5",
+      "tf": "M5",
+      "magic": 720100,
+      "real_clp": -61383.45,
+      "real_usd": -65.76,
+      "sim_usd": 6.15,
+      "gap_usd": -71.91,
+      "real_pos": 51,
+      "sim_entries": 2
+    },
+    {
+      "id": "V06C-M15",
+      "tf": "M15",
+      "magic": 720110,
+      "real_clp": -23202.55,
+      "real_usd": -24.86,
+      "sim_usd": 0.0,
+      "gap_usd": -24.86,
+      "real_pos": 15,
+      "sim_entries": 0
+    },
+    {
+      "id": "V06B-M15",
+      "tf": "M15",
+      "magic": 720120,
+      "real_clp": -23360.53,
+      "real_usd": -25.02,
+      "sim_usd": 0.0,
+      "gap_usd": -25.02,
+      "real_pos": 15,
+      "sim_entries": 0
+    },
+    {
+      "id": "V15-M15",
+      "tf": "M15",
+      "magic": 720130,
+      "real_clp": -9208.43,
+      "real_usd": -9.86,
+      "sim_usd": 0.0,
+      "gap_usd": -9.86,
+      "real_pos": 9,
+      "sim_entries": 0
+    },
+    {
+      "id": "V10-M5",
+      "tf": "M5",
+      "magic": 720140,
+      "real_clp": -29233.67,
+      "real_usd": -31.32,
+      "sim_usd": 3.6,
+      "gap_usd": -34.92,
+      "real_pos": 27,
+      "sim_entries": 1
+    },
+    {
+      "id": "V10-M15",
+      "tf": "M15",
+      "magic": 720150,
+      "real_clp": -7743.07,
+      "real_usd": -8.29,
+      "sim_usd": 0.0,
+      "gap_usd": -8.29,
+      "real_pos": 9,
+      "sim_entries": 0
+    },
+    {
+      "id": "V13-M2",
+      "tf": "M2",
+      "magic": 720160,
+      "real_clp": -61143.57,
+      "real_usd": -65.5,
+      "sim_usd": 11.04,
+      "gap_usd": -76.54,
+      "real_pos": 102,
+      "sim_entries": 7
+    },
+    {
+      "id": "V09-CTRL-M5",
+      "tf": "M5",
+      "magic": 720170,
+      "real_clp": -56818.62,
+      "real_usd": -60.87,
+      "sim_usd": 3.45,
+      "gap_usd": -64.32,
+      "real_pos": 51,
+      "sim_entries": 2
+    },
+    {
+      "id": "V09-CTRL-M15",
+      "tf": "M15",
+      "magic": 720180,
+      "real_clp": -22398.16,
+      "real_usd": -23.99,
+      "sim_usd": 0.0,
+      "gap_usd": -23.99,
+      "real_pos": 15,
+      "sim_entries": 0
+    },
+    {
+      "id": "SS-M1",
+      "tf": "M1",
+      "magic": 720190,
+      "real_clp": -84677.64,
+      "real_usd": -90.71,
+      "sim_usd": -15.21,
+      "gap_usd": -75.5,
+      "real_pos": 171,
+      "sim_entries": 17
+    },
+    {
+      "id": "V11-M2",
+      "tf": "M2",
+      "magic": 720200,
+      "real_clp": -41490.29,
+      "real_usd": -44.45,
+      "sim_usd": 11.04,
+      "gap_usd": -55.49,
+      "real_pos": 81,
+      "sim_entries": 7
+    }
+  ],
+  "totals": {
+    "real_clp": -712141.89,
+    "real_usd": -762.8729405463309,
+    "sim_usd": 93.15000000000191,
+    "sim_entries": 63,
+    "real_pos": 1011
+  },
+  "rate": 933.5
+}
