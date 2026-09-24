@@ -1,6 +1,6 @@
 # Equipo 3 — instalación y puesta en marcha del runner oficial
 
-> Windows 10 · rama `equipo3` · 2026-09-24
+> Windows 10 · rama `equipo3-runner` · 2026-09-24
 > Sigue los pasos **en orden**. Cada uno termina con una comprobación; si esa
 > comprobación no da lo que dice, para ahí y no sigas — casi todos los modos de
 > fallo de este stack son silenciosos, y un paso mal dado no se nota hasta que
@@ -128,17 +128,31 @@ distinta en la esquina, y `GOLD` visible en ambos.
 
 ---
 
-## 5 · Clonar el repo, rama `equipo3`
+## 5 · Clonar el repo, rama `equipo3-runner`
 
 ```powershell
 cd C:\
-git clone https://github.com/YggrYergen/sentinel-usdclp.git FOREX
+git clone --branch equipo3-runner --single-branch --depth 1 https://github.com/YggrYergen/sentinel-usdclp.git FOREX
 cd C:\FOREX
-git checkout equipo3
 git branch --show-current
 ```
 
-Debe imprimir `equipo3`.
+Debe imprimir `equipo3-runner`.
+
+> **Por qué así y no un `git clone` normal.** `equipo3-runner` es una rama
+> **ligera y sin historia**: contiene todo el código, las pruebas y los datos de
+> runtime necesarios para operar, pero no arrastra los 55 MB de
+> `research/fases/`, los 24 MB de `docs/superpowers/` ni los 8 MB de
+> `backups/`, que son artefactos de investigación y no hacen falta para correr.
+> Son **~8 MB en vez de ~96 MB**.
+>
+> Los tres modificadores importan: `--single-branch` evita traerse las demás
+> ramas, y `--depth 1` evita traerse la historia. Sin ellos, `git clone`
+> descargaría los 96 MB de todos modos aunque la rama sea pequeña.
+>
+> Esta máquina **opera**, no investiga. Si algún día necesitas el historial
+> completo aquí, `git remote set-branches origin '*'` y `git fetch --unshallow`
+> lo traen todo.
 
 > Puedes clonarlo en `D:\FOREX` si esa máquina tiene disco D — da igual. Nada
 > del código de arranque tiene `D:\FOREX` incrustado: el watchdog y el script de
@@ -667,7 +681,16 @@ Para que no aparezcan como sorpresas más adelante:
    2026-08-11 sigue generando ventanas indefinidamente sin ninguna señal de que
    está extrapolando.
 
-4. **El stack #2 no tiene estrategias.** Cuando haya candidatos habrá que
+4. **Esta rama no trae el material de investigación.** `equipo3-runner` excluye
+   `research/`, `docs/superpowers/` (salvo el spec de este despliegue),
+   `backups/` y `data/analysis/`. **Una excepción deliberada:**
+   `research/fases/F0-preparacion/04-resultados/T0.13-ventana-ny/` sí viaja,
+   porque `sentinel_engine/live/ava_window_gate.py` lee de ahí
+   `calendario-ventana.json` en cada decisión de apertura, y ese gate **falla
+   duro**: sin el fichero, las dos estrategias AVA dejarían de abrir. Si algún
+   día mueves o regeneras ese calendario, acuérdate de esta dependencia.
+
+5. **El stack #2 no tiene estrategias.** Cuando haya candidatos habrá que
    decidir cómo armarlo: hoy no hay ejecutor ni supervisor para él, y darle uno
    exige el aislamiento por instancia que el spec describe como plan B
    (`docs/superpowers/specs/2026-09-24-equipo3-runner-oficial-design.md`).
