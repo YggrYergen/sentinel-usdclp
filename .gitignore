@@ -97,3 +97,12 @@ scripts/live/supervisor_console.log
 scripts/live/supervisor_console.err
 scripts/live/watcher_console.log
 scripts/live/watcher_console.err
+
+# --- Stack CAPITARIA en el equipo 3 (2026-09-24) -------------------------
+# Venv propio del clon: clava el interprete en 3.11 y es lo que permite al
+# watchdog distinguir sus procesos de los del stack AVA.
+.venv/
+scripts/live/watchdog_capitaria.log
+scripts/live/watchdog_capitaria.log.1
+scripts/live/watchdog_capitaria.lock
+scripts/live/bars_ingester_console.log

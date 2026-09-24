@@ -1,0 +1,19 @@
+{
+  "_README": "PLANTILLA DEL CLON CAPITARIA en el equipo 3 (2026-09-24). Este fichero es SOLO documentacion. Copia el bloque de abajo a scripts/live/machine_local.json de ESTE clon (C:\FOREX_CAP), que si se lee y esta gitignoreado.",
+
+  "_copiar_a__scripts/live/machine_local.json": {
+    "_que_es": "Terminal MT5 de Capitaria en el equipo 3. Roster `tomachine`: S6-K2P0 (ficha unica) + SuperTrend-p14x3-M15, simbolo XAUUSD, lote 0.67, max_volume 0.67, cap de spread 0.50, ventana bloqueada 18:00-18:45, gate adaptativo APAGADO. Todo eso viene del codigo (b113eb7) y del entorno que inyecta watchdog_capitaria.ps1; aqui solo se elige terminal y cuenta.",
+    "terminal_path": "C:\MT5_CAPITARIA\terminal64.exe",
+    "portable": false,
+    "demo_login": 2883016902,
+    "terminal_marker": "mt5_capitaria"
+  },
+
+  "_REGLAS": [
+    "1. terminal_marker DEBE ser distinto de los del clon AVA (mt5_ava1, mt5_ava2) y coincidir con el nombre de la carpeta padre del exe en minusculas.",
+    "2. El terminal DEBE ser una instalacion SEPARADA. MT5 no abre dos instancias de una misma instalacion. Y el instalador de marca (Capitaria) NO se puede duplicar copiando la carpeta: Config\servers.dat + Config\terminal.lic no sobreviven a la copia. Instala de cero y MUEVE la carpeta.",
+    "3. Mover la instalacion cambia el hash de %APPDATA%\MetaQuotes\Terminal\<hash>, asi que la Observacion de Mercado se pierde. Hay que volver a anadir XAUUSD despues de mover.",
+    "4. demo_login solo puede ser miembro de guard_cuenta.SANCTIONED_DEMO_LOGINS. En la rama equipo3-capitaria (b113eb7) el conjunto es {2883015767, 2883016902}.",
+    "5. NUNCA hagas setx de SUPERVISOR_* ni de SENTINEL_MACHINE_PROFILE: en esta maquina conviven dos stacks y se aplicarian a los dos."
+  ]
+}

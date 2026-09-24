@@ -1,0 +1,30 @@
+# requirements-capitaria.txt -- dependencias del stack CAPITARIA (equipo 3, 2026-09-24)
+#
+# Se instalan en el VENV PROPIO de este clon (<repo>\.venv), no en el Python
+# del sistema. El venv cumple tres funciones a la vez:
+#   1. clava el interprete en 3.11 (el equipo 3 tiene tambien un 3.14.5 y
+#      `python` a secas resuelve distinto segun el contexto -- riesgo D1 del
+#      acta de instalacion);
+#   2. es lo que permite a watchdog_capitaria.ps1 distinguir SUS procesos de
+#      los del stack AVA, filtrando por ExecutablePath;
+#   3. aisla las versiones de las del clon AVA.
+#
+# Instalar:
+#     py -3.11 -m venv .venv
+#     .\.venv\Scripts\python.exe -m pip install -r scripts\live\requirements-capitaria.txt
+
+MetaTrader5==5.0.5735
+
+numpy==2.3.3
+pandas==2.3.3
+scipy==1.17.1
+PyYAML==6.0.2
+
+streamlit==1.57.0
+plotly==6.7.0
+altair==6.1.0
+
+requests==2.32.4
+
+pytest==8.4.1
+pytest-asyncio==1.1.0
