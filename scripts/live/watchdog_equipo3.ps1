@@ -84,8 +84,7 @@ $StopFile = Join-Path $LiveDir "STOP"
 #     (C:\FOREX_CAP\_py\python.exe), y aqui ExecutablePath == $PythonExe vuelve a
 #     ser exacto.
 #     Get-OwnPythonProcs ademas ignora, por defensa en profundidad, todo lo que
-#     lleve la marca `-X sentinel_stack=capitaria` o cuelgue de un python con
-#     OTRO ExecutablePath.
+#     lleve la marca `-X sentinel_stack=capitaria`.
 #
 # Orden de resolucion: venv propio del clon -> py -3.11 -> `python` a secas.
 # ---------------------------------------------------------------------
@@ -281,30 +280,18 @@ function Get-OwnPythonProcs {
     # Capitaria. Es el UNICO punto por el que este watchdog enumera python
     # (busqueda, comprobacion de vivo, siega de huerfanos y su kill).
     #
-    # Capitaria corre sobre su propio CPython real (otra ruta), asi que el filtro
-    # exe == $PythonExe ya la deja fuera. Defensa en profundidad (2026-10-06, por
-    # si alguien monta Capitaria sobre un venv, cuyo hijo SI comparte exe con
-    # AVA) -- se excluyen ademas dos casos:
-    #   a) linea de comandos con `sentinel_stack=capitaria` (lo que lanza el
-    #      watchdog de Capitaria, redirector e hijo);
-    #   b) hijo de un redirector AJENO: su padre es un python.exe con OTRO
-    #      ExecutablePath. Cubre el ejecutor/watcher que el supervisor de
-    #      Capitaria lanza con [sys.executable, ...] sin marca (los -X no se
-    #      heredan). Los procesos de AVA nunca cuelgan de un python distinto
-    #      del suyo: cuelgan de cmd.exe o de su propio supervisor.
+    # Capitaria corre sobre su propio CPython real (C:\FOREX_CAP\_py\python.exe,
+    # otra ruta), asi que el filtro exe == $PythonExe ya la deja fuera. Como
+    # defensa en profundidad se excluye ademas todo proceso cuya linea de
+    # comandos lleve la marca `sentinel_stack=capitaria` (la que pone el
+    # watchdog de Capitaria). NO se mira el proceso padre: tras la muerte de un
+    # supervisor, su PID puede reutilizarse y ocultaria un ejecutor huerfano
+    # real de AVA (-> segundo ejecutor armado).
     $want = $PythonExe.ToLower()
-    $all = @(Get-CimInstance Win32_Process)
-    $byId = @{}
-    foreach ($q in $all) { $byId[[int]$q.ProcessId] = $q }
-    foreach ($p in $all) {
-        if ($p.Name -notmatch '^python(\.exe)?$') { continue }
-        if (-not $p.ExecutablePath) { continue }
-        if ($p.ExecutablePath.ToLower() -ne $want) { continue }
-        if ($p.CommandLine -and $p.CommandLine.Contains($ForeignStackMarker)) { continue }
-        $par = $byId[[int]$p.ParentProcessId]
-        if ($par -and $par.Name -match '^python(\.exe)?$' -and $par.ExecutablePath -and
-            $par.ExecutablePath.ToLower() -ne $want) { continue }
-        $p
+    Get-CimInstance Win32_Process | Where-Object {
+        $_.Name -match '^python(\.exe)?$' -and
+        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $want -and
+        -not ($_.CommandLine -and $_.CommandLine.Contains($ForeignStackMarker))
     }
 }
 

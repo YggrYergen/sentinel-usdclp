@@ -415,6 +415,8 @@ Get-CimInstance Win32_Process |
     Select-Object ProcessId,ExecutablePath | Format-Table -AutoSize
 ```
 
+Nota sobre `python -m scripts.live.verify_two_terminals`: si no existe `scripts\live\machine_local.ava2.json` (stack B apagado) verifica solo el stack #1 e imprime `stack B deshabilitado`. Si le pasas `--p1`/`--p2` a mano, usa **rutas absolutas**: la existencia de `--p2` se comprueba contra el directorio actual, no contra el repo.
+
 Esperado tras mover la 76 al equipo 1:
 
 - **2 terminales**: `C:\MT5_AVA1` (login 101744074) y `C:\MT5_CAPITARIA`
