@@ -101,9 +101,10 @@ function Assert-Equipo3 {
     if (Test-Path $Profile2) {
         Write-Output "OK: perfil del stack #2 presente ($Profile2) -- el watchdog lo vigilara."
     } else {
-        Write-Output "AVISO: no hay perfil del stack #2 ($Profile2)."
-        Write-Output "  El watchdog arrancara igual y cuidara solo del stack #1."
-        Write-Output "  Anadelo cuando tengas el login de la segunda demo AVA (runbook paso 7)."
+        Write-Output "stack B deshabilitado (sin machine_local.ava2.json): no hay perfil del stack #2 ($Profile2)."
+        Write-Output "  El watchdog arrancara igual y cuidara solo del stack #1; no lanzara ni"
+        Write-Output "  relanzara el terminal ni los procesos del stack B."
+        Write-Output "  Para activarlo: crea machine_local.ava2.json (runbook paso 7) y reinicia el watchdog."
     }
 }
 

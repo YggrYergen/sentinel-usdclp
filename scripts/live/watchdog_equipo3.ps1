@@ -77,6 +77,11 @@ $StopFile = Join-Path $LiveDir "STOP"
 #     Capitaria y no relanzaria nunca el de AVA; y la siega de huerfanos
 #     mataria el ejecutor armado de Capitaria. Es el simetrico del filtro que
 #     watchdog_capitaria.ps1 aplica en el otro sentido.
+#     CORRECCION 2026-10-06: filtrar SOLO por ExecutablePath no basta. El python
+#     del venv de Capitaria es un redirector que lanza como hijo el Python base
+#     del sistema, y ese hijo comparte ExecutablePath con los procesos de AVA.
+#     Por eso Get-OwnPythonProcs excluye ademas todo lo que lleve la marca
+#     `-X sentinel_stack=capitaria` o cuelgue de un redirector ajeno.
 #
 # Orden de resolucion: venv propio del clon -> py -3.11 -> `python` a secas.
 # ---------------------------------------------------------------------
@@ -203,7 +208,10 @@ print("PROFILES=" + json.dumps(out))
     Write-Log "stack #1: terminal=$Term1 portable=$Portable1 login=$Login1"
 
     if ($null -eq $prof.p2) {
-        Write-Log "stack #2: sin perfil ($Profile2 no existe) -- DESACTIVADO. Solo se vigila el stack #1."
+        # Stack B solo se supervisa si existe machine_local.ava2.json. Se loguea
+        # UNA vez (Resolve-Profiles corre una sola vez al arrancar) y el bucle
+        # nunca toca su terminal ni sus procesos mientras $Stack2Enabled = $false.
+        Write-Log "stack B deshabilitado (sin machine_local.ava2.json)"
         $script:Stack2Enabled = $false
         return
     }
@@ -259,14 +267,46 @@ function Release-Singleton {
     }
 }
 
+# Marca que el watchdog de Capitaria pone en TODO python que lanza (`-X
+# sentinel_stack=capitaria`). Este watchdog NO pone marca propia: sus procesos
+# se reconocen por exe == $PythonExe, igual que antes.
+$ForeignStackMarker = "sentinel_stack=capitaria"
+
+function Get-OwnPythonProcs {
+    # Procesos python de ESTE stack: exe == $PythonExe, MENOS los del stack
+    # Capitaria. Es el UNICO punto por el que este watchdog enumera python
+    # (busqueda, comprobacion de vivo, siega de huerfanos y su kill).
+    #
+    # Por que no basta el ExecutablePath (2026-10-06): `<venv>\Scripts\python.exe`
+    # es un REDIRECTOR que lanza como hijo el Python base, y el hijo (el
+    # trabajador real) tiene el MISMO ExecutablePath que los procesos de AVA.
+    # Se excluyen dos casos:
+    #   a) linea de comandos con `sentinel_stack=capitaria` (lo que lanza el
+    #      watchdog de Capitaria, redirector e hijo);
+    #   b) hijo de un redirector AJENO: su padre es un python.exe con OTRO
+    #      ExecutablePath. Cubre el ejecutor/watcher que el supervisor de
+    #      Capitaria lanza con [sys.executable, ...] sin marca (los -X no se
+    #      heredan). Los procesos de AVA nunca cuelgan de un python distinto
+    #      del suyo: cuelgan de cmd.exe o de su propio supervisor.
+    $want = $PythonExe.ToLower()
+    $all = @(Get-CimInstance Win32_Process)
+    $byId = @{}
+    foreach ($q in $all) { $byId[[int]$q.ProcessId] = $q }
+    foreach ($p in $all) {
+        if ($p.Name -notmatch '^python(\.exe)?$') { continue }
+        if (-not $p.ExecutablePath) { continue }
+        if ($p.ExecutablePath.ToLower() -ne $want) { continue }
+        if ($p.CommandLine -and $p.CommandLine.Contains($ForeignStackMarker)) { continue }
+        $par = $byId[[int]$p.ParentProcessId]
+        if ($par -and $par.Name -match '^python(\.exe)?$' -and $par.ExecutablePath -and
+            $par.ExecutablePath.ToLower() -ne $want) { continue }
+        $p
+    }
+}
+
 function Find-ProcByCmdline {
     param([string]$Pattern)
-    $want = $PythonExe.ToLower()
-    Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and
-        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $want -and
-        $_.CommandLine -match $Pattern
-    } | Select-Object -First 1
+    Get-OwnPythonProcs | Where-Object { $_.CommandLine -match $Pattern } | Select-Object -First 1
 }
 
 function Test-TerminalRunning {
@@ -425,12 +465,9 @@ function Ensure-Supervisor {
     # antes de relanzar o el nuevo supervisor armaria un SEGUNDO ejecutor.
     # SOLO ejecutores de ESTE stack. Sin el filtro por interprete, esto
     # mataria el ejecutor armado del stack CAPITARIA (otro clon, otro venv).
-    $wantExe = $PythonExe.ToLower()
-    $orphans = Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and
-        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $wantExe -and
-        $_.CommandLine -match 'run_live_20'
-    }
+    # Get-OwnPythonProcs ya excluye todo lo de Capitaria (marca o hijo de su
+    # redirector): sin ese filtro el ejecutor de Capitaria casaria aqui.
+    $orphans = @(Get-OwnPythonProcs | Where-Object { $_.CommandLine -match 'run_live_20' })
     foreach ($o in $orphans) {
         Write-Log "stack #1 : segando ejecutor HUERFANO PID $($o.ProcessId) antes de relanzar."
         try { Stop-Process -Id $o.ProcessId -Force -ErrorAction Stop }

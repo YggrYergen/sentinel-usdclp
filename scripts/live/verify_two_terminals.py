@@ -201,16 +201,27 @@ def main(argv: list[str] | None = None) -> int:
         print("        pip install MetaTrader5")
         return 1
 
+    # El stack B (segunda demo AVA) es OPCIONAL: solo existe si hay perfil.
+    # Sin machine_local.ava2.json se verifica unicamente el stack #1 (mismo
+    # criterio que watchdog_equipo3.ps1).
+    stack_b = Path(args.p2).exists()
+    expected = 2 if stack_b else 1
+
     before = _terminal_processes()
     print(f"terminal64.exe corriendo ANTES: {len(before)}")
     for p in before:
         print(f"   PID {p['pid']:<8} {p['exe']}")
-    if len(before) < 2:
-        print("\n[AVISO] hay menos de 2 terminales corriendo. Esta verificacion "
-              "solo tiene sentido con los DOS abiertos y logueados.")
+    if len(before) < expected:
+        print(f"\n[AVISO] hay menos de {expected} terminal(es) corriendo. Esta "
+              "verificacion solo tiene sentido con los terminales abiertos y logueados.")
 
     r1 = _probe("STACK #1  (AVA 101744074, sera el ARMADO)", Path(args.p1), mt5)
-    r2 = _probe("STACK #2  (segunda demo AVA, solo monitorizacion)", Path(args.p2), mt5)
+    if stack_b:
+        r2 = _probe("STACK #2  (segunda demo AVA, solo monitorizacion)", Path(args.p2), mt5)
+    else:
+        r2 = None
+        print(f"\nstack B deshabilitado (sin {Path(args.p2).name}) -- se verifica "
+              "solo el stack #1.")
 
     after = _terminal_processes()
     print(f"\n{'=' * 70}\nCONTROL DE FANTASMAS\n{'=' * 70}")
@@ -224,22 +235,29 @@ def main(argv: list[str] | None = None) -> int:
         print("  OK: initialize() no levanto ningun terminal nuevo.")
 
     print(f"\n{'=' * 70}\nVEREDICTO\n{'=' * 70}")
-    same_login = (r1["login"] is not None and r1["login"] == r2["login"])
+    same_login = (r2 is not None and r1["login"] is not None
+                  and r1["login"] == r2["login"])
     if same_login:
         print(f"  [FALLO CRITICO] los DOS perfiles devolvieron el mismo login "
               f"({r1['login']}). initialize(path=...) NO esta desambiguando "
               "entre terminales: el diseno de un solo clon NO es viable. "
               "Pasa al plan B del spec (dos clones).")
     for r in (r1, r2):
+        if r is None:
+            continue
         estado = "OK" if r["ok"] else "CON PROBLEMAS"
         print(f"\n  {r['label']}: {estado}")
         for p in r["problems"]:
             print(f"     - {p}")
 
-    all_ok = r1["ok"] and r2["ok"] and not phantom and not same_login
+    all_ok = (r1["ok"] and (r2 is None or r2["ok"])
+              and not phantom and not same_login)
     print("\n" + ("=" * 70))
     if all_ok:
-        print("RESULTADO: OK. Los dos terminales se distinguen por path.")
+        if r2 is None:
+            print("RESULTADO: OK. El stack #1 engancha a su terminal (stack B apagado).")
+        else:
+            print("RESULTADO: OK. Los dos terminales se distinguen por path.")
         print("Puedes seguir con el paso 8 del runbook.")
         return 0
     print("RESULTADO: NO OK. No armes nada todavia. Revisa los puntos de arriba.")

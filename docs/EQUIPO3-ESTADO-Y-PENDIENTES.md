@@ -124,6 +124,24 @@ exe distintas no se pueden confundir.
   Verificado en el equipo 3: `py -3.11` apunta a
   `C:\Users\<user>\AppData\Local\Programs\Python\Python311\python.exe`.
 
+> **CORRECCIÓN (2026-10-06): el aislamiento "por `ExecutablePath`" de arriba es
+> INSUFICIENTE.** En Windows, `<venv>\Scripts\python.exe` es un *redirector*: lanza
+> como **hijo** al Python base del sistema, y ese hijo (el trabajador real) tiene
+> el **mismo `ExecutablePath` que los procesos de AVA** y los mismos módulos en la
+> línea de comandos. Medido en el equipo: padre = `<venv>\Scripts\python.exe`,
+> hijo = `...\Python311\python.exe`. Sin más, el watchdog de AVA confundiría los
+> trabajadores de Capitaria con los suyos, y matar un redirector no mata a su hijo.
+> Regla vigente: **Capitaria** pone `-X sentinel_stack=capitaria` en todo python que
+> lanza (marca visible en la `CommandLine` de redirector e hijo; CPython la guarda en
+> `sys._xoptions` sin efecto) y mata siempre el árbol (`taskkill /T /F`); **AVA** no
+> lleva marca, pero ignora todo lo marcado y todo hijo de un redirector ajeno. Por
+> tanto, en la verificación de la sección 6, los procesos sobre
+> `C:\FOREX_CAP\.venv\Scripts\python.exe` son los *redirectores*; cada uno tiene un
+> hijo sobre `...Python311\python.exe` que también es de Capitaria.
+> Además, el stack B de AVA (`machine_local.ava2.json`) solo se vigila si ese
+> perfil existe; sin él el watchdog registra `stack B deshabilitado (sin
+> machine_local.ava2.json)` y no toca su terminal.
+
 De paso cierra el **riesgo D1** del acta: el equipo 3 tiene también un Python
 3.14.5, y `python` a secas resolvía a 3.14 en consola interactiva y a 3.11 bajo
 la tarea programada. Con 3.14 faltaría PyYAML y pandas/numpy serían otras
