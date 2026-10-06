@@ -92,7 +92,7 @@ C:\FOREX       rama equipo3-runner      AVA 101744074   GOLD    dashboard :8501
                intérprete: py -3.11  (Python311\python.exe del usuario)
 
 C:\FOREX_CAP   rama equipo3-capitaria   Capitaria 902   XAUUSD  dashboard :8502
-               intérprete: C:\FOREX_CAP\_py\python.exe  (CPython 3.11.9 real, no venv)
+               intérprete: C:\FOREX_CAP\_py\python.exe  (CPython 3.12.10 real, no venv)
 ```
 
 **Por qué dos clones y no uno:** el stack es mono-instancia por diseño. `STOP`,
@@ -118,8 +118,8 @@ instancia y tiene cuatro colisiones. **Ninguna da un error visible.**
 `ExecutablePath == el intérprete propio`. Es exacto, no heurístico: dos rutas de
 exe distintas no se pueden confundir.
 
-- Capitaria corre sobre su **CPython 3.11 real y propio** (`<repo>\_py\python.exe`,
-  paquete NuGet `python` 3.11.9). **NO un venv** (ver la corrección de abajo). Este
+- Capitaria corre sobre su **CPython 3.12.10 real y propio** (`<repo>\_py\python.exe`,
+  paquete NuGet `python` 3.12.10, la versión exacta que corría M2; AVA sigue en 3.11.9). **NO un venv** (ver la corrección de abajo). Este
   intérprete aparte **no es opcional** — es el mecanismo de aislamiento.
 - AVA resuelve en este orden: venv del clon → `py -3.11` → `python` con aviso.
   Verificado en el equipo 3: `py -3.11` apunta a
@@ -371,11 +371,11 @@ acta son trazabilidad que ahora solo existe en un disco.
    Confirmar en la esquina que el balance es ~71 MM CLP y que es DEMO.
 4. **Clonar** `equipo3-capitaria` en `C:\FOREX_CAP`
    (`--branch equipo3-capitaria --single-branch --depth 1`).
-5. **Instalar el CPython propio** (NO un venv): paquete NuGet `python` 3.11.9
+5. **Instalar el CPython propio** (NO un venv): paquete NuGet `python` 3.12.10
    descomprimido en `C:\FOREX_CAP\_py`, y luego
    `C:\FOREX_CAP\_py\python.exe -m pip install -r scripts\live\requirements-capitaria.txt`.
    Los comandos exactos están en la cabecera de `requirements-capitaria.txt`. Debe dar
-   `3.11.9` y `MetaTrader5 5.0.5735`.
+   `3.12.10` y `MetaTrader5 5.0.5735` (las versiones de paquetes están fijadas a las que M2 tenía instaladas).
 6. **`machine_local.json`** en ese clon:
    `C:\MT5_CAPITARIA\terminal64.exe`, `portable: false`,
    `demo_login: 2883016902`, `terminal_marker: mt5_capitaria`.

@@ -80,7 +80,9 @@ $StopFile = Join-Path $LiveDir "STOP"
 #     CORRECCION 2026-10-06: un venv de Capitaria NO aisla por ExecutablePath: su
 #     python.exe es un redirector que lanza como hijo el Python base del
 #     sistema, y ese hijo comparte ExecutablePath con los procesos de AVA. Por
-#     eso Capitaria corre ahora sobre su PROPIO CPython real (C:\FOREX_CAP\_py#     python.exe), y aqui ExecutablePath == $PythonExe vuelve a ser exacto.
+#     eso Capitaria corre ahora sobre su PROPIO CPython real
+#     (C:\FOREX_CAP\_py\python.exe), y aqui ExecutablePath == $PythonExe vuelve a
+#     ser exacto.
 #     Get-OwnPythonProcs ademas ignora, por defensa en profundidad, todo lo que
 #     lleve la marca `-X sentinel_stack=capitaria` o cuelgue de un python con
 #     OTRO ExecutablePath.
