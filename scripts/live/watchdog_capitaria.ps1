@@ -90,6 +90,23 @@ $PythonExe = Join-Path $RepoRoot "_py\python.exe"
 $StackMarker = "sentinel_stack=capitaria"
 $PyOpt       = "-X $StackMarker"
 
+# ZONA HORARIA DE LOS PROCESOS DE CAPITARIA (decision del usuario, 2026-10-06).
+# La ventana de apertura bloqueada (SUPERVISOR_BLOCKED_OPEN_WINDOW=18:00-18:45)
+# se compara con el reloj LOCAL del proceso (run_live_20._local_now() =
+# datetime.now()) y esta pensada para cubrir la reapertura de XAUUSD a las 18:00
+# de NUEVA YORK. El servidor de Capitaria y esta maquina siguen la hora de
+# Chile (con su propio horario de verano), que solo coincide con NY entre abril
+# y septiembre; el resto del ano 18:00-18:45 locales seria 1-2 h tarde. Con
+# `TZ=EST5EDT` (reglas EE.UU. con DST automatico) SOLO en los procesos de este
+# stack, el reloj local de Python es la hora de NY todo el ano y la ventana
+# 18:00-18:45 significa 18:00-18:45 NY sin tocar la configuracion. NO se hace
+# setx ni se cambia la zona de Windows: el stack AVA queda intacto. Va por
+# proceso, en Start-Hidden, asi que lo heredan supervisor, ejecutor, watcher,
+# dashboard e ingester (hijos del supervisor). Efecto colateral aceptado: los
+# sellos de log de Python de este stack (asctime) salen en hora de NY, no en la
+# del servidor.
+$TzPrefix = "set TZ=EST5EDT&& "
+
 $WatcherLog    = Join-Path $LiveDir "deals_watcher_local.log"
 $SupervisorLog = Join-Path $LiveDir "supervisor_local.log"
 $DashboardLog  = Join-Path $LiveDir "run_service_local.log"
@@ -326,6 +343,10 @@ function Wait-ForDemoAccount {
 function Start-Hidden {
     param([string]$CmdLine)
     $env:PYTHONPATH = $RepoRoot
+    # TODO proceso python de este stack arranca con TZ=EST5EDT (ver $TzPrefix).
+    # OJO cmd: 'set VAR=valor&&' SIN espacio antes de && (el espacio entraria en
+    # el valor de la variable).
+    $CmdLine = $TzPrefix + $CmdLine
     # OJO cmd /c: si la linea EMPIEZA por comillas y lleva mas de dos, cmd
     # quita la primera y la ultima comilla y la linea queda rota ("El nombre de
     # archivo... no son correctos"; medido 2026-10-06). Las lineas de watcher y
@@ -379,6 +400,7 @@ function Ensure-Supervisor {
     # persistida se aplicaria tambien al de AVA -- donde SUPERVISOR_MAX_SPREAD_OPEN=0.5
     # bloquearia el 100% de las aperturas en silencio.
     # OJO cmd: 'set VAR=valor&&' SIN espacio antes de && (el espacio entraria en el valor).
+    # TZ=EST5EDT lo antepone Start-Hidden ($TzPrefix) a esta y a todas las lineas.
     $envPrefix = "set SUPERVISOR_CONFIGS=tomachine&& set SUPERVISOR_MAX_SPREAD_OPEN=0.5&& set SUPERVISOR_BLOCKED_OPEN_WINDOW=18:00-18:45&& set SUPERVISOR_NO_ADAPTIVE_SPREAD=1&& "
     Start-Hidden ($envPrefix + "`"$PythonExe`" $PyOpt -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`"")
     Start-Sleep -Seconds 2

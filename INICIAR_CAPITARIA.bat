@@ -12,7 +12,9 @@ rem    terminal MT5 Capitaria + deals watcher + supervisor
 rem    roster `tomachine`: S6-K2P0 (ficha unica) + SuperTrend
 rem    XAUUSD, lote 0.67, max_volume 0.67
 rem    cap de spread 0.50 (gate adaptativo APAGADO)
-rem    ventana de apertura bloqueada 18:00-18:45
+rem    ventana de apertura bloqueada 18:00-18:45 (hora de NUEVA YORK: los
+rem      procesos de este stack, y solo ellos, corren con TZ=EST5EDT, inyectado
+rem      por proceso por watchdog_capitaria.ps1; decision del usuario 2026-10-06)
 rem    dashboard en http://127.0.0.1:8502  (el 8501 es de AVA)
 rem
 rem  Configuracion IDENTICA a M2_ENTREGA (commit b113eb7).
