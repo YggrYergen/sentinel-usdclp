@@ -77,11 +77,13 @@ $StopFile = Join-Path $LiveDir "STOP"
 #     Capitaria y no relanzaria nunca el de AVA; y la siega de huerfanos
 #     mataria el ejecutor armado de Capitaria. Es el simetrico del filtro que
 #     watchdog_capitaria.ps1 aplica en el otro sentido.
-#     CORRECCION 2026-10-06: filtrar SOLO por ExecutablePath no basta. El python
-#     del venv de Capitaria es un redirector que lanza como hijo el Python base
-#     del sistema, y ese hijo comparte ExecutablePath con los procesos de AVA.
-#     Por eso Get-OwnPythonProcs excluye ademas todo lo que lleve la marca
-#     `-X sentinel_stack=capitaria` o cuelgue de un redirector ajeno.
+#     CORRECCION 2026-10-06: un venv de Capitaria NO aisla por ExecutablePath: su
+#     python.exe es un redirector que lanza como hijo el Python base del
+#     sistema, y ese hijo comparte ExecutablePath con los procesos de AVA. Por
+#     eso Capitaria corre ahora sobre su PROPIO CPython real (C:\FOREX_CAP\_py#     python.exe), y aqui ExecutablePath == $PythonExe vuelve a ser exacto.
+#     Get-OwnPythonProcs ademas ignora, por defensa en profundidad, todo lo que
+#     lleve la marca `-X sentinel_stack=capitaria` o cuelgue de un python con
+#     OTRO ExecutablePath.
 #
 # Orden de resolucion: venv propio del clon -> py -3.11 -> `python` a secas.
 # ---------------------------------------------------------------------
@@ -277,10 +279,10 @@ function Get-OwnPythonProcs {
     # Capitaria. Es el UNICO punto por el que este watchdog enumera python
     # (busqueda, comprobacion de vivo, siega de huerfanos y su kill).
     #
-    # Por que no basta el ExecutablePath (2026-10-06): `<venv>\Scripts\python.exe`
-    # es un REDIRECTOR que lanza como hijo el Python base, y el hijo (el
-    # trabajador real) tiene el MISMO ExecutablePath que los procesos de AVA.
-    # Se excluyen dos casos:
+    # Capitaria corre sobre su propio CPython real (otra ruta), asi que el filtro
+    # exe == $PythonExe ya la deja fuera. Defensa en profundidad (2026-10-06, por
+    # si alguien monta Capitaria sobre un venv, cuyo hijo SI comparte exe con
+    # AVA) -- se excluyen ademas dos casos:
     #   a) linea de comandos con `sentinel_stack=capitaria` (lo que lanza el
     #      watchdog de Capitaria, redirector e hijo);
     #   b) hijo de un redirector AJENO: su padre es un python.exe con OTRO
@@ -399,9 +401,15 @@ function Wait-ForAccount {
 
 function Start-Hidden {
     # Lanza una linea de cmd oculta con el cwd en la raiz del repo.
+    # OJO cmd /c: si la linea EMPIEZA por comillas y lleva mas de dos, cmd quita
+    # la primera y la ultima comilla y la linea queda rota ("El nombre de
+    # archivo... no son correctos"; medido 2026-10-06). Las lineas de watcher y
+    # dashboard empiezan por `"<python>"`, asi que se envuelve TODA la linea en
+    # un par extra de comillas, que es lo que cmd retira. Las lineas que
+    # empiezan por `set ...&&` tambien funcionan envueltas.
     param([string]$CmdLine)
     $env:PYTHONPATH = $RepoRoot
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $CmdLine `
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "`"$CmdLine`"" `
         -WorkingDirectory $RepoRoot -WindowStyle Hidden | Out-Null
 }
 

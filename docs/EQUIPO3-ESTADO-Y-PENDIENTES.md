@@ -92,7 +92,7 @@ C:\FOREX       rama equipo3-runner      AVA 101744074   GOLD    dashboard :8501
                intérprete: py -3.11  (Python311\python.exe del usuario)
 
 C:\FOREX_CAP   rama equipo3-capitaria   Capitaria 902   XAUUSD  dashboard :8502
-               intérprete: C:\FOREX_CAP\.venv\Scripts\python.exe
+               intérprete: C:\FOREX_CAP\_py\python.exe  (CPython 3.11.9 real, no venv)
 ```
 
 **Por qué dos clones y no uno:** el stack es mono-instancia por diseño. `STOP`,
@@ -118,26 +118,28 @@ instancia y tiene cuatro colisiones. **Ninguna da un error visible.**
 `ExecutablePath == el intérprete propio`. Es exacto, no heurístico: dos rutas de
 exe distintas no se pueden confundir.
 
-- Capitaria corre sobre su **venv propio** (`<repo>\.venv\Scripts\python.exe`).
-  **El venv NO es opcional** — es el mecanismo de aislamiento.
+- Capitaria corre sobre su **CPython 3.11 real y propio** (`<repo>\_py\python.exe`,
+  paquete NuGet `python` 3.11.9). **NO un venv** (ver la corrección de abajo). Este
+  intérprete aparte **no es opcional** — es el mecanismo de aislamiento.
 - AVA resuelve en este orden: venv del clon → `py -3.11` → `python` con aviso.
   Verificado en el equipo 3: `py -3.11` apunta a
   `C:\Users\<user>\AppData\Local\Programs\Python\Python311\python.exe`.
 
-> **CORRECCIÓN (2026-10-06): el aislamiento "por `ExecutablePath`" de arriba es
-> INSUFICIENTE.** En Windows, `<venv>\Scripts\python.exe` es un *redirector*: lanza
-> como **hijo** al Python base del sistema, y ese hijo (el trabajador real) tiene
-> el **mismo `ExecutablePath` que los procesos de AVA** y los mismos módulos en la
-> línea de comandos. Medido en el equipo: padre = `<venv>\Scripts\python.exe`,
-> hijo = `...\Python311\python.exe`. Sin más, el watchdog de AVA confundiría los
-> trabajadores de Capitaria con los suyos, y matar un redirector no mata a su hijo.
-> Regla vigente: **Capitaria** pone `-X sentinel_stack=capitaria` en todo python que
-> lanza (marca visible en la `CommandLine` de redirector e hijo; CPython la guarda en
-> `sys._xoptions` sin efecto) y mata siempre el árbol (`taskkill /T /F`); **AVA** no
-> lleva marca, pero ignora todo lo marcado y todo hijo de un redirector ajeno. Por
-> tanto, en la verificación de la sección 6, los procesos sobre
-> `C:\FOREX_CAP\.venv\Scripts\python.exe` son los *redirectores*; cada uno tiene un
-> hijo sobre `...Python311\python.exe` que también es de Capitaria.
+> **CORRECCIÓN (2026-10-06): un venv NO aísla "por `ExecutablePath`".** En Windows,
+> `<venv>\Scripts\python.exe` es un *redirector*: lanza como **hijo** al Python base
+> del sistema, y ese hijo (el trabajador real) tiene el **mismo `ExecutablePath` que
+> los procesos de AVA** y los mismos módulos en la línea de comandos. Medido en el
+> equipo: padre = `<venv>\Scripts\python.exe`, hijo = `...\Python311\python.exe`. Con un
+> venv, el watchdog de AVA confundiría los trabajadores de Capitaria con los suyos, y
+> `supervisor_live._default_kill` (`proc.kill()`) mataría solo el redirector, dejando
+> vivo al ejecutor real (el supervisor relanzaría otro: órdenes dobles).
+> Regla vigente: **Capitaria corre sobre un CPython real en `C:\FOREX_CAP\_py\python.exe`**
+> (ruta distinta de la de AVA), y los hijos que lanza el supervisor con
+> `sys.executable` son procesos reales en esa misma ruta; el aislamiento por
+> `ExecutablePath` vuelve a ser exacto en los dos sentidos. Como defensa en
+> profundidad, el watchdog de Capitaria marca todo python que lanza con
+> `-X sentinel_stack=capitaria` y mata siempre el árbol (`taskkill /T /F`), y el de
+> AVA ignora lo marcado y todo hijo de un python con otro `ExecutablePath`.
 > Además, el stack B de AVA (`machine_local.ava2.json`) solo se vigila si ese
 > perfil existe; sin él el watchdog registra `stack B deshabilitado (sin
 > machine_local.ava2.json)` y no toca su terminal.
@@ -244,7 +246,7 @@ Estrategias y parámetros **byte-idénticos** a `b113eb7`. Solo infraestructura:
 - `scripts/live/machine_local.capitaria.example.json`
 - `scripts/live/requirements-capitaria.txt` — versiones fijadas a las verificadas
 - `INICIAR_CAPITARIA.bat`
-- `.gitignore` — `.venv/`, logs y lock propios
+- `.gitignore` — `_py/`, logs y lock propios
 
 ### Config exacta del roster `tomachine` (verificada en `b113eb7`)
 
@@ -369,13 +371,15 @@ acta son trazabilidad que ahora solo existe en un disco.
    Confirmar en la esquina que el balance es ~71 MM CLP y que es DEMO.
 4. **Clonar** `equipo3-capitaria` en `C:\FOREX_CAP`
    (`--branch equipo3-capitaria --single-branch --depth 1`).
-5. **Crear el venv**: `py -3.11 -m venv .venv` y luego
-   `.\.venv\Scripts\python.exe -m pip install -r scripts\live\requirements-capitaria.txt`.
-   Debe dar `3.11.x` y `MetaTrader5 5.0.5735`.
+5. **Instalar el CPython propio** (NO un venv): paquete NuGet `python` 3.11.9
+   descomprimido en `C:\FOREX_CAP\_py`, y luego
+   `C:\FOREX_CAP\_py\python.exe -m pip install -r scripts\live\requirements-capitaria.txt`.
+   Los comandos exactos están en la cabecera de `requirements-capitaria.txt`. Debe dar
+   `3.11.9` y `MetaTrader5 5.0.5735`.
 6. **`machine_local.json`** en ese clon:
    `C:\MT5_CAPITARIA\terminal64.exe`, `portable: false`,
    `demo_login: 2883016902`, `terminal_marker: mt5_capitaria`.
-7. `pytest tests\live\ -q` con el python del venv.
+7. `pytest tests\live\ -q` con `C:\FOREX_CAP\_py\python.exe`.
 8. `setup_autostart_capitaria.ps1` (PowerShell elevado) → `Start-ScheduledTask`.
 9. **Verificar los dos stacks en paralelo** (§6).
 
@@ -417,7 +421,7 @@ Esperado tras mover la 76 al equipo 1:
   (login 2883016902)
 - **~4 procesos** sobre `...Python311\python.exe` → AVA (watcher + supervisor +
   ejecutor armado, más el bars ingester)
-- **~3 procesos** sobre `C:\FOREX_CAP\.venv\Scripts\python.exe` → Capitaria
+- **~3 procesos** sobre `C:\FOREX_CAP\_py\python.exe` → Capitaria
 - Dashboards: AVA `:8501`, Capitaria `:8502`
 - Magics en el audit log de Capitaria: **724011** y **724071**
 
