@@ -1,9 +1,9 @@
 # requirements-capitaria.txt -- dependencias del stack CAPITARIA (equipo 3, 2026-09-24)
 #
-# OBJETIVO: que el stack Capitaria sea IDENTICO al de M2_ENTREGA, incluido el
-# interprete y las versiones de paquetes. M2 corria Python 3.12.10
-# (C:\Program Files\Python312\python.exe; sentinel_log.txt y watchdog.log de
-# M2_ENTREGA), por eso el interprete propio es CPython 3.12.10.
+# OBJETIVO: que el stack Capitaria corra el MISMO CODIGO que M2_ENTREGA sobre el
+# MISMO INTERPRETE. M2 corria Python 3.12.10 (C:\Program Files\Python312\python.exe;
+# sentinel_log.txt y watchdog.log de M2_ENTREGA), por eso el interprete propio es
+# CPython 3.12.10.
 #
 # Se instalan en el CPython 3.12.10 PROPIO de este clon (<repo>\_py\python.exe),
 # NO en el Python del sistema y NO en un venv. Un venv NO sirve: en Windows su
@@ -18,39 +18,70 @@
 #      supervisor con sys.executable son procesos reales en esa misma ruta);
 #   3. se aislan las versiones de las del clon AVA (que usa 3.11.9).
 #
-# Instalar (PowerShell 5.1, sin admin; ajusta $repo si el clon no esta en C:\FOREX_CAP):
+# Instalar (PowerShell 5.1, sin admin; ajusta $repo si el clon no esta en C:\FOREX_CAP).
+# Es idempotente: si <repo>\_py ya tiene 3.12.10 se salta la descarga; si tiene
+# otra cosa, se borra y se reinstala.
 #     $repo = 'C:\FOREX_CAP'
-#     $tmp  = Join-Path $env:TEMP 'py312-nuget'
-#     New-Item -ItemType Directory -Force $tmp | Out-Null
-#     $ProgressPreference = 'SilentlyContinue'
-#     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-#     Invoke-WebRequest -UseBasicParsing -Uri 'https://www.nuget.org/api/v2/package/python/3.12.10' -OutFile "$tmp\python.nupkg"
-#     Copy-Item "$tmp\python.nupkg" "$tmp\python.zip"
-#     Expand-Archive -Path "$tmp\python.zip" -DestinationPath "$tmp\x"
-#     Copy-Item -Recurse "$tmp\x\tools" "$repo\_py"
-#     & "$repo\_py\python.exe" -m pip install --disable-pip-version-check --no-warn-script-location -r "$repo\scripts\live\requirements-capitaria.txt"
-#     & "$repo\_py\python.exe" -c "import sys, MetaTrader5, numpy, pandas; print(sys.version); print(sys.executable)"
+#     $py   = "$repo\_py\python.exe"
+#     $ok   = $false
+#     if (Test-Path $py) { $ok = ((& $py -c "import sys; print('%d.%d.%d' % sys.version_info[:3])") -eq '3.12.10') }
+#     if (-not $ok) {
+#         if (Test-Path "$repo\_py") { Remove-Item -Recurse -Force "$repo\_py" }
+#         $tmp = Join-Path $env:TEMP 'py312-nuget'
+#         if (Test-Path $tmp) { Remove-Item -Recurse -Force $tmp }
+#         New-Item -ItemType Directory -Force $tmp | Out-Null
+#         $ProgressPreference = 'SilentlyContinue'
+#         [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+#         Invoke-WebRequest -UseBasicParsing -Uri 'https://www.nuget.org/api/v2/package/python/3.12.10' -OutFile "$tmp\python.nupkg"
+#         Copy-Item "$tmp\python.nupkg" "$tmp\python.zip"
+#         Expand-Archive -Path "$tmp\python.zip" -DestinationPath "$tmp\x"
+#         Copy-Item -Recurse "$tmp\x\tools" "$repo\_py"
+#     }
+#     & $py -m pip install --disable-pip-version-check --no-warn-script-location -r "$repo\scripts\live\requirements-capitaria.txt"
+#     & $py -c "import sys, MetaTrader5, numpy, pandas, ta, fastapi; print(sys.version); print(sys.executable); print(numpy.__version__, pandas.__version__)"
 # (el paquete NuGet `python` es el CPython oficial de python.org, completo y con
 #  pip incluido; ver docs.python.org "Using Python on Windows" > nuget.org)
 #
-# VERSIONES: las marcadas [M2] son las que M2 tenia instaladas, leidas de
-# M2_ENTREGA\repo\sentinel_log.txt (check de imports del 2026-07-14, Python
-# 3.12.10). Las marcadas [SIN EVIDENCIA] no se imprimen en ningun log de M2
-# (el requirements de M2 era `>=`): se conserva el pin anterior.
+# DE DONDE SALEN LAS VERSIONES
+#  - [M2]  = lo que M2 tenia instalado, leido de M2_ENTREGA\repo\sentinel_log.txt
+#            (check de imports del 2026-07-14, Python 3.12.10). El requirements
+#            de M2 era `>=`; no hay pip freeze.
+#  - [AVA] = el pip freeze del equipo 1 (`py -3.11 -m pip list`; ver
+#            requirements-equipo3.txt en la rama equipo3-runner): el entorno con
+#            el que se valida el codigo y la suite de tests del repo.
+#
+# DESVIO DELIBERADO RESPECTO A M2: pandas y numpy van a la pila del repo
+# (pandas 2.3.3 / numpy 2.3.3), NO a la de M2 (pandas 3.0.3 / numpy 2.5.1).
+# pandas 3 rompe sentinel_engine/lake/tiers.py:87 (`df.index.view("int64") //
+# 1_000_000_000` supone resolucion ns; en pandas 3 `pd.to_datetime(..., unit="s")`
+# devuelve datetime64[s] y el parseo de texto datetime64[us], asi que la marca de
+# tiempo se divide dos veces): el ingester de barras escribiria `t` erroneo en el
+# lake y fallan 21 tests que pasan con pandas 2.3.3. Esas ruedas existen para
+# cp312 (numpy 2.3.3 / pandas 2.3.3 / scipy 1.18.0 instalan sobre 3.12.10).
 
-MetaTrader5==5.0.5735   # [M2]
+MetaTrader5==5.0.5735   # [M2] [AVA]
 
-numpy==2.5.1            # [M2]
-pandas==3.0.3           # [M2]
-scipy==1.18.0           # [M2]
-PyYAML==6.0.2           # [SIN EVIDENCIA]
+numpy==2.3.3            # [AVA] (M2: 2.5.1) -- ver DESVIO
+pandas==2.3.3           # [AVA] (M2: 3.0.3)  -- ver DESVIO
+scipy==1.18.0           # [M2]  compatible con numpy 2.3.3
+PyYAML==6.0.2           # [AVA]
+ta==0.11.0              # [M2: `ta>=0.11.0`] [AVA]. sentinel/indicators.py lo importa: sin el
+                        # no arranca el dashboard (service/app.py) ni se recoge la suite de tests
 
 streamlit==1.59.2       # [M2]
 plotly==6.9.0           # [M2]
-altair==6.1.0           # [SIN EVIDENCIA]
-fastapi==0.142.2       # [SIN EVIDENCIA] M2 declaraba fastapi>=0.110.0; faltaba aqui y el dashboard lo importa
+altair==6.1.0           # [AVA]
 
-requests==2.32.4        # [SIN EVIDENCIA]
+# Dashboard (scripts/run_service.py, puerto 8502): versiones del entorno [AVA].
+fastapi==0.127.0        # [AVA]
+starlette==0.47.2       # [AVA]
+uvicorn==0.35.0         # [AVA]
+anyio==4.9.0            # [AVA]
+pyarrow==24.0.0         # [AVA] (M2 declaraba `>=15`)
 
-pytest==8.4.1           # [SIN EVIDENCIA]
-pytest-asyncio==1.1.0   # [SIN EVIDENCIA]
+requests==2.32.4        # [AVA]
+
+# --- SOLO PARA PRUEBAS (no hacen falta para operar) ---
+pytest==8.4.1           # [AVA] test-only
+pytest-asyncio==1.1.0   # [AVA] test-only
+httpx==0.28.1           # [AVA] test-only: starlette.testclient (tests/service)

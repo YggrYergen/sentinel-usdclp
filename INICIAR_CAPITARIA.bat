@@ -19,7 +19,10 @@ rem  Configuracion IDENTICA a M2_ENTREGA (commit b113eb7).
 rem
 rem  NO lo corras a la vez que la tarea programada: el watchdog
 rem  es singleton y la segunda instancia se negara a arrancar.
-rem     Stop-ScheduledTask -TaskName SENTINEL_Watchdog_Capitaria
+rem     NO uses Stop-ScheduledTask (puede tumbar el arbol de procesos, o sea
+rem     supervisor y ejecutor). Para el watchdog PARA SOLO su powershell:
+rem       Get-CimInstance Win32_Process | ? { $_.CommandLine -match 'watchdog_capitaria\.ps1' }
+rem       Stop-Process -Id <PID del powershell>
 rem
 rem  ANTES de la primera vez: abre el terminal MT5 de Capitaria,
 rem  inicia sesion y anade XAUUSD a Observacion de Mercado.

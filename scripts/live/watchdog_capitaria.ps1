@@ -137,7 +137,7 @@ function Assert-Interpreter {
         exit 1
     }
     $v = & $PythonExe -X $StackMarker -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1
-    Write-Log "interprete:$PythonExe (Python $v)"
+    Write-Log "interprete: $PythonExe (Python $v)"
     if ("$v".Trim() -ne "3.12") {
         Write-Log "AVISO: el interprete no es Python 3.12 sino $v. M2 corria 3.12.10 y las dependencias estan fijadas a esa version."
     }
@@ -233,14 +233,17 @@ function Find-MyProc {
 
 function Stop-ProcTree {
     # Se mata el ARBOL entero (`taskkill /T /F`): un proceso puede tener hijos
-    # propios (p. ej. el supervisor lanza ejecutor y watcher). Start-Process en vez de `&` para
-    # que el stderr de taskkill no se convierta en excepcion con
+    # propios (p. ej. el supervisor lanza ejecutor y watcher). Start-Process en
+    # vez de `&` para que el stderr de taskkill no se convierta en excepcion con
     # $ErrorActionPreference = Stop (PowerShell 5.1).
     param([int]$ProcId)
     if (-not (Get-Process -Id $ProcId -ErrorAction SilentlyContinue)) { return $true }
     $k = Start-Process -FilePath "taskkill.exe" -ArgumentList "/PID", $ProcId, "/T", "/F" `
             -Wait -PassThru -WindowStyle Hidden
-    return ($k.ExitCode -eq 0)
+    if ($k.ExitCode -eq 0) { return $true }
+    # "Proceso no encontrado" (carrera: murio entre la comprobacion y taskkill)
+    # no es un error: lo que importa es que ya no exista.
+    return (-not (Get-Process -Id $ProcId -ErrorAction SilentlyContinue))
 }
 
 function Test-TerminalRunning {
