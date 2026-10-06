@@ -36,8 +36,8 @@
      AVA, dejando posiciones abiertas sin nadie que las gestione.
 
   COMO SE ARREGLAN LAS TRES ULTIMAS (REVISADO 2026-10-06). Este stack corre
-  sobre su PROPIO CPython 3.11 REAL, no un venv: `<repo>\_py\python.exe`
-  (paquete NuGet `python` 3.11.9, descomprimido en esa carpeta; ver
+  sobre su PROPIO CPython 3.12.10 REAL, no un venv: `<repo>\_py\python.exe`
+  (paquete NuGet `python` 3.12.10 (la version de M2), descomprimido en esa carpeta; ver
   requirements-capitaria.txt). Todo filtro de proceso exige ExecutablePath ==
   ESE interprete. Es exacto: los procesos AVA corren sobre otro exe y no pueden
   confundirse, y los hijos que lanza el supervisor con `sys.executable` son
@@ -78,7 +78,7 @@ $LogFile  = Join-Path $LiveDir "watchdog_capitaria.log"
 $LockFile = Join-Path $LiveDir "watchdog_capitaria.lock"
 $StopFile = Join-Path $LiveDir "STOP"
 
-# 🔴 INTERPRETE CLAVADO: un CPython 3.11 REAL y propio de este clon (NO un
+# 🔴 INTERPRETE CLAVADO: un CPython 3.12.10 REAL y propio de este clon (NO un
 # venv, que seria un redirector). Es a la vez el fix del riesgo D1 y el
 # mecanismo por el que este watchdog distingue SUS procesos de los del stack
 # AVA: ExecutablePath == este exe.
@@ -125,10 +125,10 @@ function Write-Log {
 function Assert-Interpreter {
     if (-not (Test-Path $PythonExe)) {
         Write-Log "ME NIEGO A ARRANCAR: no existe el interprete propio en $PythonExe"
-        Write-Log "  Este stack DEBE correr en su propio CPython 3.11 (NO un venv): es lo que lo"
+        Write-Log "  Este stack DEBE correr en su propio CPython 3.12.10 (NO un venv): es lo que lo"
         Write-Log "  distingue de los procesos del stack AVA. Instalalo siguiendo las"
         Write-Log "  instrucciones de scripts\live\requirements-capitaria.txt (paquete NuGet"
-        Write-Log "  python 3.11.9 descomprimido en $RepoRoot\_py)."
+        Write-Log "  python 3.12.10 descomprimido en $RepoRoot\_py)."
         exit 1
     }
     if (Test-Path (Join-Path (Split-Path $PythonExe -Parent) "pyvenv.cfg")) {
@@ -138,8 +138,8 @@ function Assert-Interpreter {
     }
     $v = & $PythonExe -X $StackMarker -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1
     Write-Log "interprete:$PythonExe (Python $v)"
-    if ("$v".Trim() -ne "3.11") {
-        Write-Log "AVISO: el interprete no es Python 3.11 sino $v. Las dependencias estan fijadas a 3.11."
+    if ("$v".Trim() -ne "3.12") {
+        Write-Log "AVISO: el interprete no es Python 3.12 sino $v. M2 corria 3.12.10 y las dependencias estan fijadas a esa version."
     }
 }
 

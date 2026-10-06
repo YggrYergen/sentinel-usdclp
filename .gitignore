@@ -99,7 +99,7 @@ scripts/live/watcher_console.log
 scripts/live/watcher_console.err
 
 # --- Stack CAPITARIA en el equipo 3 (2026-09-24) -------------------------
-# CPython 3.11 REAL propio del clon (paquete NuGet python 3.11.9, NO un venv):
+# CPython 3.12.10 REAL propio del clon (paquete NuGet python 3.12.10, NO un venv):
 # clava el interprete y es lo que permite al watchdog distinguir sus procesos de
 # los del stack AVA. Ver scripts/live/requirements-capitaria.txt.
 _py/

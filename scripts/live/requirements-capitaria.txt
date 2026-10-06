@@ -1,25 +1,30 @@
 # requirements-capitaria.txt -- dependencias del stack CAPITARIA (equipo 3, 2026-09-24)
 #
-# Se instalan en el CPython 3.11 PROPIO de este clon (<repo>\_py\python.exe),
+# OBJETIVO: que el stack Capitaria sea IDENTICO al de M2_ENTREGA, incluido el
+# interprete y las versiones de paquetes. M2 corria Python 3.12.10
+# (C:\Program Files\Python312\python.exe; sentinel_log.txt y watchdog.log de
+# M2_ENTREGA), por eso el interprete propio es CPython 3.12.10.
+#
+# Se instalan en el CPython 3.12.10 PROPIO de este clon (<repo>\_py\python.exe),
 # NO en el Python del sistema y NO en un venv. Un venv NO sirve: en Windows su
 # python.exe es un REDIRECTOR que lanza como hijo al Python base del sistema, y
 # ese hijo comparte ExecutablePath con el stack AVA. Con un CPython real y
 # separado:
-#   1. el interprete queda clavado en 3.11 (el equipo 3 tiene tambien un 3.14.5 y
+#   1. el interprete queda clavado (el equipo 3 tiene tambien un 3.14.5 y
 #      `python` a secas resuelve distinto segun el contexto -- riesgo D1 del
 #      acta de instalacion);
 #   2. watchdog_capitaria.ps1 distingue SUS procesos de los de AVA por
 #      ExecutablePath == <repo>\_py\python.exe (exacto: los hijos que lanza el
 #      supervisor con sys.executable son procesos reales en esa misma ruta);
-#   3. se aislan las versiones de las del clon AVA.
+#   3. se aislan las versiones de las del clon AVA (que usa 3.11.9).
 #
 # Instalar (PowerShell 5.1, sin admin; ajusta $repo si el clon no esta en C:\FOREX_CAP):
 #     $repo = 'C:\FOREX_CAP'
-#     $tmp  = Join-Path $env:TEMP 'py311-nuget'
+#     $tmp  = Join-Path $env:TEMP 'py312-nuget'
 #     New-Item -ItemType Directory -Force $tmp | Out-Null
 #     $ProgressPreference = 'SilentlyContinue'
 #     [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-#     Invoke-WebRequest -UseBasicParsing -Uri 'https://www.nuget.org/api/v2/package/python/3.11.9' -OutFile "$tmp\python.nupkg"
+#     Invoke-WebRequest -UseBasicParsing -Uri 'https://www.nuget.org/api/v2/package/python/3.12.10' -OutFile "$tmp\python.nupkg"
 #     Copy-Item "$tmp\python.nupkg" "$tmp\python.zip"
 #     Expand-Archive -Path "$tmp\python.zip" -DestinationPath "$tmp\x"
 #     Copy-Item -Recurse "$tmp\x\tools" "$repo\_py"
@@ -27,19 +32,25 @@
 #     & "$repo\_py\python.exe" -c "import sys, MetaTrader5, numpy, pandas; print(sys.version); print(sys.executable)"
 # (el paquete NuGet `python` es el CPython oficial de python.org, completo y con
 #  pip incluido; ver docs.python.org "Using Python on Windows" > nuget.org)
+#
+# VERSIONES: las marcadas [M2] son las que M2 tenia instaladas, leidas de
+# M2_ENTREGA\repo\sentinel_log.txt (check de imports del 2026-07-14, Python
+# 3.12.10). Las marcadas [SIN EVIDENCIA] no se imprimen en ningun log de M2
+# (el requirements de M2 era `>=`): se conserva el pin anterior.
 
-MetaTrader5==5.0.5735
+MetaTrader5==5.0.5735   # [M2]
 
-numpy==2.3.3
-pandas==2.3.3
-scipy==1.17.1
-PyYAML==6.0.2
+numpy==2.5.1            # [M2]
+pandas==3.0.3           # [M2]
+scipy==1.18.0           # [M2]
+PyYAML==6.0.2           # [SIN EVIDENCIA]
 
-streamlit==1.57.0
-plotly==6.7.0
-altair==6.1.0
+streamlit==1.59.2       # [M2]
+plotly==6.9.0           # [M2]
+altair==6.1.0           # [SIN EVIDENCIA]
+fastapi==0.142.2       # [SIN EVIDENCIA] M2 declaraba fastapi>=0.110.0; faltaba aqui y el dashboard lo importa
 
-requests==2.32.4
+requests==2.32.4        # [SIN EVIDENCIA]
 
-pytest==8.4.1
-pytest-asyncio==1.1.0
+pytest==8.4.1           # [SIN EVIDENCIA]
+pytest-asyncio==1.1.0   # [SIN EVIDENCIA]

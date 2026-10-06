@@ -54,12 +54,12 @@ Write-Output "RepoRoot: $RepoRoot"
 Write-Section "Cerrojo 1: interprete propio (CPython real, no venv)"
 if (-not (Test-Path $PythonExe)) {
     Write-Output "ERROR: no existe $PythonExe"
-    Write-Output "  Este stack DEBE correr en su propio CPython 3.11 REAL. Es lo que permite al"
+    Write-Output "  Este stack DEBE correr en su propio CPython 3.12.10 REAL. Es lo que permite al"
     Write-Output "  watchdog distinguir sus procesos de los del stack AVA -- sin el, la siega de"
     Write-Output "  ejecutores huerfanos mataria el ejecutor armado de AVA. Un venv NO sirve:"
     Write-Output "  su python.exe es un redirector cuyo hijo comparte exe con AVA."
     Write-Output "  Instalalo (cabecera de scripts\live\requirements-capitaria.txt): paquete"
-    Write-Output "  NuGet python 3.11.9 descomprimido en $RepoRoot\_py, y luego"
+    Write-Output "  NuGet python 3.12.10 descomprimido en $RepoRoot\_py, y luego"
     Write-Output "    & `"$PythonExe`" -m pip install -r scripts\live\requirements-capitaria.txt"
     exit 1
 }
