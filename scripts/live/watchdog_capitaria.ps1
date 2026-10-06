@@ -35,26 +35,25 @@
      que este watchdog relanzara su supervisor, MATARIA EL EJECUTOR ARMADO DE
      AVA, dejando posiciones abiertas sin nadie que las gestione.
 
-  COMO SE ARREGLAN LAS TRES ULTIMAS (REVISADO 2026-10-06). El primer diseno
-  filtraba solo por ExecutablePath == venv, y era INSUFICIENTE: en Windows
-  `<venv>\Scripts\python.exe` es un REDIRECTOR que lanza como HIJO al Python
-  base (`...\Python311\python.exe`). El hijo es el que trabaja de verdad y su
-  ExecutablePath es el del sistema -- el MISMO que usa el stack AVA --, con los
-  mismos modulos en la linea de comandos. Resultado: el watchdog de AVA tomaba
-  los trabajadores de Capitaria por suyos (y viceversa se veia solo al
-  redirector; matar el redirector no mata al hijo).
+  COMO SE ARREGLAN LAS TRES ULTIMAS (REVISADO 2026-10-06). Este stack corre
+  sobre su PROPIO CPython 3.11 REAL, no un venv: `<repo>\_py\python.exe`
+  (paquete NuGet `python` 3.11.9, descomprimido en esa carpeta; ver
+  requirements-capitaria.txt). Todo filtro de proceso exige ExecutablePath ==
+  ESE interprete. Es exacto: los procesos AVA corren sobre otro exe y no pueden
+  confundirse, y los hijos que lanza el supervisor con `sys.executable` son
+  procesos reales en esa misma ruta.
 
-  Ahora la propiedad se decide por DOS rasgos, cualquiera basta:
-    a) la linea de comandos contiene `sentinel_stack=capitaria`. Todo python que
-       lanza ESTE watchdog lleva `-X sentinel_stack=capitaria` justo tras el
-       exe; CPython guarda los -X desconocidos en sys._xoptions sin efecto, y el
-       redirector pasa los args tal cual, asi que lo llevan redirector E hijo.
-    b) ExecutablePath == el venv de este clon (el redirector). Hace falta
-       porque el supervisor lanza el ejecutor y el watcher con
-       `[sys.executable, "-m", ...]` SIN el -X (los -X no se heredan): ese
-       redirector no lleva marca, pero su exe es exacto. Su hijo base no se
-       identifica solo -> por eso toda muerte se hace con `taskkill /T /F`.
-  Un servicio logico se cuenta UNA vez (el redirector tiene preferencia).
+  POR QUE NO UN VENV. En Windows `<venv>\Scripts\python.exe` es un REDIRECTOR
+  que lanza como HIJO al Python base del sistema. El hijo (el trabajador real)
+  tiene el MISMO ExecutablePath que el stack AVA y los mismos modulos en la
+  linea de comandos: el watchdog de AVA tomaba los trabajadores de Capitaria
+  por suyos, este solo veia redirectores, y `proc.kill()` del supervisor mata el
+  redirector pero deja vivo al ejecutor real (duplicado -> ordenes dobles).
+
+  MARCA DE DEFENSA EN PROFUNDIDAD: todo python que lanza este watchdog lleva
+  `-X sentinel_stack=capitaria` justo tras el exe (CPython la guarda en
+  sys._xoptions sin efecto). Ya no es lo que decide la propiedad, pero tambien
+  cuenta como propio. Toda muerte sigue siendo por arbol (`taskkill /T /F`).
   El interprete clavado tambien resuelve el riesgo D1 del acta del equipo 3:
   `python` a secas resolvia a 3.14.5 en consola interactiva y a 3.11 bajo la
   tarea programada, dependiendo del PATH.
@@ -79,13 +78,15 @@ $LogFile  = Join-Path $LiveDir "watchdog_capitaria.log"
 $LockFile = Join-Path $LiveDir "watchdog_capitaria.lock"
 $StopFile = Join-Path $LiveDir "STOP"
 
-# 🔴 INTERPRETE CLAVADO. Es a la vez el fix del riesgo D1 y el mecanismo por el
-# que este watchdog distingue SUS procesos de los del stack AVA.
-$PythonExe = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+# 🔴 INTERPRETE CLAVADO: un CPython 3.11 REAL y propio de este clon (NO un
+# venv, que seria un redirector). Es a la vez el fix del riesgo D1 y el
+# mecanismo por el que este watchdog distingue SUS procesos de los del stack
+# AVA: ExecutablePath == este exe.
+$PythonExe = Join-Path $RepoRoot "_py\python.exe"
 
-# MARCA DE PROPIEDAD. `-X sentinel_stack=capitaria` va justo tras el exe en
-# CADA python que lanza este watchdog. Sin efecto en ejecucion (sys._xoptions);
-# visible en Win32_Process.CommandLine tanto del redirector como de su hijo.
+# Marca de defensa en profundidad. `-X sentinel_stack=capitaria` va justo tras
+# el exe en CADA python que lanza este watchdog. Sin efecto en ejecucion
+# (sys._xoptions); visible en Win32_Process.CommandLine.
 $StackMarker = "sentinel_stack=capitaria"
 $PyOpt       = "-X $StackMarker"
 
@@ -121,19 +122,24 @@ function Write-Log {
     Write-Output $line
 }
 
-function Assert-Venv {
+function Assert-Interpreter {
     if (-not (Test-Path $PythonExe)) {
-        Write-Log "ME NIEGO A ARRANCAR: no existe el interprete del venv en $PythonExe"
-        Write-Log "  Este stack DEBE correr en su propio venv: es lo que lo distingue de los"
-        Write-Log "  procesos del stack AVA. Crealo (paso 4 de las instrucciones):"
-        Write-Log "    py -3.11 -m venv `"$RepoRoot\.venv`""
-        Write-Log "    & `"$PythonExe`" -m pip install -r scripts\live\requirements-capitaria.txt"
+        Write-Log "ME NIEGO A ARRANCAR: no existe el interprete propio en $PythonExe"
+        Write-Log "  Este stack DEBE correr en su propio CPython 3.11 (NO un venv): es lo que lo"
+        Write-Log "  distingue de los procesos del stack AVA. Instalalo siguiendo las"
+        Write-Log "  instrucciones de scripts\live\requirements-capitaria.txt (paquete NuGet"
+        Write-Log "  python 3.11.9 descomprimido en $RepoRoot\_py)."
+        exit 1
+    }
+    if (Test-Path (Join-Path (Split-Path $PythonExe -Parent) "pyvenv.cfg")) {
+        Write-Log "ME NIEGO A ARRANCAR: $PythonExe es un venv (hay pyvenv.cfg), no un CPython real."
+        Write-Log "  Un venv es un redirector cuyo hijo comparte ExecutablePath con el stack AVA."
         exit 1
     }
     $v = & $PythonExe -X $StackMarker -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1
-    Write-Log "interprete: $PythonExe (Python $v)"
+    Write-Log "interprete:$PythonExe (Python $v)"
     if ("$v".Trim() -ne "3.11") {
-        Write-Log "AVISO: el venv no es Python 3.11 sino $v. Las dependencias estan fijadas a 3.11."
+        Write-Log "AVISO: el interprete no es Python 3.11 sino $v. Las dependencias estan fijadas a 3.11."
     }
 }
 
@@ -198,20 +204,15 @@ function Release-Singleton {
     }
 }
 
-function Test-IsRedirector {
-    # El redirector del venv: su ExecutablePath ES el interprete del venv.
-    param($Proc)
-    return [bool]($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLower() -eq $PythonExe.ToLower())
-}
-
 function Test-IsMine {
-    # Propiedad (ver cabecera): marca -X en la linea de comandos (redirector e
-    # hijo) O exe == venv (redirector, incluido el del ejecutor que lanza el
-    # supervisor sin marca). Nunca basta el ExecutablePath del Python base: es
-    # el mismo que usa AVA.
+    # Propiedad: python cuyo ExecutablePath ES el interprete propio de este clon
+    # (_py\python.exe, un CPython real: los hijos que lanza el supervisor con
+    # sys.executable tambien viven en esa ruta), o que lleva la marca -X de
+    # defensa en profundidad. El ExecutablePath del Python del sistema nunca
+    # cuenta: es el que usa AVA.
     param($Proc)
     if ($Proc.Name -notmatch '^python(\.exe)?$') { return $false }
-    if (Test-IsRedirector $Proc) { return $true }
+    if ($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLower() -eq $PythonExe.ToLower()) { return $true }
     return [bool]($Proc.CommandLine -and $Proc.CommandLine.Contains($StackMarker))
 }
 
@@ -224,20 +225,15 @@ function Get-MyProcs {
 }
 
 function Find-MyProc {
-    # COLISIONES 2 y 3. Cuenta cada servicio logico UNA vez: devuelve el
-    # redirector si existe (su hijo con marca es el mismo servicio); solo si no
-    # hay redirector devuelve un proceso con marca (hijo huerfano de un
-    # redirector muerto).
+    # COLISIONES 2 y 3: solo procesos de ESTE stack. Sin redirector hay un
+    # proceso por servicio logico.
     param([string]$Pattern)
-    $all = @(Get-MyProcs $Pattern)
-    foreach ($p in $all) { if (Test-IsRedirector $p) { return $p } }
-    if ($all.Count -gt 0) { return $all[0] }
-    return $null
+    Get-MyProcs $Pattern | Select-Object -First 1
 }
 
 function Stop-ProcTree {
-    # Matar SOLO el redirector deja vivo a su hijo (el trabajador real).
-    # `taskkill /T /F` mata el arbol entero. Start-Process en vez de `&` para
+    # Se mata el ARBOL entero (`taskkill /T /F`): un proceso puede tener hijos
+    # propios (p. ej. el supervisor lanza ejecutor y watcher). Start-Process en vez de `&` para
     # que el stderr de taskkill no se convierta en excepcion con
     # $ErrorActionPreference = Stop (PowerShell 5.1).
     param([int]$ProcId)
@@ -363,10 +359,8 @@ function Ensure-Supervisor {
         return
     }
     # 🔴 COLISION 4, LA PEOR. El original sega TODO `run_live_20` de la maquina.
-    # Aqui la siega se limita a procesos de ESTE stack (marca -X o exe == venv):
-    # el ejecutor armado de AVA queda intocado. Se mata el ARBOL (/T): el
-    # redirector del ejecutor tiene un hijo base que de otro modo seguiria
-    # operando sin supervisor.
+    # Aqui la siega se limita a procesos de ESTE stack (exe == _py\python.exe o
+    # marca -X): el ejecutor armado de AVA queda intocado. Se mata el ARBOL (/T).
     $orphans = @(Get-MyProcs 'run_live_20')
     foreach ($o in $orphans) {
         Write-Log "segando ejecutor HUERFANO de ESTE stack, PID $($o.ProcessId) y su arbol (ningun supervisor vivo lo posee)."
@@ -412,7 +406,7 @@ function Ensure-Dashboard {
 # ---------------------------------------------------------------------
 Acquire-Singleton
 Write-Log "watchdog_capitaria.ps1 ARRANCADO (PID $PID). Sondeo cada ${PollSec}s. Repo: $RepoRoot"
-Assert-Venv
+Assert-Interpreter
 Resolve-MachineProfile
 
 try {

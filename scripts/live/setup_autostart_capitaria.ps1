@@ -18,7 +18,8 @@
   entorno por proceso.
 
   CERROJOS -- se niega a correr si:
-    - no existe el venv propio (es lo que distingue estos procesos de los de AVA)
+    - no existe el interprete propio _py\python.exe (un CPython real, NO un venv;
+      es lo que distingue estos procesos de los de AVA)
     - no existe scripts\live\machine_local.json en ESTE clon
     - el clon esta en la misma carpeta que el stack AVA
     - hay variables SUPERVISOR_* o SENTINEL_MACHINE_PROFILE persistidas
@@ -39,7 +40,7 @@ $RepoRoot    = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
 $LiveDir     = Join-Path $RepoRoot "scripts\live"
 $WatchdogPs1 = Join-Path $LiveDir "watchdog_capitaria.ps1"
 $ProfileJson = Join-Path $LiveDir "machine_local.json"
-$PythonExe   = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+$PythonExe   = Join-Path $RepoRoot "_py\python.exe"
 
 $TaskName = "SENTINEL_Watchdog_Capitaria"
 $AvaTask  = "SENTINEL_Watchdog_Equipo3"
@@ -50,19 +51,25 @@ Write-Section "SENTINEL -- autoarranque del stack CAPITARIA (equipo 3)"
 Write-Output "RepoRoot: $RepoRoot"
 
 # --------------------------------------------------------------------------
-Write-Section "Cerrojo 1: venv propio"
+Write-Section "Cerrojo 1: interprete propio (CPython real, no venv)"
 if (-not (Test-Path $PythonExe)) {
     Write-Output "ERROR: no existe $PythonExe"
-    Write-Output "  Este stack DEBE correr en su propio venv. Es lo que permite al watchdog"
-    Write-Output "  distinguir sus procesos de los del stack AVA -- sin el, la siega de"
-    Write-Output "  ejecutores huerfanos mataria el ejecutor armado de AVA."
-    Write-Output "  Crealo:"
-    Write-Output "    py -3.11 -m venv `"$RepoRoot\.venv`""
+    Write-Output "  Este stack DEBE correr en su propio CPython 3.11 REAL. Es lo que permite al"
+    Write-Output "  watchdog distinguir sus procesos de los del stack AVA -- sin el, la siega de"
+    Write-Output "  ejecutores huerfanos mataria el ejecutor armado de AVA. Un venv NO sirve:"
+    Write-Output "  su python.exe es un redirector cuyo hijo comparte exe con AVA."
+    Write-Output "  Instalalo (cabecera de scripts\live\requirements-capitaria.txt): paquete"
+    Write-Output "  NuGet python 3.11.9 descomprimido en $RepoRoot\_py, y luego"
     Write-Output "    & `"$PythonExe`" -m pip install -r scripts\live\requirements-capitaria.txt"
     exit 1
 }
+if (Test-Path (Join-Path (Split-Path $PythonExe -Parent) "pyvenv.cfg")) {
+    Write-Output "ERROR: $PythonExe es un venv (existe pyvenv.cfg), no un CPython real."
+    Write-Output "  Un venv es un redirector: su hijo comparte ExecutablePath con el stack AVA."
+    exit 1
+}
 $pyv = (& $PythonExe -c "import sys; print('%d.%d.%d' % sys.version_info[:3])" 2>&1)
-Write-Output "OK: venv en $PythonExe (Python $pyv)"
+Write-Output "OK: interprete propio en $PythonExe (Python $pyv)"
 
 # --------------------------------------------------------------------------
 Write-Section "Cerrojo 2: no compartir carpeta con el stack AVA"

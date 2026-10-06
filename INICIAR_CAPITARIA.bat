@@ -7,7 +7,7 @@ rem  visible. Para la primera puesta en marcha y diagnostico.
 rem  En regimen normal lo lanza la tarea programada
 rem  SENTINEL_Watchdog_Capitaria, oculta y al iniciar sesion.
 rem
-rem  Mantiene vivos, TODOS sobre el venv propio de este clon:
+rem  Mantiene vivos, TODOS sobre el CPython propio de este clon (_py):
 rem    terminal MT5 Capitaria + deals watcher + supervisor
 rem    roster `tomachine`: S6-K2P0 (ficha unica) + SuperTrend
 rem    XAUUSD, lote 0.67, max_volume 0.67
