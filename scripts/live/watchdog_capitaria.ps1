@@ -35,13 +35,29 @@
      que este watchdog relanzara su supervisor, MATARIA EL EJECUTOR ARMADO DE
      AVA, dejando posiciones abiertas sin nadie que las gestione.
 
-  COMO SE ARREGLAN LAS TRES ULTIMAS: con un interprete propio por clon. Este
-  stack corre sobre el venv `<repo>\.venv\Scripts\python.exe`, y todo filtro de
-  proceso exige ExecutablePath == ESE interprete. Es exacto (no heuristico:
-  dos rutas de exe distintas no pueden confundirse) y ademas resuelve el riesgo
-  D1 del acta del equipo 3: `python` a secas resolvia a 3.14.5 en consola
-  interactiva y a 3.11 bajo la tarea programada, dependiendo del PATH. Aqui el
-  interprete esta clavado.
+  COMO SE ARREGLAN LAS TRES ULTIMAS (REVISADO 2026-10-06). El primer diseno
+  filtraba solo por ExecutablePath == venv, y era INSUFICIENTE: en Windows
+  `<venv>\Scripts\python.exe` es un REDIRECTOR que lanza como HIJO al Python
+  base (`...\Python311\python.exe`). El hijo es el que trabaja de verdad y su
+  ExecutablePath es el del sistema -- el MISMO que usa el stack AVA --, con los
+  mismos modulos en la linea de comandos. Resultado: el watchdog de AVA tomaba
+  los trabajadores de Capitaria por suyos (y viceversa se veia solo al
+  redirector; matar el redirector no mata al hijo).
+
+  Ahora la propiedad se decide por DOS rasgos, cualquiera basta:
+    a) la linea de comandos contiene `sentinel_stack=capitaria`. Todo python que
+       lanza ESTE watchdog lleva `-X sentinel_stack=capitaria` justo tras el
+       exe; CPython guarda los -X desconocidos en sys._xoptions sin efecto, y el
+       redirector pasa los args tal cual, asi que lo llevan redirector E hijo.
+    b) ExecutablePath == el venv de este clon (el redirector). Hace falta
+       porque el supervisor lanza el ejecutor y el watcher con
+       `[sys.executable, "-m", ...]` SIN el -X (los -X no se heredan): ese
+       redirector no lleva marca, pero su exe es exacto. Su hijo base no se
+       identifica solo -> por eso toda muerte se hace con `taskkill /T /F`.
+  Un servicio logico se cuenta UNA vez (el redirector tiene preferencia).
+  El interprete clavado tambien resuelve el riesgo D1 del acta del equipo 3:
+  `python` a secas resolvia a 3.14.5 en consola interactiva y a 3.11 bajo la
+  tarea programada, dependiendo del PATH.
 
   El dashboard va al puerto 8502: el 8501 es de AVA.
 
@@ -66,6 +82,12 @@ $StopFile = Join-Path $LiveDir "STOP"
 # 🔴 INTERPRETE CLAVADO. Es a la vez el fix del riesgo D1 y el mecanismo por el
 # que este watchdog distingue SUS procesos de los del stack AVA.
 $PythonExe = Join-Path $RepoRoot ".venv\Scripts\python.exe"
+
+# MARCA DE PROPIEDAD. `-X sentinel_stack=capitaria` va justo tras el exe en
+# CADA python que lanza este watchdog. Sin efecto en ejecucion (sys._xoptions);
+# visible en Win32_Process.CommandLine tanto del redirector como de su hijo.
+$StackMarker = "sentinel_stack=capitaria"
+$PyOpt       = "-X $StackMarker"
 
 $WatcherLog    = Join-Path $LiveDir "deals_watcher_local.log"
 $SupervisorLog = Join-Path $LiveDir "supervisor_local.log"
@@ -108,7 +130,7 @@ function Assert-Venv {
         Write-Log "    & `"$PythonExe`" -m pip install -r scripts\live\requirements-capitaria.txt"
         exit 1
     }
-    $v = & $PythonExe -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1
+    $v = & $PythonExe -X $StackMarker -c "import sys; print('%d.%d' % sys.version_info[:2])" 2>&1
     Write-Log "interprete: $PythonExe (Python $v)"
     if ("$v".Trim() -ne "3.11") {
         Write-Log "AVISO: el venv no es Python 3.11 sino $v. Las dependencias estan fijadas a 3.11."
@@ -126,7 +148,7 @@ print("PROFILE=" + json.dumps({"terminal_path": str(p.terminal_path), "portable"
     $tmp = Join-Path $env:TEMP "sentinel_cap_profile_$PID.py"
     Set-Content -Path $tmp -Value $py -Encoding UTF8
     try {
-        $out = & $PythonExe $tmp 2>&1
+        $out = & $PythonExe -X $StackMarker $tmp 2>&1
         $code = $LASTEXITCODE
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
@@ -176,17 +198,53 @@ function Release-Singleton {
     }
 }
 
-function Find-MyProc {
-    # COLISIONES 2 y 3: solo procesos de ESTE clon. El filtro por ExecutablePath
-    # contra el venv propio es exacto -- el stack AVA corre sobre el Python del
-    # sistema, nunca sobre este exe.
+function Test-IsRedirector {
+    # El redirector del venv: su ExecutablePath ES el interprete del venv.
+    param($Proc)
+    return [bool]($Proc.ExecutablePath -and $Proc.ExecutablePath.ToLower() -eq $PythonExe.ToLower())
+}
+
+function Test-IsMine {
+    # Propiedad (ver cabecera): marca -X en la linea de comandos (redirector e
+    # hijo) O exe == venv (redirector, incluido el del ejecutor que lanza el
+    # supervisor sin marca). Nunca basta el ExecutablePath del Python base: es
+    # el mismo que usa AVA.
+    param($Proc)
+    if ($Proc.Name -notmatch '^python(\.exe)?$') { return $false }
+    if (Test-IsRedirector $Proc) { return $true }
+    return [bool]($Proc.CommandLine -and $Proc.CommandLine.Contains($StackMarker))
+}
+
+function Get-MyProcs {
+    # Procesos python de ESTE stack cuya linea de comandos casa con $Pattern.
     param([string]$Pattern)
-    $want = $PythonExe.ToLower()
     Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and
-        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $want -and
-        $_.CommandLine -match $Pattern
-    } | Select-Object -First 1
+        (Test-IsMine $_) -and $_.CommandLine -match $Pattern
+    }
+}
+
+function Find-MyProc {
+    # COLISIONES 2 y 3. Cuenta cada servicio logico UNA vez: devuelve el
+    # redirector si existe (su hijo con marca es el mismo servicio); solo si no
+    # hay redirector devuelve un proceso con marca (hijo huerfano de un
+    # redirector muerto).
+    param([string]$Pattern)
+    $all = @(Get-MyProcs $Pattern)
+    foreach ($p in $all) { if (Test-IsRedirector $p) { return $p } }
+    if ($all.Count -gt 0) { return $all[0] }
+    return $null
+}
+
+function Stop-ProcTree {
+    # Matar SOLO el redirector deja vivo a su hijo (el trabajador real).
+    # `taskkill /T /F` mata el arbol entero. Start-Process en vez de `&` para
+    # que el stderr de taskkill no se convierta en excepcion con
+    # $ErrorActionPreference = Stop (PowerShell 5.1).
+    param([int]$ProcId)
+    if (-not (Get-Process -Id $ProcId -ErrorAction SilentlyContinue)) { return $true }
+    $k = Start-Process -FilePath "taskkill.exe" -ArgumentList "/PID", $ProcId, "/T", "/F" `
+            -Wait -PassThru -WindowStyle Hidden
+    return ($k.ExitCode -eq 0)
 }
 
 function Test-TerminalRunning {
@@ -236,7 +294,7 @@ sys.exit(0)
     $tmp = Join-Path $env:TEMP "sentinel_cap_acct_$PID.py"
     Set-Content -Path $tmp -Value $py -Encoding UTF8
     try {
-        $out = & $PythonExe $tmp 2>&1
+        $out = & $PythonExe -X $StackMarker $tmp 2>&1
         $code = $LASTEXITCODE
     } finally {
         Remove-Item $tmp -Force -ErrorAction SilentlyContinue
@@ -269,7 +327,12 @@ function Wait-ForDemoAccount {
 function Start-Hidden {
     param([string]$CmdLine)
     $env:PYTHONPATH = $RepoRoot
-    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", $CmdLine `
+    # OJO cmd /c: si la linea EMPIEZA por comillas y lleva mas de dos, cmd
+    # quita la primera y la ultima comilla y la linea queda rota ("El nombre de
+    # archivo... no son correctos"; medido 2026-10-06). Las lineas de watcher y
+    # dashboard empiezan por `"<python>"`, asi que se envuelve TODA la linea en
+    # un par extra de comillas, que es lo que cmd retira.
+    Start-Process -FilePath "cmd.exe" -ArgumentList "/c", "`"$CmdLine`"" `
         -WorkingDirectory $RepoRoot -WindowStyle Hidden | Out-Null
 }
 
@@ -281,7 +344,7 @@ function Ensure-Watcher {
         return
     }
     Write-Log "watcher CAIDO -- relanzando."
-    Start-Hidden "`"$PythonExe`" -m scripts.live.run_deals_watcher --db data/research.db --poll 5 >> `"$WatcherLog`" 2>> `"$WatcherLog.err`""
+    Start-Hidden "`"$PythonExe`" $PyOpt -m scripts.live.run_deals_watcher --db data/research.db --poll 5 >> `"$WatcherLog`" 2>> `"$WatcherLog.err`""
     Start-Sleep -Seconds 2
     $p = Find-MyProc 'run_deals_watcher'
     if ($p) {
@@ -300,18 +363,18 @@ function Ensure-Supervisor {
         return
     }
     # 🔴 COLISION 4, LA PEOR. El original sega TODO `run_live_20` de la maquina.
-    # Aqui la siega se limita a procesos de ESTE venv: el ejecutor armado de AVA
-    # corre sobre otro interprete y queda intocado.
-    $want = $PythonExe.ToLower()
-    $orphans = Get-CimInstance Win32_Process | Where-Object {
-        $_.Name -match '^python(\.exe)?$' -and
-        $_.ExecutablePath -and $_.ExecutablePath.ToLower() -eq $want -and
-        $_.CommandLine -match 'run_live_20'
-    }
+    # Aqui la siega se limita a procesos de ESTE stack (marca -X o exe == venv):
+    # el ejecutor armado de AVA queda intocado. Se mata el ARBOL (/T): el
+    # redirector del ejecutor tiene un hijo base que de otro modo seguiria
+    # operando sin supervisor.
+    $orphans = @(Get-MyProcs 'run_live_20')
     foreach ($o in $orphans) {
-        Write-Log "segando ejecutor HUERFANO de ESTE stack, PID $($o.ProcessId) (ningun supervisor vivo lo posee)."
-        try { Stop-Process -Id $o.ProcessId -Force -ErrorAction Stop }
-        catch { Write-Log "  no pude matar $($o.ProcessId): $($_.Exception.Message)" }
+        Write-Log "segando ejecutor HUERFANO de ESTE stack, PID $($o.ProcessId) y su arbol (ningun supervisor vivo lo posee)."
+        try {
+            if (-not (Stop-ProcTree -ProcId ([int]$o.ProcessId))) {
+                Write-Log "  taskkill /T /F fallo para $($o.ProcessId)."
+            }
+        } catch { Write-Log "  no pude matar $($o.ProcessId): $($_.Exception.Message)" }
     }
     Write-Log "supervisor CAIDO -- relanzando (roster tomachine, XAUUSD, cap 0.50, ventana 18:00-18:45, gate adaptativo OFF)."
     # Entorno EXACTO de M2_ENTREGA (RESUMEN.md, 'Env efectivas'), inyectado por
@@ -320,7 +383,7 @@ function Ensure-Supervisor {
     # bloquearia el 100% de las aperturas en silencio.
     # OJO cmd: 'set VAR=valor&&' SIN espacio antes de && (el espacio entraria en el valor).
     $envPrefix = "set SUPERVISOR_CONFIGS=tomachine&& set SUPERVISOR_MAX_SPREAD_OPEN=0.5&& set SUPERVISOR_BLOCKED_OPEN_WINDOW=18:00-18:45&& set SUPERVISOR_NO_ADAPTIVE_SPREAD=1&& "
-    Start-Hidden ($envPrefix + "`"$PythonExe`" -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`"")
+    Start-Hidden ($envPrefix + "`"$PythonExe`" $PyOpt -m scripts.live.supervisor_live >> `"$SupervisorLog`" 2>> `"$SupervisorLog.err`"")
     Start-Sleep -Seconds 2
     $p = Find-MyProc 'supervisor_live'
     if ($p) {
@@ -337,7 +400,7 @@ function Ensure-Dashboard {
         if (Get-NetTCPConnection -LocalPort $DashboardPort -State Listen -ErrorAction SilentlyContinue) { return }
     } catch {}
     Write-Log "dashboard CAIDO (nadie escucha en $DashboardPort) -- relanzando."
-    Start-Hidden "`"$PythonExe`" scripts\run_service.py --host 127.0.0.1 --port $DashboardPort --force-historical >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
+    Start-Hidden "`"$PythonExe`" $PyOpt scripts\run_service.py --host 127.0.0.1 --port $DashboardPort --force-historical >> `"$DashboardLog`" 2>> `"$DashboardLog.err`""
     Start-Sleep -Seconds 3
     $p = Find-MyProc 'run_service\.py'
     if ($p) {
